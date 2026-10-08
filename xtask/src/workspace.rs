@@ -23,6 +23,7 @@ pub(crate) const GROUPS: &[(&str, &str)] = &[
     ("domain", "Domain views"),
     ("geometry", "Geometry, georeferencing and alignment"),
     ("binding", "Language bindings"),
+    ("tool", "Command-line tool"),
 ];
 
 /// The workspace: its root and its packages.
@@ -55,6 +56,9 @@ pub(crate) struct Crate {
     pub(crate) internal_deps: Vec<String>,
     /// The library target: its name (rustdoc directory) and root source file.
     pub(crate) lib: Option<(String, PathBuf)>,
+    /// The first binary target's root source file, whose `//!` docs give a
+    /// binary-only crate (the command-line tool) its overview.
+    pub(crate) bin: Option<PathBuf>,
     /// `rust-version`, the minimum supported Rust.
     pub(crate) rust_version: Option<String>,
 }
@@ -196,7 +200,13 @@ impl Workspace {
                         target.src_path.clone().into_std_path_buf(),
                     )
                 });
+            let bin = package
+                .targets
+                .iter()
+                .find(|target| target.kind.iter().any(|kind| kind.to_string() == "bin"))
+                .map(|target| target.src_path.clone().into_std_path_buf());
             out.push(Crate {
+                bin,
                 rust_version: package.rust_version.as_ref().map(|v| v.to_string()),
                 lib,
                 version: package.version.to_string(),

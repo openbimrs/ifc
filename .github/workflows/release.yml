@@ -9,6 +9,9 @@
 #                            + NuGet for openbim-ifc-dotnet (OpenBim.Ifc, #327)
 #                            + GitHub release archives for a crate with a
 #                              CMakeLists.txt: openbim-ifc-capi (#41)
+#                            + GitHub release binaries, SHA256SUMS and a
+#                              Homebrew formula for a crate with a binary
+#                              target: openbim-ifc-cli (#329)
 #
 # npm, PyPI, NuGet and crates.io use trusted publishing (OIDC). Each publish
 # job runs in the environment named after its registry (`crates.io`,
@@ -64,6 +67,7 @@ jobs:
       pypi: ${{ steps.plan.outputs.pypi }}
       nuget: ${{ steps.plan.outputs.nuget }}
       native: ${{ steps.plan.outputs.native }}
+      cli: ${{ steps.plan.outputs.cli }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -392,6 +396,76 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+  # The openbim-ifc command (#329) ships as one prebuilt binary per platform
+  # on the openbim-ifc-cli GitHub release, beside its crates.io package.
+  # Linux binaries are static (musl), so they run on any distribution. Each
+  # is built cold, smoke-tested, packed by package.py into the archive
+  # install.sh downloads, and, outside Windows, installed through install.sh
+  # from a local mirror of that archive (check-install.sh).
+  cli-binaries:
+    name: CLI binary (${{ matrix.target }})
+    needs: plan
+    if: needs.plan.outputs.cli == 'true'
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { target: x86_64-unknown-linux-musl, os: ubuntu-22.04 }
+          - { target: aarch64-unknown-linux-musl, os: ubuntu-22.04-arm }
+          - { target: x86_64-apple-darwin, os: macos-15-intel }
+          - { target: aarch64-apple-darwin, os: macos-15 }
+          - { target: x86_64-pc-windows-msvc, os: windows-latest }
+    runs-on: ${{ matrix.os }}
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Rust 1.88
+        uses: dtolnay/rust-toolchain@688313b0823df1393bcebb1b4add0438a6d36884 # 1.88.0
+        with:
+          toolchain: 1.88.0
+          components: clippy, rustfmt
+          targets: ${{ matrix.target }}, wasm32-unknown-unknown
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Build
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: cargo build --release --locked -p openbim-ifc-cli --target "$TARGET"
+      - name: Smoke-test the binary
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          bin="target/$TARGET/release/openbim-ifc"
+          [ -f "$bin.exe" ] && bin="$bin.exe"
+          "$bin" --version
+          "$bin" validate test/fixtures/synthetic-bindings/binding_geometry.ifc
+          "$bin" info test/fixtures/synthetic-properties/synthetic_properties.ifc
+      - name: Pack
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          bin="target/$TARGET/release/openbim-ifc"
+          [ -f "$bin.exe" ] && bin="$bin.exe"
+          python crates/openbim-ifc-cli/scripts/package.py archive --target "$TARGET" --binary "$bin" --out dist
+      - name: Install through install.sh
+        if: runner.os != 'Windows'
+        env:
+          TARGET: ${{ matrix.target }}
+        run: crates/openbim-ifc-cli/scripts/check-install.sh "target/$TARGET/release/openbim-ifc"
+      - name: Upload archive
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cli-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
   # The NuGet package (#327): C# over the C ABI, with the shared library of
   # every native-archives runner under runtimes/<rid>/native/. Packed once,
   # then installed from a local feed into a fresh project and tested on each
@@ -508,7 +582,7 @@ jobs:
     # stream per crate, "Latest" would otherwise follow whichever crate was
     # released last.
     name: GitHub release
-    needs: [plan, crates-io, npm, pypi, nuget-pack, nuget-test, nuget, native-archives]
+    needs: [plan, crates-io, npm, pypi, nuget-pack, nuget-test, nuget, native-archives, cli-binaries]
     if: >-
       always() && github.event_name == 'push' && needs.plan.result == 'success'
       && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
@@ -530,6 +604,7 @@ jobs:
           PYPI: ${{ needs.plan.outputs.pypi }}
           NUGET: ${{ needs.plan.outputs.nuget }}
           NATIVE: ${{ needs.plan.outputs.native }}
+          CLI: ${{ needs.plan.outputs.cli }}
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "release $TAG already exists"; exit 0
@@ -550,6 +625,7 @@ jobs:
             [ "$PYPI" = true ] && echo "**PyPI:** https://pypi.org/project/openbim-ifc/$VERSION/"
             [ "$NUGET" = true ] && echo "**NuGet:** https://www.nuget.org/packages/OpenBim.Ifc/$VERSION"
             [ "$NATIVE" = true ] && echo "**C library:** prebuilt CMake archives and \`SHA256SUMS\` are attached below."
+            [ "$CLI" = true ] && echo "**Binaries:** Linux (static), macOS and Windows archives, \`SHA256SUMS\` and the Homebrew formula are attached below. Install: \`curl -fsSL https://raw.githubusercontent.com/openbimrs/ifc/$TAG/crates/openbim-ifc-cli/install.sh | sh -s -- --version $VERSION\`"
             true
           } >> notes.md
           latest=false
@@ -588,3 +664,62 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+
+  cli-assets:
+    name: Attach CLI binaries to the GitHub release
+    needs: [plan, cli-binaries, github-release]
+    # always(): as for native-assets, github-release depends on jobs this
+    # tag skips.
+    if: >-
+      always() && github.event_name == 'push' && needs.plan.outputs.cli == 'true'
+      && needs.cli-binaries.result == 'success' && needs.github-release.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # upload release assets
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download archives
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: cli-*
+          path: dist
+          merge-multiple: true
+      - name: Checksum the archives and write the Homebrew formula
+        # One archive per cli-binaries matrix entry. The formula takes each
+        # platform's checksum from SHA256SUMS and refuses a missing one.
+        run: |
+          python3 crates/openbim-ifc-cli/scripts/package.py checksums dist --expect 5
+          python3 crates/openbim-ifc-cli/scripts/package.py formula --sums dist/SHA256SUMS --out dist/openbim-ifc.rb
+          cp crates/openbim-ifc-cli/install.sh dist/install.sh
+      - name: Attach the archives
+        # --clobber replaces assets a failed run left half-uploaded.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+      - name: Update the Homebrew tap
+        # Runs only once the maintainer has created openbimrs/homebrew-tap
+        # and stored a token that may push to it as HOMEBREW_TAP_TOKEN
+        # (docs/guide/cli.md#homebrew). Without it the formula is still on
+        # the release, and this step says so instead of failing.
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "::notice::HOMEBREW_TAP_TOKEN is not set; openbim-ifc.rb is attached to the release but no tap was updated"
+            exit 0
+          fi
+          git clone --depth 1 "https://x-access-token:$TAP_TOKEN@github.com/openbimrs/homebrew-tap.git" tap
+          mkdir -p tap/Formula
+          cp dist/openbim-ifc.rb tap/Formula/openbim-ifc.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/openbim-ifc.rb
+          if git diff --cached --quiet; then
+            echo "the tap already has openbim-ifc $VERSION"; exit 0
+          fi
+          git commit -m "openbim-ifc $VERSION"
+          git push origin HEAD

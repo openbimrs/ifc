@@ -2,7 +2,7 @@
 
 # Crate reference
 
-The family is 32 crates, each versioned and released on its own. Most applications depend on the [`openbim-ifc`](./crates/openbim-ifc) facade and enable the features they need; the crates below are what those features pull in.
+The family is 33 crates, each versioned and released on its own. Most applications depend on the [`openbim-ifc`](./crates/openbim-ifc) facade and enable the features they need; the crates below are what those features pull in.
 
 Every page here is generated from the crate itself: its manifest, its crate documentation and its changelog.
 
@@ -62,3 +62,9 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 | [`openbim-ifc-dotnet`](./crates/openbim-ifc-dotnet) | <span class="status-implemented">Implemented</span> | 0.1.2 | The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned C ABI. |
 | [`openbim-ifc-py`](./crates/openbim-ifc-py) | <span class="status-implemented">Implemented</span> | 0.3.3 | Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python. |
 | [`openbim-ifc-wasm`](./crates/openbim-ifc-wasm) | <span class="status-implemented">Implemented</span> | 0.4.2 | WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript. |
+
+## Command-line tool
+
+| Crate | Status | Latest release | Description |
+| --- | --- | --- | --- |
+| [`openbim-ifc-cli`](./crates/openbim-ifc-cli) | <span class="status-partial">Partial</span> | not released | The openbim-ifc command: validate, convert and inspect IFC files (STEP and ifcXML) from a shell or CI. |

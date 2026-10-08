@@ -68,6 +68,15 @@ use ifc::{Model, StepCodec};
 The default facade feature enables STEP only. Add domain and geometry features
 explicitly.
 
+From a shell or CI, the [`openbim-ifc` command](https://openbimrs.github.io/ifc/guide/cli)
+validates (with exit codes and SARIF), converts between STEP and ifcXML, and
+shows a file's header, property sets and spatial tree:
+
+```bash
+cargo install openbim-ifc-cli
+openbim-ifc validate --format sarif model.ifc > ifc.sarif
+```
+
 Geometry comes in two sizes, because a drawing consumer should not compile a
 solid modeller:
 

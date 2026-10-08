@@ -119,6 +119,12 @@ gate_test() {
     cargo test -p ifc-geometry --test no_backend_dependency
     cargo test -p ifc-geometry --test kernel_free_build
     cargo test -p ifc-georef --test kernel_free_build
+
+    # The openbim-ifc command (#329): install.sh installs the archive the
+    # release ships from a local mirror of it, and refuses a checksum
+    # mismatch; the Homebrew formula is filled from SHA256SUMS. macOS runs
+    # the same check in .github/workflows/cli.yml.
+    crates/openbim-ifc-cli/scripts/check-install.sh
 }
 
 gate_features() {
@@ -157,6 +163,13 @@ gate_features() {
         # shellcheck disable=SC2086
         cargo clippy -p openbim-ifc $features --all-targets -- -D warnings
     done
+
+    # The openbim-ifc command with its own facade features, as
+    # `cargo install openbim-ifc-cli` builds it: `--all-features` unifies the
+    # facade's features across the workspace and would hide a command that
+    # needs one the CLI does not ask for.
+    cargo clippy -p openbim-ifc-cli --all-targets -- -D warnings
+    cargo test -p openbim-ifc-cli
 
     # The unreachable-product lint spans two sibling domains, so it exists
     # only when both are on. `--all-features` would hide a break in that exact

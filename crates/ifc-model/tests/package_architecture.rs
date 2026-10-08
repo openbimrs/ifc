@@ -669,3 +669,56 @@ fn the_allocator_is_opt_in_pinned_and_only_in_native_bindings() {
         "a native binding is missing"
     );
 }
+
+/// The command-line tool (#329) is an application over the facade, like a
+/// binding is over the binding core: it reaches IFC only through
+/// `openbim-ifc`, never through an `ifc-*` crate, the binding core or an
+/// execution provider. Its facade features stay kernel-free: `geometry` (the
+/// lowering) and `mesh` (an execution provider, ADR 0004) are left out.
+const CLI: &str = "openbim-ifc-cli";
+
+/// May the command-line tool depend on `dependency`?
+fn cli_allows(dependency: &str) -> bool {
+    dependency == FACADE || !(is_ifc_layer(dependency) || dependency == BINDING_CORE)
+}
+
+#[test]
+fn the_cli_reaches_ifc_only_through_the_facade() {
+    assert!(cli_allows(FACADE));
+    assert!(cli_allows("clap"));
+    assert!(!cli_allows("ifc-validate"));
+    assert!(!cli_allows(BINDING_CORE));
+    assert!(!cli_allows("axiolid-mesh-compile"));
+
+    let package = metadata()
+        .packages
+        .into_iter()
+        .find(|package| package.name.as_str() == CLI)
+        .unwrap_or_else(|| panic!("{CLI} is missing"));
+    let dependencies = production_dependencies(&package);
+    assert!(
+        dependencies.contains(FACADE),
+        "{CLI} must depend on {FACADE}"
+    );
+    let bypass: Vec<_> = dependencies.iter().filter(|d| !cli_allows(d)).collect();
+    assert!(
+        bypass.is_empty(),
+        "{CLI} bypasses the facade through {bypass:?}"
+    );
+    let facade = package
+        .dependencies
+        .iter()
+        .find(|dependency| dependency.name == FACADE)
+        .expect("facade dependency");
+    assert!(
+        facade.features.len() >= 3,
+        "expected the facade's feature list, found {:?}",
+        facade.features
+    );
+    for kernel in ["geometry", "mesh", "full"] {
+        assert!(
+            !facade.features.iter().any(|feature| feature == kernel),
+            "{CLI} enables the facade's `{kernel}`, which links the geometry kernel"
+        );
+    }
+}

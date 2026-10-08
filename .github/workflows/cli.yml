@@ -1,0 +1,62 @@
+name: CLI
+
+# The openbim-ifc command (#329) on macOS and Windows. Linux runs its tests
+# in the gate's `test` section (as part of the workspace) and its
+# install-script check there too (crates/openbim-ifc-cli/scripts/
+# check-install.sh), so this workflow only adds the platforms whose shells,
+# paths and line endings differ. release.yml builds and tests the shipped
+# binaries itself, on every platform it ships.
+#
+# Like native.yml, it is path-filtered on pull requests and therefore never
+# a required check; the "Standalone IFC gate" verdict does not depend on it.
+on:
+  pull_request:
+    paths:
+      - "crates/openbim-ifc-cli/**"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - ".github/workflows/cli.yml"
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cli-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  cli:
+    name: CLI (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Rust 1.88
+        uses: dtolnay/rust-toolchain@688313b0823df1393bcebb1b4add0438a6d36884 # 1.88.0
+        with:
+          toolchain: 1.88.0
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+      - name: Cache Rust build
+        # Only main saves, so a pull request can read the cache but never
+        # write into it.
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: cli-${{ matrix.os }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Test every command
+        run: cargo test --locked -p openbim-ifc-cli
+      - name: Install through install.sh
+        # install.sh covers Linux and macOS; Windows installs from the
+        # release's .zip.
+        if: runner.os != 'Windows'
+        run: crates/openbim-ifc-cli/scripts/check-install.sh
