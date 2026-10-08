@@ -1,11 +1,18 @@
 name: CLI
 
-# The openbim-ifc command (#329) on macOS and Windows. Linux runs its tests
-# in the gate's `test` section (as part of the workspace) and its
-# install-script check there too (crates/openbim-ifc-cli/scripts/
-# check-install.sh), so this workflow only adds the platforms whose shells,
-# paths and line endings differ. release.yml builds and tests the shipped
-# binaries itself, on every platform it ships.
+# The openbim-ifc command (#329) on macOS and Windows, and its packages.
+# Linux runs its tests in the gate's `test` section (as part of the
+# workspace) and its install-script check there too (crates/openbim-ifc-cli/
+# scripts/check-install.sh), so this workflow only adds what the gate cannot
+# see:
+# - the tests on macOS and Windows (x64 and Arm), whose shells, paths and
+#   line endings differ;
+# - install.sh on macOS, install.ps1 on Windows (#378, check-install.ps1);
+# - the Debian package (#376, check-deb.sh) of a static musl build,
+#   installed with dpkg and removed on ubuntu-22.04 and ubuntu-22.04-arm.
+# These are the scripts each release build runs (release.yml,
+# cli-binaries), so a pull request tests what a release will do. The Nix
+# flake (#377) has its own workflow, nix.yml.
 #
 # Like native.yml, it is path-filtered on pull requests and therefore never
 # a required check; the "Standalone IFC gate" verdict does not depend on it.
@@ -35,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, windows-latest]
+        os: [macos-15, windows-latest, windows-11-arm]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
@@ -53,10 +60,50 @@ jobs:
         with:
           key: cli-${{ matrix.os }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
       - name: Test every command
         run: cargo test --locked -p openbim-ifc-cli
       - name: Install through install.sh
-        # install.sh covers Linux and macOS; Windows installs from the
-        # release's .zip.
         if: runner.os != 'Windows'
         run: crates/openbim-ifc-cli/scripts/check-install.sh
+      - name: Install through install.ps1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: crates/openbim-ifc-cli/scripts/check-install.ps1
+
+  deb:
+    # A debug build is enough to prove the package: the release packs its
+    # release build with the same script.
+    name: Debian package (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: x86_64-unknown-linux-musl, os: ubuntu-22.04 }
+          - { target: aarch64-unknown-linux-musl, os: ubuntu-22.04-arm }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Rust 1.88
+        uses: dtolnay/rust-toolchain@688313b0823df1393bcebb1b4add0438a6d36884 # 1.88.0
+        with:
+          toolchain: 1.88.0
+          components: clippy, rustfmt
+          targets: ${{ matrix.target }}, wasm32-unknown-unknown
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: cli-deb-${{ matrix.target }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Build the static binary
+        env:
+          TARGET: ${{ matrix.target }}
+        run: cargo build --locked -p openbim-ifc-cli --target "$TARGET"
+      - name: Pack, inspect, install and remove the .deb
+        env:
+          TARGET: ${{ matrix.target }}
+        run: crates/openbim-ifc-cli/scripts/check-deb.sh --install "target/$TARGET/debug/openbim-ifc"

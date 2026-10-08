@@ -7,8 +7,8 @@
 # It picks the archive for this OS and CPU (Linux x86_64 and aarch64, as
 # static musl binaries; macOS x86_64 and arm64), downloads it with the
 # release's SHA256SUMS, refuses to install unless the checksum matches, and
-# copies the binary to PREFIX/bin (default ~/.local/bin). Windows: download
-# the .zip from the release page.
+# copies the binary to PREFIX/bin (default ~/.local/bin). Windows: use
+# install.ps1 beside this script.
 #
 # Options (or the environment variable in brackets):
 #   --version V   a release, e.g. 0.1.0; default the newest  [OPENBIM_IFC_VERSION]

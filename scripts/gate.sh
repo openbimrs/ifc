@@ -128,6 +128,14 @@ gate_test() {
     # mismatch; the Homebrew formula is filled from SHA256SUMS. macOS runs
     # the same check in .github/workflows/cli.yml.
     crates/openbim-ifc-cli/scripts/check-install.sh
+    # Its Debian package (#376): the control file and the files it holds.
+    # Installing it needs root, so cli.yml and each release build add
+    # `--install` on Ubuntu.
+    if command -v dpkg-deb >/dev/null 2>&1; then
+        crates/openbim-ifc-cli/scripts/check-deb.sh
+    else
+        echo "gate: no dpkg-deb here; the .deb is checked in .github/workflows/cli.yml" >&2
+    fi
 }
 
 gate_features() {

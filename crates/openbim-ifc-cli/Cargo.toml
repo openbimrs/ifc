@@ -35,6 +35,10 @@ pkg-fmt = "tgz"
 pkg-url = "{ repo }/releases/download/{ name }-v{ version }/openbim-ifc-v{ version }-{ target }.zip"
 pkg-fmt = "zip"
 
+[package.metadata.binstall.overrides.aarch64-pc-windows-msvc]
+pkg-url = "{ repo }/releases/download/{ name }-v{ version }/openbim-ifc-v{ version }-{ target }.zip"
+pkg-fmt = "zip"
+
 [[bin]]
 name = "openbim-ifc"
 path = "src/main.rs"
