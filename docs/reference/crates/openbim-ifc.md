@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.17.0 (2026-10-08) |
+| Latest release | 0.18.0 (2026-10-08) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -95,33 +95,22 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.17.0 (2026-10-08):
+Latest release, 0.18.0 (2026-10-08):
 
-### Added (#328, geometry in the bindings, ADR 0021)
+### Added (#342, declared attribute types)
 
-- Behind `geometry-select`: `product_placements(model, ids)` -- per product
-  with a shape (or per id given), its world placement
-  (`products_world_transforms`, metres) and the Body representation
-  `select_shape_representation` chooses, as `ProductPlacement { product,
-  world, body }`, each half its own `GeometryResult` -- with
-  `SelectedRepresentation` (identifier, type, context) and
-  `SelectedContext` (context type, derived from the parent for a
-  sub-context; identifier; target view literal). `column_major(&Transform)`
-  gives the 4x4 column-major matrix graphics APIs read.
-- Feature `mesh` (`geometry` plus `ifc-geometry`'s
-  `compile-reference-backend`; never default, ADR 0004):
-  `product_meshes(model, ids)`, one result per product: `ProductMesh {
-  world, positions, indices }`, `f32` positions relative to the world
-  placement (mapped back through its inverse in `f64`), `u32` indices,
-  compiled with one reference backend at a one-millimetre tolerance; a
-  product without a Body has empty arrays, a refused one its
-  `GeometryError`. `compiled_features()` reports `mesh`.
+- Behind `schema-api`: `declared_type(schema, type_text)` resolves an
+  EXPRESS type token against a release's tables to a `DeclaredType`:
+  `Simple` (`SimpleType`: `INTEGER`, `REAL`, `NUMBER`, `STRING`,
+  `BOOLEAN`, `LOGICAL`, `BINARY`, widths dropped), `Entity`,
+  `Enumeration` (with its items), `Defined` (with what it aliases, an
+  aggregate included: `IfcCompoundPlaneAngleMeasure`), `Select` (every
+  member resolved, nested SELECTs included), `Aggregate`, or `Unresolved`
+  for a token the tables do not declare; bounded, so a cyclic alias ends
+  `Unresolved`. `attribute_type(schema, entity, name)` gives an
+  attribute's slot and declared type with its own aggregation levels
+  outermost.
 
-### Changed
-
-- `full` now includes `mesh`, and so links the reference compile backend.
-
-Semver of #328: additive; `mesh` needs the `compile` re-exports of the
-next `ifc-geometry` (0.11.0).
+Semver: additive, a patch release.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

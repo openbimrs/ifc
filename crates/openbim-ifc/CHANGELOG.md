@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-10-08
+
 ### Added (#342, declared attribute types)
 
 - Behind `schema-api`: `declared_type(schema, type_text)` resolves an
@@ -523,7 +525,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.17.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.18.0...HEAD
+[0.18.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.18.0
 [0.17.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.17.0
 [0.16.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.16.0
 [0.15.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.15.0
