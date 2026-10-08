@@ -9,9 +9,10 @@
 
 use ifc_model::{EntityId, Model};
 
-use crate::cant::evaluate::{cant_at, CantAtStation};
-use crate::cant::segment::{read_cant_segment, CantSegment};
+use crate::cant::evaluate::{cant_within, CantAtStation};
+use crate::cant::segment::{read_cant_segment, CantSegment, CantSegmentType};
 use crate::curve::terminal::split_closing;
+use crate::curve::SeamTolerance;
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::AlignmentUnits;
 use crate::view::AlignmentView;
@@ -26,6 +27,10 @@ pub struct CantLayout {
     /// angle, in metres.
     pub rail_head_distance: f64,
     segments: Vec<CantSegment>,
+    /// How far a Viennese bend's two rotation points may differ and still
+    /// stay put: the model's declared precision, as the banked lowering
+    /// compares them.
+    pivot_tolerance: SeamTolerance,
 }
 
 impl CantLayout {
@@ -37,6 +42,10 @@ impl CantLayout {
     /// against the previous segment's end like any seam. A zero-length
     /// segment anywhere else, or as the only segment, is refused
     /// ([`AlignmentError::SemanticViolation`]).
+    ///
+    /// A layout with a `VIENNESEBEND` also reads the model's declared
+    /// precision ([`SeamTolerance::for_model`]), the tolerance its rotation
+    /// points are compared at, and refuses what that refuses.
     pub fn resolve(
         model: &Model,
         entity: EntityId,
@@ -117,10 +126,23 @@ impl CantLayout {
             }
         }
 
+        // Only a Viennese bend compares rotation points, so only a layout
+        // with one reads the precision; every other layout resolves as it
+        // did before #312.
+        let pivot_tolerance = if segments
+            .iter()
+            .any(|segment| segment.predefined_type == CantSegmentType::VienneseBend)
+        {
+            SeamTolerance::for_model(model, units)?
+        } else {
+            SeamTolerance::strict()
+        };
+
         Ok(Self {
             entity,
             rail_head_distance,
             segments,
+            pivot_tolerance,
         })
     }
 
@@ -187,6 +209,17 @@ impl CantLayout {
     }
 
     /// Cant at an absolute distance-along value within this profile's span.
+    ///
+    /// Each segment evaluates as [`cant_at`](crate::cant::cant_at) does; a
+    /// `VIENNESEBEND`'s rotation points are compared at the model's declared
+    /// precision, as the banked lowering compares them.
+    ///
+    /// # Errors
+    ///
+    /// Refuses a non-finite distance or one outside the profile's span, and
+    /// everything [`cant_at`](crate::cant::cant_at) refuses, including the
+    /// inside of a Viennese bend whose rotation point moves with neither
+    /// rail held.
     pub fn cant_at_distance(&self, distance_along: f64) -> AlignmentResult<CantAtStation> {
         if !distance_along.is_finite() {
             return Err(AlignmentError::InvalidUnits {
@@ -210,6 +243,11 @@ impl CantLayout {
         } else {
             0.0
         };
-        cant_at(segment, xi, Some(self.rail_head_distance))
+        cant_within(
+            segment,
+            xi,
+            Some(self.rail_head_distance),
+            self.pivot_tolerance,
+        )
     }
 }

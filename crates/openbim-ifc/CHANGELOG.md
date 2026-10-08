@@ -36,8 +36,8 @@ everything released before per-crate changelogs began.
 
 - `full` now includes `mesh`, and so links the reference compile backend.
 
-Semver: additive, a patch release (0.16.1); `mesh` needs `ifc-geometry`
-0.10.1.
+Semver of #328: additive; `mesh` needs the `compile` re-exports of the
+next `ifc-geometry` (0.11.0).
 
 ## [0.16.0] - 2026-10-04
 

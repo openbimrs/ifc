@@ -81,8 +81,8 @@ use axiolid_model::GeometryNode;
 use ifc_alignment::{AlignmentUnits, CurveMeasure, LinearPlacement, PointByDistance};
 use ifc_model::{EntityId, Model, Value};
 
+use crate::constraint::tolerance;
 use crate::error::{GeometryError, GeometryResult};
-use crate::input::context::all_contexts;
 use crate::lower::curve::lower_curve_node;
 use crate::lower::session::LoweringSession;
 use crate::resource::direction::resolve_unit;
@@ -137,11 +137,14 @@ pub(crate) struct Derivation<'e> {
     pub(crate) cached: CachedPositionPolicy,
 }
 
-/// Resolve an `IfcLinearPlacement` with an evaluator, in metres.
+/// Resolve an `IfcLinearPlacement` with an evaluator, in metres, relative
+/// to the frame its basis curve is stated in (#357).
 ///
 /// `resolved` is the placement as `ifc-alignment` read it, in FILE units;
-/// `cached` its `CartesianPosition`, if any; `cached_transform` turns that
-/// into a transform in metres.
+/// `cached` its `CartesianPosition`, if any, as a transform in metres
+/// relative to the same frame; `parent` that frame's world transform in
+/// metres. The cache is compared in world coordinates, so a mismatch names
+/// world positions.
 pub(crate) fn resolve_linear(
     model: &Model,
     units: &UnitScale,
@@ -149,13 +152,20 @@ pub(crate) fn resolve_linear(
     resolved: &LinearPlacement,
     cached: Option<Transform>,
     derivation: Derivation<'_>,
+    parent: &Transform,
 ) -> GeometryResult<Transform> {
     if let (Some(cached), CachedPositionPolicy::Trust) = (cached, derivation.cached) {
         return Ok(cached);
     }
     let derived = linear_transform(model, units, placement, resolved, derivation.evaluator)?;
     if let Some(cached) = cached {
-        check_cache(model, units, placement, &cached, &derived)?;
+        check_cache(
+            model,
+            units,
+            placement,
+            &parent.compose(&cached),
+            &parent.compose(&derived),
+        )?;
     }
     Ok(derived)
 }
@@ -171,11 +181,10 @@ fn check_cache(
 ) -> GeometryResult<()> {
     let precision = cached_position_tolerance(model, units)?;
     let [a, b] = [cached.origin, derived.origin];
-    let distance = ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt();
+    let distance = tolerance::distance(a, b);
     // The floating-point rounding term the alignment seams use
     // (`ifc_alignment::SeamTolerance`): 1e-9 relative, floor 1.
-    let magnitude = a.iter().chain(b.iter()).fold(1.0f64, |m, v| m.max(v.abs()));
-    let tolerance = precision.max(1e-9 * magnitude);
+    let tolerance = tolerance::point_tolerance(precision, a, b);
     if distance.is_finite() && distance <= tolerance {
         return Ok(());
     }
@@ -206,29 +215,7 @@ fn check_cache(
 /// [`GeometryError::Degenerate`] naming the context: a check against it
 /// would accept or refuse everything.
 pub fn cached_position_tolerance(model: &Model, units: &UnitScale) -> GeometryResult<f64> {
-    /// IFC4 ADD2 TC1 `IfcGeometricRepresentationSubContext.Precision`.
-    const IFC_DEFAULT_PRECISION: f64 = 1e-5;
-    let mut coarsest: Option<f64> = None;
-    for context in all_contexts(model) {
-        if context.is_sub_context() || context.coordinate_space_dimension(model) != Some(3) {
-            continue;
-        }
-        let Some(precision) = context.precision(model) else {
-            continue;
-        };
-        if !(precision.is_finite() && precision > 0.0) {
-            return Err(GeometryError::Degenerate {
-                entity: context.id(),
-                type_name: "IFCGEOMETRICREPRESENTATIONCONTEXT".into(),
-                detail: format!(
-                    "Precision {precision} is not a finite positive tolerance, so a cached \
-                     position cannot be checked against it"
-                ),
-            });
-        }
-        coarsest = Some(coarsest.map_or(precision, |c: f64| c.max(precision)));
-    }
-    Ok(units.length(coarsest.unwrap_or(IFC_DEFAULT_PRECISION)))
+    Ok(units.length(tolerance::model_precision(model)?))
 }
 
 /// Resolve an `IfcLinearPlacement` from its linear expression alone, in
@@ -237,6 +224,12 @@ pub fn cached_position_tolerance(model: &Model, units: &UnitScale) -> GeometryRe
 /// Reads `RelativePlacement`: its `IfcPointByDistanceExpression` through
 /// [`derive_placement_transform`], and its optional `Axis`/`RefDirection`,
 /// composed in the `(tangent, left, up)` frame (module documentation).
+///
+/// The result is in the coordinate system the basis curve is stated in --
+/// the object coordinate system of the alignment that carries it -- not
+/// in the world: `PlacementRelTo` and the alignment's own `ObjectPlacement`
+/// are not composed here (#357). [`super::product_world_transform_with_evaluator`]
+/// and the evaluator-taking lowering compose that chain.
 ///
 /// # Errors
 ///

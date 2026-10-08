@@ -12,6 +12,73 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+Placement resolution covers every `IfcObjectPlacement` kind: linear
+placements compose with their alignment's frame (#357), grid placements
+resolve (#362), and any placement may be relative to a linear or grid one
+(#363). Error variants are added and resolved positions change for
+off-identity alignments and grid-placed products, so the next release is a
+minor one (0.11.0).
+
+### Added
+
+- `IfcGridPlacement` resolution (#362), in `product_world_transform`,
+  `products_world_transforms`, `PlacementResolver::world_transform` and
+  product lowering. Per IFC4.3 ADD2: the location is the intersection of
+  the two axes' offset curves, `OffsetDistances[1..2]` to the LEFT of each
+  axis ("anti-clockwise rotation through 90 degrees from the tangent"),
+  reverted by `IfcGridAxis.SameSense`, and `OffsetDistances[3]` along the
+  grid's Z; the x-axis is the first axis's tangent, an `IfcDirection`'s x
+  and y ratios, or the direction towards a second
+  `IfcVirtualGridIntersection`; z is the grid's Z; all of it in the frame of
+  the `IfcGrid` that lists the axes, whose `ObjectPlacement` composes above.
+  Straight axes (`IfcLine`, a collinear `IfcPolyline`, an `IfcTrimmedCurve`
+  on a line, an `IfcOffsetCurve2D` of one) intersect in closed form. Curved
+  axes (`IfcCircle`, `IfcEllipse`, a bent `IfcPolyline`, an
+  `IfcTrimmedCurve` on a conic with parameter trims, an `IfcOffsetCurve2D`
+  of one) intersect through the caller's `CurveEvaluator`
+  (`LoweringSession::with_curve_evaluator`,
+  `product_world_transform_with_evaluator`, feature `compile`); without
+  one they are refused as `Unsupported` naming the axis curve. Both the
+  IFC2X3/IFC4 layout of `IfcGridPlacement` and IFC4X3's, which prepends the
+  inherited `PlacementRelTo`, are read; `GridPlacement::placement_rel_to`
+  is new.
+- `GeometryError::GridAxesParallel { intersection, axes }`,
+  `GridAxesDoNotIntersect { intersection, axes, detail }` (curved axes that
+  miss within their extent or meet more than once),
+  `GridAxisWithoutGrid { axis }`, `GridAxesInDifferentGrids { intersection,
+  grids }`, and `PlacementRelToConflict { placement, stated, implied }`: a
+  stated `PlacementRelTo` that resolves to a different frame than the
+  alignment's or grid's `ObjectPlacement` IFC4.3 says it references. A grid
+  without `ObjectPlacement` is `MissingAttribute`.
+
+### Changed
+
+- An `IfcLinearPlacement` is placed in the frame its basis curve is stated
+  in (#357), through both the cached `CartesianPosition` and the derived
+  path: its `PlacementRelTo` when stated, otherwise the `ObjectPlacement` of
+  the `IfcAlignment` (or other product) whose representation carries the
+  basis curve. IFC4.3 ADD2 concept Product Linear Placement: "each product
+  placement that uses Product Linear Placement references the
+  IfcObjectPlacement of the IfcLinearPositioningElement through
+  IfcLinearPlacement.PlacementRelTo"; `IfcObjectPlacement.PlacementRelTo`:
+  "If it is omitted, then in the case of linear placement it is
+  established by the origin of horizontal alignment of the referenced
+  IfcAlignment Axis". `CartesianPosition`, a fallback for
+  `RelativePlacement`, is read relative to the same frame. Products on an
+  alignment placed off identity used to be placed as if the alignment sat
+  at the origin, and `CachedPositionPolicy::Verify` refused their correct
+  caches; both are fixed. `CachedPlacementMismatch` reports world
+  positions. The context's `WorldCoordinateSystem` is still applied once,
+  by the representation frame. `derive_linear_placement_transform` returns
+  the frame in the basis curve's coordinates, as before; its documentation
+  now says so.
+- `PlacementResolver::world_transform` walks `PlacementRelTo` through
+  local, grid and linear placements alike (#363), caching each and keeping
+  the cycle and depth refusals across mixed chains. A local placement
+  relative to a linear placement used to be `WrongEntityType`, and one
+  relative to a grid placement `Unsupported`. An entity that is no
+  `IfcObjectPlacement` reports `expected: "IfcObjectPlacement"`.
+
 ### Added (#328, geometry in the bindings)
 
 - `compile::Tolerance` and `compile::TriMesh` re-export the tolerance every
@@ -19,8 +86,8 @@ everything released before per-crate changelogs began.
   names no `axiolid-*` crate (the `openbim-ifc` facade's `mesh` feature)
   can call them. Behind `compile`, as before.
 
-Semver: additive, a patch release (0.10.1). The `openbim-ifc` facade's
-`mesh` feature needs it.
+Semver: additive; it ships with the minor release above (0.11.0), which
+the `openbim-ifc` facade's `mesh` feature needs.
 
 ## [0.10.0] - 2026-10-04
 
