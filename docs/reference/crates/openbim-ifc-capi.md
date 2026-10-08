@@ -11,8 +11,8 @@ Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP file
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.1.4 (2026-10-08) |
-| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.4) |
+| Latest release | 0.1.5 (2026-10-08) |
+| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.5) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_capi/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-capi/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-capi) |
 
@@ -66,22 +66,21 @@ than altering a `v0_1_` one.
 
 ## Changes
 
-Latest release, 0.1.4 (2026-10-08):
+Latest release, 0.1.5 (2026-10-08):
 
-### Added (#328, geometry, ADR 0021)
+### Added (#358, #342)
 
-- `openbim_ifc_v0_1_model_product_placements(model, ids, id_count, ...)`:
-  a tape of `ProductPlacement` records (id, global id, type name,
-  transform as 16 `REAL`s or `NULL`, `SelectedRepresentation` or `NULL`,
-  `GeometryRefusal` or `NULL`); null `ids` with count 0 selects every
-  product with a shape.
-- Meshes, cargo feature `mesh` (opt-in; the release archives return
-  `FeatureDisabled`): `openbim_ifc_v0_1_model_product_meshes` compiles
-  once into an `OpenbimIfcMeshes` handle, read with
-  `openbim_ifc_v0_1_meshes_records` (a tape of `ProductMesh` records),
-  `_meshes_positions` (`float`), `_meshes_indices` (`uint32_t`) and freed
-  with `_meshes_destroy`. The set owns its data and outlives the model.
-- ABI version 0.1.7; no `v0_1` symbol changed.
+- `openbim_ifc_v0_1_model_property_sets_many(model, ids, id_count, ...)`:
+  a tape `LIST` of `ObjectPropertySets` records (object, sets, refusal
+  `[code, message]` or `NULL`), one per id, or with null `ids` and count 0
+  one per object definition; one pass through one property index, each
+  record exactly the per-object call's answer.
+- `openbim_ifc_v0_1_entity_set_attribute_by_name_plain`: the value tape
+  read as plain host values and coerced against the attribute's declared
+  type; `OPENBIM_IFC_KIND_EXACT` (12, valid only there) marks a value
+  written exactly.
+- `OPENBIM_IFC_STATUS_TYPE_MISMATCH` (32) and `_AMBIGUOUS_VALUE` (33).
+- ABI version 0.1.8; no `v0_1` symbol changed.
 
 Semver: additive, a patch release.
 

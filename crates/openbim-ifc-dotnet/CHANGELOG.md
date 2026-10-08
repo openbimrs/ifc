@@ -9,6 +9,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-08
+
 ### Added (#358, #342)
 
 - `IfcModel.PropertySetsMany(ids)`: `ObjectPropertySets` (object, sets,

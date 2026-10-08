@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.11.0 (2026-10-08) |
+| Latest release | 0.12.0 (2026-10-08) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -42,83 +42,57 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.11.0 (2026-10-08):
+Latest release, 0.12.0 (2026-10-08):
 
-Placement resolution covers every `IfcObjectPlacement` kind: linear
-placements compose with their alignment's frame (#357), grid placements
-resolve (#362), and any placement may be relative to a linear or grid one
-(#363). Error variants are added and resolved positions change for
-off-identity alignments and grid-placed products, so the next release is a
-minor one (0.11.0).
+Semver: profile boundaries this crate refused as `Unsupported` now lower,
+a malformed `IfcIndexedPolyCurve` boundary is refused as `Degenerate`
+instead of `Unsupported`, and `profile_outline` refuses open indexed
+curves it used to close. No public item is added or removed, but behaviour
+changes, so the next release is a minor one (0.12.0).
 
 ### Added
 
-- `IfcGridPlacement` resolution (#362), in `product_world_transform`,
-  `products_world_transforms`, `PlacementResolver::world_transform` and
-  product lowering. Per IFC4.3 ADD2: the location is the intersection of
-  the two axes' offset curves, `OffsetDistances[1..2]` to the LEFT of each
-  axis ("anti-clockwise rotation through 90 degrees from the tangent"),
-  reverted by `IfcGridAxis.SameSense`, and `OffsetDistances[3]` along the
-  grid's Z; the x-axis is the first axis's tangent, an `IfcDirection`'s x
-  and y ratios, or the direction towards a second
-  `IfcVirtualGridIntersection`; z is the grid's Z; all of it in the frame of
-  the `IfcGrid` that lists the axes, whose `ObjectPlacement` composes above.
-  Straight axes (`IfcLine`, a collinear `IfcPolyline`, an `IfcTrimmedCurve`
-  on a line, an `IfcOffsetCurve2D` of one) intersect in closed form. Curved
-  axes (`IfcCircle`, `IfcEllipse`, a bent `IfcPolyline`, an
-  `IfcTrimmedCurve` on a conic with parameter trims, an `IfcOffsetCurve2D`
-  of one) intersect through the caller's `CurveEvaluator`
-  (`LoweringSession::with_curve_evaluator`,
-  `product_world_transform_with_evaluator`, feature `compile`); without
-  one they are refused as `Unsupported` naming the axis curve. Both the
-  IFC2X3/IFC4 layout of `IfcGridPlacement` and IFC4X3's, which prepends the
-  inherited `PlacementRelTo`, are read; `GridPlacement::placement_rel_to`
-  is new.
-- `GeometryError::GridAxesParallel { intersection, axes }`,
-  `GridAxesDoNotIntersect { intersection, axes, detail }` (curved axes that
-  miss within their extent or meet more than once),
-  `GridAxisWithoutGrid { axis }`, `GridAxesInDifferentGrids { intersection,
-  grids }`, and `PlacementRelToConflict { placement, stated, implied }`: a
-  stated `PlacementRelTo` that resolves to a different frame than the
-  alignment's or grid's `ObjectPlacement` IFC4.3 says it references. A grid
-  without `ObjectPlacement` is `MissingAttribute`.
+- `IfcIndexedPolyCurve` as the `OuterCurve` and `InnerCurves` of
+  `IfcArbitraryClosedProfileDef` and `IfcArbitraryProfileDefWithVoids`
+  (#335), per IFC4 ADD2 TC1 and IFC4X3 ADD2: an `IfcLineIndex` becomes one
+  straight `Line2` edge per consecutive index pair, an `IfcArcIndex` the
+  exact `Circle2` through its three points with an angle domain, and a curve
+  without `Segments` one straight edge per consecutive point pair. Nothing
+  is chorded. The contour is the one the `IfcCompositeCurve` reader builds
+  for the same outline (a trimmed `IfcCircle` for the arc), so both lower to
+  the same `Profile`. An `IfcArcIndex` whose three distinct points are
+  collinear lowers as the polyline start -> mid -> end (one edge when the
+  middle point lies between the others, two when not), as the schema
+  says: "the arc segment shall be treated as a polyline segment".
+  Coincidence and collinearity are judged within the model's declared
+  `Precision` (`1.E-5` project units when none is declared), "after taking
+  the Precision factor into account". Refused as
+  `GeometryError::Degenerate`, naming the curve: an open curve (closure by
+  index with `Segments`, by first and last point coinciding within the
+  `Precision` without), segments that break WHERE rule `Consecutive`, an arc
+  with two coincident points, `SelfIntersect` TRUE, and a 3D point list.
+  Other boundary curve families are still `Unsupported`.
 
 ### Changed
 
-- An `IfcLinearPlacement` is placed in the frame its basis curve is stated
-  in (#357), through both the cached `CartesianPosition` and the derived
-  path: its `PlacementRelTo` when stated, otherwise the `ObjectPlacement` of
-  the `IfcAlignment` (or other product) whose representation carries the
-  basis curve. IFC4.3 ADD2 concept Product Linear Placement: "each product
-  placement that uses Product Linear Placement references the
-  IfcObjectPlacement of the IfcLinearPositioningElement through
-  IfcLinearPlacement.PlacementRelTo"; `IfcObjectPlacement.PlacementRelTo`:
-  "If it is omitted, then in the case of linear placement it is
-  established by the origin of horizontal alignment of the referenced
-  IfcAlignment Axis". `CartesianPosition`, a fallback for
-  `RelativePlacement`, is read relative to the same frame. Products on an
-  alignment placed off identity used to be placed as if the alignment sat
-  at the origin, and `CachedPositionPolicy::Verify` refused their correct
-  caches; both are fixed. `CachedPlacementMismatch` reports world
-  positions. The context's `WorldCoordinateSystem` is still applied once,
-  by the representation frame. `derive_linear_placement_transform` returns
-  the frame in the basis curve's coordinates, as before; its documentation
-  now says so.
-- `PlacementResolver::world_transform` walks `PlacementRelTo` through
-  local, grid and linear placements alike (#363), caching each and keeping
-  the cycle and depth refusals across mixed chains. A local placement
-  relative to a linear placement used to be `WrongEntityType`, and one
-  relative to a grid placement `Unsupported`. An entity that is no
-  `IfcObjectPlacement` reports `expected: "IfcObjectPlacement"`.
+- `profile_outline` refuses an open `IfcIndexedPolyCurve` boundary as
+  `GeometryError::Degenerate`, as the profile lowering does (#335). It
+  closed one implicitly before, reporting a ring whose closing edge the file
+  never authored. Closure is the schema's: by index with `Segments`, by the
+  first and last point coinciding within the model's `Precision` without.
+  `IfcPolyline` rings are unchanged.
 
-### Added (#328, geometry in the bindings)
+### Fixed
 
-- `compile::Tolerance` and `compile::TriMesh` re-export the tolerance every
-  compile entry point takes and the mesh it returns, so a caller that
-  names no `axiolid-*` crate (the `openbim-ifc` facade's `mesh` feature)
-  can call them. Behind `compile`, as before.
-
-Semver: additive; it ships with the minor release above (0.11.0), which
-the `openbim-ifc` facade's `mesh` feature needs.
+- `IfcCurveBoundedPlane` boundaries given as an `IfcCompositeCurve` of
+  polyline segments compile with `compile-reference-backend` (#336). They
+  lower unchanged, as a `CurveRelation::Composite` whose segments keep
+  their `SameSense`; `axiolid-mesh-compile` 0.3.12 refused that relation
+  ("is not a curve node"), and 0.3.13, the floor this crate already
+  requires, resolves `Composite` and `Trimmed` boundaries (axiolid/kernel#255).
+  No merge into one polyline is done here, so the segment structure stays
+  in the neutral graph. A test now pins it: three segments with one
+  reversed around a two-segment hole, and one reversed segment wrapping a
+  clockwise ring, compile to their exact areas.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)

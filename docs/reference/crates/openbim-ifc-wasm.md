@@ -11,7 +11,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.2 (2026-10-08) |
+| Latest release | 0.4.3 (2026-10-08) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_wasm/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-wasm) |
@@ -66,56 +66,19 @@ suites here cover only the JS conversion itself.
 
 ## Changes
 
-Latest release, 0.4.2 (2026-10-08):
+Latest release, 0.4.3 (2026-10-08):
 
-### Added (#369, the npm mesh entry)
+### Added (#358, #342)
 
-- `@openbim/ifc/mesh`: a second entry of the npm package, the default
-  features plus `mesh`, so `productMeshes` works from npm. It mirrors the
-  default entry's conditional exports: `@openbim/ifc/mesh` (Node's
-  CommonJS build under the `node` condition, the bundler build otherwise),
-  `@openbim/ifc/mesh/bundler` and `@openbim/ifc/mesh/web`, in `mesh/`,
-  `mesh/bundler/` and `mesh/web/`. It shares the package's PSD/QTO catalog
-  files and loader. The default entry is unchanged and still throws
-  `feature-disabled` for `productMeshes`.
-- `scripts/build-npm-pkg.sh` builds and binds both modules, so the release
-  workflow publishes both entries from the same tag in one `npm publish`.
-  `tools/check-package.mjs` checks the mesh entry from the packed tarball
-  in Node (`require`, `import`, `web`), a webpack bundle and headless
-  Chrome, with a `productMeshes` call returning a wall's positions and
-  indices, and prints the tarball's sizes.
-- `examples/viewer/` imports `@openbim/ifc/mesh/web` through an import map,
-  which points at its `build.sh` output in this repository or at an
-  installed package.
+- `IfcModel.propertySetsMany(ids?)`: one `ObjectPropertySets` (object,
+  sets, refusal) per id, or per object definition, in one pass; each
+  exactly what `propertySets` answers.
+- `setAttributeByName` also takes a plain value (`IfcPlainValue`: a
+  string, number, bigint, boolean, `null` or array), coerced against the
+  attribute's declared type; an `IfcValue` is written exactly as before.
+  `IfcErrorCode` gains `type-mismatch` and `ambiguous-value`.
 
-### Removed
-
-- `scripts/check-mesh.sh`: the mesh entry's Node suite now runs in
-  `scripts/build-npm-pkg.sh`.
-
-The mesh module is 5,101,651 bytes (1,753,297 under `gzip -9`) against the
-default's 2,940,278; the tarball grows from 3.9 MB to 9.2 MB (11.5 MB to
-27.1 MB unpacked). An application that does not import the entry loads
-none of it. Semver: additive (a new export path; no existing path, file or
-API changes), a patch release.
-
-### Added (#328, geometry, ADR 0021)
-
-- `IfcModel.productPlacements(ids?)` (feature `placements`, default, so in
-  the npm package): `ProductPlacement` objects with `transform` (a
-  column-major 4x4 in metres, `Matrix4.fromArray`-ready), the selected
-  Body `representation` and a typed `refusal` per product. `ids` is a
-  `bigint[]` or `BigUint64Array`.
-- `IfcModel.productMeshes(ids?)` (feature `mesh`, opt-in; in the npm
-  package only from the mesh entry of #369, the default entry throws
-  `feature-disabled`): `ProductMesh` objects with
-  `positions` (`Float32Array`, relative to `transform`) and `indices`
-  (`Uint32Array`). TypeScript declarations for both.
-- `examples/viewer/`: a WebGL2 page that draws a file's meshes with no
-  build step beyond the module (`build.sh --serve`);
-  `tests/js/geometry.mjs` runs against the mesh module.
-
-Placements add 42 KB to the default module (15 KB gzip). Semver:
-additive, a patch release.
+Semver: additive (a plain value used to be refused with `invalid-value`),
+a patch release.
 
 Full history: [`crates/openbim-ifc-wasm/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-wasm/CHANGELOG.md)

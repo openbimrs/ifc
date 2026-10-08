@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-10-08
+
 ### Added (#358, #342)
 
 - `openbim_ifc_v0_1_model_property_sets_many(model, ids, id_count, ...)`:
