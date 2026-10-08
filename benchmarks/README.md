@@ -8,6 +8,10 @@ Two sets of measurements, each with the machine and method it was taken on:
 - [Property resolution](#property-resolution): the exact property
   resolver over every object of a generated model, before and after the
   relation index (#352). Measured comparison: [`baseline.md`](baseline.md#property-resolution-352).
+- [Property sets through the bindings](#property-sets-through-the-bindings):
+  every object's property sets from the binding core, one call per object
+  against one batch call (#358). Measured comparison:
+  [`baseline.md`](baseline.md#property-sets-through-the-bindings-358).
 - [Cross-implementation parse benchmark](#cross-implementation-parse-benchmark):
   this parser against ifc-lite and IfcOpenShell on identical files.
 
@@ -222,6 +226,35 @@ PACKAGE=ifc-properties BENCH=properties SCALES=props-100k SAMPLES=10 WARMUP=2 \
 per-object path before #352 is quadratic: at `props-100k` one pass over
 every wall takes hours, so [`baseline.md`](baseline.md#property-resolution-352)
 measures it as `per_call.100` and states the extrapolation.
+
+## Property sets through the bindings
+
+`crates/openbim-ifc-binding-core/benches/property_sets/`, run by `cargo
+bench -p openbim-ifc-binding-core --bench property_sets` (#358). Every
+host's property-set calls are this crate's, so the bench measures them
+once, natively. It compiles in the workload generator of the property
+bench above and the harness modules of the codec bench by path; its
+method, output and JSON are theirs.
+
+| Benchmark | Measures |
+| --- | --- |
+| `bindings.property_sets_many.every_object` | `IfcModel::property_sets_many` of every wall: one call, one property index, every set converted to records |
+| `bindings.property_sets.every_object` | `IfcModel::property_sets` of every wall, one call each: what a host loop had to do before #358 |
+| `bindings.property_sets.per_call.100` | `IfcModel::property_sets` of 100 walls spread over the model, each call on its own |
+
+Before any timing the batch's answers for the 100 sampled walls are
+compared with the per-object call's, and before timing the per-object
+loop its every answer with the batch's, so neither can be fast by being
+wrong. `property_sets.every_object` is quadratic (minutes at
+`props-10k`), so a measuring run includes it only when it is named with
+`--bench-only`.
+
+```sh
+cargo test -p openbim-ifc-binding-core --bench property_sets   # the smoke run, in the gate
+PACKAGE=openbim-ifc-binding-core BENCH=property_sets SCALES="props-1k props-10k" \
+    BENCH_ARGS="--bench-only bindings.property_sets_many.every_object" \
+    benchmarks/run-baseline.sh out-dir
+```
 
 ## Cross-implementation parse benchmark
 
