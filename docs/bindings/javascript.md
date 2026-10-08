@@ -10,6 +10,9 @@ is tested from the packed tarball.
 npm install @openbim/ifc
 ```
 
+Task-sized recipes are in the [JavaScript cookbook](/cookbook/javascript),
+and the [playground](/playground) runs the package in this site.
+
 In Node the package is CommonJS: `const { IfcModel } = require("@openbim/ifc");`,
 or `import { IfcModel } from "@openbim/ifc"` from ES modules.
 
@@ -724,7 +727,9 @@ end. The fixtures are from `test/fixtures`; the synthetic files come from
 ## API
 
 Generated from the `#[wasm_bindgen]` exports in
-`crates/openbim-ifc-wasm/src/model.rs`.
+`crates/openbim-ifc-wasm/src/model.rs`. The
+[TypeDoc reference](/api/typedoc/index.html){target="_self"} documents every
+class, interface and type the package's `.d.ts` declares.
 
 <!-- API:JS:BEGIN -->
 

@@ -24,6 +24,8 @@ docs/.vitepress/cache/
 crates/openbim-ifc-wasm/pkg/
 # ... and of the mesh viewer example's build.sh (#328)
 crates/openbim-ifc-wasm/examples/viewer/pkg/
+# ... and the playground's copy of it for `npm run docs:dev` (#331)
+docs/public/playground-files/
 
 # Python bytecode (openbim-ifc-py)
 __pycache__/

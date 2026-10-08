@@ -34,6 +34,12 @@ cd "$work"
 "$work/venv/bin/python" -m unittest discover \
     -s "$crate_dir/tests/python" -t "$crate_dir/tests/python" -v
 
+# The docs site's Python reference (#331): pdoc must render the installed
+# package, as the Pages workflow does. Pinned with the workflow's version.
+uv pip install --quiet --python "$work/venv/bin/python" "pdoc==16.0.0"
+"$work/venv/bin/python" -m pdoc --no-show-source -o "$work/pdoc" openbim_ifc
+test -f "$work/pdoc/openbim_ifc.html"
+
 # The opt-in mesh wheel (#328): the published wheel above refuses meshes, so
 # build one with `--features mesh`, replace the installed wheel with it and
 # run the geometry suite again, now with its mesh tests.
@@ -42,3 +48,6 @@ maturin build --quiet --release --manifest-path "$crate_dir/Cargo.toml" \
 uv pip install --quiet --python "$work/venv/bin/python" --reinstall "$(ls "$work"/dist-mesh/*.whl)"
 OPENBIM_IFC_MESH=1 "$work/venv/bin/python" -m unittest discover \
     -s "$crate_dir/tests/python" -t "$crate_dir/tests/python" -p "test_geometry.py" -v
+# The cookbook's mesh recipe (#331) needs the same wheel.
+OPENBIM_IFC_MESH=1 "$work/venv/bin/python" -m unittest discover \
+    -s "$crate_dir/tests/python" -t "$crate_dir/tests/python" -p "test_cookbook.py" -v

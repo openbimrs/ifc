@@ -34,7 +34,7 @@ pub(super) fn generate(workspace: &Workspace) -> Result<Vec<Output>, String> {
         ("docs/guide/install.md", "INSTALL:TABLE", install),
         ("docs/bindings/javascript.md", "API:JS", js),
         ("docs/bindings/python.md", "API:PYTHON", python),
-        ("docs/bindings/c.md", "API:C", c),
+        ("docs/api/c.md", "API:C", c),
         ("docs/bindings/dotnet.md", "API:DOTNET", dotnet),
     ]
     .into_iter()
