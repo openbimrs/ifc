@@ -609,7 +609,11 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "release $TAG already exists"; exit 0
           fi
-          manifest="$(grep -lx "name = \"$CRATE\"" crates/*/Cargo.toml)"
+          # Match the [package] name only: a [[bin]] may share it (openbim-ifc-cli).
+          manifest="$(for m in crates/*/Cargo.toml; do
+            awk -v c="$CRATE" '/^\[/ { pkg = ($0 == "[package]") } pkg && $0 == "name = \"" c "\"" { found = 1 } END { exit !found }' "$m" && echo "$m"
+          done)"
+          [ "$(printf '%s\n' "$manifest" | grep -c .)" = 1 ] || { echo "::error::expected one manifest for $CRATE, got: $manifest"; exit 1; }
           changelog="$(dirname "$manifest")/CHANGELOG.md"
           # The section ends at the next version heading or the link references.
           awk -v v="$VERSION" '
