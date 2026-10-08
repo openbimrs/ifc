@@ -13,6 +13,11 @@
 //!   describes -- lies `(left + right) / 2` above the profile: zero for a
 //!   rotation about the track centreline, `D/2` for one about the low rail.
 //!
+//! Inside a `VIENNESEBEND` the standard states `psi` itself, so `D` and the
+//! frame come from that angle law and the rails sit `D/2` either side of a
+//! rotation point that stays put; a rotation point that moves through a
+//! bend is refused, as the banked centreline refuses it (#312).
+//!
 //! The frame is the section rotated by `psi` about the centreline tangent,
 //! right-handed: in the basis `(t, n, u)` -- `t` the unit 3D tangent of the
 //! gradient curve, `n` the horizontal unit normal to its left, `u = t x n`
@@ -95,8 +100,10 @@ impl CantLayout {
     /// # Errors
     ///
     /// Refuses a distance outside the profile's span, a segment whose cant
-    /// cannot be evaluated exactly, and a cant exceeding the
-    /// `RailHeadDistance` (`|D| > b`, no real bank angle).
+    /// cannot be evaluated exactly (including the inside of a Viennese bend
+    /// whose rotation point moves, [`AlignmentError::Unsupported`]), and a
+    /// cant exceeding the `RailHeadDistance` (`|D| > b`, no real bank
+    /// angle).
     pub fn frame_at_distance(&self, distance_along: f64) -> AlignmentResult<CantFrame> {
         let at = self.cant_at_distance(distance_along)?;
         let cant = at.left - at.right;

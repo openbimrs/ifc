@@ -43,7 +43,9 @@
 //!   angle, so a low-rail pivot there is `b sin(psi) / 2`, an angle form a
 //!   height-form pivot law cannot carry (Axiolid refuses it as
 //!   `BankError::AngleInPivot`). A pivot that stays put through the bend,
-//!   such as rotation about the centreline, lowers.
+//!   such as rotation about the centreline, lowers. `CantLayout::cant_at_distance`
+//!   and `CantLayout::frame_at_distance` follow the same rule (#312), so
+//!   the section frame and the banked curve agree inside a bend.
 //! - A cant layout that does not cover the plan from its start to its end:
 //!   the banked curve's span is the cant law's, and a station without cant
 //!   is not zero cant.
@@ -57,7 +59,7 @@ use super::assemble::{finish, LoweredAlignmentCurve};
 use super::gradient::{compose, sole_layout};
 use super::seam::HorizontalSeam;
 use super::tolerance::SeamTolerance;
-use crate::cant::{CantLayout, CantSegment, CantSegmentType};
+use crate::cant::{CantLayout, CantSegment, CantSegmentType, MOVING_VIENNESE_PIVOT};
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::AlignmentUnits;
 use crate::view::AlignmentView;
@@ -232,10 +234,7 @@ fn cant_laws(
                     return Err(AlignmentError::Unsupported {
                         entity: segment.entity,
                         type_name: "VIENNESEBEND".to_owned(),
-                        detail: "the section's rotation point moves through a Viennese bend: \
-                                 the bend gives the bank angle, so a pivot such as the low rail \
-                                 follows b sin(psi) / 2, an angle form a height-form pivot law \
-                                 cannot carry (Axiolid BankError::AngleInPivot)",
+                        detail: MOVING_VIENNESE_PIVOT,
                     });
                 }
                 // |D| <= b was checked above, so both angles exist.

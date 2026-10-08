@@ -32,7 +32,7 @@ committed figure that moves that often only produces merge conflicts.
 
 | Crate | Status | Open gaps |
 | --- | --- | --- |
-| `ifc-alignment` | <span class="status-partial">Partial</span> | [#312](https://github.com/openbimrs/ifc/issues/312) |
+| `ifc-alignment` | <span class="status-partial">Partial</span> | [#364](https://github.com/openbimrs/ifc/issues/364) |
 | `ifc-approval` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-author` | <span class="status-implemented">Implemented</span> |  |
 | `ifc-classification` | <span class="status-implemented">Implemented</span> |  |
