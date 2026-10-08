@@ -3,7 +3,8 @@
 # tag; see docs/guide/contributing.md#releasing-a-crate.
 #
 #   <crate>-v<version>  ->  crates.io (unless publish = false)
-#                            + npm   for openbim-ifc-wasm  (@openbim/ifc)
+#                            + npm   for openbim-ifc-wasm  (@openbim/ifc, with
+#                                    its @openbim/ifc/mesh entry, #369)
 #                            + PyPI  for openbim-ifc-py    (openbim-ifc)
 #                            + NuGet for openbim-ifc-dotnet (OpenBim.Ifc, #327)
 #                            + GitHub release archives for a crate with a
@@ -201,6 +202,10 @@ jobs:
         with:
           tool: wasm-bindgen-cli@0.2.128
       - name: Build and test the package
+        # Both entries from this tag: the default (`@openbim/ifc`) and the
+        # mesh entry (`@openbim/ifc/mesh`, `mesh/`, #369), each bound for
+        # Node, bundlers and the web, then checked from the packed tarball.
+        # One `npm publish` below ships both.
         run: crates/openbim-ifc-wasm/scripts/build-npm-pkg.sh
       - name: Rehearse publish
         # npm 11 refuses even a dry run over a live version, so rehearsing

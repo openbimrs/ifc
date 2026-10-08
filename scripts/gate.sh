@@ -268,10 +268,9 @@ gate_bindings() {
     if [[ -n "${IFC_SKIP_JS:-}" ]]; then
         echo "warning: IFC_SKIP_JS set; JS binding suites NOT run" >&2
     else
+        # Both entries, the default and the mesh entry (#328, #369), whose
+        # Node suite also runs the browser example's scene code.
         crates/openbim-ifc-wasm/scripts/build-npm-pkg.sh
-        # The opt-in mesh module (#328), which the package leaves out: its
-        # Node suite and the browser example's scene code.
-        crates/openbim-ifc-wasm/scripts/check-mesh.sh
     fi
 
     # C ABI (#38, ADR 0013): the committed header must match the exports (the

@@ -6,17 +6,24 @@
 //    node_modules, so the `files` list and the `exports` map are what is
 //    under test, not the build directory. The tarball must carry the
 //    PSD/QTO catalog files and their loader (#318), which the release
-//    workflow publishes from the same build.
+//    workflow publishes from the same build, and the mesh entry
+//    (`@openbim/ifc/mesh`, #369) beside the default one. It prints the
+//    tarball's packed and unpacked sizes and each entry's share.
 // 2. Node: tests/js/web/node-entry.mjs resolves the package by name through
 //    `require` and `import`, and loads the `web` build from its bytes. Each
 //    target loads the catalog lazily and writes a `Pset_` property
 //    (tests/js/web/smoke-core.mjs); webpack emits the catalog file it
-//    needs as an asset, and the browser fetches it.
-// 3. Bundler: webpack bundles tests/js/web/bundler-entry.mjs for the browser
-//    with `experiments.asyncWebAssembly`, the bundler target's contract.
-// 4. Browser: headless Chrome loads one page that imports the `web` build
-//    (tests/js/web/web-entry.mjs, through an import map) and the webpack
-//    bundle; the page posts each smoke result back to this script.
+//    needs as an asset, and the browser fetches it. Every target of the
+//    mesh entry returns a wall's positions and indices from
+//    `productMeshes`; every target of the default entry throws
+//    `feature-disabled` for the same call.
+// 3. Bundler: webpack bundles tests/js/web/bundler-entry.mjs and
+//    mesh-bundler-entry.mjs for the browser with
+//    `experiments.asyncWebAssembly`, the bundler target's contract.
+// 4. Browser: headless Chrome loads one page that imports both `web` builds
+//    (tests/js/web/web-entry.mjs and mesh-web-entry.mjs, through an import
+//    map) and both webpack bundles; the page posts each smoke result back to
+//    this script.
 //
 // Chrome is found through $CHROME_BIN, then the usual names on PATH, then a
 // Playwright download. GitHub's hosted runners ship Google Chrome, so CI
@@ -40,7 +47,12 @@ const HARNESS = `<!doctype html>
 <meta charset="utf-8">
 <title>@openbim/ifc browser smoke</title>
 <script type="importmap">
-{ "imports": { "@openbim/ifc/web": "/node_modules/@openbim/ifc/web/openbim_ifc_wasm.js" } }
+{
+  "imports": {
+    "@openbim/ifc/web": "/node_modules/@openbim/ifc/web/openbim_ifc_wasm.js",
+    "@openbim/ifc/mesh/web": "/node_modules/@openbim/ifc/mesh/web/openbim_ifc_wasm.js"
+  }
+}
 </script>
 <script>
   addEventListener("error", (event) =>
@@ -48,7 +60,12 @@ const HARNESS = `<!doctype html>
 </script>
 <script type="module">
   const results = {};
-  for (const [name, url] of [["web", "/src/web-entry.mjs"], ["bundler", "/dist/bundle.mjs"]]) {
+  for (const [name, url] of [
+    ["web", "/src/web-entry.mjs"],
+    ["bundler", "/dist/bundle.mjs"],
+    ["mesh/web", "/src/mesh-web-entry.mjs"],
+    ["mesh/bundler", "/dist/mesh-bundle.mjs"],
+  ]) {
     try {
       results[name] = { ok: (await import(url)).result };
     } catch (error) {
@@ -59,9 +76,20 @@ const HARNESS = `<!doctype html>
 </script>
 `;
 
-/** Files the published tarball must carry beside the module (#318). */
+/** The browser results the page must post, one per target it loads. */
+const BROWSER = ["web", "bundler", "mesh/web", "mesh/bundler"];
+
+/**
+ * Files the published tarball must carry: the PSD/QTO catalog (#318) and
+ * each target of the mesh entry (#369).
+ */
 const REQUIRED = [
   "catalog.mjs",
+  ...["mesh", "mesh/bundler", "mesh/web"].flatMap((dir) => [
+    `${dir}/openbim_ifc_wasm.js`,
+    `${dir}/openbim_ifc_wasm.d.ts`,
+    `${dir}/openbim_ifc_wasm_bg.wasm`,
+  ]),
   "catalog/ifc2x3-tc1.bin",
   "catalog/ifc4-add2-tc1.bin",
   "catalog/ifc4x3-add2.bin",
@@ -82,10 +110,10 @@ try {
   await cp(entries, path.join(scratch, "src"), { recursive: true });
 
   const node = await import(pathToFileURL(path.join(scratch, "src/node-entry.mjs")).href);
-  console.log("node (require, import, web):", JSON.stringify(node.result));
+  console.log("node (require, import, web; default and mesh):", JSON.stringify(node.result));
 
   await bundle(scratch);
-  console.log("webpack: bundled src/bundler-entry.mjs");
+  console.log("webpack: bundled src/bundler-entry.mjs and src/mesh-bundler-entry.mjs");
 
   const chrome = findChrome();
   if (chrome === undefined) {
@@ -105,7 +133,7 @@ try {
         console.log(`browser ${name}:`, JSON.stringify(outcome.ok));
       }
     }
-    for (const name of ["web", "bundler"]) {
+    for (const name of BROWSER) {
       if (!(name in results)) {
         failed = true;
         console.error(`browser ${name}: no result`);
@@ -119,7 +147,7 @@ if (failed) process.exit(1);
 
 /** Pack `pkg` as npm publishes it and unpack it as an install would. */
 async function unpack(dir) {
-  const [{ filename, files }] = JSON.parse(
+  const [{ filename, files, size, unpackedSize }] = JSON.parse(
     execFileSync("npm", ["pack", "--json", "--pack-destination", dir], {
       cwd: pkg,
       encoding: "utf8",
@@ -131,6 +159,16 @@ async function unpack(dir) {
     throw new Error(`the packed tarball lacks ${missing.join(", ")}`);
   }
   for (const file of files.filter((f) => f.path.startsWith("catalog/"))) {
+    console.log(`packed ${file.path}: ${file.size} bytes`);
+  }
+  // Sizes for docs/bindings/javascript.md: the tarball, and each entry's
+  // unpacked share (the catalog and the root files belong to neither).
+  console.log(`tarball ${filename}: ${size} bytes packed, ${unpackedSize} unpacked`);
+  const share = (prefix) =>
+    files.filter((f) => prefix.test(f.path)).reduce((sum, f) => sum + f.size, 0);
+  console.log(`unpacked default entry (root glue, bundler/, web/): ${share(/^(openbim_ifc_wasm|bundler\/|web\/)/)} bytes`);
+  console.log(`unpacked mesh entry (mesh/): ${share(/^mesh\//)} bytes`);
+  for (const file of files.filter((f) => f.path.endsWith("_bg.wasm"))) {
     console.log(`packed ${file.path}: ${file.size} bytes`);
   }
   const scope = path.join(dir, "node_modules/@openbim");
@@ -146,7 +184,7 @@ async function bundle(dir) {
     mode: "production",
     target: "web",
     context: dir,
-    entry: { bundle: "./src/bundler-entry.mjs" },
+    entry: { bundle: "./src/bundler-entry.mjs", "mesh-bundle": "./src/mesh-bundler-entry.mjs" },
     output: {
       path: path.join(dir, "dist"),
       filename: "[name].mjs",

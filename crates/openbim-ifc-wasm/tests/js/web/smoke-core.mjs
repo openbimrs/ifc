@@ -8,6 +8,10 @@
 // next to the module, a bundle from the asset webpack emitted.
 // The full Node suites (../smoke.mjs, ../corpus.mjs) cover the API itself;
 // this proves each build loads its wasm module and calls into it.
+//
+// `meshes(IfcModel, enabled)` checks the geometry of one entry (#369): the
+// mesh entry (`@openbim/ifc/mesh`) returns a wall's triangles as typed
+// arrays; the default entry refuses with `feature-disabled`.
 
 const FILE = `ISO-10303-21;
 HEADER;
@@ -123,4 +127,63 @@ export async function smoke(IfcModel) {
   check(authorRefusal === "invalid-model", `a second project: ${authorRefusal}`);
 
   return { schema: model.schema, size: model.size, walls: walls.length, catalog: "IFC4" };
+}
+
+// One extruded wall, 4 m x 0.2 m x 2.8 m, in millimetres (#369).
+const WALL = `ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('ViewDefinition [DesignTransferView]'),'2;1');
+FILE_NAME('mesh.ifc','2026-10-08T00:00:00',(''),(''),'','','');
+FILE_SCHEMA(('IFC4'));
+ENDSEC;
+DATA;
+#1=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);
+#2=IFCUNITASSIGNMENT((#1));
+#3=IFCCARTESIANPOINT((0.,0.,0.));
+#4=IFCAXIS2PLACEMENT3D(#3,$,$);
+#5=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,#4,$);
+#6=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#5,$,.MODEL_VIEW.,$);
+#7=IFCPROJECT('2Bq7b3H0n0kQvNfOcJw1Sx',$,'Mesh',$,$,$,$,(#5),#2);
+#8=IFCLOCALPLACEMENT($,#4);
+#9=IFCCARTESIANPOINT((0.,0.));
+#10=IFCAXIS2PLACEMENT2D(#9,$);
+#11=IFCRECTANGLEPROFILEDEF(.AREA.,$,#10,4000.,200.);
+#12=IFCDIRECTION((0.,0.,1.));
+#13=IFCEXTRUDEDAREASOLID(#11,#4,#12,2800.);
+#14=IFCSHAPEREPRESENTATION(#6,'Body','SweptSolid',(#13));
+#15=IFCPRODUCTDEFINITIONSHAPE($,$,(#14));
+#16=IFCWALL('2nR5uK8Lw3eT6yH1aJ9sD0',$,'Wall',$,$,#8,#15,$,.STANDARD.);
+ENDSEC;
+END-ISO-10303-21;
+`;
+
+export function meshes(IfcModel, enabled) {
+  const model = IfcModel.parse(new TextEncoder().encode(WALL));
+  if (!enabled) {
+    let code;
+    try {
+      model.productMeshes();
+    } catch (error) {
+      code = error.code;
+    }
+    check(code === "feature-disabled", `productMeshes outside the mesh entry: ${code}`);
+    return { productMeshes: code };
+  }
+  const [wall, ...rest] = model.productMeshes();
+  check(rest.length === 0 && wall.id === 16n, "one mesh, the wall's");
+  check(wall.refusal === undefined, `wall refused: ${wall.refusal?.code}`);
+  check(wall.positions instanceof Float32Array, "positions are a Float32Array");
+  check(wall.indices instanceof Uint32Array, "indices are a Uint32Array");
+  check(wall.positions.length === wall.vertexCount * 3 && wall.vertexCount >= 8, "positions");
+  check(wall.indices.length === wall.triangleCount * 3 && wall.triangleCount >= 12, "indices");
+  check(wall.indices.every((index) => index < wall.vertexCount), "indices within the vertices");
+  // A box from (-2, -0.1, 0) to (2, 0.1, 2.8), in metres.
+  for (const [axis, low, high] of [[0, -2, 2], [1, -0.1, 0.1], [2, 0, 2.8]]) {
+    const values = wall.positions.filter((_, i) => i % 3 === axis);
+    check(
+      Math.abs(Math.min(...values) - low) < 1e-6 && Math.abs(Math.max(...values) - high) < 1e-6,
+      `extent along axis ${axis}`,
+    );
+  }
+  return { vertices: wall.vertexCount, triangles: wall.triangleCount };
 }

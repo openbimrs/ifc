@@ -3,9 +3,10 @@
 #
 #   crates/openbim-ifc-wasm/examples/viewer/build.sh [--serve]
 #
-# The npm package leaves meshes out (`productMeshes` throws
-# `feature-disabled`), so this builds the crate with `--features mesh` and
-# binds it with `wasm-bindgen --target web` into ./pkg (gitignored). With
+# The page imports `@openbim/ifc/mesh/web`, the npm package's mesh entry
+# (#369). To run it from this checkout, this builds the crate with
+# `--features mesh` and binds it with `wasm-bindgen --target web` into ./pkg
+# (gitignored), where index.html's import map points. With
 # --serve it then serves the repository root, so the page can fetch the
 # default fixture from test/fixtures, and prints the page's URL.
 set -euo pipefail

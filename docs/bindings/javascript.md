@@ -27,6 +27,14 @@ The package's `exports` map picks the build:
 | `@openbim/ifc` in Node | CommonJS (`wasm-bindgen --target nodejs`) | on `require`, from disk |
 | `@openbim/ifc` in a bundler | ES module (`--target bundler`) | through the bundler |
 | `@openbim/ifc/web` | ES module (`--target web`) | when `init()` is awaited |
+| `@openbim/ifc/mesh` in Node | the same, with [meshes](#geometry) | on `require`, from disk |
+| `@openbim/ifc/mesh` in a bundler | the same, with meshes | through the bundler |
+| `@openbim/ifc/mesh/web` | the same, with meshes | when `init()` is awaited |
+
+The `mesh` entries are the same API built with the cargo feature `mesh`,
+which adds `productMeshes` and 2.2 MB to the module; an application that
+does not import them downloads nothing of them
+([Geometry](#geometry), [Package size](#package-size)).
 
 The bundler build imports its `.wasm` file as an ES module, so the API is
 the same as in Node:
@@ -388,9 +396,35 @@ without the `placements` feature, `feature-disabled`.
 
 `productMeshes(ids?)` adds triangles, compiled by the reference backend of
 `ifc-geometry` with a one-millimetre tolerance. It links a geometry
-kernel, so it is the cargo feature `mesh`, which the npm package leaves
-out: there it throws `feature-disabled`. Build the module with
-`--features mesh` to use it:
+kernel, so it is the cargo feature `mesh`, which the package's default
+entry leaves out: there it throws `feature-disabled`. The package's mesh
+entry carries it ([#369](https://github.com/openbimrs/ifc/issues/369)):
+import `@openbim/ifc/mesh` instead of `@openbim/ifc`, in Node or a
+bundler,
+
+<!-- SNIPPET:js-mesh-import -->
+
+```js
+import { IfcModel } from "@openbim/ifc/mesh"; // productMeshes included
+```
+
+<!-- /SNIPPET -->
+
+or `@openbim/ifc/mesh/web` without a bundler:
+
+<!-- SNIPPET:js-mesh-web-init -->
+
+```js
+import init, { IfcModel } from "@openbim/ifc/mesh/web";
+
+await init(); // fetches mesh/web/openbim_ifc_wasm_bg.wasm
+```
+
+<!-- /SNIPPET -->
+
+The mesh entry is a separate module instance, with its own `IfcModel`: a
+model parsed by one entry is not passed to the other, and each loads its
+own PSD/QTO catalog. Then:
 
 <!-- SNIPPET:js-geometry-meshes -->
 
@@ -419,15 +453,20 @@ whose lowering or compilation is refused carries the `refusal`, typed as
 above.
 
 `crates/openbim-ifc-wasm/examples/viewer/` draws a file's meshes with
-plain WebGL2 and no build step beyond the module: `build.sh --serve`
-builds the mesh module, serves the repository and prints the page's URL.
+plain WebGL2 and no build step beyond the module. Its `viewer.mjs` imports
+`@openbim/ifc/mesh/web`, and the page's import map says where that is:
+
+- from this repository, `build.sh --serve` builds the mesh module into the
+  example's `pkg/` (where the import map points), serves the repository
+  and prints the page's URL;
+- from the npm package, point the import map at
+  `node_modules/@openbim/ifc/mesh/web/openbim_ifc_wasm.js` (or a CDN's copy
+  of it) and serve the page, or let a bundler resolve the bare specifier.
+
 Its `scene.mjs` subtracts one scene origin from every transform in `f64`
-before handing `f32` matrices to the GPU. Publishing the mesh build as an
-npm entry of its own is
-[#369](https://github.com/openbimrs/ifc/issues/369); the serialised
-neutral representation between the two levels waits for Axiolid to
-promise a stable format
-([#367](https://github.com/openbimrs/ifc/issues/367)).
+before handing `f32` matrices to the GPU. The serialised neutral
+representation between the two levels waits for Axiolid to promise a
+stable format ([#367](https://github.com/openbimrs/ifc/issues/367)).
 
 ## Creating entities
 
@@ -579,7 +618,36 @@ Placements cost 42 KB in the default module (15 KB under `gzip -9`), less
 than in an IFC4-only one (60 KB) because the default's reachability lint
 already links representation selection. Meshes add the reference compiler
 and its boolean engine: 2.1 MB to the default (757 KB under `gzip -9`,
-509 KB under brotli), which is why the npm package leaves them out.
+509 KB under brotli), which is why the package's default entry leaves them
+out and a separate entry carries them.
+
+### Package size
+
+The npm package carries two entries ([#369](https://github.com/openbimrs/ifc/issues/369)),
+each one module bound for three targets (Node, bundler, web), plus the
+PSD/QTO catalog files they share. Measured on 2026-10-08 from `npm pack`
+of `scripts/build-npm-pkg.sh`'s output (version 0.4.1 plus #369), which
+`tools/check-package.mjs` prints on every run; module sizes after
+`wasm-bindgen`, compressed with `node:zlib` at `gzip` level 9 and brotli
+quality 11:
+
+| Module | Raw | gzip -9 | brotli 11 |
+| --- | ---: | ---: | ---: |
+| default entry (`@openbim/ifc`, `/bundler`, `/web`) | 2,940,278 | 988,129 | 647,986 |
+| mesh entry (`@openbim/ifc/mesh`, `/mesh/bundler`, `/mesh/web`) | 5,101,651 | 1,753,297 | 1,163,026 |
+
+| Package | Tarball | Unpacked | Files |
+| --- | ---: | ---: | ---: |
+| without the mesh entry | 3,883,556 | 11,525,818 | 21 |
+| with the mesh entry (published) | 9,177,796 | 27,100,319 | 36 |
+
+Of the unpacked size, the default entry's three targets take 9,086,124
+bytes, the mesh entry's (`mesh/`) 15,573,958 and the catalog files
+2,427,580. The mesh entry costs an `npm install` 5.3 MB more to download;
+it costs an application nothing unless it imports the entry, since a
+bundler or a page loads only the module it imports. Each target carries
+its own copy of its entry's module (the three are byte-identical), as the
+default entry always has.
 
 `wasm-opt -Oz` is not applied: with binaryen 132 it cut the module
 measured in [#40](https://github.com/openbimrs/ifc/issues/40) from
@@ -636,7 +704,7 @@ Generated from the `#[wasm_bindgen]` exports in
 | `model.validate(maxFindings: number \| undefined): ValidationReport` | yes | Validate against the schema the header declares; findings are sorted by severity, rule, entity and slot. `maxFindings` caps the report (default 10,000) and sets `truncated` when reached. |
 | `model.unreachableProducts(): UnreachableProduct[]` | yes | Products no viewer will draw (outside the spatial structure, or with geometry only in non-model contexts), with a stable `reason`. |
 | `model.productPlacements(ids: bigint[] \| BigUint64Array \| undefined): ProductPlacement[]` | yes | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or, without, for every product with a shape. A product that cannot be placed is a record with a typed `refusal`; the call itself throws only `unsupported-schema` or `feature-disabled` (feature `placements`). |
-| `model.productMeshes(ids: bigint[] \| BigUint64Array \| undefined): ProductMesh[]` | yes | Each product's Body as triangles from the reference backend: `positions` (`Float32Array`, metres, relative to `transform`) and `indices` (`Uint32Array`), for `ids` or, without, every product with a shape. A product that cannot be meshed has a typed `refusal`. Opt-in: a build without the `mesh` feature (the npm package) throws `feature-disabled`. |
+| `model.productMeshes(ids: bigint[] \| BigUint64Array \| undefined): ProductMesh[]` | yes | Each product's Body as triangles from the reference backend: `positions` (`Float32Array`, metres, relative to `transform`) and `indices` (`Uint32Array`), for `ids` or, without, every product with a shape. A product that cannot be meshed has a typed `refusal`. Opt-in: a build without the `mesh` feature (the npm package's default entry) throws `feature-disabled`; import `@openbim/ifc/mesh` for it. |
 | `model.propertySets(id: bigint): PropertySet[]` | yes | The property sets, quantity sets and predefined property sets that apply to object `id`: its own first, then those inherited from its type object, an occurrence property overriding an inherited one. Values keep their declared IFC type (`typed IFCLENGTHMEASURE(...)`). |
 | `model.resolveUnit(measureType: string, unit: bigint \| undefined): ResolvedUnit` | yes | The effective unit of a `measureType` value (`"IFCAREAMEASURE"`): `unit` when given (a property's stated unit), otherwise the project default, resolved exactly to SI. |
 | `model.spatialTree(): SpatialTree` | yes | The spatial containment tree: every container with its parent, sub-containers and contained elements. |

@@ -1,7 +1,9 @@
 // A minimal WebGL2 viewer for `IfcModel.productMeshes()` (#328): no
-// framework, no build step. ./build.sh builds the mesh-enabled module this
-// imports from ./pkg; scene.mjs decides what is drawn and where.
-import init, { IfcModel } from "./pkg/openbim_ifc_wasm.js";
+// framework, no build step. It imports the npm package's mesh entry,
+// `@openbim/ifc/mesh/web` (#369); index.html's import map resolves that to
+// the module ./build.sh builds into ./pkg, or to an installed package's
+// file. scene.mjs decides what is drawn and where.
+import init, { IfcModel } from "@openbim/ifc/mesh/web";
 import { buildScene, colourOf } from "./scene.mjs";
 
 const FIXTURE = "../../../../test/fixtures/synthetic-bindings/binding_geometry.ifc";
