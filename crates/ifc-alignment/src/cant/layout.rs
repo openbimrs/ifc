@@ -218,7 +218,8 @@ impl CantLayout {
     ///
     /// Refuses a non-finite distance or one outside the profile's span, and
     /// everything [`cant_at`](crate::cant::cant_at) refuses, including the
-    /// inside of a Viennese bend whose rotation point moves.
+    /// inside of a Viennese bend whose rotation point moves with neither
+    /// rail held.
     pub fn cant_at_distance(&self, distance_along: f64) -> AlignmentResult<CantAtStation> {
         if !distance_along.is_finite() {
             return Err(AlignmentError::InvalidUnits {

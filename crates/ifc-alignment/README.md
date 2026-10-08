@@ -46,9 +46,11 @@ The [`openbim-ifc`](https://crates.io/crates/openbim-ifc) facade also provides i
   tangent by `arcsin(D / b)` (`BankConvention::TangentRotation`, the angle
   reading IFC4.3 states). Both read a Viennese bend as the standard writes
   it, for the section's bank angle, with the rails `D / 2` either side of
-  a rotation point that stays put; a pivot that moves through a Viennese
-  bend is refused by both (#364): it would follow the bank angle, which a
-  height-form pivot law cannot carry.
+  a rotation point that stays put. About a held rail (the low rail, say)
+  the cant evaluation keeps that rail and places the other `D` from it,
+  but the banked centreline refuses the bend (#364): its rotation point
+  follows the bank angle, which a height-form pivot law cannot carry. A
+  pivot that moves with neither rail held is refused by both.
 - A multi-segment horizontal layout elevates as one exact plan curve: the
   first segment's start frame plus one curvature piece per segment, or an
   arc-length chain when it holds a `CUBIC`. Seams are checked in closed

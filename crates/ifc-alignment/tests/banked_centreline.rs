@@ -220,23 +220,66 @@ fn the_viennese_bend_lowers_as_its_bank_angle() {
     }
 }
 
-/// A low-rail pivot through a Viennese bend would follow the bank angle:
-/// a typed refusal naming why, at the bend. The section frame refuses the
-/// inside of the bend with the same error (#312); its authored ends stand.
+/// A low-rail pivot through a Viennese bend follows the bank angle,
+/// `b sin(psi) / 2`: the banked lowering refuses it with a reason naming
+/// the angle-form pivot gap (#364), while the section frame evaluates it,
+/// the right rail held and the left rail `D(xi)` from the angle law. The
+/// two differ here, and only here, until Axiolid has an angle-form pivot.
 #[test]
-fn a_moving_pivot_through_a_viennese_bend_is_refused() {
+fn a_held_rail_viennese_bend_evaluates_but_does_not_lower() {
     let (model, a, ids) = track(&[(0.0, 100.0, 0.0, Some(0.15), 0.0, Some(0.0), "VIENNESEBEND")]);
     let error = lower_segmented_reference_curve(&model, a, metres()).expect_err("angle pivot");
     assert!(
         matches!(&error, AlignmentError::Unsupported { entity, type_name, detail }
-            if *entity == ids[0] && type_name == "VIENNESEBEND" && detail.contains("AngleInPivot")),
+            if *entity == ids[0] && type_name == "VIENNESEBEND"
+                && detail.contains("held rail") && detail.contains("AngleInPivot")
+                && detail.contains("angle-form pivot")),
+        "{error:?}"
+    );
+    let cant = CantLayout::for_alignment(&model, a, metres()).expect("cant");
+    let psi2 = (0.15_f64 / B).asin();
+    for xi in STATIONS {
+        let frame = cant.frame_at_distance(100.0 * xi).expect("held rail");
+        let blend = xi.powi(4) * (35.0 - 84.0 * xi + 70.0 * xi * xi - 20.0 * xi.powi(3));
+        let psi = psi2 * blend;
+        assert_eq!(frame.right, 0.0, "held rail at {xi}");
+        assert!((frame.left - B * psi.sin()).abs() < 1e-15, "left at {xi}");
+        assert!((frame.bank_angle - psi).abs() < 1e-15, "psi at {xi}");
+        assert!(
+            (frame.axis_elevation - B * psi.sin() / 2.0).abs() < 1e-15,
+            "pivot at {xi}"
+        );
+    }
+    for (station, left) in [(0.0, 0.0), (100.0, 0.15)] {
+        let frame = cant.frame_at_distance(station).expect("authored end");
+        assert_eq!((frame.left, frame.right), (left, 0.0), "at {station}");
+    }
+}
+
+/// A pivot that moves with neither rail held: the rails are not
+/// determined, and the lowering and the section frame refuse it alike.
+#[test]
+fn a_moving_pivot_without_a_held_rail_is_refused() {
+    let (model, a, ids) = track(&[(
+        0.0,
+        100.0,
+        0.0,
+        Some(0.15),
+        0.02,
+        Some(-0.01),
+        "VIENNESEBEND",
+    )]);
+    let error = lower_segmented_reference_curve(&model, a, metres()).expect_err("unheld pivot");
+    assert!(
+        matches!(&error, AlignmentError::Unsupported { entity, type_name, detail }
+            if *entity == ids[0] && type_name == "VIENNESEBEND" && detail.contains("neither rail")),
         "{error:?}"
     );
     let cant = CantLayout::for_alignment(&model, a, metres()).expect("cant");
     assert_eq!(cant.frame_at_distance(50.0), Err(error));
-    for (station, left) in [(0.0, 0.0), (100.0, 0.15)] {
+    for (station, left, right) in [(0.0, 0.0, 0.02), (100.0, 0.15, -0.01)] {
         let frame = cant.frame_at_distance(station).expect("authored end");
-        assert_eq!((frame.left, frame.right), (left, 0.0), "at {station}");
+        assert_eq!((frame.left, frame.right), (left, right), "at {station}");
     }
 }
 
