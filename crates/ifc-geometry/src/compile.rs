@@ -30,9 +30,15 @@
 
 mod bounds;
 
+/// The tolerance every entry point takes and the mesh it returns,
+/// re-exported so a caller that names no `axiolid-*` crate -- the
+/// `openbim-ifc` facade and the language bindings above it (ADR 0004,
+/// #328) -- can call them and read the result.
+pub use axiolid_core::Tolerance;
+pub use axiolid_mesh::TriMesh;
+
 use axiolid_contracts::ExecutionOptions;
-use axiolid_core::{Aabb, Tolerance};
-use axiolid_mesh::TriMesh;
+use axiolid_core::Aabb;
 use axiolid_mesh_compile_contract::{MeshClosure, MeshCompiler};
 use ifc_model::{EntityId, Model};
 

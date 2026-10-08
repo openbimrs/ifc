@@ -8,6 +8,26 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#328, geometry, ADR 0021)
+
+- Feature `placements` (default): `IfcModel::product_placements(ids)`,
+  per product with a shape (or per id), a `ProductPlacement` record: id,
+  global id, type name, `transform` (4x4 column-major, metres),
+  `representation` (`SelectedRepresentation`: id, identifier,
+  representation type, context, context type, context identifier, target
+  view) and `refusal`.
+- Feature `mesh` (opt-in): `IfcModel::product_meshes(ids)`, a
+  `ProductMesh` per product: the same identity and transform, `positions`
+  (`f32`, relative to the transform) and `indices` (`u32`); its record
+  carries vertex and triangle counts instead of the arrays.
+- `GeometryRefusal` (code, entity, message): a product that cannot be
+  placed, selected or meshed is a record, never a failed call, coded with
+  the shared `unsupported`, `invalid-model`, `missing-reference` or
+  `budget-exceeded`. Without its feature each call refuses with
+  `feature-disabled`.
+
+Semver: additive (internal crate, not published).
+
 ### Added (#330, schema-checked entity creation)
 
 - Feature `author` (default): `IfcModel::author(ops)` and

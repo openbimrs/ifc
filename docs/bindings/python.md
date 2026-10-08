@@ -406,6 +406,68 @@ Not bound yet: checked multi-edit transactions over arbitrary entities
 (`Transaction`, `Applied`, `Conflict`), deferred until a host asks for
 them. Use the Rust crates for those.
 
+## Geometry
+
+Geometry crosses at two levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)).
+`model.product_placements(ids=None)` is in every wheel: for each product
+with a shape (or for the ids given), its world placement and the Body
+representation a viewer draws, as frozen dataclasses.
+
+<!-- SNIPPET:py-geometry-placements -->
+
+```python
+model = openbim_ifc.open(path)
+for product in model.product_placements():
+    if product.refusal is not None:
+        print((product.id, product.refusal.code, product.refusal.message))
+        continue
+    # A column-major 4x4 in metres: the origin is its last column.
+    x, y, z = product.transform[12:15]
+    body = product.representation  # None for an axis-only product
+    print((product.type_name, (x, y, z), body and body.representation_type))
+```
+
+<!-- /SNIPPET -->
+
+`ProductPlacement.transform` is a 4x4 column-major matrix in metres, a
+tuple of 16 floats; `representation` is a `SelectedRepresentation`
+(`identifier`, `representation_type`, `context`, `context_type`,
+`context_identifier`, `target_view`), or `None` for a product with an
+axis or footprint only. A product that cannot be placed or selected does
+not raise: its `refusal` is a `GeometryRefusal` with a `code` --
+`unsupported`, `invalid-model`, `missing-reference` or `budget-exceeded`
+-- the `entity` at fault and a `message`. The call raises only
+`unsupported-schema`.
+
+`model.product_meshes(ids=None)` adds triangles, compiled by the reference
+backend of `ifc-geometry` with a one-millimetre tolerance while the GIL is
+released. It links a geometry kernel, so it is the cargo feature `mesh`,
+which the published wheel leaves out (it raises `feature-disabled`); build
+a wheel with `maturin build --release --features mesh` to use it:
+
+<!-- SNIPPET:py-geometry-meshes -->
+
+```python
+model = openbim_ifc.open(path)
+for mesh in model.product_meshes():
+    if mesh.refusal is not None:
+        print((mesh.id, mesh.refusal.code))  # (65, 'unsupported')
+        continue
+    # positions: array('f'), x y z per vertex in metres relative to
+    # mesh.transform; indices: array('I'), three per triangle.
+    print((mesh.type_name, len(mesh.positions) // 3, len(mesh.indices) // 3))
+```
+
+<!-- /SNIPPET -->
+
+`ProductMesh.positions` is an `array('f')` (`x, y, z` per vertex) and
+`indices` an `array('I')` (three per triangle);
+`numpy.frombuffer(mesh.positions, numpy.float32)` reads them without a
+copy. Positions are relative to the product's `transform`, which keeps
+the large offsets of a georeferenced site in `f64`. A product with no
+Body has empty arrays and no refusal; one whose lowering or compilation
+is refused carries the typed `refusal`.
+
 ## Creating entities
 
 <!-- SNIPPET:py-authoring -->
@@ -504,6 +566,8 @@ Generated from the `openbim_ifc` package source.
 | `model.spatial_tree() -> SpatialTree` | The spatial containment tree: every container with its parent, sub-containers and contained elements. |
 | `model.classifications(id: int) -> List[Classification]` | The classifications of object `id`: its own, then its type's. |
 | `model.material(id: int) -> Optional[MaterialAssignment]` | The material association of object `id`, its own or its type's, or `None`. |
+| `model.product_placements(ids: Optional[Iterable[int]] = None) -> List[ProductPlacement]` | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or every product with a shape. A product that cannot be placed carries a typed `refusal`; the call raises only `unsupported-schema` or `feature-disabled`. |
+| `model.product_meshes(ids: Optional[Iterable[int]] = None) -> List[ProductMesh]` | Each product's Body as triangles from the reference backend, for `ids` or every product with a shape; a product that cannot be meshed carries a typed `refusal`. Needs a wheel built with the `mesh` feature; the published wheel raises `feature-disabled`. |
 | `model.systems() -> Systems` | Every system with its members and served structures, and the memberships the reader could not honour. |
 | `model.cost() -> Cost` | Every cost schedule and cost item; values as authored, typed. |
 | `model.georeferencing() -> List[MapConversion]` | Every coordinate operation resolved with the project length unit; empty when the model has none. |

@@ -32,8 +32,9 @@ author = "Schema-checked authoring (`authoring`) with every bundled release (`sc
 authoring = "Schema-checked authoring (`ifc-author`) and the checked authoring batch (`apply_authoring`), against the releases the build names."
 codecs = "Both codecs: STEP and ifcXML."
 domains = "Every domain view, plus authoring and spatial traversal."
-full = "Everything: codecs, schema tables, every domain, catalogues, geometry, georeferencing and alignment."
+full = "Everything: codecs, schema tables, every domain, catalogues, geometry and meshes, georeferencing and alignment."
 geometry = "Representation selection plus lowering into the neutral geometry DAG."
+mesh = "Triangle meshes per product (`product_meshes`) through `ifc-geometry`'s reference compile backend: positions relative to each product's world placement, a typed refusal per product. Opt-in; links an execution provider (ADR 0004, ADR 0012)."
 geometry-select = "Representation selection only: contexts, plan/body choice, placements and units, with no geometry kernel."
 material-templates = "Material views together with the property template catalogue."
 property-catalog = "The PSD/QTO template catalogue (`ifc-template-catalog`), every edition embedded."
@@ -172,6 +173,9 @@ spatial = ["dep:ifc-spatial"]
 # consumer wants the latter and should not pay for a CSG stack.
 geometry = ["geometry-select", "ifc-geometry?/lowering"]
 geometry-select = ["dep:ifc-geometry"]
+# Meshes per product (#328): `geometry` plus `ifc-geometry`'s reference
+# compile backend. Never default (ADR 0004): it links an execution provider.
+mesh = ["geometry", "ifc-geometry?/compile-reference-backend"]
 georef = ["dep:ifc-georef"]
 alignment = ["dep:ifc-alignment"]
 
@@ -197,7 +201,7 @@ domains = [
     "author",
     "spatial",
 ]
-full = ["codecs", "schema", "domains", "property-catalog", "material-templates", "geometry", "georef", "alignment"]
+full = ["codecs", "schema", "domains", "property-catalog", "material-templates", "geometry", "mesh", "georef", "alignment"]
 
 [dev-dependencies]
 # `Schema::from_express` for the documented authoring example; production

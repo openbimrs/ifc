@@ -216,6 +216,11 @@ gate_features() {
     # Entity creation (#330) is a feature too: the `ifc4` run above refuses
     # it with `feature-disabled`; this one authors with the IFC4 table alone.
     cargo test -p openbim-ifc-binding-core --no-default-features --features ifc4,author
+    # Geometry (#328): the `ifc4` run above refuses placements and meshes
+    # with `feature-disabled`; this one places with the IFC4 table alone and
+    # meshes through the reference backend, which no default build links.
+    cargo test -p openbim-ifc-binding-core --no-default-features --features ifc4,mesh --test geometry
+    cargo test -p openbim-ifc --features step,ifc4,mesh --test product_geometry
 
     # Every crate the bindings reach takes its releases from the build too
     # (#306): each builds and tests with one release; the binding core with
@@ -223,7 +228,7 @@ gate_features() {
     # links the IFC4 table alone. `cargo tree -e normal` leaves out the
     # dev-dependencies, whose `ifc-schema/default` would bundle every release
     # into test builds and hide a leak.
-    all_bound="ifc4,ifcxml,validate,unreachable,properties,spatial,classification,material,systems,cost,georef,author"
+    all_bound="ifc4,ifcxml,validate,unreachable,properties,spatial,classification,material,systems,cost,georef,author,placements"
     for crate in ifc-validate ifc-spatial ifc-geometry ifc-properties ifc-classification \
         ifc-material ifc-systems ifc-cost ifc-georef; do
         cargo test -p "$crate" --no-default-features --features ifc4 --lib
@@ -264,6 +269,9 @@ gate_bindings() {
         echo "warning: IFC_SKIP_JS set; JS binding suites NOT run" >&2
     else
         crates/openbim-ifc-wasm/scripts/build-npm-pkg.sh
+        # The opt-in mesh module (#328), which the package leaves out: its
+        # Node suite and the browser example's scene code.
+        crates/openbim-ifc-wasm/scripts/check-mesh.sh
     fi
 
     # C ABI (#38, ADR 0013): the committed header must match the exports (the

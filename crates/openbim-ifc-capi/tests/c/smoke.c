@@ -815,6 +815,127 @@ static int named_attributes(void) {
   return 0;
 }
 
+/* A millimetre file with one wall 1 m east and 2 m north of the origin,
+ * its Body a 4 m x 0.2 m x 3 m extrusion (#328). */
+static const char GEOMETRY_TEXT[] =
+    "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n"
+    "FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;\n"
+    "#1=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);\n"
+    "#2=IFCUNITASSIGNMENT((#1));\n"
+    "#3=IFCCARTESIANPOINT((0.,0.,0.));\n"
+    "#4=IFCAXIS2PLACEMENT3D(#3,$,$);\n"
+    "#5=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,#4,$);\n"
+    "#6=IFCPROJECT('0YvctVUKr0kugbFTf53O9L',$,'P',$,$,$,$,(#5),#2);\n"
+    "#7=IFCCARTESIANPOINT((1000.,2000.,0.));\n"
+    "#8=IFCAXIS2PLACEMENT3D(#7,$,$);\n"
+    "#9=IFCLOCALPLACEMENT($,#8);\n"
+    "#10=IFCAXIS2PLACEMENT2D(#11,$);\n"
+    "#11=IFCCARTESIANPOINT((0.,0.));\n"
+    "#12=IFCRECTANGLEPROFILEDEF(.AREA.,$,#10,4000.,200.);\n"
+    "#13=IFCDIRECTION((0.,0.,1.));\n"
+    "#14=IFCEXTRUDEDAREASOLID(#12,#4,#13,3000.);\n"
+    "#15=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#14));\n"
+    "#16=IFCPRODUCTDEFINITIONSHAPE($,$,(#15));\n"
+    "#17=IFCWALL('1YvctVUKr0kugbFTf53O9L',$,'Wall',$,$,#9,#16,$,.STANDARD.);\n"
+    "ENDSEC;\nEND-ISO-10303-21;\n";
+
+/* The geometry example published on the docs site's C page. */
+static int documented_geometry(OpenbimIfcModel model) {
+  // docs:snippet c-geometry
+  /* Level 1, in every build: each product's placement and Body as a tape of
+   * ProductPlacement records; null ids with count 0 select every product. */
+  OpenbimIfcValueNode nodes[128];
+  uint8_t strings[1024];
+  size_t products = 0, node_count = 0, string_len = 0;
+  openbim_ifc_v0_1_model_product_placements(model, NULL, 0, &products, nodes, 128,
+                                            &node_count, strings, sizeof strings, &string_len);
+  /* nodes[5] is the first record's transform: a LIST of 16 REALs, a
+   * column-major 4x4 in metres; its translation is nodes[18..20]. */
+  printf("%zu product(s); first at %g %g %g\n", products, nodes[18].real_value,
+         nodes[19].real_value, nodes[20].real_value);
+
+  /* Level 3, in a library built with the `mesh` feature: compile once into
+   * a set, then copy each product's arrays out. */
+  OpenbimIfcMeshes meshes = 0;
+  if (openbim_ifc_v0_1_model_product_meshes(model, NULL, 0, &meshes) == OPENBIM_IFC_STATUS_OK) {
+    size_t need = 0;
+    openbim_ifc_v0_1_meshes_positions(meshes, 0, NULL, 0, &need);
+    float *positions = (float *)malloc(need * sizeof(float)); /* x y z, metres */
+    openbim_ifc_v0_1_meshes_positions(meshes, 0, positions, need, &need);
+    openbim_ifc_v0_1_meshes_indices(meshes, 0, NULL, 0, &need);
+    uint32_t *indices = (uint32_t *)malloc(need * sizeof(uint32_t)); /* 3 per triangle */
+    openbim_ifc_v0_1_meshes_indices(meshes, 0, indices, need, &need);
+    printf("%zu triangle(s)\n", need / 3);
+    free(positions);
+    free(indices);
+    openbim_ifc_v0_1_meshes_destroy(meshes);
+  }
+  // docs:end
+  return products == 1 ? 0 : 1;
+}
+
+/* Geometry (#328): placements in every build, meshes when compiled in. */
+static int geometry(void) {
+  OpenbimIfcModel model = 0;
+  OK(openbim_ifc_v0_1_model_parse((const uint8_t *)GEOMETRY_TEXT, strlen(GEOMETRY_TEXT),
+                                  &model, NULL, 0));
+  OpenbimIfcValueNode nodes[128];
+  uint8_t strings[1024];
+  size_t count = 0, node_count = 0, string_len = 0;
+  OK(openbim_ifc_v0_1_model_product_placements(model, NULL, 0, &count, nodes, 128,
+                                               &node_count, strings, sizeof strings,
+                                               &string_len));
+  CHECK(count == 1 && nodes[1].kind == OPENBIM_IFC_KIND_LIST && nodes[1].child_count == 6,
+        "one ProductPlacement record of six fields");
+  CHECK(nodes[2].kind == OPENBIM_IFC_KIND_REF && nodes[2].int_value == 17, "the wall");
+  CHECK(nodes[5].kind == OPENBIM_IFC_KIND_LIST && nodes[5].child_count == 16,
+        "a 4x4 matrix");
+  CHECK(nodes[18].real_value > 0.999 && nodes[18].real_value < 1.001 &&
+            nodes[19].real_value > 1.999 && nodes[19].real_value < 2.001,
+        "millimetres placed in metres");
+  CHECK(nodes[22].kind == OPENBIM_IFC_KIND_LIST && nodes[22].child_count == 7,
+        "a SelectedRepresentation record");
+  CHECK(nodes[23].int_value == 15, "the Body representation");
+  CHECK(nodes[30].kind == OPENBIM_IFC_KIND_NULL, "no refusal");
+
+  uint64_t missing = 99;
+  OK(openbim_ifc_v0_1_model_product_placements(model, &missing, 1, &count, nodes, 128,
+                                               &node_count, strings, sizeof strings,
+                                               &string_len));
+  /* Record: id, global id, type, transform NULL, representation NULL, refusal. */
+  CHECK(count == 1 && nodes[5].kind == OPENBIM_IFC_KIND_NULL, "no placement");
+  CHECK(nodes[7].kind == OPENBIM_IFC_KIND_LIST && nodes[8].str_len == 17 &&
+            memcmp(strings + nodes[8].str_offset, "missing-reference", 17) == 0,
+        "a typed refusal, not a failed call");
+
+  OpenbimIfcMeshes meshes = 0;
+  OpenbimIfcStatus status = openbim_ifc_v0_1_model_product_meshes(model, NULL, 0, &meshes);
+  if (status == OPENBIM_IFC_STATUS_FEATURE_DISABLED) {
+    char code[32];
+    size_t need = 0;
+    OK(openbim_ifc_v0_1_last_error_code(model, (uint8_t *)code, sizeof code, &need));
+    CHECK(strcmp(code, "feature-disabled") == 0, "meshes are opt-in");
+  } else {
+    CHECK(status == OPENBIM_IFC_STATUS_OK, "meshes compile");
+    OK(openbim_ifc_v0_1_meshes_records(meshes, &count, nodes, 128, &node_count, strings,
+                                       sizeof strings, &string_len));
+    CHECK(count == 1 && nodes[1].child_count == 7, "one ProductMesh record");
+    size_t need = 0;
+    CHECK(openbim_ifc_v0_1_meshes_indices(meshes, 0, NULL, 0, &need) ==
+              OPENBIM_IFC_STATUS_BUFFER_TOO_SMALL && need >= 36,
+          "a box has twelve triangles");
+    CHECK(openbim_ifc_v0_1_meshes_indices(meshes, 1, NULL, 0, &need) ==
+              OPENBIM_IFC_STATUS_OUT_OF_RANGE,
+          "one mesh only");
+    OK(openbim_ifc_v0_1_meshes_destroy(meshes));
+    CHECK(openbim_ifc_v0_1_meshes_destroy(meshes) == OPENBIM_IFC_STATUS_INVALID_HANDLE,
+          "destroyed once");
+  }
+  int failed = documented_geometry(model);
+  OK(openbim_ifc_v0_1_model_destroy(model));
+  return failed;
+}
+
 int main(void) {
   OpenbimIfcVersion version;
   OK(openbim_ifc_v0_1_version(&version));
@@ -961,6 +1082,7 @@ int main(void) {
   CHECK(documented_example() == 0, "the documented example runs");
   CHECK(capabilities() == 0, "the #244 surface works from C");
   CHECK(domains() == 0, "the domain views work from C");
+  CHECK(geometry() == 0, "placements and meshes cross to C");
   CHECK(property_edits() == 0, "property sets are written from C");
   CHECK(named_attributes() == 0, "attributes are read and written by name from C");
   CHECK(authoring() == 0, "a model is built from nothing from C");

@@ -287,6 +287,11 @@ typedef struct {
 } OpenbimIfcValueNode;
 
 /**
+ * Opaque handle to a compiled mesh set. Zero is never a valid handle.
+ */
+typedef uint64_t OpenbimIfcMeshes;
+
+/**
  * Counts from one validation run.
  */
 typedef struct {
@@ -553,6 +558,63 @@ OpenbimIfcStatus openbim_ifc_v0_1_last_error_message(OpenbimIfcModel model,
  * `out_count` must be null or valid for one write.
  */
 OpenbimIfcStatus openbim_ifc_v0_1_live_models(size_t *out_count);
+
+/**
+ * Destroy a mesh set. A stale or repeated handle is `InvalidHandle`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_meshes_destroy(OpenbimIfcMeshes meshes);
+
+/**
+ * Copy the triangle indices of mesh `index` -- three vertex indices per
+ * triangle -- into `buffer` (`capacity` values), after writing the count
+ * needed (3 x triangle count) to `out_required`. `OutOfRange` for an
+ * index past the set.
+ *
+ * # Safety
+ * As for `openbim_ifc_v0_1_meshes_positions`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_meshes_indices(OpenbimIfcMeshes meshes,
+                                                 size_t index,
+                                                 uint32_t *buffer,
+                                                 size_t capacity,
+                                                 size_t *out_required);
+
+/**
+ * Copy the positions of mesh `index` -- `x, y, z` per vertex, metres,
+ * relative to its record's transform -- into `buffer` (`capacity`
+ * floats), after writing the count needed (3 x vertex count) to
+ * `out_required`. `OutOfRange` for an index past the set.
+ *
+ * # Safety
+ * As for the other buffer calls: `buffer` valid for `capacity` writes
+ * when non-null, `out_required` for one.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_meshes_positions(OpenbimIfcMeshes meshes,
+                                                   size_t index,
+                                                   float *buffer,
+                                                   size_t capacity,
+                                                   size_t *out_required);
+
+/**
+ * The set's `ProductMesh` records as a tape, in the order compiled;
+ * `out_count` gets their number. `ProductMesh`: id (`REF`), global id,
+ * type name, transform (`LIST` of 16 `REAL`s, column-major, metres, or
+ * `NULL`), vertex count, triangle count (`INTEGER`s), refusal
+ * (`GeometryRefusal` or `NULL`). Empty arrays and no refusal is a
+ * product with no Body representation.
+ *
+ * # Safety
+ * `out_count` valid for one write; otherwise as for
+ * `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_meshes_records(OpenbimIfcMeshes meshes,
+                                                 size_t *out_count,
+                                                 OpenbimIfcValueNode *nodes,
+                                                 size_t node_capacity,
+                                                 size_t *out_nodes_required,
+                                                 uint8_t *strings,
+                                                 size_t string_capacity,
+                                                 size_t *out_strings_required);
 
 /**
  * Apply the operations on the tape as one checked transaction against the
@@ -928,6 +990,58 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_parse_with_options(const uint8_t *data,
                                                            OpenbimIfcModel *out_model,
                                                            uint8_t *error_buffer,
                                                            size_t capacity);
+
+/**
+ * Compile the Body mesh of each of `ids` (`id_count` of them) or, with
+ * `ids` null and `id_count` 0, of every product with a shape, and write
+ * the new set's handle to `out_meshes`. Read it with
+ * `openbim_ifc_v0_1_meshes_records`, `_meshes_positions` and
+ * `_meshes_indices`; destroy it with `openbim_ifc_v0_1_meshes_destroy`.
+ *
+ * A product that cannot be meshed is a record with a refusal, not a
+ * failed call. `UnsupportedSchema`; `FeatureDisabled` in a library built
+ * without the `mesh` feature (the default build).
+ *
+ * # Safety
+ * `ids` valid for `id_count` reads when non-null; `out_meshes` valid for
+ * one write.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_product_meshes(OpenbimIfcModel model,
+                                                       const uint64_t *ids,
+                                                       size_t id_count,
+                                                       OpenbimIfcMeshes *out_meshes);
+
+/**
+ * Each product's world placement and selected Body representation, for
+ * `ids` (`id_count` of them) or, with `ids` null and `id_count` 0, every
+ * product with a shape, in id order. The tape is a `LIST` of
+ * `ProductPlacement` records; `out_count` gets their number.
+ * `ProductPlacement`: id (`REF`), global id, type name, transform (`LIST`
+ * of 16 `REAL`s, a column-major 4x4 in metres, or `NULL`), representation
+ * (`SelectedRepresentation` or `NULL`), refusal (`GeometryRefusal` or
+ * `NULL`). `SelectedRepresentation`: id, identifier, representation type,
+ * context (`REF` or `NULL`), context type, context identifier, target
+ * view. `GeometryRefusal`: code (`unsupported`, `invalid-model`,
+ * `missing-reference` or `budget-exceeded`), entity (`REF` or `NULL`),
+ * message.
+ *
+ * A product that cannot be placed is a record with a refusal, not a
+ * failed call. `UnsupportedSchema`, `FeatureDisabled`.
+ *
+ * # Safety
+ * `ids` valid for `id_count` reads when non-null; `out_count` valid for
+ * one write; otherwise as for `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_product_placements(OpenbimIfcModel model,
+                                                           const uint64_t *ids,
+                                                           size_t id_count,
+                                                           size_t *out_count,
+                                                           OpenbimIfcValueNode *nodes,
+                                                           size_t node_capacity,
+                                                           size_t *out_nodes_required,
+                                                           uint8_t *strings,
+                                                           size_t string_capacity,
+                                                           size_t *out_strings_required);
 
 /**
  * The property sets of `object`: a `LIST` of `PropertySet` records, its

@@ -168,6 +168,50 @@ impl NativeModel {
         records::unreachable_to_py(py, &products)
     }
 
+    /// World placement and selected Body per product (#328), as record
+    /// dicts; `ids` `None` means every product with a shape.
+    #[pyo3(signature = (ids = None))]
+    fn product_placements<'py>(
+        &self,
+        py: Python<'py>,
+        ids: Option<Vec<u64>>,
+    ) -> PyResult<Bound<'py, PyList>> {
+        let inner = &self.inner;
+        let placements = py
+            .detach(|| inner.product_placements(ids.as_deref()))
+            .map_err(py_err)?;
+        records::records_to_py(py, &to_records(&placements))
+    }
+
+    /// Body meshes per product (#328), releasing the GIL while they
+    /// compile: record dicts with `positions` (native-endian `f32`) and
+    /// `indices` (native-endian `u32`) as bytes.
+    #[pyo3(signature = (ids = None))]
+    fn product_meshes<'py>(
+        &self,
+        py: Python<'py>,
+        ids: Option<Vec<u64>>,
+    ) -> PyResult<Bound<'py, PyList>> {
+        let inner = &self.inner;
+        let meshes = py
+            .detach(|| inner.product_meshes(ids.as_deref()))
+            .map_err(py_err)?;
+        let list = PyList::empty(py);
+        for mesh in &meshes {
+            let dict = records::record_to_py(py, &mesh.to_record())?;
+            let positions: Vec<u8> = mesh
+                .positions
+                .iter()
+                .flat_map(|v| v.to_ne_bytes())
+                .collect();
+            let indices: Vec<u8> = mesh.indices.iter().flat_map(|v| v.to_ne_bytes()).collect();
+            dict.set_item("positions", PyBytes::new(py, &positions))?;
+            dict.set_item("indices", PyBytes::new(py, &indices))?;
+            list.append(dict)?;
+        }
+        Ok(list)
+    }
+
     /// Property sets of `id`, its own then its type's, as record dicts.
     fn property_sets<'py>(&self, py: Python<'py>, id: u64) -> PyResult<Bound<'py, PyList>> {
         let sets = self.inner.property_sets(id).map_err(py_err)?;

@@ -21,6 +21,12 @@ import os as _os
 from typing import Optional as _Optional, Union as _Union
 
 from ._native import IfcError
+from .geometry import (
+    GeometryRefusal,
+    ProductMesh,
+    ProductPlacement,
+    SelectedRepresentation,
+)
 from .domains import (
     HANDLE_BASE,
     AttributeInfo,
@@ -149,6 +155,10 @@ __all__ = [
     "MapConversion",
     "ProjectedCrs",
     "LengthUnit",
+    "ProductPlacement",
+    "SelectedRepresentation",
+    "GeometryRefusal",
+    "ProductMesh",
     "Value",
     "Null",
     "Derived",

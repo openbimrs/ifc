@@ -244,6 +244,15 @@ pub use ifc_geometry::{
 #[cfg(feature = "geometry-select")]
 pub use ifc_geometry::{product_world_transform, products_world_transforms};
 
+// Each product's world placement and selected Body representation, as one
+// answer per product, and, with `mesh`, its triangles through the
+// reference backend (#328, ADR 0021): the language bindings' geometry. The
+// module gates itself on `geometry-select` with an inner `#![cfg]`, and
+// its `mesh` submodule on `mesh` (it links an execution provider, ADR 0004).
+mod product_geometry;
+#[cfg(feature = "geometry-select")]
+pub use product_geometry::*;
+
 /// How a product's body is modelled: its representation kind and, for swept
 /// solids, the profile parameters, direction and depth in SI and world
 /// coordinates.

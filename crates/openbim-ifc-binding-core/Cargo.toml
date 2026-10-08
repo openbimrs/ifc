@@ -37,7 +37,7 @@ default = [
     "ifcxml", "validate", "unreachable",
     "properties", "properties-write", "property-catalog",
     "spatial", "classification", "material", "systems", "cost", "georef",
-    "author",
+    "author", "placements",
 ]
 ifc2x3 = ["openbim-ifc/ifc2x3"]
 ifc4 = ["openbim-ifc/ifc4"]
@@ -93,6 +93,15 @@ cost = ["openbim-ifc/cost"]
 # removal with relationships, as one checked batch. Checks against the
 # enabled releases' tables only.
 author = ["openbim-ifc/authoring"]
+# Geometry, Level 1 (#328, ADR 0021): each product's world placement and
+# selected Body representation, kernel-free (the facade's
+# `geometry-select`).
+placements = ["openbim-ifc/geometry-select"]
+# Geometry, Level 3 (#328): triangle meshes per product through the
+# reference compile backend. Opt-in in every host and never default: it
+# links an execution provider (ADR 0004, ADR 0012): +2.1 MB (+0.76 MB
+# gzip) to the default browser build.
+mesh = ["placements", "openbim-ifc/mesh"]
 # Map conversions and projected CRSs. The project length unit that scales
 # them is resolved by the property domain, so this implies `properties`.
 georef = ["properties", "openbim-ifc/georef"]

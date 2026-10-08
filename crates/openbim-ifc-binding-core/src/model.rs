@@ -260,7 +260,8 @@ impl IfcModel {
             feature = "classification",
             feature = "material",
             feature = "systems",
-            feature = "cost"
+            feature = "cost",
+            feature = "placements"
         )),
         allow(dead_code)
     )]

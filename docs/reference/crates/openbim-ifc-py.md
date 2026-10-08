@@ -32,6 +32,7 @@ This crate adds calling-convention glue only. IFC behaviour belongs in
 
 | Feature | Default | Enables |
 | --- | --- | --- |
+| `mesh` |  | `openbim-ifc-binding-core/mesh` |
 | `rusty_alloc` |  | `dep:rusty_alloc-api`, `dep:rusty_alloc` |
 
 ## Depends on

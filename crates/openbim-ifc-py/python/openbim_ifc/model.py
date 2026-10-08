@@ -6,7 +6,7 @@ import os
 from typing import Iterable, List, Mapping, Optional, Tuple, Union
 
 from ._native import NativeModel
-from . import domains
+from . import domains, geometry
 from .domains import (
     AttributeInfo,
     AuthorOp,
@@ -23,6 +23,7 @@ from .domains import (
     Systems,
 )
 from .entity import ModelAccess
+from .geometry import ProductMesh, ProductPlacement
 from .records import Header, ParseOptions, UnreachableProduct, ValidationReport
 from .values import Value, from_wire, to_wire
 
@@ -213,6 +214,23 @@ class IfcModel(ModelAccess):
         type's, or ``None``."""
         wire = self._native.material(id)
         return None if wire is None else domains._from_wire(wire)
+
+    def product_placements(self, ids: Optional[Iterable[int]] = None) -> List[ProductPlacement]:
+        """Each product's world placement (a column-major 4x4 in metres) and
+        the Body representation a viewer draws, for ``ids`` or every
+        product with a shape. A product that cannot be placed carries a
+        typed ``refusal``; the call raises only ``unsupported-schema`` or
+        ``feature-disabled``."""
+        wire = self._native.product_placements(None if ids is None else list(ids))
+        return [geometry._placement(row) for row in wire]
+
+    def product_meshes(self, ids: Optional[Iterable[int]] = None) -> List[ProductMesh]:
+        """Each product's Body as triangles from the reference backend, for
+        ``ids`` or every product with a shape; a product that cannot be
+        meshed carries a typed ``refusal``. Needs a wheel built with the
+        ``mesh`` feature; the published wheel raises ``feature-disabled``."""
+        wire = self._native.product_meshes(None if ids is None else list(ids))
+        return [geometry._mesh(row) for row in wire]
 
     def systems(self) -> Systems:
         """Every system with its members and served structures, and the

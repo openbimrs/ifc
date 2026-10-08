@@ -41,6 +41,12 @@ rusty_alloc = { version = "=2.2.1", optional = true, default-features = false }
 
 [features]
 default = []
+# Triangle meshes per product (#328, `openbim_ifc_v0_1_model_product_meshes`)
+# through the reference compile backend. Opt-in: it links an execution
+# provider (ADR 0004), so the release archives leave it out and the call
+# returns `FeatureDisabled`. Build with `cargo build --release --features
+# mesh`, or CMake with `-DOPENBIM_IFC_CARGO_FEATURES=mesh`.
+mesh = ["openbim-ifc-binding-core/mesh"]
 # Route the library's Rust allocations through rusty_alloc: reading STEP
 # into a model takes 18-35% less CPU time on seven real IFC files, at 1-7%
 # less peak memory (measured in #49). The host's own `malloc` is untouched.

@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, LazyLock, Mutex, MutexGuard, PoisonError};
 
-use openbim_ifc_binding_core::{BindingError, IfcModel};
+use openbim_ifc_binding_core::{BindingError, IfcModel, ProductMesh};
 
 /// One live model plus the last error raised against it.
 #[derive(Debug, Default)]
@@ -22,6 +22,11 @@ type Shared = Arc<Mutex<Entry>>;
 
 static NEXT: AtomicU64 = AtomicU64::new(1);
 static MODELS: LazyLock<Mutex<HashMap<u64, Shared>>> = LazyLock::new(Default::default);
+/// Compiled mesh sets (#328): immutable once built, so shared without a
+/// per-set lock. Their handles come from the same counter as models', so
+/// a model handle is never a live mesh-set handle.
+static MESHES: LazyLock<Mutex<HashMap<u64, Arc<Vec<ProductMesh>>>>> =
+    LazyLock::new(Default::default);
 
 /// Lock, recovering from poison: a panic is already reported to the caller
 /// as `Panic`, and every mutation here is a single assignment, so the data
@@ -55,4 +60,21 @@ pub(crate) fn remove(handle: u64) -> bool {
 /// How many models are live, for leak checks in tests and hosts.
 pub(crate) fn live() -> usize {
     lock(&MODELS).len()
+}
+
+/// Register a compiled mesh set, returning its new handle.
+pub(crate) fn insert_meshes(meshes: Vec<ProductMesh>) -> u64 {
+    let handle = NEXT.fetch_add(1, Ordering::Relaxed);
+    lock(&MESHES).insert(handle, Arc::new(meshes));
+    handle
+}
+
+/// The mesh set behind `handle`, if it is live.
+pub(crate) fn meshes(handle: u64) -> Option<Arc<Vec<ProductMesh>>> {
+    lock(&MESHES).get(&handle).cloned()
+}
+
+/// Remove mesh set `handle`; `false` if it was not live.
+pub(crate) fn remove_meshes(handle: u64) -> bool {
+    lock(&MESHES).remove(&handle).is_some()
 }

@@ -111,5 +111,6 @@ import { catalogLoader as __catalogLoader } from "../catalog.mjs";
 IfcModel.loadCatalog = __catalogLoader(IfcModel);
 JS
 
-IFC_WASM_PKG="$out" node --test "$crate_dir/tests/js/smoke.mjs" "$crate_dir/tests/js/corpus.mjs"
+IFC_WASM_PKG="$out" node --test "$crate_dir/tests/js/smoke.mjs" "$crate_dir/tests/js/corpus.mjs" \
+    "$crate_dir/tests/js/geometry.mjs"
 node "$crate_dir/tools/check-package.mjs" "$out"

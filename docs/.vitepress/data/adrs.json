@@ -118,5 +118,11 @@
     "slug": "0020-ifc5-is-a-separate-family",
     "status": "Accepted",
     "title": "IFC5 is a separate family; no IFC-JSON codec"
+  },
+  {
+    "number": "0021",
+    "slug": "0021-bindings-carry-placements-and-opt-in-meshes",
+    "status": "Accepted",
+    "title": "Bindings carry placements by default and meshes on request"
   }
 ]

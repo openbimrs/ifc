@@ -12,6 +12,33 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#328, geometry in the bindings, ADR 0021)
+
+- Behind `geometry-select`: `product_placements(model, ids)` -- per product
+  with a shape (or per id given), its world placement
+  (`products_world_transforms`, metres) and the Body representation
+  `select_shape_representation` chooses, as `ProductPlacement { product,
+  world, body }`, each half its own `GeometryResult` -- with
+  `SelectedRepresentation` (identifier, type, context) and
+  `SelectedContext` (context type, derived from the parent for a
+  sub-context; identifier; target view literal). `column_major(&Transform)`
+  gives the 4x4 column-major matrix graphics APIs read.
+- Feature `mesh` (`geometry` plus `ifc-geometry`'s
+  `compile-reference-backend`; never default, ADR 0004):
+  `product_meshes(model, ids)`, one result per product: `ProductMesh {
+  world, positions, indices }`, `f32` positions relative to the world
+  placement (mapped back through its inverse in `f64`), `u32` indices,
+  compiled with one reference backend at a one-millimetre tolerance; a
+  product without a Body has empty arrays, a refused one its
+  `GeometryError`. `compiled_features()` reports `mesh`.
+
+### Changed
+
+- `full` now includes `mesh`, and so links the reference compile backend.
+
+Semver of #328: additive; `mesh` needs the `compile` re-exports of the
+next `ifc-geometry` (0.11.0).
+
 ## [0.16.0] - 2026-10-04
 
 ### Changed

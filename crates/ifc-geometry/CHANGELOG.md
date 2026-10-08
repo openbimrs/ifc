@@ -79,6 +79,16 @@ minor one (0.11.0).
   relative to a grid placement `Unsupported`. An entity that is no
   `IfcObjectPlacement` reports `expected: "IfcObjectPlacement"`.
 
+### Added (#328, geometry in the bindings)
+
+- `compile::Tolerance` and `compile::TriMesh` re-export the tolerance every
+  compile entry point takes and the mesh it returns, so a caller that
+  names no `axiolid-*` crate (the `openbim-ifc` facade's `mesh` feature)
+  can call them. Behind `compile`, as before.
+
+Semver: additive; it ships with the minor release above (0.11.0), which
+the `openbim-ifc` facade's `mesh` feature needs.
+
 ## [0.10.0] - 2026-10-04
 
 Product lowering gains two opt-ins: Reference View openings taken as applied

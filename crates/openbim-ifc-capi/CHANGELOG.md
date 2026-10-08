@@ -8,6 +8,23 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#328, geometry, ADR 0021)
+
+- `openbim_ifc_v0_1_model_product_placements(model, ids, id_count, ...)`:
+  a tape of `ProductPlacement` records (id, global id, type name,
+  transform as 16 `REAL`s or `NULL`, `SelectedRepresentation` or `NULL`,
+  `GeometryRefusal` or `NULL`); null `ids` with count 0 selects every
+  product with a shape.
+- Meshes, cargo feature `mesh` (opt-in; the release archives return
+  `FeatureDisabled`): `openbim_ifc_v0_1_model_product_meshes` compiles
+  once into an `OpenbimIfcMeshes` handle, read with
+  `openbim_ifc_v0_1_meshes_records` (a tape of `ProductMesh` records),
+  `_meshes_positions` (`float`), `_meshes_indices` (`uint32_t`) and freed
+  with `_meshes_destroy`. The set owns its data and outlives the model.
+- ABI version 0.1.7; no `v0_1` symbol changed.
+
+Semver: additive, a patch release.
+
 ## [0.1.3] - 2026-10-04
 
 ### Added (#330, schema-checked entity creation)

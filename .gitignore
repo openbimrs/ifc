@@ -22,6 +22,8 @@ docs/.vitepress/cache/
 
 # wasm-bindgen output of crates/openbim-ifc-wasm/scripts/build-npm-pkg.sh
 crates/openbim-ifc-wasm/pkg/
+# ... and of the mesh viewer example's build.sh (#328)
+crates/openbim-ifc-wasm/examples/viewer/pkg/
 
 # Python bytecode (openbim-ifc-py)
 __pycache__/
