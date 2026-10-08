@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-08
+
 Placement resolution covers every `IfcObjectPlacement` kind: linear
 placements compose with their alignment's frame (#357), grid placements
 resolve (#362), and any placement may be relative to a linear or grid one
@@ -1026,7 +1028,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.10.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.11.0...HEAD
+[0.11.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.11.0
 [0.10.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.10.0
 [0.9.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.9.0
 [0.8.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.8.1

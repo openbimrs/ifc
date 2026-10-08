@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-10-08
+
 ### Added (#328, geometry, ADR 0021)
 
 - `openbim_ifc_v0_1_model_product_placements(model, ids, id_count, ...)`:

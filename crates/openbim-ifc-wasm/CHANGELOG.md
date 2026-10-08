@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-08
+
 ### Added (#369, the npm mesh entry)
 
 - `@openbim/ifc/mesh`: a second entry of the npm package, the default
@@ -257,7 +259,8 @@ Published to npm by hand, before the release workflow existed.
 - `scripts/build-node-pkg.sh` builds a Node package with the pinned
   `wasm-bindgen` CLI and runs the Node smoke and corpus suites.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.4.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.4.2...HEAD
+[0.4.2]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.4.2
 [0.4.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.4.1
 [0.4.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.4.0
 [0.3.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.3.0

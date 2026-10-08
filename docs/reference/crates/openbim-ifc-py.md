@@ -11,7 +11,7 @@ Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.2 (2026-10-04) |
+| Latest release | 0.3.3 (2026-10-08) |
 | Registries | [PyPI `openbim-ifc`](https://pypi.org/project/openbim-ifc/) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_py/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-py/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-py) |
@@ -41,41 +41,20 @@ This crate adds calling-convention glue only. IFC behaviour belongs in
 
 ## Changes
 
-Latest release, 0.3.2 (2026-10-04):
+Latest release, 0.3.3 (2026-10-08):
 
-### Added (#332, Pythonic access)
+### Added (#328, geometry, ADR 0021)
 
-- A pure-Python layer over the existing calls, with no new native
-  surface: `openbim_ifc.open(path)`; `model[id]`, `model.by_id(id)`,
-  `model.by_type(name, include_subtypes=True)`, `iter(model)` and
-  `id in model`, returning `Entity` views (new module
-  `openbim_ifc.entity`). An `Entity` reads attributes by name as plain
-  Python values (`wall.Name`, `wall.get(name)`), keeps the exact tagged
-  value reachable (`wall.raw(name)`), writes through
-  `set_attribute_by_name` (`wall.Name = Text("x")`, `wall.set(...)`;
-  bare `str`/`int`/`float`/`bool` refused), compares and hashes by id,
-  and offers `is_a(type)` with subtypes, `psets` and `qtos` as read-only
-  mappings over `property_sets`, and `set_property`/`remove_property`.
-  The plain conversion is lossy for `*` and `.U.` (both `None`), enums
-  (`str`) and typed wrappers (payload only); the Python guide tabulates it.
-- `IfcModel.to_dataframe(type="IfcProduct", psets=True, qtos=True, ...)`
-  behind the new optional extra `openbim-ifc[pandas]`, imported lazily.
-- Types: `Entity`, `PlainValue`, `PropertyValue` and `Assignable` are
-  exported; the test run checks a typed example and the guide's snippets
-  with `mypy --strict`.
-- Additive: a patch release. `iter(model)` and `in`, which raised
-  `TypeError` before, now work; no existing call changes.
+- `IfcModel.product_placements(ids=None)`: `ProductPlacement` dataclasses
+  with `transform` (16 floats, column-major, metres), the selected Body
+  `representation` (`SelectedRepresentation`) and a typed `refusal`
+  (`GeometryRefusal`) per product.
+- `IfcModel.product_meshes(ids=None)`, compiled with the GIL released:
+  `ProductMesh` dataclasses with `positions` (`array('f')`, relative to
+  `transform`) and `indices` (`array('I')`). Cargo feature `mesh`,
+  opt-in: the published wheel raises `feature-disabled`; build with
+  `maturin build --release --features mesh`.
 
-### Added (#330, schema-checked entity creation)
-
-- `IfcModel.author(ops)`: `AuthorOp`s built with `AuthorOp.create`,
-  `.edit`, `.remove`, `.project`, `.spatial`, `.product`, `.type_object`,
-  `.assign_type`, `.contain`, `.aggregate`, `.placement` and
-  `.owner_history`, applied as one checked transaction and returning
-  `AuthoringResult`; `openbim_ifc.handle(index)` (and `HANDLE_BASE`) names
-  the entity an earlier operation produced. `create_entity(type_name,
-  attributes)` and `remove_with_relationships(id)` are one-operation
-  batches. New codes `missing-attribute` and `still-referenced`. Additive:
-  a patch release.
+Semver: additive, a patch release.
 
 Full history: [`crates/openbim-ifc-py/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-py/CHANGELOG.md)

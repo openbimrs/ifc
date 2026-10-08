@@ -9,6 +9,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-08
+
 ### Added (#328, geometry, ADR 0021)
 
 - `IfcModel.ProductPlacements(ids)`: `ProductPlacement` records with the

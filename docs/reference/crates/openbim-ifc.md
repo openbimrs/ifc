@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.16.0 (2026-10-04) |
+| Latest release | 0.17.0 (2026-10-08) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -95,29 +95,33 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.16.0 (2026-10-04):
+Latest release, 0.17.0 (2026-10-08):
+
+### Added (#328, geometry in the bindings, ADR 0021)
+
+- Behind `geometry-select`: `product_placements(model, ids)` -- per product
+  with a shape (or per id given), its world placement
+  (`products_world_transforms`, metres) and the Body representation
+  `select_shape_representation` chooses, as `ProductPlacement { product,
+  world, body }`, each half its own `GeometryResult` -- with
+  `SelectedRepresentation` (identifier, type, context) and
+  `SelectedContext` (context type, derived from the parent for a
+  sub-context; identifier; target view literal). `column_major(&Transform)`
+  gives the 4x4 column-major matrix graphics APIs read.
+- Feature `mesh` (`geometry` plus `ifc-geometry`'s
+  `compile-reference-backend`; never default, ADR 0004):
+  `product_meshes(model, ids)`, one result per product: `ProductMesh {
+  world, positions, indices }`, `f32` positions relative to the world
+  placement (mapped back through its inverse in `f64`), `u32` indices,
+  compiled with one reference backend at a one-millimetre tolerance; a
+  product without a Body has empty arrays, a refused one its
+  `GeometryError`. `compiled_features()` reports `mesh`.
 
 ### Changed
 
-- `spatial_properties` and the property-edit planner (`apply_property_edits`,
-  `stage_property_edits`) resolve through one `ifc_properties::PropertyIndex`
-  of the model instead of calling the exact resolver per element or per
-  edited object, so listing every element's properties, or a batch editing
-  many objects, is linear in the model (#352). Answers and refusals are
-  unchanged. `ifc::properties::PropertyIndex` is reachable through the
-  `properties` feature.
-- Behind `geometry`, the re-exported `ifc_geometry` gains, under
-  `geometry::lower`, `lower_product_net_with` and `NetOptions` (#351): a
-  Reference View opening with only a `Reference` representation can be
-  taken as already applied to its host's Body, listed in
-  `NetLowering::taken_as_applied`. With `ifc-geometry`'s `compile` feature
-  it also gains the evaluator-taking linear placement (#353,
-  `LoweringSession::with_curve_evaluator`,
-  `product_world_transform_with_evaluator`) and the cached-position check
-  (#354, `CachedPositionPolicy`), and the derived frame follows IFC4.3
-  (#355). When `ifc-geometry` 0.10 is released, the re-export moves to it,
-  which makes the next release here a minor one.
+- `full` now includes `mesh`, and so links the reference compile backend.
 
-Semver of #352 alone: no public signature changes, a patch release.
+Semver of #328: additive; `mesh` needs the `compile` re-exports of the
+next `ifc-geometry` (0.11.0).
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)
