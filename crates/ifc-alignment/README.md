@@ -44,9 +44,11 @@ The [`openbim-ifc`](https://crates.io/crates/openbim-ifc) facade also provides i
   `D = left - right` and the pivot `(left + right) / 2`, one piece per cant
   segment in the IFC4.3 base formula, rotating the section about the 3D
   tangent by `arcsin(D / b)` (`BankConvention::TangentRotation`, the angle
-  reading IFC4.3 states). A pivot that moves through a Viennese bend is
-  refused: it would follow the bank angle, which a height-form pivot law
-  cannot carry.
+  reading IFC4.3 states). Both read a Viennese bend as the standard writes
+  it, for the section's bank angle, with the rails `D / 2` either side of
+  a rotation point that stays put; a pivot that moves through a Viennese
+  bend is refused by both (#364): it would follow the bank angle, which a
+  height-form pivot law cannot carry.
 - A multi-segment horizontal layout elevates as one exact plan curve: the
   first segment's start frame plus one curvature piece per segment, or an
   arc-length chain when it holds a `CUBIC`. Seams are checked in closed
