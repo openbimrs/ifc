@@ -397,20 +397,30 @@ fn the_version_reports_abi_and_crate_separately() {
 
 #[test]
 fn destroyed_models_are_released() {
-    let before = {
-        let mut n = 0;
-        // SAFETY: valid out-pointer.
-        unsafe { openbim_ifc_v0_1_live_models(&mut n) };
-        n
-    };
+    // Asserted per handle, not through the global count: other tests create
+    // and destroy models in parallel, so `live_models` before and after can
+    // differ by any amount (it once read 1 then 7). Handles are never reused
+    // (`registry`), so a removed handle stays absent.
     let models: Vec<_> = (0..5).map(|_| parse(FILE)).collect();
-    for model in models {
-        assert_eq!(openbim_ifc_v0_1_model_destroy(model), OpenbimIfcStatus::Ok);
+    for &model in &models {
+        assert!(
+            crate::registry::get(model).is_some(),
+            "#{model} live after parse"
+        );
     }
-    let mut after = 0;
+    for &model in &models {
+        assert_eq!(openbim_ifc_v0_1_model_destroy(model), OpenbimIfcStatus::Ok);
+        assert!(crate::registry::get(model).is_none(), "#{model} released");
+        assert_eq!(
+            openbim_ifc_v0_1_model_destroy(model),
+            OpenbimIfcStatus::InvalidHandle
+        );
+    }
+    let mut live = usize::MAX;
     // SAFETY: valid out-pointer.
-    unsafe { openbim_ifc_v0_1_live_models(&mut after) };
-    // Other tests run in parallel, so only this test's models are asserted:
-    // the count must not have grown by the five just destroyed.
-    assert!(after < before + 5, "before {before}, after {after}");
+    assert_eq!(
+        unsafe { openbim_ifc_v0_1_live_models(&mut live) },
+        OpenbimIfcStatus::Ok
+    );
+    assert_ne!(live, usize::MAX, "the count is written");
 }
