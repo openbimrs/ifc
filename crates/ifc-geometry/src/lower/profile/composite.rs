@@ -35,12 +35,14 @@
 //! under [`BoundaryRole::HalfSpace`]. IFC4 ADD2 TC1 and IFC4X3 ADD2 state that
 //! such a composite "shall only have IfcCompositeCurveSegment's of type
 //! IfcPolyline, or IfcTrimmedCurve (having a BasisCurve of type IfcLine, or
-//! IfcCircle)". The kernel's bounded half-space takes a `Polyline2` only, so
-//! a trimmed `IfcCircle` is refused by name there, never chorded; a point
-//! must lie in `Position`'s XY plane (`z == 0` exactly, as for a boundary
-//! `IfcPolyline`); and joints are judged within the model's `Precision`,
-//! "the tolerance under which two given points are still assumed to be
-//! identical", rather than the fixed profile tolerance.
+//! IfcCircle)". A trimmed `IfcCircle` stays an exact arc there too (#398):
+//! the kernel's bounded half-space takes a `Profile` contour of lines and
+//! arcs (axiolid/kernel#277, Axiolid ADR 0084). A point must lie in
+//! `Position`'s XY plane (`z == 0` exactly, as for a boundary `IfcPolyline`),
+//! so must a circle's placement (an `IfcAxis2Placement2D`), and joints are
+//! judged within the model's `Precision`, "the tolerance under which two
+//! given points are still assumed to be identical", rather than the fixed
+//! profile tolerance.
 
 use std::f64::consts::TAU;
 
@@ -50,7 +52,7 @@ use axiolid_profile::{Contour, ProfileSegment};
 use ifc_model::{EntityId, Model};
 
 use super::polyline_points;
-use super::role::{BoundaryRole, HALF_SPACE_ARC};
+use super::role::BoundaryRole;
 use crate::constraint::tolerance::{model_precision_metres, points_coincide};
 use crate::curve::composite::{CompositeCurve, CompositeCurveSegment};
 use crate::curve::conic::Circle;
@@ -216,7 +218,8 @@ impl Walk<'_> {
                     }
                     BoundaryRole::HalfSpace => {
                         "composite half-space boundary segments lower IfcPolyline, \
-                         IfcTrimmedCurve over IfcLine, and nested IfcCompositeCurve only"
+                         IfcTrimmedCurve over IfcCircle or IfcLine, and nested \
+                         IfcCompositeCurve only"
                     }
                 },
             }),
@@ -267,14 +270,6 @@ impl Walk<'_> {
         let basis_ref = spec.basis_curve;
         let basis_type = self.entity(id, basis_ref)?.type_name.to_ascii_uppercase();
         let basis = match basis_type.as_str() {
-            // The bounded half-space has no curved boundary to carry it.
-            "IFCCIRCLE" if self.role == BoundaryRole::HalfSpace => {
-                return Err(GeometryError::Unsupported {
-                    entity: id,
-                    type_name: "IFCTRIMMEDCURVE".to_string(),
-                    detail: HALF_SPACE_ARC,
-                })
-            }
             "IFCCIRCLE" => self.circle(basis_ref)?,
             "IFCLINE" => self.line(basis_ref)?,
             _ => {
@@ -372,11 +367,12 @@ impl Walk<'_> {
         Ok(Basis::Line(Line2 { origin, direction }))
     }
 
-    /// The 2D placement of a profile conic, in metres.
+    /// The 2D placement of a profile or half-space boundary conic, in metres.
     ///
-    /// A 3D placement is refused: a profile lies in its own XY plane, so a
-    /// tilted axis would have no meaning, and dropping it silently would
-    /// place the arc somewhere the file never said.
+    /// A 3D placement is refused: a profile lies in its own XY plane, as a
+    /// half-space boundary lies in `Position`'s, so a tilted axis would have
+    /// no meaning, and dropping it silently would place the arc somewhere the
+    /// file never said.
     fn frame(&self, owner: EntityId, position_ref: EntityId) -> GeometryResult<Frame2> {
         let position = self.entity(owner, position_ref)?;
         if !position
@@ -386,7 +382,13 @@ impl Walk<'_> {
             return Err(GeometryError::Unsupported {
                 entity: position_ref,
                 type_name: position.type_name.to_ascii_uppercase(),
-                detail: "a profile conic needs an IfcAxis2Placement2D",
+                detail: match self.role {
+                    BoundaryRole::Profile => "a profile conic needs an IfcAxis2Placement2D",
+                    BoundaryRole::HalfSpace => {
+                        "a polygonal half-space boundary circle is lowered only on an \
+                         IfcAxis2Placement2D, in Position's XY plane"
+                    }
+                },
             });
         }
         let view = Axis2Placement2D::new(position_ref, position);

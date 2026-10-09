@@ -123,6 +123,8 @@ axiolid-evaluate.workspace = true
 ifc-step.workspace = true
 axiolid-reference.workspace = true
 axiolid-spatial.workspace = true
+# Tests only: exact mass properties of a compiled body (#398).
+axiolid-measure.workspace = true
 proc-macro2 = "1"
 syn = { version = "2", features = ["full", "parsing", "visit"] }
 

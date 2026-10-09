@@ -5,12 +5,12 @@
 //!
 //! - an arbitrary profile's `OuterCurve` and `InnerCurves`, which become a
 //!   [`axiolid_profile::Contour`] and may keep exact arcs;
-//! - `IfcPolygonalBoundedHalfSpace.PolygonalBoundary`, which Axiolid's
-//!   `SolidOperation::BoundedHalfSpace` takes only as a closed `Polyline2`
-//!   (`axiolid-mesh-compile` refuses every other `Curve2`). An arc there is
-//!   refused by name rather than polygonised, a point must lie in
-//!   `Position`'s XY plane (`BoundaryDim`), and segment joints are judged
-//!   within the model's `Precision`.
+//! - `IfcPolygonalBoundedHalfSpace.PolygonalBoundary`, which also keeps
+//!   exact arcs (#398: Axiolid's `SolidOperation::BoundedHalfSpace` takes a
+//!   `Profile` contour of lines and arcs, axiolid/kernel#277, Axiolid ADR
+//!   0084), but whose points must lie in `Position`'s XY plane
+//!   (`BoundaryDim`), and whose segment joints are judged within the
+//!   model's `Precision`.
 //!
 //! One reader with a role keeps the two from drifting apart: the traversal,
 //! the `SameSense` handling, the collinear-arc fallback and the closure rules
@@ -24,14 +24,10 @@ use ifc_model::EntityId;
 pub(crate) enum BoundaryRole {
     /// An arbitrary profile's boundary: exact lines and arcs.
     Profile,
-    /// A polygonal bounded half-space's boundary: straight edges only.
+    /// A polygonal bounded half-space's boundary: exact lines and arcs in
+    /// `Position`'s XY plane.
     HalfSpace,
 }
-
-/// Refusal for a circular arc in a half-space boundary.
-pub(crate) const HALF_SPACE_ARC: &str = "a circular-arc segment of a polygonal half-space \
-     boundary: Axiolid's BoundedHalfSpace takes only a Polyline2 boundary, and an arc is \
-     refused rather than polygonised";
 
 impl BoundaryRole {
     /// The boundary, as error text names it.
