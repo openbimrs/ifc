@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.18.0 (2026-10-08) |
+| Latest release | 0.19.0 (2026-10-09) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -95,22 +95,13 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.18.0 (2026-10-08):
+Latest release, 0.19.0 (2026-10-09):
 
-### Added (#342, declared attribute types)
+### Changed
 
-- Behind `schema-api`: `declared_type(schema, type_text)` resolves an
-  EXPRESS type token against a release's tables to a `DeclaredType`:
-  `Simple` (`SimpleType`: `INTEGER`, `REAL`, `NUMBER`, `STRING`,
-  `BOOLEAN`, `LOGICAL`, `BINARY`, widths dropped), `Entity`,
-  `Enumeration` (with its items), `Defined` (with what it aliases, an
-  aggregate included: `IfcCompoundPlaneAngleMeasure`), `Select` (every
-  member resolved, nested SELECTs included), `Aggregate`, or `Unresolved`
-  for a token the tables do not declare; bounded, so a cyclic alias ends
-  `Unresolved`. `attribute_type(schema, entity, name)` gives an
-  attribute's slot and declared type with its own aggregation levels
-  outermost.
-
-Semver: additive, a patch release.
+- Requires `ifc-geometry` 0.13: net bodies (`lower_product_net_with`) are
+  subtracted in the host's frame under one world `Instance`, so flush
+  openings in georeferenced models mesh (#388). Semver: minor, because the
+  re-exported neutral graph changes shape.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)
