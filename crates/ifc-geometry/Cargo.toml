@@ -14,7 +14,7 @@ readme = "README.md"
 # implemented | partial | scaffold -- a judgement, never inferred from size.
 # `gaps`: the open issues behind the status; a partial crate names one.
 status = "partial"
-gaps = [311]
+gaps = [311, 346]
 # core | domain | geometry | facade | binding
 group = "geometry"
 
@@ -103,7 +103,7 @@ axiolid-contracts = { workspace = true, optional = true }
 axiolid-mesh-compile = { workspace = true, optional = true }
 axiolid-mesh-compile-contract = { workspace = true, optional = true }
 axiolid-mesh-boolean-boolmesh = { workspace = true, optional = true }
-# Version floor only (>= 0.3.14, set in the workspace): the reference
+# Version floor only (>= 0.3.16, set in the workspace): the reference
 # compiler above depends on it; 0.3.0 cuts offset half-space clips in the
 # wrong place and winds downward extrusions inside-out, and before 0.3.13 a
 # sharp swept-disk polyline corner is not mitred exactly. Nothing here

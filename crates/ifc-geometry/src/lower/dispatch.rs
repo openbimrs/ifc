@@ -445,13 +445,15 @@ pub const PARTIAL: &[Variant] = &[
     },
     Variant {
         family: "IFCPOINTBYDISTANCEEXPRESSION",
-        variant: "DistanceAlong is an IfcLengthMeasure on the basis curve, clear of \
-                  its tangent discontinuities",
+        variant: "DistanceAlong is an IfcLengthMeasure on the basis curve, on or \
+                  off its tangent discontinuities",
         support: Support::Admitted,
         rationale: "a CurveStation: distance (plan distance on a gradient curve, arc \
                     length otherwise) and the lateral (left), vertical and \
                     longitudinal offsets, in the same frame IFC4.3 ADD2 8.9.3.48 \
-                    states",
+                    states; within precision of a seam, at the seam reading \
+                    SeamSide::Incoming, since the previous segment's tangent \
+                    governs (8.9.3.48.3)",
     },
     Variant {
         family: "IFCPOINTBYDISTANCEEXPRESSION",
@@ -462,12 +464,13 @@ pub const PARTIAL: &[Variant] = &[
     },
     Variant {
         family: "IFCPOINTBYDISTANCEEXPRESSION",
-        variant: "DistanceAlong on a tangent discontinuity of the basis curve, or \
-                  on a basis whose discontinuities cannot be located (a curve \
-                  relation, a B-spline with a multiple knot)",
+        variant: "DistanceAlong on a basis whose tangent discontinuities cannot \
+                  be located from stored data: a curve relation (a plain \
+                  IfcCompositeCurve), a B-spline with a corner knot",
         support: Support::Refused,
-        rationale: "IFC lets the previous segment's tangent govern there \
-                    (8.9.3.48.3); the neutral station reads the next one's",
+        rationale: "Axiolid resolves no station along a curve relation (#346), \
+                    and a corner knot's distance is an arc-length integral, so \
+                    the previous segment's side (8.9.3.48.3) cannot be stated",
     },
     Variant {
         family: "IFCAXIS2PLACEMENTLINEAR",
@@ -486,37 +489,40 @@ pub const PARTIAL: &[Variant] = &[
     Variant {
         family: "IFCOFFSETCURVEBYDISTANCES",
         variant: "OffsetValues along its own BasisCurve, spanning it or on a basis \
-                  with a stated length, clear of tangent discontinuities",
+                  with a stated length, across its tangent discontinuities too",
         support: Support::Admitted,
         rationale: "OffsetByStations, linear between the offsets; a span short of the \
                     ends is carried on unchanged to them by added stations, as \
-                    8.9.3.42.3 states",
+                    8.9.3.42.3 states; mitred at a seam like the sweeps on the \
+                    same stations (8.8.3.35.1)",
     },
     Variant {
         family: "IFCOFFSETCURVEBYDISTANCES",
         variant: "offsets short of an unbounded or unstated end, a non-zero \
-                  OffsetLongitudinal, a member on another basis, or a run over a \
-                  tangent discontinuity",
+                  OffsetLongitudinal, a member on another basis, or a run across \
+                  a seam where the basis turns back on itself",
         support: Support::Refused,
         rationale: "the neutral offset curve stops at its last station, IFC states \
-                    no law for a longitudinal offset along a curve, and no join at \
-                    a kink",
+                    no law for a longitudinal offset along a curve, and a mitre \
+                    has no plane at a reversal",
     },
     Variant {
         family: "IFCSECTIONEDSOLIDHORIZONTAL",
-        variant: "area sections at positions along the Directrix, clear of its \
-                  tangent discontinuities",
+        variant: "area sections at positions along the Directrix, across its \
+                  tangent discontinuities too",
         support: Support::Admitted,
         rationale: "SectionsAtStations in the curve's frame, matched by ring and \
                     index; RefDirection is the profile normal and Axis profile Y \
-                    (IFC4.x-IF#147, IFC4.x-development#1010)",
+                    (IFC4.x-IF#147, IFC4.x-development#1010); a seam is mitred at \
+                    half angle (8.8.3.35.1)",
     },
     Variant {
         family: "IFCSECTIONEDSOLIDHORIZONTAL",
-        variant: "positions off the Directrix, or spanning a tangent discontinuity",
+        variant: "positions off the Directrix, or spanning a seam where it turns \
+                  back on itself",
         support: Support::Refused,
-        rationale: "a station measures along its own basis, and IFC mitres at a \
-                    kink (8.8.3.35.1) where the neutral sections turn with the frame",
+        rationale: "a station measures along its own basis, and \"very sharp edges \
+                    may result in nearly impossible miter\" (8.8.3.35.1)",
     },
     Variant {
         family: "IFCSECTIONEDSURFACE",

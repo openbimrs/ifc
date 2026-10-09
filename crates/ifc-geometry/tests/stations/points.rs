@@ -233,7 +233,7 @@ fn the_layout_fixture_placement_lowers_with_its_axes() {
 
 /// Every refusal names its reason.
 #[test]
-fn stations_ifc_and_axiolid_read_differently_are_refused_by_name() {
+fn stations_ifc_and_axiolid_cannot_share_are_refused_by_name() {
     let records = format!(
         "{L_SHAPE}
 {}
@@ -265,13 +265,19 @@ fn stations_ifc_and_axiolid_read_differently_are_refused_by_name() {
     );
     let model = step(&records, false);
     refused(lower(&model, 20), true, "IfcParameterValue");
-    // At the corner IFC takes the incoming tangent, Axiolid the outgoing.
-    refused(lower(&model, 21), true, "tangent discontinuity");
+    // At the corner, and within the declared precision (1E-5) of it, the
+    // incoming tangent governs (8.9.3.48.3; #346, `seams.rs`).
+    for id in [21, 26] {
+        let lowered = lower(&model, id).expect("on the corner");
+        let GeometryNode::OrientedCurveStation(station) = root(&lowered) else {
+            panic!("an OrientedCurveStation reading the incoming side");
+        };
+        assert_eq!(station.seam, axiolid_model::SeamSide::Incoming);
+        assert_eq!(station.station.station.distance, 10.0);
+    }
     refused(lower(&model, 22), false, "beyond the basis curve's length");
     refused(lower(&model, 23), false, "before the basis curve's start");
     refused(lower(&model, 24), false, "typed IfcLengthMeasure");
-    // Within the declared precision (1E-5) of the corner is on it.
-    refused(lower(&model, 26), true, "tangent discontinuity");
     refused(lower(&model, 30), false, "WR2");
     refused(lower(&model, 33), false, "direction ratios");
     refused(lower(&model, 45), true, "curve relation");
@@ -291,10 +297,15 @@ fn stations_ifc_and_axiolid_read_differently_are_refused_by_name() {
     );
 }
 
-/// A station clear of the corner by more than the precision lowers.
+/// A station clear of the corner by more than the precision is a plain
+/// station at its own distance.
 #[test]
 fn a_station_just_clear_of_a_corner_lowers() {
     let records = format!("{L_SHAPE}\n{}", point(20, &length(10.001), "$", "$", "$"));
     let model = step(&records, false);
-    lower(&model, 20).expect("clear of the corner");
+    let lowered = lower(&model, 20).expect("clear of the corner");
+    let GeometryNode::CurveStation(station) = root(&lowered) else {
+        panic!("a CurveStation");
+    };
+    assert!((station.station.distance - 10.001).abs() < EPS);
 }

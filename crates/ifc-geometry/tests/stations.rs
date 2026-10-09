@@ -7,7 +7,8 @@
 //! evaluator (`axiolid-reference`, a dev-dependency), and, with the
 //! `compile-reference-backend` feature, through the reference mesh compiler.
 //! Each checks a hand-computed point, frame or volume. Every refusal is
-//! checked by name.
+//! checked by name. `stations/seams.rs` covers tangent discontinuities
+//! (#346).
 
 #![cfg(feature = "lowering")]
 
@@ -16,5 +17,6 @@ mod stations {
     mod compile;
     mod offset;
     mod points;
+    pub mod seams;
     mod sectioned;
 }

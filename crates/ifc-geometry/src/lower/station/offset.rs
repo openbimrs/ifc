@@ -20,11 +20,21 @@
 //!   unbounded line, a B-spline, a relation) the curve is refused by name:
 //!   Axiolid's curve stops at its last station and does not extend.
 //!
+//! - **Across a tangent discontinuity** (#346). The offset curve would
+//!   have a gap or a loop there, and 8.9.3.42 states no join. The sweeps
+//!   built on the same stations do: "a miter at half angle between the two
+//!   segments" (8.8.3.35.1, 8.8.3.37.1). Axiolid mitres an offset run as it
+//!   does a run of sections, in the plane normal to the bisector of the two
+//!   tangents, so the offset point at the seam is where the two legs'
+//!   offsets meet, and a breakline offset this way stays on the surface
+//!   swept along the same directrix. Stations within precision of the seam
+//!   are snapped to it (`super`'s module documentation); a seam where the
+//!   basis turns back on itself is refused by name.
+//!
 //! `OffsetLongitudinal` exists to reach a point past a tangent
 //! discontinuity (8.9.3.48.3); IFC states nothing about carrying it along a
-//! curve, so a non-zero one is refused. A run across a tangent discontinuity
-//! is refused too: the offset curve has a gap or a loop there, and IFC
-//! states no join. `Tag` names the curve for sections and changes no shape.
+//! curve, so a non-zero one is refused. `Tag` names the curve for sections
+//! and changes no shape.
 
 use axiolid_model::{CurveRelation, GeometryNode, NodeId, Station, StationFrame, StationOffsets};
 use ifc_model::EntityId;
@@ -53,11 +63,6 @@ const LONGITUDINAL: &str =
 /// Why an offset member on another basis is refused.
 const OTHER_BASIS: &str =
     "an OffsetValues member is measured along another BasisCurve than the offset curve's own";
-
-/// Why a run over a seam is refused.
-const OVER_SEAM: &str =
-    "the offsets run over a tangent discontinuity of the basis curve, where an offset curve \
-     has a gap or a loop and IFC4.3 ADD2 states no join";
 
 /// Why offsets that stop short of an unbounded or unstated end are refused.
 const NO_LENGTH: &str =
@@ -93,16 +98,19 @@ pub(crate) fn offset_curve_by_distances(
     let mut stations: Vec<Station> = Vec::with_capacity(expressions.len() + 2);
     for expression in &expressions {
         basis.check_on_curve(session, id, TYPE, expression.distance)?;
+        let distance = basis.run_distance(session, id, TYPE, expression.distance)?;
         if let Some(previous) = stations.last() {
-            if expression.distance <= previous.distance {
+            if distance <= previous.distance {
                 return Err(session.degenerate(
                     id,
                     TYPE,
-                    "OffsetValues are sequential: their DistanceAlong must increase strictly",
+                    "OffsetValues are sequential: their DistanceAlong must increase strictly, \
+                     by more than the model's precision at a tangent discontinuity",
                 ));
             }
         }
         let mut station = expression.station();
+        station.distance = distance;
         station.offsets.longitudinal = 0.0;
         stations.push(station);
     }
@@ -135,7 +143,7 @@ pub(crate) fn offset_curve_by_distances(
             "the offsets and the basis curve leave no extent for the offset curve",
         ));
     }
-    basis.check_no_seam(session, id, TYPE, from, to, OVER_SEAM)?;
+    basis.check_run(session, id, TYPE, from, to)?;
 
     session.node_for(
         id,

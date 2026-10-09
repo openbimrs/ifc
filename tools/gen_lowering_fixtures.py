@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Generate the product-lowering fixtures for #335, #336, #351, #353, #354,
-#357, #362, #363, #388, #393 and #396.
+"""Generate the product-lowering fixtures for #335, #336, #346, #351, #353,
+#354, #357, #362, #363, #388, #393 and #396.
 
-Twelve small files, each one edge case of `crates/ifc-geometry`'s product
+Thirteen small files, each one edge case of `crates/ifc-geometry`'s product
 lowering. No licence-clean public corpus isolates these cases, so they are
 generated; the output is our own data. Metres and radians, fixed GUIDs and
 time stamp: regeneration is byte-stable.
@@ -174,6 +174,38 @@ named as their case:
   its middle point 4e-6 m off the chord, inside the declared 1e-5 m
   `Precision`.
 - `ARC`: the genuine half circle (0,0,3), (1,1,3), (2,0,3).
+
+`station_seams_ifc4x3.ifc` (IFC4X3_ADD2, #346, declared `Precision`
+1e-5 m). Stations on the tangent discontinuities of two basis curves:
+
+- an `IfcGradientCurve` over a 100 m plan line along +X, its profile a
+  grade of 0.02 from height 10 for 40 m, then -0.01 for 60 m, with no
+  vertical curve between: a grade break at 40 m (height 10.8);
+- an L-shaped 3D `IfcPolyline` (0,0,0) -> (10,0,0) -> (10,10,0), a left
+  corner at 10 m.
+
+Products, each an `IfcBuildingElementProxy` at the origin:
+
+- `GRADE_BREAK_AT`: a `Reference` point 40 m along the gradient curve,
+  2 m `OffsetVertical`; `GRADE_BREAK_NEAR`: the same at 40.000004 m,
+  inside the precision. IFC4.3 ADD2 8.9.3.48.3: the previous segment's
+  tangent governs, so the offset is perpendicular to the 0.02 grade.
+- `CORNER_AT`: a point 10 m along the L, 1 m left and 0.5 m
+  `OffsetLongitudinal`: (10.5, 1, 0) on the incoming leg;
+  `CORNER_NEAR`: the same at 9.999996 m.
+- `DECK`: an `IfcSectionedSolidHorizontal` along the L, a 2 x 1 m
+  rectangle at 5 m and at 15 m, across the corner: mitred at half angle
+  (8.8.3.35.1), volume 2 x 1 x 10 = 20 m3, the mitre's corners at
+  (11, -1) and (9, 1).
+- `KERB`: an `IfcOffsetCurveByDistances` along the L, 1 m left at 2 m and
+  18 m, carried to both ends (8.9.3.42.3), its `Axis`; and a 0.1 m
+  `IfcSweptDiskSolid` along it as `Body`. Mitred, the offset runs
+  (0,1) -> (9,1) -> (9,10).
+- `CARRIAGEWAY`: an `IfcSectionedSurface` along the gradient curve, a
+  flat open section 3.5 m each side at 30 m and at 50 m, across the grade
+  break: mitred in the vertical plane, two planar strips of
+  7 x 10 sqrt(1.0004) and 7 x 10 sqrt(1.0001) m2 meeting at
+  (40, +-3.5, 10.8).
 
 Run:  python3 tools/gen_lowering_fixtures.py test/fixtures/synthetic-lowering
 """
@@ -921,6 +953,102 @@ def indexed_curve_arcs():
     return f
 
 
+# #346: the grade break and the corner the station-seam fixture straddles.
+SEAM_GRADES = ((40.0, 0.02), (60.0, -0.01))
+SEAM_START_HEIGHT = 10.0
+
+
+def station_seams():
+    """#346: stations, sections and offsets on and across tangent
+    discontinuities of a gradient curve and of a polyline."""
+    label = "station-seams"
+    f = ifcopenshell.file(schema="IFC4X3_ADD2")
+    body_ctx, site = spatial_root(f, label)
+    ctx = f.by_type("IfcGeometricRepresentationContext", include_subtypes=False)[0]
+
+    # The gradient curve: a straight plan, two grades with no vertical curve.
+    line = line2(f)
+    plan_length = sum(run for run, _ in SEAM_GRADES)
+    plan = f.create_entity("IfcCompositeCurve", Segments=[
+        segment(f, (0.0, 0.0), (1.0, 0.0), plan_length, line),
+        segment(f, (plan_length, 0.0), (1.0, 0.0), 0.0, line, "DISCONTINUOUS"),
+    ], SelfIntersect=False)
+    profile = []
+    at, height = 0.0, SEAM_START_HEIGHT
+    for run, grade in SEAM_GRADES:
+        norm = math.hypot(1.0, grade)
+        profile.append(segment(f, (at, height), (1.0 / norm, grade / norm), run * norm, line))
+        at, height = at + run, height + grade * run
+    last = SEAM_GRADES[-1][1]
+    norm = math.hypot(1.0, last)
+    profile.append(segment(f, (at, height), (1.0 / norm, last / norm), 0.0, line,
+                           "DISCONTINUOUS"))
+    gradient = f.create_entity("IfcGradientCurve", Segments=profile, SelfIntersect=False,
+                               BaseCurve=plan)
+
+    corner = f.create_entity("IfcPolyline", Points=[
+        point(f, (0.0, 0.0, 0.0)), point(f, (10.0, 0.0, 0.0)), point(f, (10.0, 10.0, 0.0))])
+
+    def along(basis, distance, lateral=None, vertical=None, longitudinal=None):
+        return f.create_entity(
+            "IfcPointByDistanceExpression", DistanceAlong=length(f, distance),
+            OffsetLateral=lateral, OffsetVertical=vertical,
+            OffsetLongitudinal=longitudinal, BasisCurve=basis)
+
+    def position(basis, distance, **offsets):
+        return f.create_entity("IfcAxis2PlacementLinear",
+                               Location=along(basis, distance, **offsets))
+
+    def product(name, representations):
+        return f.create_entity(
+            "IfcBuildingElementProxy", GlobalId=guid(label + "/" + name), Name=name,
+            ObjectPlacement=local(f), Representation=shape(f, representations))
+
+    def points(name, item):
+        return product(name, [rep(f, ctx, "Reference", "Point", [item])])
+
+    rectangle = f.create_entity(
+        "IfcRectangleProfileDef", ProfileType="AREA", ProfileName="deck",
+        Position=f.create_entity("IfcAxis2Placement2D", Location=point2(f, (0.0, 0.0))),
+        XDim=2.0, YDim=1.0)
+    deck = f.create_entity(
+        "IfcSectionedSolidHorizontal", Directrix=corner,
+        CrossSections=[rectangle, rectangle],
+        CrossSectionPositions=[position(corner, 5.0), position(corner, 15.0)])
+
+    kerb = f.create_entity(
+        "IfcOffsetCurveByDistances", BasisCurve=corner,
+        OffsetValues=[along(corner, 2.0, lateral=1.0), along(corner, 18.0, lateral=1.0)],
+        Tag="kerb")
+    tube = f.create_entity("IfcSweptDiskSolid", Directrix=kerb, Radius=0.1,
+                           StartParam=0.0, EndParam=20.0)
+
+    def flat():
+        return f.create_entity(
+            "IfcOpenCrossProfileDef", ProfileType="CURVE", HorizontalWidths=True,
+            Widths=[3.5, 3.5], Slopes=[0.0, 0.0], Tags=["l", "c", "r"],
+            OffsetPoint=point2(f, (-3.5, 0.0)))
+    carriageway = f.create_entity(
+        "IfcSectionedSurface", Directrix=gradient,
+        CrossSectionPositions=[position(gradient, 30.0), position(gradient, 50.0)],
+        CrossSections=[flat(), flat()])
+
+    products = [
+        product("ALIGNMENT", [rep(f, ctx, "FootPrint", "Curve2D", [plan]),
+                              rep(f, ctx, "Axis", "Curve3D", [gradient])]),
+        points("GRADE_BREAK_AT", along(gradient, 40.0, vertical=2.0)),
+        points("GRADE_BREAK_NEAR", along(gradient, 40.000004, vertical=2.0)),
+        points("CORNER_AT", along(corner, 10.0, lateral=1.0, longitudinal=0.5)),
+        points("CORNER_NEAR", along(corner, 9.999996, lateral=1.0, longitudinal=0.5)),
+        product("DECK", [rep(f, body_ctx, "Body", "AdvancedSweptSolid", [deck])]),
+        product("KERB", [rep(f, ctx, "Axis", "Curve3D", [kerb]),
+                         rep(f, body_ctx, "Body", "AdvancedSweptSolid", [tube])]),
+        product("CARRIAGEWAY", [rep(f, body_ctx, "Body", "SectionedSurface", [carriageway])]),
+    ]
+    contain(f, label, site, products)
+    return f
+
+
 # #388: the site placements the flush-opening wall is put under. A survey
 # origin of (600 000, 5 600 000, 200) and a turn of about 2.3 degrees to
 # grid north are what a georeferenced export writes.
@@ -1052,6 +1180,7 @@ FIXTURES = {
     "flush_openings_site_placements.ifc": flush_openings,
     "halfspace_boundaries_ifc4x3.ifc": halfspace_boundaries,
     "indexed_curve_arcs.ifc": indexed_curve_arcs,
+    "station_seams_ifc4x3.ifc": station_seams,
 }
 
 
