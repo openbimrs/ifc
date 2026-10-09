@@ -67,4 +67,4 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`openbim-ifc-cli`](./crates/openbim-ifc-cli) | <span class="status-partial">Partial</span> | not released | The openbim-ifc command: validate, convert and inspect IFC files (STEP and ifcXML) from a shell or CI. |
+| [`openbim-ifc-cli`](./crates/openbim-ifc-cli) | <span class="status-partial">Partial</span> | 0.1.0 | The openbim-ifc command: validate, convert and inspect IFC files (STEP and ifcXML) from a shell or CI. |
