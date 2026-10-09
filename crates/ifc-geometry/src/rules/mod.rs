@@ -18,7 +18,11 @@
 //! IFC4 declares 95 where-rules across 56 geometry entities, and all 95 are
 //! implemented, each in every bundled release that declares it, under that
 //! release's own name and text (#400; see `rules/release.rs`) (`data/ifc4-where-rules.tsv`, asserted by
-//! `tests/where_rule_inventory.rs`). A rule whose check cannot fail on a
+//! `tests/where_rule_inventory.rs`). The geometry entities IFC4 does not
+//! declare carry their own rules, checked in the releases that declare
+//! them (#402): IFC2X3 TC1's `Ifc2DCompositeCurve` and
+//! `IfcRationalBezierCurve`, and the linear-referencing geometry of IFC4X1
+//! on (`rules/linear.rs`). A rule whose check cannot fail on a
 //! parsed model would be kept as `inventoried`, with the reason beside the
 //! code, rather than implemented as a check that always passes.
 //!
@@ -40,6 +44,7 @@ mod curve;
 mod dimension;
 mod express;
 mod grid;
+mod linear;
 pub mod placement;
 mod release;
 mod scalar;
@@ -118,6 +123,7 @@ fn run(subject: &Subject<'_>, found: &mut Vec<RuleViolation>) {
     typing::check(subject, found);
     surface::check(subject, found);
     bspline::check(subject, found);
+    linear::check(subject, found);
 }
 
 /// Run one module's rules for an entity of `model`, resolving the release

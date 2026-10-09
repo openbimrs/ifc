@@ -23,6 +23,10 @@
 //! `FirstOperandType`, `AxisStartInXY`), the rule itself branches on
 //! [`Release::version`] and cites each release's text beside the branch.
 //!
+//! The table also lists the rules of entities IFC4 does not have: IFC2X3
+//! TC1's `Ifc2DCompositeCurve` and `IfcRationalBezierCurve`, and the
+//! linear-referencing geometry of IFC4X1 on (`rules/linear.rs`).
+//!
 //! The release is the header's `FILE_SCHEMA`. A file that declares none, or
 //! one this crate does not know, is read as IFC4 ADD2 TC1, the crate's
 //! baseline.
@@ -138,8 +142,20 @@ const ALL: &[SchemaVersion] = &[Ifc2x3, Ifc4, Ifc4x1, Ifc4x2, Ifc4x3];
 const IFC4_ON: &[SchemaVersion] = &[Ifc4, Ifc4x1, Ifc4x2, Ifc4x3];
 /// IFC4 ADD2 TC1, IFC4X1 and IFC4X2.
 const IFC4_TO_IFC4X2: &[SchemaVersion] = &[Ifc4, Ifc4x1, Ifc4x2];
+/// IFC4X1 and every later bundled release.
+const IFC4X1_ON: &[SchemaVersion] = &[Ifc4x1, Ifc4x2, Ifc4x3];
 const IFC4X3_ONLY: &[SchemaVersion] = &[Ifc4x3];
 const IFC2X3_ONLY: &[SchemaVersion] = &[Ifc2x3];
+
+/// A rule only IFC2X3 TC1 declares, under its label `wr`.
+const fn ifc2x3_only(entity: &'static str, wr: &'static str) -> Declared {
+    Declared {
+        entity,
+        label: wr,
+        ifc2x3: Some(wr),
+        releases: IFC2X3_ONLY,
+    }
+}
 
 /// A rule every bundled release declares, under `wr` in IFC2X3 TC1.
 const fn all(entity: &'static str, label: &'static str, wr: &'static str) -> Declared {
@@ -165,7 +181,8 @@ const fn only(
     }
 }
 
-/// The rules on the inventoried geometry entities, per release.
+/// The rules on the inventoried geometry entities, and on the geometry
+/// entities IFC4 does not declare, per release.
 ///
 /// Read from `references/ifc-spec/` (IFC2X3_TC1.exp, IFC4.exp, IFC4x1.exp,
 /// IFC4x2.exp, IFC4X3_ADD2.exp) and checked against each bundled release's
@@ -173,6 +190,8 @@ const fn only(
 /// row cannot claim a rule, a release or an IFC2X3 label the schema does
 /// not declare. Labels only: the expressions are CC BY-ND schema text.
 pub(crate) static DECLARED: &[Declared] = &[
+    ifc2x3_only("IFC2DCOMPOSITECURVE", "WR1"),
+    ifc2x3_only("IFC2DCOMPOSITECURVE", "WR2"),
     only("IFCADVANCEDBREP", "HasAdvancedFaces", IFC4_ON),
     only(
         "IFCADVANCEDBREPWITHVOIDS",
@@ -185,6 +204,8 @@ pub(crate) static DECLARED: &[Declared] = &[
     all("IFCAXIS2PLACEMENT2D", "RefDirIs2D", "WR1"),
     all("IFCAXIS2PLACEMENT2D", "LocationIs2D", "WR2"),
     only("IFCAXIS2PLACEMENT2D", "LocationIsCP", IFC4X3_ONLY),
+    only("IFCAXIS2PLACEMENTLINEAR", "WR1", IFC4X3_ONLY),
+    only("IFCAXIS2PLACEMENTLINEAR", "WR2", IFC4X3_ONLY),
     all("IFCAXIS2PLACEMENT3D", "LocationIs3D", "WR1"),
     all("IFCAXIS2PLACEMENT3D", "AxisIs3D", "WR2"),
     all("IFCAXIS2PLACEMENT3D", "RefDirIs3D", "WR3"),
@@ -282,6 +303,10 @@ pub(crate) static DECLARED: &[Declared] = &[
     all("IFCPOLYGONALBOUNDEDHALFSPACE", "BoundaryDim", "WR41"),
     all("IFCPOLYGONALBOUNDEDHALFSPACE", "BoundaryType", "WR42"),
     all("IFCPOLYLINE", "SameDim", "WR41"),
+    only("IFCPOLYNOMIALCURVE", "CorrectPositionDim", IFC4X3_ONLY),
+    only("IFCPOLYNOMIALCURVE", "ValidCoefficients", IFC4X3_ONLY),
+    ifc2x3_only("IFCRATIONALBEZIERCURVE", "WR1"),
+    ifc2x3_only("IFCRATIONALBEZIERCURVE", "WR2"),
     only(
         "IFCRATIONALBSPLINECURVEWITHKNOTS",
         "SameNumOfWeightsAndPoints",
@@ -321,9 +346,31 @@ pub(crate) static DECLARED: &[Declared] = &[
     ),
     only("IFCSEAMCURVE", "TwoPCurves", IFC4_ON),
     only("IFCSEAMCURVE", "SameSurface", IFC4_ON),
+    only("IFCSECTIONEDSOLID", "ConsistentProfileTypes", IFC4X1_ON),
+    only("IFCSECTIONEDSOLID", "DirectrixIs3D", IFC4X1_ON),
+    only("IFCSECTIONEDSOLID", "SectionsSameType", IFC4X1_ON),
+    only(
+        "IFCSECTIONEDSOLIDHORIZONTAL",
+        "CorrespondingSectionPositions",
+        IFC4X1_ON,
+    ),
+    only(
+        "IFCSECTIONEDSOLIDHORIZONTAL",
+        "NoLongitudinalOffsets",
+        IFC4X1_ON,
+    ),
     all("IFCSECTIONEDSPINE", "CorrespondingSectionPositions", "WR1"),
     all("IFCSECTIONEDSPINE", "ConsistentProfileTypes", "WR2"),
     all("IFCSECTIONEDSPINE", "SpineCurveDim", "WR3"),
+    only("IFCSECTIONEDSURFACE", "AreaProfileTypes", IFC4X3_ONLY),
+    only(
+        "IFCSECTIONEDSURFACE",
+        "CorrespondingSectionPositions",
+        IFC4X3_ONLY,
+    ),
+    only("IFCSECTIONEDSURFACE", "DirectrixIs3D", IFC4X3_ONLY),
+    only("IFCSECTIONEDSURFACE", "NoOffsets", IFC4X3_ONLY),
+    only("IFCSECTIONEDSURFACE", "SectionsSameType", IFC4X3_ONLY),
     only("IFCSURFACECURVE", "CurveIs3D", IFC4_ON),
     only("IFCSURFACECURVE", "CurveIsNotPcurve", IFC4_ON),
     only(
@@ -348,6 +395,7 @@ pub(crate) static DECLARED: &[Declared] = &[
     },
     all("IFCSWEPTSURFACE", "SweptCurveType", "WR2"),
     only("IFCTOROIDALSURFACE", "MajorLargerMinor", IFC4_ON),
+    only("IFCTRIANGULATEDIRREGULARNETWORK", "NotClosed", IFC4X1_ON),
     all("IFCTRIMMEDCURVE", "Trim1ValuesConsistent", "WR41"),
     all("IFCTRIMMEDCURVE", "Trim2ValuesConsistent", "WR42"),
     all("IFCTRIMMEDCURVE", "NoTrimOfBoundedCurves", "WR43"),
@@ -521,6 +569,14 @@ mod tests {
         // IFC4X3 qualifies Directrix\IfcIndexedPolyCurve.Segments; the same
         // attribute.
         ("IFCSWEPTDISKSOLIDPOLYGONAL", "DirectrixIsPolyline", Ifc4x3),
+        // IFC4X1 and IFC4X2 read temp.OffsetLongitudinal on an
+        // IfcDistanceExpression, IFC4X3 temp.Location.OffsetLongitudinal on
+        // a linear placement (rules/linear.rs).
+        (
+            "IFCSECTIONEDSOLIDHORIZONTAL",
+            "NoLongitudinalOffsets",
+            Ifc4x3,
+        ),
     ];
 
     /// Every rule's text in every release that declares it is IFC4 ADD2

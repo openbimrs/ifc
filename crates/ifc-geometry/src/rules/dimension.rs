@@ -55,6 +55,19 @@ fn dim_with_depth(release: &Release, model: &Model, id: EntityId, depth: usize) 
         return Direction::new(id, entity).ratios().ok().map(|r| r.len());
     }
 
+    // The other points: `Dim := BasisCurve.Dim` on IfcPointOnCurve and
+    // `BasisSurface.Dim` on IfcPointOnSurface (IFC2X3 TC1 to IFC4X2, both
+    // slot 0); IFC4X3 ADD2 derives every point through IfcPointDim, which
+    // reads the same and adds IfcPointByDistanceExpression's BasisCurve
+    // (slot 4: DistanceAlong, OffsetLateral, OffsetVertical,
+    // OffsetLongitudinal, BasisCurve).
+    if is_a("IFCPOINTONCURVE") || is_a("IFCPOINTONSURFACE") {
+        return slot_ref(entity, 0).and_then(next);
+    }
+    if is_a("IFCPOINTBYDISTANCEEXPRESSION") {
+        return slot_ref(entity, 4).and_then(next);
+    }
+
     // Entities the schema fixes at three dimensions outright.
     if is_a("IFCSURFACE")
         || is_a("IFCSOLIDMODEL")

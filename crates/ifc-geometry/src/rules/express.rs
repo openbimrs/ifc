@@ -71,6 +71,32 @@ pub fn constraints_param_bspline(
     true
 }
 
+/// `IfcCurveWeightsPositive`: is every weight of a rational curve positive?
+///
+/// The function reads the DERIVED array `Weights :=
+/// IfcListToArray(WeightsData, 0, UpperIndexOnControlPoints)` and loops
+/// `REPEAT i := 0 TO B.UpperIndexOnControlPoints`, returning FALSE at the
+/// first `B.Weights[i] <= 0.0`. IFC2X3 TC1 states it for
+/// `IfcRationalBezierCurve`, IFC4 ADD2 TC1 on for
+/// `IfcRationalBSplineCurveWithKnots`, in the same words.
+///
+/// `IfcListToArray` returns `?` when the list's size is not `U - Low + 1`,
+/// here when `WeightsData` and `ControlPointsList` differ in length. Every
+/// `Weights[i] <= 0.0` is then UNKNOWN, no `IF` branch is taken, and the
+/// function returns TRUE: the length mismatch is the companion
+/// size rule's to report, not this one's.
+///
+/// `control_points` is `SIZEOF(ControlPointsList)`, so
+/// `UpperIndexOnControlPoints` is one less.
+pub fn curve_weights_positive(weights_data: &[f64], control_points: usize) -> bool {
+    // IfcListToArray(WeightsData, 0, UpperIndexOnControlPoints) is `?`.
+    if weights_data.len() != control_points {
+        return true;
+    }
+    // Weights[i] is WeightsData[i + 1], one-based, for i in 0..=Upper.
+    weights_data.iter().all(|w| *w > 0.0)
+}
+
 /// `IfcConsecutiveSegments`: each segment must end where the next begins.
 ///
 /// A segment is a list of point indices, so the join condition compares the
@@ -150,6 +176,15 @@ mod tests {
     #[test]
     fn fewer_control_points_than_the_degree_is_rejected() {
         assert!(!constraints_param_bspline(3, 2, 2, &[4, 3], &[0.0, 1.0]));
+    }
+
+    #[test]
+    fn curve_weights_must_be_positive_where_the_array_is_defined() {
+        assert!(curve_weights_positive(&[1.0, 0.5, 2.0], 3));
+        assert!(!curve_weights_positive(&[1.0, 0.0, 2.0], 3));
+        assert!(!curve_weights_positive(&[1.0, -1.0], 2));
+        // Weights is `?` when the lengths differ: TRUE, whatever the values.
+        assert!(curve_weights_positive(&[1.0, 0.0], 3));
     }
 
     #[test]
