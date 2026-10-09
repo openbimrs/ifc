@@ -12,9 +12,17 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
-Semver: no public item is added, removed or changed, and no behaviour
-changes; the published archive gains an example and the `compile` module
-docs a section, so this is a patch release.
+Semver: a minor release (0.16.0). No public item is added, removed or
+changes signature, but behaviour changes (#346): stations on a tangent
+discontinuity and runs of sections and offsets across one, refused by
+name until now, lower (an `IfcPointByDistanceExpression` on a seam to an
+`OrientedCurveStation`, the only station that carries a seam side, where
+one off a seam stays a `CurveStation`); and the Axiolid
+requirements rise (`axiolid-model` 0.3.6, `axiolid-curve` 0.3.4, and with
+`compile-reference-backend` `axiolid-mesh-compile` 0.3.15,
+`axiolid-mesh-compile-contract` 0.3.3 and `axiolid-construct` 0.3.16). The
+example below and the `compile` module's new section alone would be a
+patch.
 
 ### Added
 
@@ -40,6 +48,63 @@ docs a section, so this is a patch release.
   which are not a cross-kernel performance claim. `scripts/gate.sh` runs it
   quick under both features and with `--strict` beside the reference. The
   `compile` module docs and ADR 0012 (amendment) link it.
+
+- Stations on tangent discontinuities (#346). IFC4.3 ADD2 8.9.3.48.3:
+  "If DistanceAlong coincides with a point of tangential discontinuity
+  (within precision limits), then the tangent of the previous segment
+  governs." Axiolid now states a seam side (`SeamSide`, `axiolid-model`
+  0.3.6, ADR 0082 amendment, axiolid/kernel#263), so such a station lowers
+  with `SeamSide::Incoming`: an `IfcAxis2PlacementLinear` as an
+  `OrientedCurveStation` reading the incoming side, an
+  `IfcPointByDistanceExpression` as `CurveStation::with_seam_side`'s
+  unturned oriented station. `OffsetLongitudinal` then runs along the
+  incoming tangent.
+- Runs across tangent discontinuities (#346): `IfcSectionedSolidHorizontal`,
+  `IfcSectionedSurface` and `IfcOffsetCurveByDistances` whose stations
+  span a polyline corner or a grade break lower, and Axiolid cuts them in
+  the half-angle mitre plane 8.8.3.35.1 and 8.8.3.37.1 ask for (the plane
+  normal to the bisector of the two tangents). IFC states no join for the
+  offset curve; the mitre is the one the sweeps on the same stations take.
+- `synthetic-lowering/station_seams_ifc4x3.ifc`: a gradient curve with a
+  grade break and an L-shaped polyline, with points on and within the
+  precision of each seam, a sectioned solid and an offset curve (and a disk
+  swept along it) across the corner, and a sectioned surface across the
+  grade break. Tests resolve them through `axiolid-reference` and the
+  reference mesh compiler against closed forms: the incoming tangent, the
+  mitre's corners, the volume and the area.
+
+### Changed
+
+- A station within the model's declared `Precision` of a seam (capped at
+  1 mm, or `1e-9 * max(1, |s|)` where larger) is stored at the seam's own
+  distance (#346). Axiolid reads a station on a seam only within
+  `ARC_LENGTH_TOLERANCE * max(1, s)` (`1e-12`); snapping to the distance
+  Axiolid itself reads from the same stored data (pinned against
+  `exact_station_seams` in the tests) makes the two rules agree, where a
+  station 4 um off a corner would otherwise be on the corner for IFC and
+  on one leg for the kernel. A station of a run is snapped the same way,
+  so its section stands in the mitre plane; two that snap onto one seam
+  are refused as out of order.
+- The seam reader carries whether the curve turns back on itself at a
+  seam, by Axiolid's `MITRE_TOLERANCE` (1e-6 on the cosine of half the
+  turn), repeated in `lower::station::seams` because `axiolid-evaluate` is
+  an execution provider this crate does not link (ADR 0004).
+- Workspace requirements: `axiolid-model` 0.3.6, `axiolid-curve` 0.3.4,
+  `axiolid-evaluate` 0.3.7 (dev), `axiolid-mesh-compile` 0.3.15,
+  `axiolid-mesh-compile-contract` 0.3.3 and `axiolid-construct` 0.3.16.
+  The kernel now reads a station within `ARC_LENGTH_TOLERANCE` of a seam
+  at the seam; no test's result changed with the bump.
+
+### Refused by name
+
+- A run of sections or offsets across a seam where the basis turns back
+  on itself: "very sharp edges may result in nearly impossible miter"
+  (8.8.3.35.1), and the half-angle plane has no extent there.
+- Still: a station on a basis whose seams cannot be read from stored data.
+  A curve relation (a plain `IfcCompositeCurve`, a trimmed or offset
+  curve): Axiolid resolves no station along one, which remains open in
+  #346. A B-spline with a corner knot, whose distance is an arc-length
+  integral (Axiolid's `exact_station_seams` refuses it too).
 
 ## [0.15.0] - 2026-10-09
 

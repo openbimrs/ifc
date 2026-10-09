@@ -9,6 +9,16 @@
 //! continuous and counts as one, or the curve's seams are unknown and a
 //! station on it is refused by name.
 //!
+//! The distances are the ones Axiolid's `exact_station_seams2` /
+//! `exact_station_seams3` (`axiolid-evaluate` 0.3.7, ADR 0082 amendment)
+//! report for the same data, read the same way: running sums of segment
+//! lengths and stored breaks. That crate is an execution provider this
+//! crate does not link (ADR 0004), so the reading is repeated here and
+//! pinned against it in the tests. It lists every polyline vertex and every
+//! profile break; this list keeps only those where the tangent is not shown
+//! continuous, the ones where a station's side or a mitre matters. Like it,
+//! this refuses a B-spline's corner knot, whose distance is a quadrature.
+//!
 //! The tangent is continuous by construction on a line, a conic, an
 //! intrinsic curve and an arc-length chain (`axiolid_curve::chain`: "a chain
 //! is tangent-continuous at every join by construction").
@@ -21,18 +31,17 @@ use ifc_model::EntityId;
 use crate::error::GeometryResult;
 use crate::lower::session::{AtomicCurve, LoweringSession};
 
-/// Why a curve relation's seams are unknown.
+/// Why a station along a curve relation is refused.
 pub(crate) const RELATION: &str =
-    "the basis curve lowers to a curve relation (a composite, trimmed or offset curve), whose \
-     tangent discontinuities cannot be located from stored data; IFC4.3 ADD2 (8.9.3.48.3) \
-     reads a station on one with the previous segment's tangent and the neutral station reads \
-     the next one's";
+    "the basis curve lowers to a curve relation (a composite, trimmed or offset curve), and \
+     Axiolid resolves a station only along an atomic curve, so neither its seams nor the side \
+     IFC4.3 ADD2 (8.9.3.48.3) reads at one can be stated on it (#346)";
 
 /// Why a B-spline with a possible kink is refused.
 const SPLINE: &str =
     "the basis B-spline has an interior knot of multiplicity at least its degree, where its \
      tangent may jump; the knot's distance along it is an arc-length integral, so a station \
-     cannot be shown clear of it";
+     cannot be shown clear of it or snapped to it within the model's precision";
 
 /// Why a curve family with no stated seams is refused.
 const UNKNOWN: &str =
@@ -50,6 +59,36 @@ pub(crate) const BANKED: &str =
 
 /// Two directions closer than this sine are one direction.
 const PARALLEL: Scalar = 1e-12;
+
+/// The smallest cosine of half the turn at a seam, `|t_in + t_out| / 2`,
+/// across which a run of stations is mitred: Axiolid's `MITRE_TOLERANCE`
+/// (`axiolid-evaluate` 0.3.7, `station::seam`), below which "the tangents
+/// nearly reverse and the mitre plane would stretch a section without
+/// bound". Repeated here because that crate is not linked; a test pins the
+/// two equal.
+pub(crate) const MITRE_TOLERANCE: Scalar = 1e-6;
+
+/// A place along a basis curve where its tangent is not shown continuous.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct Seam {
+    /// Distance from the start in the curve's station measure.
+    pub distance: Scalar,
+    /// Whether the curve turns back on itself there, by its stored data:
+    /// a polyline's edges, or an elevated curve's plan edges, whose half
+    /// turn has a cosine at most [`MITRE_TOLERANCE`]. Read in plan on an
+    /// elevated curve, where a grade only makes the cosine larger, so this
+    /// never misses a reversal Axiolid's mitre refuses.
+    pub reverses: bool,
+}
+
+impl Seam {
+    fn kink(distance: Scalar) -> Self {
+        Self {
+            distance,
+            reverses: false,
+        }
+    }
+}
 
 /// Two grades closer than this are one grade (they are ratios, as in
 /// `ifc_alignment::SeamTolerance`).
@@ -76,16 +115,16 @@ pub(crate) fn precision(
         })
 }
 
-/// Distances from the start where the tangent is not shown continuous,
-/// ascending; `Err` naming why they cannot be located.
-pub(crate) fn tangent_seams(curve: &AtomicCurve) -> Result<Vec<Scalar>, &'static str> {
+/// Where the tangent is not shown continuous, ascending; `Err` naming why
+/// the seams cannot be located.
+pub(crate) fn tangent_seams(curve: &AtomicCurve) -> Result<Vec<Seam>, &'static str> {
     match curve {
         AtomicCurve::Two(curve) => seams2(curve),
         AtomicCurve::Three(curve) => seams3(curve),
     }
 }
 
-fn seams2(curve: &Curve2) -> Result<Vec<Scalar>, &'static str> {
+fn seams2(curve: &Curve2) -> Result<Vec<Seam>, &'static str> {
     match curve {
         Curve2::Line(_)
         | Curve2::Circle(_)
@@ -105,7 +144,7 @@ fn seams2(curve: &Curve2) -> Result<Vec<Scalar>, &'static str> {
     }
 }
 
-fn seams3(curve: &Curve3) -> Result<Vec<Scalar>, &'static str> {
+fn seams3(curve: &Curve3) -> Result<Vec<Seam>, &'static str> {
     match curve {
         Curve3::Line(_) | Curve3::Circle(_) | Curve3::Ellipse(_) | Curve3::Intrinsic(_) => {
             Ok(Vec::new())
@@ -122,7 +161,7 @@ fn seams3(curve: &Curve3) -> Result<Vec<Scalar>, &'static str> {
         Curve3::Elevated(elevated) => {
             let mut seams = seams2(&elevated.plan)?;
             elevation_seams(&elevated.elevation, 0.0, &mut seams);
-            seams.sort_by(f64::total_cmp);
+            seams.sort_by(|a, b| a.distance.total_cmp(&b.distance));
             Ok(seams)
         }
         Curve3::Banked(_) => Err(BANKED),
@@ -130,10 +169,11 @@ fn seams3(curve: &Curve3) -> Result<Vec<Scalar>, &'static str> {
     }
 }
 
-/// The distance of every interior polyline vertex where the edge direction
-/// turns, the closing edge of a closed polyline included. A closed
-/// polyline's first vertex is its start and end, not a seam along it.
-fn polyline_seams(points: &[[f64; 3]], closed: bool) -> Vec<Scalar> {
+/// Every interior polyline vertex where the edge direction turns, the
+/// closing edge of a closed polyline included, and whether it turns back.
+/// A closed polyline's first vertex is its start and end, not a seam along
+/// it.
+fn polyline_seams(points: &[[f64; 3]], closed: bool) -> Vec<Seam> {
     let edge = |a: [f64; 3], b: [f64; 3]| [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
     let length = |v: [f64; 3]| (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
     let mut edges: Vec<[f64; 3]> = points.windows(2).map(|w| edge(w[0], w[1])).collect();
@@ -158,7 +198,16 @@ fn polyline_seams(points: &[[f64; 3]], closed: bool) -> Vec<Scalar> {
             let dot = before[0] * current[0] + before[1] * current[1] + before[2] * current[2];
             let sine = length(cross) / (before_length * current_length);
             if sine > PARALLEL || dot <= 0.0 {
-                seams.push(distance);
+                let half = 0.5
+                    * length([
+                        before[0] / before_length + current[0] / current_length,
+                        before[1] / before_length + current[1] / current_length,
+                        before[2] / before_length + current[2] / current_length,
+                    ]);
+                seams.push(Seam {
+                    distance,
+                    reverses: half <= MITRE_TOLERANCE,
+                });
             }
         }
         distance += current_length;
@@ -169,7 +218,7 @@ fn polyline_seams(points: &[[f64; 3]], closed: bool) -> Vec<Scalar> {
 
 /// A B-spline is `C^(degree - m)` at a knot of multiplicity `m`; at
 /// `m >= degree` its tangent may jump, at a distance only quadrature finds.
-fn spline_seams(degree: u16, multiplicities: &[u32]) -> Result<Vec<Scalar>, &'static str> {
+fn spline_seams(degree: u16, multiplicities: &[u32]) -> Result<Vec<Seam>, &'static str> {
     let interior = multiplicities
         .get(1..multiplicities.len().saturating_sub(1))
         .unwrap_or(&[]);
@@ -182,7 +231,7 @@ fn spline_seams(degree: u16, multiplicities: &[u32]) -> Result<Vec<Scalar>, &'st
 
 /// Every break of `law`, shifted by `start`, where the grade is not shown
 /// continuous. A seam belongs to the piece that starts there.
-fn elevation_seams(law: &ElevationLaw, start: Scalar, out: &mut Vec<Scalar>) {
+fn elevation_seams(law: &ElevationLaw, start: Scalar, out: &mut Vec<Seam>) {
     let ElevationLaw::Piecewise { breaks, laws } = law else {
         return;
     };
@@ -203,7 +252,9 @@ fn elevation_seams(law: &ElevationLaw, start: Scalar, out: &mut Vec<Scalar>) {
             (Some(l), Some(r)) if (l - r).abs() <= SAME_GRADE * l.abs().max(r.abs()).max(1.0)
         );
         if !continuous {
-            out.push(start + seam);
+            // The plan runs on through a grade break: both tangents point
+            // forwards in plan, so they never reverse.
+            out.push(Seam::kink(start + seam));
         }
     }
 }

@@ -83,7 +83,7 @@ fn offsets_short_of_the_ends_continue_unchanged_to_them() {
 }
 
 #[test]
-fn offset_curves_ifc_and_axiolid_read_differently_are_refused_by_name() {
+fn offset_curves_ifc_and_axiolid_cannot_share_are_refused_by_name() {
     let records = format!(
         "{STRAIGHT}
 {}
@@ -115,7 +115,11 @@ fn offset_curves_ifc_and_axiolid_read_differently_are_refused_by_name() {
     refused(lower(&model, 31), true, "OffsetLongitudinal");
     refused(lower(&model, 32), true, "another BasisCurve");
     refused(lower(&model, 33), false, "increase strictly");
-    // Carried to the ends, the run crosses the corner at 10 m.
-    refused(lower(&model, 34), true, "tangent discontinuity");
+    // Carried to the ends, the run crosses the corner at 10 m, where the
+    // kernel mitres it (#346).
+    assert_runs(
+        &stations(&lower(&model, 34).expect("across the corner")),
+        &[(0.0, 1.0), (2.0, 1.0), (8.0, 1.0), (20.0, 1.0)],
+    );
     refused(lower(&model, 35), false, "beyond the basis curve's length");
 }

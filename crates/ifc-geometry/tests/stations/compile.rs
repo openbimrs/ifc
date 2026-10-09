@@ -1,5 +1,5 @@
 //! Lowered stations through the reference mesh compiler (#307), each
-//! against a closed form. `axiolid-mesh-compile` 0.3.13 resolves the
+//! against a closed form. `axiolid-mesh-compile` 0.3.15 resolves the
 //! stations; nothing here or in the library evaluates them.
 #![cfg(feature = "compile-reference-backend")]
 
@@ -125,4 +125,116 @@ fn a_reversed_open_section_joins_by_tag() {
     let (lo, hi) = bounds(&outcome.mesh);
     close(lo, [0.0, -3.0, 0.0], "min");
     close(hi, [10.0, 3.0, 0.0], "max");
+}
+
+// --- #346: seams, through the reference kernel ---------------------------
+
+use super::seams::{item, seams};
+
+/// Points of `mesh` within `EPS` of `at`.
+fn has_vertex(mesh: &TriMesh, at: [f64; 3]) -> bool {
+    mesh.positions.iter().any(|p| {
+        (p.x - at[0]).abs() < 1e-9 && (p.y - at[1]).abs() < 1e-9 && (p.z - at[2]).abs() < 1e-9
+    })
+}
+
+/// The kernel resolves a station on a seam from the side the lowering
+/// stated: the incoming grade and the incoming leg (8.9.3.48.3).
+#[test]
+fn the_kernel_resolves_a_seam_station_on_the_incoming_side() {
+    let model = seams();
+    let norm = 1.0004_f64.sqrt();
+    for (name, expected) in [
+        (
+            "GRADE_BREAK_AT",
+            [40.0 - 2.0 * 0.02 / norm, 0.0, 10.8 + 2.0 / norm],
+        ),
+        (
+            "GRADE_BREAK_NEAR",
+            [40.0 - 2.0 * 0.02 / norm, 0.0, 10.8 + 2.0 / norm],
+        ),
+        ("CORNER_AT", [10.5, 1.0, 0.0]),
+        ("CORNER_NEAR", [10.5, 1.0, 0.0]),
+    ] {
+        let lowered = lower(&model, item(&model, name, "Reference")).expect(name);
+        let resolved = axiolid_mesh_compile::station::resolve(&lowered.graph, lowered.root)
+            .unwrap_or_else(|e| panic!("{name} resolves: {e:?}"));
+        close(
+            [resolved.point.x, resolved.point.y, resolved.point.z],
+            expected,
+            name,
+        );
+    }
+}
+
+/// The deck turns the L's corner mitred at half angle (8.8.3.35.1): the
+/// mitre plane x + y = 10 holds the section's corners (11, -1) and (9, 1),
+/// and the centred 2 x 1 m section over 10 m of centreline holds 20 m3.
+#[test]
+fn a_sectioned_solid_is_mitred_at_the_corner() {
+    let model = seams();
+    let lowered = lower(&model, item(&model, "DECK", "Body")).expect("lowers");
+    let options = ExecutionOptions::new(Tolerance::MILLIMETRE);
+    let outcome = default_backend()
+        .compile_mesh_reported(&lowered.graph, lowered.root, &options)
+        .unwrap_or_else(|e| panic!("the deck compiles: {e:?}"));
+    assert_eq!(outcome.closure, MeshClosure::Solid);
+    let mesh = &outcome.mesh;
+    let volume = signed_volume(mesh);
+    assert!((volume - 20.0).abs() < 1e-9, "volume {volume}");
+    let (lo, hi) = bounds(mesh);
+    close(lo, [5.0, -1.0, -0.5], "min");
+    close(hi, [11.0, 5.0, 0.5], "max");
+    for corner in [
+        [11.0, -1.0, -0.5],
+        [11.0, -1.0, 0.5],
+        [9.0, 1.0, -0.5],
+        [9.0, 1.0, 0.5],
+    ] {
+        assert!(has_vertex(mesh, corner), "mitre corner {corner:?}");
+    }
+}
+
+/// The carriageway crosses the grade break mitred in the vertical plane:
+/// two planar strips 7 m wide, 10 sqrt(1.0004) and 10 sqrt(1.0001) m long,
+/// meeting on the line (40, y, 10.8).
+#[test]
+fn a_sectioned_surface_is_mitred_at_the_grade_break() {
+    let model = seams();
+    let lowered = lower(&model, item(&model, "CARRIAGEWAY", "Body")).expect("lowers");
+    let options = ExecutionOptions::new(Tolerance::MILLIMETRE);
+    let outcome = default_backend()
+        .compile_mesh_reported(&lowered.graph, lowered.root, &options)
+        .unwrap_or_else(|e| panic!("the carriageway compiles: {e:?}"));
+    assert_eq!(outcome.closure, MeshClosure::Surface);
+    let expected = 7.0 * 10.0 * (1.0004_f64.sqrt() + 1.0001_f64.sqrt());
+    let got = area(&outcome.mesh);
+    assert!((got - expected).abs() < 1e-9, "area {got} != {expected}");
+    let (lo, hi) = bounds(&outcome.mesh);
+    close(lo, [30.0, -3.5, 10.6], "min");
+    close(hi, [50.0, 3.5, 10.8], "max");
+    assert!(has_vertex(&outcome.mesh, [40.0, -3.5, 10.8]));
+    assert!(has_vertex(&outcome.mesh, [40.0, 3.5, 10.8]));
+}
+
+/// The kerb, 1 m left of the L, meets itself at the mitre (9, 1): a disk
+/// swept along it stays within (0, 0.9) .. (9.1, 10), where an unmitred
+/// offset would reach x = 10.1 or y = -0.1 at the corner.
+#[test]
+fn an_offset_curve_is_mitred_at_the_corner() {
+    let model = seams();
+    let lowered = lower(&model, item(&model, "KERB", "Body")).expect("lowers");
+    let options = ExecutionOptions::new(Tolerance::MILLIMETRE);
+    let outcome = default_backend()
+        .compile_mesh_reported(&lowered.graph, lowered.root, &options)
+        .unwrap_or_else(|e| panic!("the kerb compiles: {e:?}"));
+    let (lo, hi) = bounds(&outcome.mesh);
+    assert!(
+        (lo[0] - 0.0).abs() < 1e-3 && (lo[1] - 0.9).abs() < 1e-3,
+        "min {lo:?}"
+    );
+    assert!(
+        (hi[0] - 9.1).abs() < 1e-3 && (hi[1] - 10.0).abs() < 1e-3,
+        "max {hi:?}"
+    );
 }

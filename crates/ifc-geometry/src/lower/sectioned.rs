@@ -35,16 +35,24 @@
 //!   through an `IfcIndexedPolyCurve`'s `TagList`, a boundary the profile
 //!   lowering does not take, so no tagged closed profile reaches here.
 //!
+//! - **Across a tangent discontinuity** (#346). "If the directrix is not
+//!   tangent continuous, the resulting solid is created by a miter at half
+//!   angle between the two segments" (8.8.3.35.1; 8.8.3.37.1 says the same
+//!   of the surface). Axiolid cuts a run of sections across a seam in the
+//!   plane normal to the bisector of the incoming and outgoing tangents,
+//!   which is that half-angle mitre (ADR 0082 amendment). A position within
+//!   the model's precision of a seam is stored at the seam, where the
+//!   kernel stands its section in the mitre plane (`lower::station`).
+//!
 //! # Refused by name
 //!
 //! Where IFC states a shape the neutral relation does not carry: the WHERE
 //! rules (`NoLongitudinalOffsets`, `NoOffsets`, `CorrespondingSectionPositions`,
 //! `SectionsSameType`), positions out of order or off the directrix, a
-//! directrix whose tangent jumps within the run (8.8.3.35.1 asks for a
-//! half-angle mitre there, which linear interpolation in the station frame
-//! is not), a surface mixing tagged and untagged sections or branching
-//! breaklines (sections with different tags). `IfcSectionedSolid`, the
-//! parent, is ABSTRACT.
+//! directrix that turns back on itself within the run ("very sharp edges
+//! may result in nearly impossible miter", 8.8.3.35.1), a surface mixing
+//! tagged and untagged sections or branching breaklines (sections with
+//! different tags). `IfcSectionedSolid`, the parent, is ABSTRACT.
 
 use axiolid_model::{
     GeometryNode, NodeId, SectionAtStation, SolidOperation, StationFrame, SurfaceRelation,
@@ -71,12 +79,6 @@ const KIND: &str = "sectioned";
 /// Why a position on another curve is refused.
 const OTHER_BASIS: &str =
     "a CrossSectionPositions member is measured along another BasisCurve than the Directrix";
-
-/// Why a run over a seam is refused.
-const OVER_SEAM: &str =
-    "the sections span a tangent discontinuity of the directrix, where IFC4.3 ADD2 \
-     (8.8.3.35.1) mitres at half angle and the neutral sections interpolate in the frame at \
-     each distance, which turns there without a mitre";
 
 /// Why mixed tagging is refused.
 const MIXED_TAGS: &str =
@@ -189,13 +191,14 @@ fn sectioned(
             _ => {}
         }
         basis.check_on_curve(session, id, owner_type, expression.distance)?;
+        let distance = basis.run_distance(session, id, owner_type, expression.distance)?;
         if let Some(previous) = sections.last() {
-            if expression.distance <= previous.station.distance {
+            if distance <= previous.station.distance {
                 return Err(session.degenerate(
                     id,
                     owner_type,
                     "CrossSectionPositions must be in strictly increasing order along the \
-                     Directrix",
+                     Directrix, by more than the model's precision at a tangent discontinuity",
                 ));
             }
         }
@@ -207,8 +210,10 @@ fn sectioned(
                 open_tags(session, *profile)?,
             ),
         };
+        let mut station = expression.station();
+        station.distance = distance;
         sections.push(
-            SectionAtStation::new(node, expression.station())
+            SectionAtStation::new(node, station)
                 .with_tags(tags)
                 .with_orientation(orientation),
         );
@@ -216,7 +221,7 @@ fn sectioned(
     check_tags(session, id, owner_type, &sections)?;
     let from = sections[0].station.distance;
     let to = sections[sections.len() - 1].station.distance;
-    basis.check_no_seam(session, id, owner_type, from, to, OVER_SEAM)?;
+    basis.check_run(session, id, owner_type, from, to)?;
 
     let node = match of {
         SectionOf::SolidHorizontal => {

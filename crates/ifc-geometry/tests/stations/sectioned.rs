@@ -121,9 +121,10 @@ fn a_solid_section_keeps_its_offsets_and_axes() {
     assert!(sections[1].orientation.is_base());
 }
 
-/// A corner outside the run does not matter; one inside it does.
+/// A corner outside the run does not matter; one inside it is mitred by
+/// the kernel (#346), so both lower.
 #[test]
-fn only_a_corner_within_the_run_is_refused() {
+fn a_corner_within_the_run_lowers() {
     let records = format!(
         "{BASE}\n{}\n{}\n{}\n\
          #30=IFCSECTIONEDSOLIDHORIZONTAL(#10,(#40,#41),(#20,#22));\n\
@@ -134,7 +135,8 @@ fn only_a_corner_within_the_run_is_refused() {
     );
     let model = step(&records, false);
     lower(&model, 30).expect("clear of the corner");
-    refused(lower(&model, 31), true, "tangent discontinuity");
+    let across = solid_sections(&lower(&model, 31).expect("across the corner"));
+    assert_eq!(across[1].station.distance, 12.0);
 }
 
 #[test]
@@ -203,5 +205,6 @@ fn surfaces_ifc_and_axiolid_read_differently_are_refused_by_name() {
     refused(lower(&model, 31), true, "branching");
     refused(lower(&model, 32), true, "orders its tags");
     refused(lower(&model, 33), false, "NoOffsets");
-    refused(lower(&model, 34), true, "tangent discontinuity");
+    // Across the corner: mitred by the kernel (#346).
+    lower(&model, 34).expect("across the corner");
 }

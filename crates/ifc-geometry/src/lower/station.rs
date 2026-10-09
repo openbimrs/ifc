@@ -33,18 +33,53 @@
 //! (buildingSMART/IFC4.x-development#1151 proposes global Z); this follows
 //! the ADD2 text.
 //!
-//! # Where the conventions differ: tangent discontinuities
+//! # Tangent discontinuities (#346)
 //!
-//! 8.9.3.48.3: "If DistanceAlong coincides with a point of tangential
-//! discontinuity (within precision limits), then the tangent of the previous
-//! segment governs." The neutral evaluators read a seam with the piece that
-//! STARTS there (`ElevationLaw::piece_at`, the polyline span), and ADR 0082
-//! states no rule. A station on a seam where the tangent is not shown to be
-//! continuous is therefore refused by name, as is a run of stations
-//! (sections, an offset curve) that spans one: Axiolid interpolates in the
-//! frame at each distance, which turns at a kink without the half-angle mitre
-//! 8.8.3.35.1 asks for. The `seams` module states how seams are found from stored
-//! data. "Within precision limits" is the model's declared `Precision`.
+//! 8.9.3.48.3, on `OffsetLateral`: "If DistanceAlong coincides with a point
+//! of tangential discontinuity (within precision limits), then the tangent
+//! of the previous segment governs." Axiolid states the same choice since
+//! `axiolid-model` 0.3.6 (ADR 0082 amendment, axiolid/kernel#263): a
+//! station carries a `SeamSide`, and `SeamSide::Incoming` reads the piece
+//! that ends at the seam. So a station on a seam is lowered at the seam's own distance with
+//! the incoming side: an `IfcAxis2PlacementLinear` as an
+//! `OrientedCurveStation` with `SeamSide::Incoming`, an
+//! `IfcPointByDistanceExpression` as the unturned oriented station
+//! `CurveStation::with_seam_side(SeamSide::Incoming)` gives (a plain
+//! `CurveStation` always reads the outgoing piece). Off a seam nothing
+//! changes. `OffsetLongitudinal`, which IFC offers "to reach locations for
+//! the case of a tangentially discontinuous basis curve", then runs along
+//! the incoming tangent.
+//!
+//! **Which stations are on a seam.** "Within precision limits" is the
+//! model's declared `Precision`, capped at 1 mm (`Basis::tolerance`; the
+//! same cap `ifc_alignment::SeamTolerance` applies), or rounding,
+//! `1e-9 * max(1, |s|)`, where that is larger. Axiolid reads a station on a
+//! seam within `ARC_LENGTH_TOLERANCE * max(1, s)` with `ARC_LENGTH_TOLERANCE
+//! = 1e-12`, a window inside ours. The two are reconciled by snapping: a
+//! station within our window is stored at the seam's distance, read from
+//! the same stored data Axiolid reads it from (`seams`), so the kernel finds
+//! it on the seam and reads the side stated. Without the snap a station
+//! 0.5 mm past a corner in a model of millimetre precision would be on the
+//! corner for IFC and on the outgoing leg for the kernel.
+//!
+//! **Runs.** Sections and offsets need no side. IFC 8.8.3.35.1: "If the
+//! directrix is not tangent continuous, the resulting solid is created by a
+//! miter at half angle between the two segments" (8.8.3.37.1 says the same
+//! of the surface), and Axiolid mitres a run across a seam in the plane normal to the bisector of the two
+//! tangents (`Mitre`, ADR 0082 amendment). A station of a run within
+//! precision of a seam is snapped to it too, so the kernel stands that
+//! section in the mitre plane instead of refusing a section the mitre would
+//! cut. "Very sharp edges may result in nearly impossible miter": a seam
+//! where the curve turns back on itself (the cosine of half the turn at most
+//! Axiolid's `MITRE_TOLERANCE`, `seams::MITRE_TOLERANCE`) inside a run is
+//! refused by name.
+//!
+//! **Bases whose seams are unknown.** The seams are read from stored data,
+//! never by evaluation. A B-spline with a corner knot (whose distance is an
+//! arc-length integral; Axiolid's `exact_station_seams` refuses it too) and
+//! a basis that lowers to a curve relation are refused by name. Axiolid
+//! resolves no station along a curve relation, which is what a plain
+//! `IfcCompositeCurve` lowers to; that gap remains (#346).
 //!
 //! # Frames
 //!
@@ -53,7 +88,7 @@
 //! the measure along the curve, a mirror swaps left and right, and a tilt
 //! moves "the global XY plane" the vertical offset is read against.
 
-use axiolid_model::{CurveStation, GeometryNode, NodeId, OrientedCurveStation, Station};
+use axiolid_model::{CurveStation, GeometryNode, NodeId, OrientedCurveStation, SeamSide, Station};
 use ifc_model::EntityId;
 
 use crate::error::GeometryResult;
@@ -89,7 +124,7 @@ pub(crate) struct Basis {
     /// The basis curve's node.
     pub node: NodeId,
     /// Where its tangent may be discontinuous, or why that is unknown.
-    seams: Result<Vec<f64>, &'static str>,
+    seams: Result<Vec<seams::Seam>, &'static str>,
     /// Its length, when stated by its data; `None` when unbounded or not
     /// stated.
     pub length: Option<f64>,
@@ -161,52 +196,112 @@ impl Basis {
         Ok(())
     }
 
-    /// Refuse a seam where the tangent is not shown continuous within
-    /// `[from, to]`, both ends included, by name.
-    pub(crate) fn check_no_seam(
+    /// The seams, or a refusal naming why they are unknown.
+    fn known_seams(
+        &self,
+        session: &LoweringSession<'_>,
+        owner: EntityId,
+        owner_type: &str,
+    ) -> GeometryResult<&[seams::Seam]> {
+        self.seams
+            .as_deref()
+            .map_err(|why| session.unsupported(owner, owner_type, why))
+    }
+
+    /// The seam `distance` lies on within [`Self::tolerance`], if any.
+    pub(crate) fn seam_at(
+        &self,
+        session: &LoweringSession<'_>,
+        owner: EntityId,
+        owner_type: &str,
+        distance: f64,
+    ) -> GeometryResult<Option<seams::Seam>> {
+        let tolerance = self.tolerance(distance);
+        Ok(self
+            .known_seams(session, owner, owner_type)?
+            .iter()
+            .filter(|seam| (seam.distance - distance).abs() <= tolerance)
+            .min_by(|a, b| {
+                (a.distance - distance)
+                    .abs()
+                    .total_cmp(&(b.distance - distance).abs())
+            })
+            .copied())
+    }
+
+    /// The distance a station of a run is stored at: the seam's own
+    /// distance when it lies on one, so the kernel stands its section in
+    /// the mitre plane (module documentation).
+    pub(crate) fn run_distance(
+        &self,
+        session: &LoweringSession<'_>,
+        owner: EntityId,
+        owner_type: &str,
+        distance: f64,
+    ) -> GeometryResult<f64> {
+        Ok(self
+            .seam_at(session, owner, owner_type, distance)?
+            .map_or(distance, |seam| seam.distance))
+    }
+
+    /// Refuse a run over `[from, to]`, both ends included, across a seam
+    /// where the curve turns back on itself: IFC's half-angle mitre
+    /// (8.8.3.35.1) has no plane there.
+    pub(crate) fn check_run(
         &self,
         session: &LoweringSession<'_>,
         owner: EntityId,
         owner_type: &str,
         from: f64,
         to: f64,
-        reason: &'static str,
     ) -> GeometryResult<()> {
-        let seams = self
-            .seams
-            .as_ref()
-            .map_err(|why| session.unsupported(owner, owner_type, why))?;
-        let hit = seams
+        let reversal = self
+            .known_seams(session, owner, owner_type)?
             .iter()
-            .any(|seam| *seam >= from - self.tolerance(from) && *seam <= to + self.tolerance(to));
-        if hit {
-            Err(session.unsupported(owner, owner_type, reason))
+            .any(|seam| {
+                seam.reverses
+                    && seam.distance >= from - self.tolerance(from)
+                    && seam.distance <= to + self.tolerance(to)
+            });
+        if reversal {
+            Err(session.unsupported(owner, owner_type, REVERSAL))
         } else {
             Ok(())
         }
     }
 }
 
-/// Lower an `IfcPointByDistanceExpression` into a `CurveStation`.
+/// Why a run across a reversal is refused.
+pub(crate) const REVERSAL: &str =
+    "the run crosses a tangent discontinuity where the basis curve turns back on itself; \
+     IFC4.3 ADD2 (8.8.3.35.1) mitres at half angle there and warns that \"very sharp edges \
+     may result in nearly impossible miter\", and the half-angle plane would stretch a \
+     section without bound";
+
+/// Lower an `IfcPointByDistanceExpression` into a `CurveStation`, or, on a
+/// tangent discontinuity of its basis, into the unturned
+/// `OrientedCurveStation` reading the incoming side (module documentation).
 pub fn lower_point_by_distance_node(
     session: &mut LoweringSession<'_>,
     id: EntityId,
     frame: Transform,
 ) -> GeometryResult<NodeId> {
     memoized(session, id, frame, |session| {
-        let (basis, station) = located(session, id, POINT, id, frame)?;
-        session.node_for(
-            id,
-            GeometryNode::CurveStation(CurveStation::new(basis.node, station)),
-        )
+        let (basis, station, side) = located(session, id, POINT, id, frame)?;
+        let station = CurveStation::new(basis.node, station);
+        let node = match side {
+            Some(side) => GeometryNode::OrientedCurveStation(station.with_seam_side(side)),
+            None => GeometryNode::CurveStation(station),
+        };
+        session.node_for(id, node)
     })
 }
 
 /// Lower an `IfcAxis2PlacementLinear` into an `OrientedCurveStation`.
 ///
 /// Its `Location` is the station (WR1); `Axis` and `RefDirection` become
-/// the orientation, read in the station's base frame (see the module
-/// documentation).
+/// the orientation, read in the station's base frame. On a tangent
+/// discontinuity it reads the incoming side (see the module documentation).
 pub fn lower_axis2_placement_linear_node(
     session: &mut LoweringSession<'_>,
     id: EntityId,
@@ -214,43 +309,39 @@ pub fn lower_axis2_placement_linear_node(
 ) -> GeometryResult<NodeId> {
     memoized(session, id, frame, |session| {
         let placement = axes::read_placement(session, id)?;
-        let (basis, station) = located(session, id, PLACEMENT, placement.location, frame)?;
+        let (basis, station, side) = located(session, id, PLACEMENT, placement.location, frame)?;
         let orientation = axes::placement_orientation(session, id, &placement)?;
-        session.node_for(
-            id,
-            GeometryNode::OrientedCurveStation(OrientedCurveStation::new(
-                CurveStation::new(basis.node, station),
-                orientation,
-            )),
-        )
+        let mut oriented =
+            OrientedCurveStation::new(CurveStation::new(basis.node, station), orientation);
+        if let Some(side) = side {
+            oriented = oriented.with_seam_side(side);
+        }
+        session.node_for(id, GeometryNode::OrientedCurveStation(oriented))
     })
 }
 
-/// Why a single station on a seam is refused.
-const ON_SEAM: &str = "DistanceAlong falls on a tangent discontinuity of the basis curve, where \
-                       IFC4.3 ADD2 (8.9.3.48.3) lets the previous segment's tangent govern; \
-                       the neutral station reads the next segment's and states no rule";
-
-/// Read the point `point`, lower its basis and check the station on it.
+/// Read the point `point`, lower its basis and place the station on it: at
+/// a seam's own distance, reading the incoming side, when it lies on one
+/// (8.9.3.48.3, module documentation).
 fn located(
     session: &mut LoweringSession<'_>,
     owner: EntityId,
     owner_type: &str,
     point: EntityId,
     frame: Transform,
-) -> GeometryResult<(Basis, Station)> {
+) -> GeometryResult<(Basis, Station, Option<SeamSide>)> {
     let expression = read::distance_expression(session, owner, owner_type, point)?;
     let basis = Basis::lower(session, owner, owner_type, expression.basis, frame)?;
     basis.check_on_curve(session, owner, owner_type, expression.distance)?;
-    basis.check_no_seam(
-        session,
-        owner,
-        owner_type,
-        expression.distance,
-        expression.distance,
-        ON_SEAM,
-    )?;
-    Ok((basis, expression.station()))
+    let mut station = expression.station();
+    let side = match basis.seam_at(session, owner, owner_type, expression.distance)? {
+        Some(seam) => {
+            station.distance = seam.distance;
+            Some(SeamSide::Incoming)
+        }
+        None => None,
+    };
+    Ok((basis, station, side))
 }
 
 fn memoized(
