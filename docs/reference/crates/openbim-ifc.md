@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.19.0 (2026-10-09) |
+| Latest release | 0.20.0 (2026-10-09) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -95,13 +95,12 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.19.0 (2026-10-09):
+Latest release, 0.20.0 (2026-10-09):
 
 ### Changed
 
-- Requires `ifc-geometry` 0.13: net bodies (`lower_product_net_with`) are
-  subtracted in the host's frame under one world `Instance`, so flush
-  openings in georeferenced models mesh (#388). Semver: minor, because the
-  re-exported neutral graph changes shape.
+- Requires `ifc-geometry` 0.14: `IfcPolygonalBoundedHalfSpace` boundaries
+  given as `IfcCompositeCurve` or `IfcIndexedPolyCurve` with straight edges
+  lower (#393). Semver: minor, following the dependency.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

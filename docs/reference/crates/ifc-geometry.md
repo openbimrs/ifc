@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.13.0 (2026-10-09) |
+| Latest release | 0.14.0 (2026-10-09) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -42,45 +42,44 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.13.0 (2026-10-09):
+Latest release, 0.14.0 (2026-10-09):
 
-Semver: no public item is added, removed or changed in signature, and the
-net geometry is the same up to floating-point rounding. But the neutral
-graph `lower_product_net`/`lower_product_net_with` return is shaped
-differently, and the module documentation described that shape: a caller
-that matches `NetLowering::root` or a `Subtraction::result` as a `Boolean`,
-or reads a `Subtraction::body` as the opening's placed solid, now finds an
-`Instance` above it. Hosts the kernel refused also mesh now. That is an
-observable behaviour change for code that inspects the graph, so the next
-release is a minor one (0.13.0), not a patch.
+Semver: `IfcPolygonalBoundedHalfSpace` boundaries this crate refused as
+`Unsupported` now lower, and a malformed composite or indexed boundary is
+refused as `Degenerate` (an empty composite, a gap, an open curve, a point
+off the plane) instead of `Unsupported`. No public item is added or
+removed, and `PARTIAL` gains two rows; behaviour changes as it did for
+#335, so the next release is a minor one (0.14.0).
 
-### Changed
+### Added
 
-- Net lowering subtracts openings in the host's frame, not in world
-  coordinates (#388). The host's Body is lowered without its world
-  placement, each opening's Body by its placement relative to the host's,
-  the `Difference` nodes run in that frame, and one `Instance` with the
-  host's world transform (context `WorldCoordinateSystem` included, applied
-  once) is put above `NetLowering::gross`, each `Subtraction::body` and each
-  `Subtraction::result`; all of them stay in world coordinates. A host of
-  several solids has each part cut in that frame. The relative placement is
-  composed along the `IfcLocalPlacement` chain the opening and the host
-  share, from their first common placement down, so a georeferenced site's
-  translation and turn never enter it; a grid or linear placement may be
-  that common placement or sit above it. When an opening shares no chain
-  with its host (no `PlacementRelTo` path to a common placement, or a Body
-  context whose frame differs from the host's), the net body is lowered in
-  world coordinates exactly as before, rather than guessed.
-
-### Fixed
-
-- A wall with openings flush with both its faces, under a site placed at
-  survey coordinates (600 000, 5 600 000) and turned to grid north, meshes
-  net with `compile-reference-backend` (#388). In world coordinates the
-  opening's faces were rounded off the wall's by up to an ulp of 5.6e6, and
-  `axiolid-mesh-compile` 0.3.14 refused the result as touching itself along
-  the opening's edges. The wall of `ifclite-geometry/issue_098_wall_W.ifc`,
-  refused that way before, nets to 32.419 m³ now. Net volumes over the rest
-  of the fixtures and the reference corpus are unchanged to 1e-8 m³.
+- `IfcCompositeCurve` and `IfcIndexedPolyCurve` as
+  `IfcPolygonalBoundedHalfSpace.PolygonalBoundary` (#393). `BoundaryType`
+  admits `IfcCompositeCurve` in IFC2X3, IFC4 ADD2 TC1 and IFC4X3 ADD2 and
+  `IfcIndexedPolyCurve` in IFC4X3 ADD2; an IFC4 file using the latter lowers
+  the same way, the curve being defined identically there, and the rule is
+  left to validation. Both are read by the profile boundary readers
+  (#43's composite walk, #335's indexed reading) under a half-space role,
+  so `SameSense`, nested composites, trimmed `IfcLine` segments, the
+  collinear-arc fallback ("treated as a polyline segment") and the closure
+  rules are shared, and the closed, straight-edged result becomes the one
+  `Curve2::Polyline` with `closed` set that `SolidOperation::BoundedHalfSpace`
+  takes. Composite joints are judged within the model's `Precision`
+  ("the tolerance under which two given points are still assumed to be
+  identical", `1.E-5` project units when none is declared), and a point
+  keeps the `IfcPolyline` boundary's rule: 2D, or 3D with `z == 0` exactly,
+  in `Position`'s XY plane (`BoundaryDim`). Refused, naming the entity:
+  as `Degenerate`, a gap between segments, an open curve, an empty
+  composite, a point off the plane and the indexed refusals of #335; as
+  `Unsupported`, a circular arc (a trimmed `IfcCircle` or a non-collinear
+  `IfcArcIndex`), because Axiolid's `BoundedHalfSpace` takes only a
+  `Polyline2` (`axiolid-mesh-compile` 0.3.14 refuses every other `Curve2`,
+  and `Curve2` has no composite variant) and an arc is never polygonised;
+  an IFC4X3 `IfcCurveSegment` member; and other segment parents. The
+  `IfcPolyline` boundary is unchanged. `PARTIAL` lists the family's
+  admitted and refused boundary forms. The fixture
+  `halfspace_boundaries_ifc4x3.ifc` clips a wall by each form beside its
+  `IfcPolyline` twin; each lowers to the twin's polyline and compiles with
+  `compile-reference-backend` to its volume.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
