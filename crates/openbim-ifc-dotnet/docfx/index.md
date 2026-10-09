@@ -17,7 +17,7 @@ documentation comments.
   authoring batch.
 - [`IfcException`](xref:OpenBim.Ifc.IfcException) and
   [`IfcStatus`](xref:OpenBim.Ifc.IfcStatus): how a refused call reports why.
-- [Every type](api/OpenBim.Ifc.yml) in the `OpenBim.Ifc` namespace.
+- [Every type](xref:OpenBim.Ifc) in the `OpenBim.Ifc` namespace.
 
 For task-sized examples, see the [.NET guide](/ifc/bindings/dotnet) and the
 [.NET cookbook](/ifc/cookbook/dotnet).

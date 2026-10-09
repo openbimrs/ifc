@@ -12,7 +12,7 @@
         "TargetFramework": "net8.0",
         "Configuration": "Release"
       },
-      "dest": "../dotnet/artifacts/docfx/api",
+      "dest": "api",
       "namespaceLayout": "flattened",
       "memberLayout": "samePage",
       "includePrivateMembers": false
@@ -21,12 +21,7 @@
   "build": {
     "content": [
       {
-        "src": "../dotnet/artifacts/docfx/api",
-        "files": ["*.yml"],
-        "dest": "api"
-      },
-      {
-        "files": ["index.md", "toc.yml"]
+        "files": ["api/*.yml", "index.md", "toc.yml"]
       }
     ],
     "dest": "../dotnet/artifacts/docfx/site",

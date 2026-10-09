@@ -31,8 +31,11 @@ fi
 
 cd "$ROOT"
 export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
-ARTIFACTS="$CRATE/dotnet/artifacts/docfx"
-rm -rf "$ARTIFACTS"
+# docfx writes the extracted metadata next to its config (docfx/api/, ignored)
+# and the site under the package's ignored artifacts/.
+API="$CRATE/docfx/api"
+SITE="$CRATE/dotnet/artifacts/docfx/site"
+rm -rf "$API" "$SITE"
 
 dotnet tool restore
 # The net8.0 assembly docfx reads; restores the project for it too.
@@ -41,7 +44,7 @@ dotnet tool run docfx "$CRATE/docfx/docfx.json" --warningsAsErrors
 
 # Every extracted type and member must have a summary: the compiler checks
 # declared members, this checks what the reference actually shows.
-python3 - "$ARTIFACTS/api" <<'PY'
+python3 - "$API" <<'PY'
 import pathlib
 import sys
 
@@ -76,7 +79,6 @@ if missing:
 print(f".NET API reference: {len(pages)} pages, every member summarised")
 PY
 
-SITE="$ARTIFACTS/site"
 test -f "$SITE/index.html"
 test -f "$SITE/api/OpenBim.Ifc.IfcModel.html"
 
