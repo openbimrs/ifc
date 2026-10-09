@@ -594,6 +594,7 @@ fn an_arc_boundary_lowers_to_an_exact_profile_contour() {
 
 /// The closed-form volume each arc-bounded wall keeps: `12` less the part
 /// of its plan inside the boundary, times the clipped height 1.
+#[cfg(feature = "compile-reference-backend")]
 fn arc_wall_volume(name: &str) -> f64 {
     // `integral of sqrt(r^2 - u^2) du` from 0 to `u`.
     let half_disk =
@@ -609,6 +610,7 @@ fn arc_wall_volume(name: &str) -> f64 {
     12.0 - removed
 }
 
+#[cfg(feature = "compile-reference-backend")]
 const ARC_WALLS: [&str; 2] = ["COMPOSITE_ARCS", "INDEXED_ARC"];
 
 /// The mesh compiler clips each arc-bounded wall within its chord budget of
