@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.14.0 (2026-10-09) |
+| Latest release | 0.15.0 (2026-10-09) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -42,44 +42,149 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.14.0 (2026-10-09):
+Latest release, 0.15.0 (2026-10-09):
 
-Semver: `IfcPolygonalBoundedHalfSpace` boundaries this crate refused as
-`Unsupported` now lower, and a malformed composite or indexed boundary is
-refused as `Degenerate` (an empty composite, a gap, an open curve, a point
-off the plane) instead of `Unsupported`. No public item is added or
-removed, and `PARTIAL` gains two rows; behaviour changes as it did for
-#335, so the next release is a minor one (0.14.0).
+Semver: an `IfcIndexedPolyCurve` whose collinear `IfcArcIndex` was
+refused as `Degenerate` now lowers (#396), and `rules::validate` no longer
+reports `BoundaryType` for an IFC4X3 `IfcIndexedPolyCurve` boundary or a
+subtype of `IfcCompositeCurve` (#397). Every where-rule is now checked in
+the file's declared release and reported under that release's name (#400):
+an IFC2X3 file's violations are named `WR1`, `WR31`, ... as IFC2X3 TC1
+names them, and the set of violations changes for IFC2X3 and IFC4X3 files
+as listed below. No public item is added, removed or changes signature
+(`rules::validate`, `rules::validate_model`, `rules::placement::check`,
+`rules::solid::check` and `RuleViolation` are as before); a consumer
+matching IFC2X3 violations by their IFC4 rule name must match the `WRnn`
+name instead. Behaviour changes only, so the next release is a minor one
+(0.15.0); nothing is breaking at the API level. No committed fixture's
+violation set changes. The where-rules of the geometry entities IFC4 does
+not declare (#402) add violations only, on files that break them, and
+public API is unchanged, so they join the same minor release.
 
 ### Added
 
-- `IfcCompositeCurve` and `IfcIndexedPolyCurve` as
-  `IfcPolygonalBoundedHalfSpace.PolygonalBoundary` (#393). `BoundaryType`
-  admits `IfcCompositeCurve` in IFC2X3, IFC4 ADD2 TC1 and IFC4X3 ADD2 and
-  `IfcIndexedPolyCurve` in IFC4X3 ADD2; an IFC4 file using the latter lowers
-  the same way, the curve being defined identically there, and the rule is
-  left to validation. Both are read by the profile boundary readers
-  (#43's composite walk, #335's indexed reading) under a half-space role,
-  so `SameSense`, nested composites, trimmed `IfcLine` segments, the
-  collinear-arc fallback ("treated as a polyline segment") and the closure
-  rules are shared, and the closed, straight-edged result becomes the one
-  `Curve2::Polyline` with `closed` set that `SolidOperation::BoundedHalfSpace`
-  takes. Composite joints are judged within the model's `Precision`
-  ("the tolerance under which two given points are still assumed to be
-  identical", `1.E-5` project units when none is declared), and a point
-  keeps the `IfcPolyline` boundary's rule: 2D, or 3D with `z == 0` exactly,
-  in `Position`'s XY plane (`BoundaryDim`). Refused, naming the entity:
-  as `Degenerate`, a gap between segments, an open curve, an empty
-  composite, a point off the plane and the indexed refusals of #335; as
-  `Unsupported`, a circular arc (a trimmed `IfcCircle` or a non-collinear
-  `IfcArcIndex`), because Axiolid's `BoundedHalfSpace` takes only a
-  `Polyline2` (`axiolid-mesh-compile` 0.3.14 refuses every other `Curve2`,
-  and `Curve2` has no composite variant) and an arc is never polygonised;
-  an IFC4X3 `IfcCurveSegment` member; and other segment parents. The
-  `IfcPolyline` boundary is unchanged. `PARTIAL` lists the family's
-  admitted and refused boundary forms. The fixture
-  `halfspace_boundaries_ifc4x3.ifc` clips a wall by each form beside its
-  `IfcPolyline` twin; each lowers to the twin's polyline and compiles with
-  `compile-reference-backend` to its volume.
+- `rules::validate` and `rules::validate_model` check the where-rules of
+  the geometry entities IFC4 ADD2 TC1 does not declare, each in the
+  releases that declare it, under that release's name and text (#402), and
+  the `DECLARED` table lists them so the schema-backed tests hold them to
+  each bundled release:
+  - IFC2X3 TC1 `Ifc2DCompositeCurve.WR1` (`ClosedCurve`) and `WR2`
+    (`Dim = 2`); `IfcRationalBezierCurve.WR1` (one weight per control
+    point) and `WR2` (`IfcCurveWeightsPositive`);
+  - IFC4X1 on: `IfcSectionedSolid.ConsistentProfileTypes`,
+    `DirectrixIs3D` and `SectionsSameType`;
+    `IfcSectionedSolidHorizontal.CorrespondingSectionPositions` and
+    `NoLongitudinalOffsets` (IFC4X1 and IFC4X2 read the offset on the
+    `IfcDistanceExpression` position, IFC4X3 ADD2 on the position's
+    `IfcPointByDistanceExpression` location);
+    `IfcTriangulatedIrregularNetwork.NotClosed` (a written `Closed = TRUE`
+    violates; an omitted one is UNKNOWN and conforms);
+  - IFC4X3 ADD2: `IfcAxis2PlacementLinear.WR1` (the location is an
+    `IfcPointByDistanceExpression`) and `WR2` (Axis not parallel to
+    RefDirection, read as `AxisToRefDirPosition` is);
+    `IfcPolynomialCurve.CorrectPositionDim` and `ValidCoefficients`;
+    `IfcSectionedSurface.AreaProfileTypes` (at least one `CURVE`
+    cross-section, as its text demands), `CorrespondingSectionPositions`,
+    `DirectrixIs3D`, `NoOffsets` and `SectionsSameType`.
+
+  #402 listed the sectioned solids and the TIN as IFC4X3-only; IFC4X1 and
+  IFC4X2 declare them too, and are checked. `IfcCurveWeightsPositive` is
+  transcribed once (`rules/express.rs`) for both the Bezier curve and IFC4's
+  `IfcRationalBSplineCurveWithKnots.WeightsGreaterZero`: its `Weights` array
+  is `IfcListToArray(...) = ?` when `WeightsData` and `ControlPointsList`
+  differ in length, and the function then returns TRUE, so a rational
+  B-spline with mismatched lists now reports only
+  `SameNumOfWeightsAndPoints`, not also `WeightsGreaterZero`. `Dim` follows
+  `IfcPointDim` (IFC4X3 ADD2) and the `Dim` of `IfcPointOnCurve` and
+  `IfcPointOnSurface` (every release): a point's `BasisCurve` or
+  `BasisSurface`, and an `IfcPointByDistanceExpression`'s `BasisCurve`,
+  where it was undecided.
+
+### Changed
+
+- The general curve lowering (`lower_curve_node`, and every representation
+  item, axis or directrix that reaches it) treats a collinear `IfcArcIndex`
+  as IFC4 ADD2 TC1 and IFC4X3 ADD2 prescribe: "The three points shall not
+  be co-linear. In case that this informal proposition is not maintained,
+  the arc segment shall be treated as a polyline segment" (#396). Three
+  distinct points collinear within the model's `Precision` lower as a
+  straight `Curve3::Polyline` segment of the composite, start -> end when
+  the middle point lies between the others and start -> mid -> end when it
+  does not; they were refused as `Degenerate`. Two points that coincide
+  within `Precision` are still `Degenerate`. Both tests now use the model's
+  `Precision` (in the curve's own coordinates, `1.E-5` project units when
+  none is declared) instead of an absolute `f64::EPSILON` bound on a
+  squared area, and they are one helper, `constraint::tolerance::arc_points`,
+  shared with the profile and half-space boundary reader of #335 and #393,
+  whose results are unchanged except that its tolerance, like every point
+  comparison's, is floored at floating-point rounding for very large
+  coordinates. A model whose declared `Precision` is not a finite positive
+  number now refuses an indexed curve with an arc segment, as it refuses an
+  indexed profile boundary. The fixture `indexed_curve_arcs.ifc` (IFC4)
+  lowers representation curves with a collinear, an out-and-back collinear,
+  a nearly collinear and a genuine arc, and `halfspace_boundaries_ifc4x3.ifc`
+  gains a wall whose boundary has a collinear arc; both pass the dispatch
+  corpus.
+
+### Fixed
+
+- The where-rule `IfcPolygonalBoundedHalfSpace.BoundaryType` is checked in
+  the file's own release (#397). IFC4X3 ADD2 admits `IfcPolyline`,
+  `IfcCompositeCurve` and `IfcIndexedPolyCurve`; IFC2X3 TC1 (`WR42`), IFC4
+  ADD2 TC1, IFC4X1 and IFC4X2 admit only the first two. An IFC4X3 file with
+  an indexed boundary was flagged `WrongType`. The release is the header's
+  `FILE_SCHEMA`, IFC4 ADD2 TC1 when none known is declared, and, as
+  `TYPEOF` includes supertypes, a subtype of an admitted type (an
+  `IfcBoundaryCurve`) satisfies the rule, judged in that release's entity
+  table.
+- Every where-rule in `rules` is checked against the declared release's own
+  text (#400). One helper, `rules/release.rs`, reads the release from
+  `FILE_SCHEMA` (IFC4 ADD2 TC1 when none known is declared), lists which
+  rules each bundled release declares on which entity, and answers every
+  `IN TYPEOF` test in that release's entity table; no rule matches names by
+  hand any more. Two tests hold it to the schemas: the rule list must equal
+  each bundled release's own table, and each rule's EXPRESS text in every
+  release (from `references/ifc-spec`) must be IFC4's except where the code
+  branches on and cites the difference.
+  - `IfcBooleanClippingResult.FirstOperandType`: IFC2X3 TC1 (`WR1`) admits
+    only an `IfcSweptAreaSolid` or `IfcBooleanClippingResult`, so an IFC2X3
+    swept disk is now reported. IFC4 ADD2 TC1 to IFC4X3 ADD2 spell the third
+    disjunct `IFCSWEPTDISCSOLID`, which names no entity; it is read as
+    `IfcSweptDiskSolid`, as buildingSMART/IFC4.x-development#927 and its
+    open correction #1107 state, so a clipped swept disk stays admitted.
+  - Rules IFC2X3 TC1 does not declare are no longer applied to IFC2X3
+    files: `IfcBooleanResult.FirstOperandClosed`/`SecondOperandClosed`,
+    `IfcDirection.MagnitudeGreaterZero`,
+    `IfcRepresentationMap.ApplicableMappedRepr`, and `DirectrixBounded`.
+  - `IfcRevolvedAreaSolid.AxisStartInXY` in IFC4X3 ADD2 also requires
+    `Axis.Location` to be an `IfcCartesianPoint`; IFC4X3's `LocationIsCP`
+    on `IfcAxis1Placement`, `IfcAxis2Placement2D` and `IfcAxis2Placement3D`
+    is now checked too.
+  - `DirectrixBounded` in IFC4X3 ADD2 is declared on
+    `IfcDirectrixCurveSweptAreaSolid` and so binds every subtype, including
+    `IfcDirectrixDerivedReferenceSweptAreaSolid`, which was not checked.
+  - IFC2X3 TC1's `IfcSweptSurface.WR1` (no `IfcDerivedProfileDef` as the
+    swept curve), dropped in IFC4, is checked for IFC2X3 files.
+  - A violation names its rule as the declared release does (`WR1`-`WR5`
+    on an IFC2X3 `IfcAxis2Placement3D`), and its `type_name` is the
+    violating entity's own type (an `IfcExtrudedAreaSolidTapered` was
+    reported as `IFCEXTRUDEDAREASOLID`).
+  - Rules declared on a supertype now bind subtypes the name matching
+    missed: `First`/`SecondOperandClosed` read `Closed` on an IFC4X1-on
+    `IfcTriangulatedIrregularNetwork`, and `ApplicableMappedRepr` judges
+    the release's whole `IfcShapeModel` family.
+  - `Dim` follows each release's `IfcCurveDim` and IFC4X3's
+    `IfcSegmentDim`: the IFC4X1-on and IFC4X3 curve families
+    (`IfcOffsetCurveByDistances`, `IfcGradientCurve`, `IfcPolynomialCurve`,
+    `IfcSpiral`, ...) and an `IfcCurveSegment`'s `ParentCurve` (slot 4)
+    resolve, so the dimensional rules reach IFC4X3 alignment geometry, and
+    `IfcGridAxis.WR1` derives `AxisCurve.Dim` the same way. In
+    `IfcGetBasisSurface`, an IFC4X3 `IfcCurveSegment` contributes its
+    `ParentCurve`'s surface, where slot 2 was read and an
+    `IfcCompositeCurveOnSurface` of curve segments was reported as
+    `SameSurface`.
+  - A build that leaves the declared release's table out answers subtype
+    tests from the compiled geometry chains and does not report a rule that
+    demands a type for an entity those chains cannot classify.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
