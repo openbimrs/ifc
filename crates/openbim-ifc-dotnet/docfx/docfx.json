@@ -1,0 +1,38 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "../dotnet/OpenBim.Ifc",
+          "files": ["OpenBim.Ifc.csproj"]
+        }
+      ],
+      "properties": {
+        "TargetFramework": "net8.0",
+        "Configuration": "Release"
+      },
+      "dest": "api",
+      "namespaceLayout": "flattened",
+      "memberLayout": "samePage",
+      "includePrivateMembers": false
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": ["api/*.yml", "index.md", "toc.yml"]
+      }
+    ],
+    "dest": "../dotnet/artifacts/docfx/site",
+    "template": ["default", "modern"],
+    "globalMetadata": {
+      "_appTitle": "OpenBim.Ifc",
+      "_appName": "OpenBim.Ifc",
+      "_appFooter": "<a href=\"/ifc/\">openbim-ifc documentation</a> &middot; <a href=\"/ifc/bindings/dotnet\">.NET guide</a> &middot; <a href=\"/ifc/cookbook/dotnet\">.NET cookbook</a>",
+      "_enableSearch": true,
+      "_disableContribution": true,
+      "_disableBreadcrumb": false
+    }
+  }
+}

@@ -9,14 +9,18 @@ built from, published with this site and rebuilt on every push to `main`.
 | JavaScript and TypeScript | [`@openbim/ifc`](/api/typedoc/index.html){target="_self"} | TypeDoc | the package's generated `openbim_ifc_wasm.d.ts` |
 | Python | [`openbim_ifc`](/api/pdoc/openbim_ifc.html){target="_self"} | pdoc | the installed wheel: its docstrings and type hints |
 | C and C++ | [`openbim_ifc.h`](/api/c) | `cargo run -p xtask -- docs` | the committed, cbindgen-generated header |
-| C# and .NET | [`IfcModel` and `Value`](/bindings/dotnet#api) | `cargo run -p xtask -- docs` | the `OpenBim.Ifc` C# source |
+| C# and .NET | [`OpenBim.Ifc`](/api/dotnet/index.html){target="_self"} | docfx | the assembly's XML documentation comments |
 
 The [Pages workflow](https://github.com/openbimrs/ifc/blob/main/.github/workflows/pages.yml)
-builds the npm package and the wheel from the same commit as the site,
-then runs TypeDoc and pdoc on them; both tools are pinned, TypeDoc in the
-repository's `package.json` and pdoc in the workflow. The gate builds the
-same references from the package and wheel it tests, so a declaration or
-docstring that breaks them fails before merge. Released packages are also
+builds the npm package, the wheel and the .NET assembly from the same
+commit as the site, then runs TypeDoc, pdoc and docfx on them. Every tool
+is pinned: TypeDoc in the repository's `package.json`, pdoc in the
+workflow, docfx as a dotnet local tool in `.config/dotnet-tools.json`. The
+gate builds the same references from the package and wheel it tests, and
+the .NET reference when a .NET SDK is installed, so a declaration or doc
+comment that breaks them fails before merge. The .NET assembly builds with
+a missing doc comment as an error, and the reference build fails on a
+docfx warning or on any type or member shown without a summary. Released packages are also
 documented where their registries host it: [docs.rs](https://docs.rs/openbim-ifc)
 for the crates.
 

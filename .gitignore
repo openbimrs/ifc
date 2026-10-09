@@ -33,3 +33,5 @@ __pycache__/
 
 # .NET build output of crates/openbim-ifc-dotnet (Directory.Build.props)
 crates/openbim-ifc-dotnet/dotnet/artifacts/
+# ... and the metadata docfx extracts for the .NET reference (#385)
+crates/openbim-ifc-dotnet/docfx/api/

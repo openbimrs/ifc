@@ -409,7 +409,10 @@ the C header and the C# records to the shared records, field by field.
 
 ## API
 
-Generated from the `OpenBim.Ifc` C# source.
+Generated from the `OpenBim.Ifc` C# source. The
+[.NET API reference](/api/dotnet/index.html){target="_self"} documents every
+public type of the package, the domain records, `AuthorOp`, `ParseOptions`
+and `MeshedProduct` included, from its XML documentation comments.
 
 <!-- API:DOTNET:BEGIN -->
 
