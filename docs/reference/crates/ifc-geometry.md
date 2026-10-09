@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.12.0 (2026-10-08) |
+| Latest release | 0.13.0 (2026-10-09) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -42,57 +42,45 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.12.0 (2026-10-08):
+Latest release, 0.13.0 (2026-10-09):
 
-Semver: profile boundaries this crate refused as `Unsupported` now lower,
-a malformed `IfcIndexedPolyCurve` boundary is refused as `Degenerate`
-instead of `Unsupported`, and `profile_outline` refuses open indexed
-curves it used to close. No public item is added or removed, but behaviour
-changes, so the next release is a minor one (0.12.0).
-
-### Added
-
-- `IfcIndexedPolyCurve` as the `OuterCurve` and `InnerCurves` of
-  `IfcArbitraryClosedProfileDef` and `IfcArbitraryProfileDefWithVoids`
-  (#335), per IFC4 ADD2 TC1 and IFC4X3 ADD2: an `IfcLineIndex` becomes one
-  straight `Line2` edge per consecutive index pair, an `IfcArcIndex` the
-  exact `Circle2` through its three points with an angle domain, and a curve
-  without `Segments` one straight edge per consecutive point pair. Nothing
-  is chorded. The contour is the one the `IfcCompositeCurve` reader builds
-  for the same outline (a trimmed `IfcCircle` for the arc), so both lower to
-  the same `Profile`. An `IfcArcIndex` whose three distinct points are
-  collinear lowers as the polyline start -> mid -> end (one edge when the
-  middle point lies between the others, two when not), as the schema
-  says: "the arc segment shall be treated as a polyline segment".
-  Coincidence and collinearity are judged within the model's declared
-  `Precision` (`1.E-5` project units when none is declared), "after taking
-  the Precision factor into account". Refused as
-  `GeometryError::Degenerate`, naming the curve: an open curve (closure by
-  index with `Segments`, by first and last point coinciding within the
-  `Precision` without), segments that break WHERE rule `Consecutive`, an arc
-  with two coincident points, `SelfIntersect` TRUE, and a 3D point list.
-  Other boundary curve families are still `Unsupported`.
+Semver: no public item is added, removed or changed in signature, and the
+net geometry is the same up to floating-point rounding. But the neutral
+graph `lower_product_net`/`lower_product_net_with` return is shaped
+differently, and the module documentation described that shape: a caller
+that matches `NetLowering::root` or a `Subtraction::result` as a `Boolean`,
+or reads a `Subtraction::body` as the opening's placed solid, now finds an
+`Instance` above it. Hosts the kernel refused also mesh now. That is an
+observable behaviour change for code that inspects the graph, so the next
+release is a minor one (0.13.0), not a patch.
 
 ### Changed
 
-- `profile_outline` refuses an open `IfcIndexedPolyCurve` boundary as
-  `GeometryError::Degenerate`, as the profile lowering does (#335). It
-  closed one implicitly before, reporting a ring whose closing edge the file
-  never authored. Closure is the schema's: by index with `Segments`, by the
-  first and last point coinciding within the model's `Precision` without.
-  `IfcPolyline` rings are unchanged.
+- Net lowering subtracts openings in the host's frame, not in world
+  coordinates (#388). The host's Body is lowered without its world
+  placement, each opening's Body by its placement relative to the host's,
+  the `Difference` nodes run in that frame, and one `Instance` with the
+  host's world transform (context `WorldCoordinateSystem` included, applied
+  once) is put above `NetLowering::gross`, each `Subtraction::body` and each
+  `Subtraction::result`; all of them stay in world coordinates. A host of
+  several solids has each part cut in that frame. The relative placement is
+  composed along the `IfcLocalPlacement` chain the opening and the host
+  share, from their first common placement down, so a georeferenced site's
+  translation and turn never enter it; a grid or linear placement may be
+  that common placement or sit above it. When an opening shares no chain
+  with its host (no `PlacementRelTo` path to a common placement, or a Body
+  context whose frame differs from the host's), the net body is lowered in
+  world coordinates exactly as before, rather than guessed.
 
 ### Fixed
 
-- `IfcCurveBoundedPlane` boundaries given as an `IfcCompositeCurve` of
-  polyline segments compile with `compile-reference-backend` (#336). They
-  lower unchanged, as a `CurveRelation::Composite` whose segments keep
-  their `SameSense`; `axiolid-mesh-compile` 0.3.12 refused that relation
-  ("is not a curve node"), and 0.3.13, the floor this crate already
-  requires, resolves `Composite` and `Trimmed` boundaries (axiolid/kernel#255).
-  No merge into one polyline is done here, so the segment structure stays
-  in the neutral graph. A test now pins it: three segments with one
-  reversed around a two-segment hole, and one reversed segment wrapping a
-  clockwise ring, compile to their exact areas.
+- A wall with openings flush with both its faces, under a site placed at
+  survey coordinates (600 000, 5 600 000) and turned to grid north, meshes
+  net with `compile-reference-backend` (#388). In world coordinates the
+  opening's faces were rounded off the wall's by up to an ulp of 5.6e6, and
+  `axiolid-mesh-compile` 0.3.14 refused the result as touching itself along
+  the opening's edges. The wall of `ifclite-geometry/issue_098_wall_W.ifc`,
+  refused that way before, nets to 32.419 m³ now. Net volumes over the rest
+  of the fixtures and the reference corpus are unchanged to 1e-8 m³.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
