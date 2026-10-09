@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate the product-lowering fixtures for #335, #336, #351, #353, #354,
-#357, #362 and #363.
+#357, #362, #363 and #388.
 
-Nine small files, each one edge case of `crates/ifc-geometry`'s product
+Ten small files, each one edge case of `crates/ifc-geometry`'s product
 lowering. No licence-clean public corpus isolates these cases, so they are
 generated; the output is our own data. Metres and radians, fixed GUIDs and
 time stamp: regeneration is byte-stable.
@@ -118,6 +118,26 @@ bodies whose boundaries are `IfcCompositeCurve`s of `IfcPolyline` segments:
   segments at (1, 1). Area 11.
 - `ONE_REVERSED_SEGMENT`: one segment, `SameSense` FALSE, wrapping a
   clockwise closed polyline, on a plane at z = 5. Area 12.
+
+`flush_openings_site_placements.ifc` (IFC4, #388). One wall under four
+`IfcSite`s, named as the site: `ORIGIN`, `ORIGIN_TURNED`, `GEOREF` and
+`GEOREF_TURNED`, placed at the origin or at (600 000, 5 600 000, 200), and
+turned by `RefDirection` (0.999215271103513, 0.0396086100934191, 0) (about
+2.3 degrees) or not. The wall is placed at (13.475, -15.95, 4.3) in its site,
+turned 90 degrees; its Body is an `IfcRectangleProfileDef` 3.65 x 0.25 at
+(1.825, 0), `RefDirection` (-1, 0), extruded 3.67. Two `IfcOpeningElement`s
+are placed relative to the wall at (3.325, 0.125, 0.2) and (1.35, 0.125, 0.2):
+a 1.01 x 2.26 rectangle at (1.13, 0.505), `RefDirection` (0, 1), in a
+position with `Axis` (0, -1, 0) and `RefDirection` (0, 0, 1), extruded 0.25,
+through the wall's whole thickness and flush with both faces. Net volume
+3.65 * 0.25 * 3.67 - 2 * 1.01 * 2.26 * 0.25. Three more walls:
+
+- `SIBLING` (in `GEOREF_TURNED`): the openings placed relative to the
+  site, at the same position, so the placement the two share is the site's.
+- `TWO_PART` (in `GEOREF_TURNED`): the wall as two 1.825 m solids meeting
+  between the openings.
+- `ABSOLUTE` (in `ORIGIN`): the openings placed with no `PlacementRelTo`,
+  sharing no placement with the wall.
 
 Run:  python3 tools/gen_lowering_fixtures.py test/fixtures/synthetic-lowering
 """
@@ -742,6 +762,123 @@ def curve_bounded_plane_composite():
     contain(f, label, site, products)
     return f
 
+# #388: the site placements the flush-opening wall is put under. A survey
+# origin of (600 000, 5 600 000, 200) and a turn of about 2.3 degrees to
+# grid north are what a georeferenced export writes.
+GEO_ORIGIN = (600000.0, 5600000.0, 200.0)
+GEO_TURN = (0.999215271103513, 0.0396086100934191, 0.0)
+GEO_SITES = [
+    ("ORIGIN", (0.0, 0.0, 0.0), None),
+    ("ORIGIN_TURNED", (0.0, 0.0, 0.0), GEO_TURN),
+    ("GEOREF", GEO_ORIGIN, None),
+    ("GEOREF_TURNED", GEO_ORIGIN, GEO_TURN),
+]
+# The wall in its site: at (13.475, -15.95, 4.3), turned 90 degrees, so
+# its x runs along the site's y and its y along the site's -x.
+GEO_WALL_AT = (13.475, -15.95, 4.3)
+# The openings in the wall's frame, flush with both faces (y = +-0.125).
+GEO_OPENINGS_AT = [(3.325, 0.125, 0.2), (1.35, 0.125, 0.2)]
+# The same openings in the SITE's frame: wall origin + (-y, x, z).
+GEO_OPENINGS_IN_SITE = [(13.35, -12.625, 4.5), (13.35, -14.6, 4.5)]
+
+
+def flush_openings():
+    """#388: a wall with two flush openings under four site placements."""
+    label = "flush-openings"
+    f = ifcopenshell.file(schema="IFC4")
+    ctx = context(f, 1e-5)
+    body_ctx = f.create_entity(
+        "IfcGeometricRepresentationSubContext", ContextIdentifier="Body",
+        ContextType="Model", ParentContext=ctx, TargetView="MODEL_VIEW")
+    project = f.create_entity("IfcProject", GlobalId=guid(label + "/project"),
+                              Name=label, UnitsInContext=units(f),
+                              RepresentationContexts=[ctx])
+
+    def wall_body(parts):
+        # `parts` as (length, centre) along the wall's x.
+        solids = []
+        for length, centre in parts:
+            profile = f.create_entity(
+                "IfcRectangleProfileDef", ProfileType="AREA", XDim=length, YDim=0.25,
+                Position=f.create_entity(
+                    "IfcAxis2Placement2D", Location=f.create_entity(
+                        "IfcCartesianPoint", Coordinates=[centre, 0.0]),
+                    RefDirection=direction(f, (-1.0, 0.0))))
+            solids.append(f.create_entity(
+                "IfcExtrudedAreaSolid", SweptArea=profile, Position=place3(f),
+                ExtrudedDirection=direction(f, (0.0, 0.0, 1.0)), Depth=3.67))
+        return shape(f, [rep(f, body_ctx, "Body", "SweptSolid", solids)])
+
+    def opening_body():
+        profile = f.create_entity(
+            "IfcRectangleProfileDef", ProfileType="AREA", XDim=1.01, YDim=2.26,
+            Position=f.create_entity(
+                "IfcAxis2Placement2D", Location=f.create_entity(
+                    "IfcCartesianPoint", Coordinates=[1.13, 0.505]),
+                RefDirection=direction(f, (0.0, 1.0))))
+        solid = f.create_entity(
+            "IfcExtrudedAreaSolid", SweptArea=profile,
+            Position=place3(f, axis=(0.0, -1.0, 0.0), ref=(0.0, 0.0, 1.0)),
+            ExtrudedDirection=direction(f, (0.0, 0.0, 1.0)), Depth=0.25)
+        return shape(f, [rep(f, body_ctx, "Body", "SweptSolid", [solid])])
+
+    def wall(name, site_placement, opening_placements, parts=((3.65, 1.825),)):
+        placement = f.create_entity(
+            "IfcLocalPlacement", PlacementRelTo=site_placement,
+            RelativePlacement=place3(f, GEO_WALL_AT, axis=(0.0, 0.0, 1.0),
+                                     ref=(0.0, 1.0, 0.0)))
+        element = f.create_entity(
+            "IfcWall", GlobalId=guid(label + "/" + name), Name=name,
+            ObjectPlacement=placement, PredefinedType="NOTDEFINED",
+            Representation=wall_body(parts))
+        for index, opening_placement in enumerate(opening_placements(placement)):
+            opening = f.create_entity(
+                "IfcOpeningElement", GlobalId=guid(f"{label}/{name}/opening-{index}"),
+                Name=f"{name}/{index}", ObjectPlacement=opening_placement,
+                PredefinedType="OPENING", Representation=opening_body())
+            f.create_entity(
+                "IfcRelVoidsElement", GlobalId=guid(f"{label}/{name}/voids-{index}"),
+                RelatingBuildingElement=element, RelatedOpeningElement=opening)
+        return element
+
+    def in_wall(wall_placement):
+        return [local(f, at, wall_placement) for at in GEO_OPENINGS_AT]
+
+    def in_frame(parent):
+        # The wall's frame turned into its site's: the opening's x runs
+        # along the site's y, as the wall's does.
+        return lambda _wall: [f.create_entity(
+            "IfcLocalPlacement", PlacementRelTo=parent,
+            RelativePlacement=place3(f, at, axis=(0.0, 0.0, 1.0), ref=(0.0, 1.0, 0.0)))
+            for at in GEO_OPENINGS_IN_SITE]
+
+    sites = []
+    for name, origin, turn in GEO_SITES:
+        site_placement = f.create_entity(
+            "IfcLocalPlacement", PlacementRelTo=None,
+            RelativePlacement=place3(f, origin, axis=(0.0, 0.0, 1.0) if turn else None,
+                                     ref=turn))
+        site = f.create_entity("IfcSite", GlobalId=guid(label + "/site/" + name),
+                               Name=name, ObjectPlacement=site_placement)
+        sites.append(site)
+        walls = [wall(name, site_placement, in_wall)]
+        if name == "GEOREF_TURNED":
+            # Openings placed relative to the SITE, not the wall: the
+            # placement the two share is the site's.
+            walls.append(wall("SIBLING", site_placement, in_frame(site_placement)))
+            # The same wall as two solids meeting at x = 1.825, between the
+            # openings: each part is cut in the wall's frame.
+            walls.append(wall("TWO_PART", site_placement, in_wall,
+                              parts=((1.825, 0.9125), (1.825, 2.7375))))
+        if name == "ORIGIN":
+            # Openings placed absolutely: no placement shared with the wall.
+            # The site is the identity, so site coordinates are world ones.
+            walls.append(wall("ABSOLUTE", site_placement, in_frame(None)))
+        contain(f, f"{label}/{name}", site, walls)
+    f.create_entity("IfcRelAggregates", GlobalId=guid(label + "/aggregates"),
+                    RelatingObject=project, RelatedObjects=sites)
+    return f
+
 
 FIXTURES = {
     "reference_view_openings.ifc": reference_view,
@@ -753,6 +890,7 @@ FIXTURES = {
     "indexed_profile_boundaries.ifc": lambda: profile_boundaries("IFC4"),
     "indexed_profile_boundaries_ifc4x3.ifc": lambda: profile_boundaries("IFC4X3_ADD2"),
     "curve_bounded_plane_composite.ifc": curve_bounded_plane_composite,
+    "flush_openings_site_placements.ifc": flush_openings,
 }
 
 

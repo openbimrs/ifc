@@ -30,6 +30,27 @@
 //! Openings go in ascending id, so the graph is a function of the model's
 //! content.
 //!
+//! # In the host's frame (#388)
+//!
+//! All of the above is lowered in the HOST's frame: the host's items without
+//! its world placement, each opening's by its placement relative to the
+//! host's, composed along the placement chain the two share. The
+//! subtraction then runs where the file's coincidences hold, not 5.6e6 m out
+//! on a georeferenced site, and one `Instance` with the host's world
+//! transform sits above each node [`NetLowering`] reports, so every one of
+//! them is still in world coordinates:
+//!
+//! ```text
+//! gross  = Instance(host world, host body)
+//! body_k = Instance(host world, opening k's body relative to the host)
+//! step k = Instance(host world, the host-frame step k above)
+//! ```
+//!
+//! When an opening shares no placement chain with its host, the whole net
+//! body is lowered in world coordinates as before, rather than guessed. The
+//! `frame` module says how the relative placement is composed and when it is
+//! not.
+//!
 //! # Refusal, not a quiet gross body
 //!
 //! Every per-opening failure becomes [`GeometryError::OpeningNotSubtracted`]
@@ -85,6 +106,10 @@ use crate::input::representation::{ProductShape, Representation};
 use crate::lower::session::NodeShape;
 use crate::lower::{lower_product_representation, LoweringSession, RepresentationPurpose};
 
+mod frame;
+
+use frame::NetFrame;
+
 /// One opening removed from a host, with the nodes that express it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -93,7 +118,9 @@ pub struct Subtraction {
     pub opening: EntityId,
     /// The `IfcRelVoidsElement` that authored the subtraction.
     pub relation: EntityId,
-    /// The opening's lowered Body, placed in world space.
+    /// The opening's lowered Body, placed in world space. Since #388 this is
+    /// usually an `Instance` of the host's world transform above the body
+    /// placed in the host's frame.
     pub body: NodeId,
     /// The host with this opening and every earlier one removed.
     pub result: NodeId,
@@ -162,7 +189,9 @@ impl NetOptions {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct NetLowering {
-    /// The host's gross Body, before any subtraction.
+    /// The host's gross Body, before any subtraction, in world space. With
+    /// openings to cut, since #388 usually an `Instance` of the host's world
+    /// transform above the Body lowered in the host's frame.
     pub gross: NodeId,
     /// One entry per opening, in the order they are subtracted.
     pub subtractions: Vec<Subtraction>,
@@ -173,6 +202,10 @@ pub struct NetLowering {
     /// exactly one of this list and [`Self::subtractions`].
     pub taken_as_applied: Vec<TakenAsApplied>,
     /// The net result: the last subtraction, or `gross` when there are none.
+    ///
+    /// Since #388 a subtraction's result is usually an `Instance` of the
+    /// host's world transform above the `Difference` nodes, which run in the
+    /// host's frame; see the module documentation.
     pub root: NodeId,
 }
 
@@ -227,12 +260,13 @@ pub fn lower_product_net_with(
     product: EntityId,
     options: NetOptions,
 ) -> GeometryResult<Option<NetLowering>> {
-    let Some(gross) = lower_product_representation(session, product, RepresentationPurpose::Body)?
-    else {
-        return Ok(None);
-    };
     let voidings = voidings_of(session.model(), product);
     if voidings.is_empty() {
+        let Some(gross) =
+            lower_product_representation(session, product, RepresentationPurpose::Body)?
+        else {
+            return Ok(None);
+        };
         return Ok(Some(NetLowering {
             gross,
             subtractions: Vec::new(),
@@ -240,6 +274,16 @@ pub fn lower_product_net_with(
             root: gross,
         }));
     }
+    // The host's frame when every opening shares a placement chain with the
+    // host, else world coordinates as before (#388).
+    let Some(frame) = NetFrame::for_host(session, product, &voidings)? else {
+        return Ok(None);
+    };
+    let to_world = frame.to_world();
+    let Some(local_gross) = frame.lower_host(session, product)? else {
+        return Ok(None);
+    };
+    let gross = place(session, local_gross, to_world, product)?;
 
     // Split lazily: a host whose openings are all taken as applied has
     // nothing cut from it, so it needs no solid parts.
@@ -261,11 +305,7 @@ pub fn lower_product_net_with(
                 "IfcRelVoidsElement names the same element as host and opening",
             )));
         }
-        let body = match lower_product_representation(
-            session,
-            voiding.opening,
-            RepresentationPurpose::Body,
-        ) {
+        let body = match frame.lower_opening(session, voiding.opening) {
             Ok(Some(body)) => body,
             Ok(None) => {
                 if options.reference_only_openings == ReferenceOnlyOpenings::TakeAsApplied
@@ -289,7 +329,7 @@ pub fn lower_product_net_with(
         let tools = solid_parts(session, body, voiding.opening).map_err(refuse)?;
         let heads = match &mut heads {
             Some(heads) => heads,
-            None => heads.insert(solid_parts(session, gross, product)?),
+            None => heads.insert(solid_parts(session, local_gross, product)?),
         };
         for head in heads.iter_mut() {
             for &tool in &tools {
@@ -315,8 +355,8 @@ pub fn lower_product_net_with(
         subtractions.push(Subtraction {
             opening: voiding.opening,
             relation: voiding.relation,
-            body,
-            result,
+            body: place(session, body, to_world, voiding.opening).map_err(refuse)?,
+            result: place(session, result, to_world, voiding.relation).map_err(refuse)?,
         });
     }
 
