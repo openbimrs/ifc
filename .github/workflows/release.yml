@@ -663,7 +663,11 @@ jobs:
           fi
           # Match the [package] name only: a [[bin]] may share it (openbim-ifc-cli).
           manifest="$(for m in crates/*/Cargo.toml; do
-            awk -v c="$CRATE" '/^\[/ { pkg = ($0 == "[package]") } pkg && $0 == "name = \"" c "\"" { found = 1 } END { exit !found }' "$m" && echo "$m"
+            # `if`, not `&&`: a non-matching last manifest must not become the
+            # loop's status, which `bash -e` turns into a failed assignment.
+            if awk -v c="$CRATE" '/^\[/ { pkg = ($0 == "[package]") } pkg && $0 == "name = \"" c "\"" { found = 1 } END { exit !found }' "$m"; then
+              echo "$m"
+            fi
           done)"
           [ "$(printf '%s\n' "$manifest" | grep -c .)" = 1 ] || { echo "::error::expected one manifest for $CRATE, got: $manifest"; exit 1; }
           changelog="$(dirname "$manifest")/CHANGELOG.md"
