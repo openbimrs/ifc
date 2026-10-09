@@ -12,12 +12,11 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
-Semver: a minor release (0.17.0). No public item is added, removed or
-changes signature, but behaviour changes: stations along curve relations
-(#346) and `IfcCurveSegment`s placed by an `IfcAxis2PlacementLinear`
-(#311), refused by name until now, lower, and the Axiolid requirements
-rise (`axiolid-model` 0.3.7, and with `compile-reference-backend`
-`axiolid-mesh-compile` 0.3.16 and `axiolid-construct` 0.3.17).
+Semver: a minor release. No public item is added, removed or changes
+signature, but behaviour changes: stations along curve relations (#346)
+and `IfcCurveSegment`s placed by an `IfcAxis2PlacementLinear` (#311),
+refused by name until now, lower. The Axiolid requirements are the ones
+#398 raised (`axiolid-model` 0.3.7, `axiolid-mesh-compile` 0.3.16).
 
 ### Added
 
@@ -67,13 +66,12 @@ rise (`axiolid-model` 0.3.7, and with `compile-reference-backend`
   `IfcAxis2PlacementLinear` keeps its refusal, now naming why: a gradient
   curve's segments are read as plan and profile pieces, which need a
   resolved placement.
-- Workspace requirements: `axiolid-model` 0.3.7, `axiolid-evaluate` 0.3.8
-  (dev), `axiolid-mesh-compile` 0.3.16 and `axiolid-construct` 0.3.17;
-  the lock also moves `axiolid-brep-boolean` 0.1.6, `axiolid-overlay`
-  0.3.11 and `axiolid-measure` 0.3.10. Upstream refuses a tilted placement
-  of a plan-measured curve only, reading a tilted arc-length one in its
-  own reference-up frame; nothing lowered before reached that rule, and
-  no test's result changed with the bump alone.
+- Uses the Axiolid releases #398 raised the workspace to (`axiolid-model`
+  0.3.7, axiolid/kernel#285 for stations along relations). Upstream now
+  refuses a tilted placement of a plan-measured curve only, reading a
+  tilted arc-length one in its own reference-up frame; nothing lowered
+  before reached that rule, and no test's result changed with the bump
+  alone.
 
 ### Refused by name
 
@@ -84,6 +82,41 @@ rise (`axiolid-model` 0.3.7, and with `compile-reference-backend`
   ends are not stated by its data, whose joints lie at an arc-length
   integral. A composite whose pieces do not meet, or whose undeclared
   sense runs a piece backwards, is refused by the kernel.
+
+Semver: a minor release. No public item is added, removed or changes
+signature, but behaviour changes as it did for #393: half-space boundaries
+with circular arcs, refused as `Unsupported` until now, lower, so a
+consumer matching on the boundary node now meets a `Profile` as well as a
+`Curve2`; `PARTIAL` loses the family's two rows; and the Axiolid
+requirements rise (`axiolid-model` 0.3.7, `axiolid-evaluate` 0.3.8, and
+with `compile-reference-backend` `axiolid-mesh-compile` 0.3.16 and
+`axiolid-construct` 0.3.17).
+
+### Added
+
+- `IfcPolygonalBoundedHalfSpace` boundaries with circular-arc segments
+  (#398): an `IfcCompositeCurve` with trimmed `IfcCircle` segments, or an
+  `IfcIndexedPolyCurve` with a non-collinear `IfcArcIndex`, lowers to a
+  `Profile::Contour` boundary (no holes) whose arcs are exact `Circle2`
+  segments, never chords. `SolidOperation::BoundedHalfSpace` takes a
+  profile boundary since `axiolid-model` 0.3.7 (axiolid/kernel#277,
+  Axiolid ADR 0084): the reference exact compiler clips by a right
+  circular cylinder per arc, and the mesh compiler flattens the arcs
+  under its chord budget with a certified deviation. A boundary of
+  straight edges still lowers to the same closed `Polyline2` as before,
+  so its output is unchanged. Still refused, by name: as `Degenerate`, a
+  gap at an arc's end (judged within the model's `Precision`), an open
+  curve, a point off the plane and an `IfcArcIndex` with coincident
+  points; as `Unsupported`, a boundary circle placed by an
+  `IfcAxis2Placement3D`, an `IfcCurveSegment` member, a reparametrised
+  segment and any other curve family. A boundary that crosses or touches
+  itself is the kernel's to refuse (`InvalidInput`, named alike in both
+  compilers); it reaches the caller as `CompilationRefused`.
+  `IfcPolygonalBoundedHalfSpace` is now listed as implemented, with no
+  variant rows. `halfspace_boundaries_ifc4x3.ifc` gains two walls, one
+  clipped by a six-segment composite with two arcs of radius 1.2, one by
+  an indexed boundary with an `IfcArcIndex`; each compiles, exact and
+  meshed, to its closed-form volume.
 
 ## [0.16.0] - 2026-10-09
 

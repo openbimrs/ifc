@@ -33,7 +33,7 @@ mod open;
 mod role;
 mod sections;
 pub use open::lower_open_profile_node;
-pub(crate) use role::{BoundaryRole, HALF_SPACE_ARC};
+pub(crate) use role::BoundaryRole;
 
 /// Concrete `IfcProfileDef` families represented exactly by the neutral profile model.
 pub const IMPLEMENTED_PROFILES: &[&str] = &[
@@ -234,8 +234,9 @@ fn operator_2d(operator: &ProfileOperator) -> Transform2 {
 /// `indexed`, which refuses an open curve rather than closing it.
 ///
 /// `role` says who reads the contour: a profile, or a polygonal bounded
-/// half-space boundary (#393), which takes the same composite and indexed
-/// readings but admits straight edges only (see [`BoundaryRole`]).
+/// half-space boundary (#393, #398), which takes the same composite and
+/// indexed readings under its own plane and joint rules (see
+/// [`BoundaryRole`]).
 pub(crate) fn curve_to_contour(
     model: &Model,
     id: EntityId,

@@ -877,6 +877,7 @@ dependencies = [
  "axiolid-curve",
  "axiolid-curve-evaluate-contract",
  "axiolid-evaluate",
+ "axiolid-measure",
  "axiolid-mesh",
  "axiolid-mesh-boolean-boolmesh",
  "axiolid-mesh-compile",

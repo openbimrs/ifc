@@ -56,13 +56,11 @@
 //! ADD2 TC1 does not, but the curve itself is defined identically in both, so
 //! an IFC4 file using it lowers the same way and `BoundaryType` is left to
 //! validation. Under [`BoundaryRole::HalfSpace`] the reading, closure,
-//! collinear-arc fallback and refusals above are unchanged, except:
-//!
-//! - a genuine arc is `Unsupported`: Axiolid's bounded half-space takes a
-//!   `Polyline2` only, and the arc is never polygonised;
-//! - a 3D point list is admitted when every `z` is exactly 0, as a 3D point
-//!   of a boundary `IfcPolyline` is; any other `z` is off the plane
-//!   `BoundaryDim` requires and is refused.
+//! collinear-arc fallback, exact arcs (#398: the kernel's bounded half-space
+//! takes a `Profile` contour, axiolid/kernel#277) and refusals above are
+//! unchanged, except that a 3D point list is admitted when every `z` is
+//! exactly 0, as a 3D point of a boundary `IfcPolyline` is; any other `z` is
+//! off the plane `BoundaryDim` requires and is refused.
 
 use std::f64::consts::TAU;
 
@@ -71,7 +69,7 @@ use axiolid_curve::{Circle2, Curve2, Line2};
 use axiolid_profile::{Contour, ProfileSegment};
 use ifc_model::{EntityId, Model};
 
-use super::role::{BoundaryRole, HALF_SPACE_ARC};
+use super::role::BoundaryRole;
 use crate::constraint::tolerance::{
     arc_points, model_precision_metres, points_coincide, ArcPoints,
 };
@@ -106,7 +104,6 @@ pub(super) fn indexed_contour(
     let points = points_2d(model, &view, units, role)?;
     let mut boundary = Boundary {
         id,
-        role,
         precision: model_precision_metres(model, units)?,
         segments: Vec::new(),
     };
@@ -234,7 +231,6 @@ fn points_2d(
 /// Oriented contour segments, accumulated in traversal order.
 struct Boundary {
     id: EntityId,
-    role: BoundaryRole,
     /// The model's `Precision`, in metres.
     precision: f64,
     segments: Vec<ProfileSegment>,
@@ -297,13 +293,6 @@ impl Boundary {
         let chord = end - start;
         let u = mid - start;
         let turn = u.perp_dot(chord);
-        if self.role == BoundaryRole::HalfSpace {
-            return Err(GeometryError::Unsupported {
-                entity: self.id,
-                type_name: TYPE_NAME.to_owned(),
-                detail: HALF_SPACE_ARC,
-            });
-        }
         let denominator = 2.0 * turn;
         let centre = start
             + Vec2::new(

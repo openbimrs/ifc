@@ -60,8 +60,10 @@ openbim-step = "=0.11.0"
 # concrete CPU/GPU execution providers.
 axiolid-core = { version = "0.3.0" }
 axiolid-mesh = { version = "0.3.0" }
-# 0.3.6: station seam sides (`SeamSide`, axiolid/kernel#263; #346).
-# 0.3.7: stations along curve relations (axiolid/kernel#285; #346).
+# 0.3.6: station seam sides (`SeamSide`, axiolid/kernel#263; #346). 0.3.7: a
+# bounded half-space's boundary may be a `Profile` contour of lines and
+# circular arcs (axiolid/kernel#277, Axiolid ADR 0084; #398), and stations
+# run along curve relations (axiolid/kernel#285; #346).
 axiolid-model = { version = "0.3.7" }
 axiolid-primitive = { version = "0.3.0" }
 axiolid-profile = { version = "0.3.0" }
@@ -73,6 +75,9 @@ axiolid-spatial = { version = "0.3.0" }
 axiolid-curve = { version = "0.3.4" }
 axiolid-evaluate = { version = "0.3.8" }
 axiolid-curve-evaluate-contract = { version = "0.3.0" }
+# Dev-only: the exact volume of a compiled body, to check an arc-bounded
+# half-space clip against its closed form (#398).
+axiolid-measure = { version = "0.3.10" }
 axiolid-topology = { version = "0.3.0" }
 # Execution provider. Only ifc-geometry's opt-in `compile` feature may use
 # these; the default dependency graph stays representation-only (ADR 0004).
@@ -85,6 +90,8 @@ axiolid-contracts = { version = "0.3.1" }
 # `CurveRelation::Composite` or `Trimmed` (axiolid/kernel#255; #336).
 # 0.3.15 reads a station on a seam from the side it names and mitres runs of
 # sections and offsets across seams (axiolid/kernel#263; #346). 0.3.16
+# compiles a bounded half-space whose boundary is a line-and-arc `Profile`
+# contour, with a certified deviation (axiolid/kernel#277; #398), and
 # resolves stations along curve relations (axiolid/kernel#285; #346).
 axiolid-mesh-compile = { version = "0.3.16" }
 axiolid-mesh-compile-contract = { version = "0.3.3" }
@@ -94,7 +101,8 @@ axiolid-mesh-boolean-boolmesh = { version = "0.3.0" }
 # (axiolid/kernel#164 half-space frame origin, #166 downward extrusion,
 # #169 swept-disk frame along a bent path, #245 half-angle corner mitre),
 # and to the release `axiolid-mesh-compile` 0.3.16 is built and tested
-# with (0.3.17).
+# with (0.3.17: an exact right-cylinder wall per boundary arc,
+# axiolid/kernel#277; #398).
 axiolid-construct = { version = "0.3.17" }
 
 # No default features: the default `runtime-rng` pulls getrandom 0.3, which

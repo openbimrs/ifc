@@ -581,25 +581,6 @@ pub const PARTIAL: &[Variant] = &[
                     have; the schema calls this inconsistent, so it is \
                     refused rather than resolved to the remaining p-curve",
     },
-    Variant {
-        family: "IFCPOLYGONALBOUNDEDHALFSPACE",
-        variant: "PolygonalBoundary is an IfcPolyline, or a closed \
-                  IfcCompositeCurve or IfcIndexedPolyCurve of straight \
-                  segments",
-        support: Support::Admitted,
-        rationale: "one closed Polyline2 in Position's XY plane, the kernel's \
-                    BoundedHalfSpace contract: composite joints within the \
-                    model's Precision, SameSense honoured, and a collinear \
-                    IfcArcIndex a polyline segment as IFC prescribes (#393)",
-    },
-    Variant {
-        family: "IFCPOLYGONALBOUNDEDHALFSPACE",
-        variant: "PolygonalBoundary has a circular-arc segment (a trimmed \
-                  IfcCircle or a non-collinear IfcArcIndex)",
-        support: Support::Refused,
-        rationale: "kernel: Axiolid's BoundedHalfSpace takes only a Polyline2 \
-                    boundary, and an arc is refused rather than polygonised",
-    },
 ];
 
 /// Lower any representation item into the caller's session.

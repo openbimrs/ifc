@@ -78,7 +78,8 @@ manifest is checked and the prose is not.
   and IFC4X3 (#335), `IfcCurveBoundedPlane`s bounded by composites of
   polyline segments (#336), a wall with flush openings under georeferenced
   site placements (#388), and walls clipped by polygonal bounded half-spaces
-  with composite and indexed boundaries beside their polyline twins (#393),
+  with composite and indexed boundaries beside their polyline twins (#393)
+  and with circular-arc boundaries (#398),
   indexed curves with collinear arcs (#396), and stations, sections and
   offsets on and across the tangent discontinuities of a gradient curve
   and a polyline (#346), and stations along composite curves and along
