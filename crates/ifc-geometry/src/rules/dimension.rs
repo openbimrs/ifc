@@ -17,6 +17,7 @@
 
 use ifc_model::{EntityId, Model, Value};
 
+use super::release::Release;
 use crate::resource::direction::Direction;
 use crate::resource::point::CartesianPoint;
 
@@ -25,28 +26,32 @@ use crate::resource::point::CartesianPoint;
 /// Trimmed curves nest, and a cyclic file must not hang the validator.
 const MAX_DEPTH: usize = 32;
 
-/// Dimensionality of any geometry resource entity, or `None` when the schema
-/// leaves it undefined (`RETURN(?)`) or the file is too malformed to say.
-pub fn dim_of(model: &Model, id: EntityId) -> Option<usize> {
-    dim_with_depth(model, id, 0)
+/// Dimensionality of any geometry resource entity in `release`, or `None`
+/// when the schema leaves it undefined (`RETURN(?)`) or the file is too
+/// malformed to say.
+///
+/// Every type test is `TYPEOF` in the release's own entity table.
+pub(crate) fn dim_of(release: &Release, model: &Model, id: EntityId) -> Option<usize> {
+    dim_with_depth(release, model, id, 0)
 }
 
-fn dim_with_depth(model: &Model, id: EntityId, depth: usize) -> Option<usize> {
+fn dim_with_depth(release: &Release, model: &Model, id: EntityId, depth: usize) -> Option<usize> {
     if depth > MAX_DEPTH {
         return None;
     }
     let entity = model.get(id)?;
-    let name = entity.type_name.to_ascii_uppercase();
-    let is_a = |super_type: &str| crate::select::is_a(&name, super_type);
+    let name: &str = &entity.type_name;
+    let is_a = |super_type: &str| release.is_a(name, super_type);
+    let next = |id: EntityId| dim_with_depth(release, model, id, depth + 1);
 
     // Leaves: the two entities that carry explicit coordinate lists.
-    if name == "IFCCARTESIANPOINT" {
+    if is_a("IFCCARTESIANPOINT") {
         return CartesianPoint::new(id, entity)
             .coordinates()
             .ok()
             .map(|c| c.len());
     }
-    if name == "IFCDIRECTION" {
+    if is_a("IFCDIRECTION") {
         return Direction::new(id, entity).ratios().ok().map(|r| r.len());
     }
 
@@ -57,92 +62,131 @@ fn dim_with_depth(model: &Model, id: EntityId, depth: usize) -> Option<usize> {
         || is_a("IFCCSGPRIMITIVE3D")
         || is_a("IFCTESSELLATEDFACESET")
         || is_a("IFCSECTIONEDSPINE")
-        || name == "IFCBOUNDINGBOX"
-        || name == "IFCFACEBASEDSURFACEMODEL"
-        || name == "IFCSHELLBASEDSURFACEMODEL"
+        || is_a("IFCBOUNDINGBOX")
+        || is_a("IFCFACEBASEDSURFACEMODEL")
+        || is_a("IFCSHELLBASEDSURFACEMODEL")
     {
         return Some(3);
     }
 
     // A placement takes its dimensionality from its Location point.
     if is_a("IFCPLACEMENT") {
-        return slot_ref(entity, 0).and_then(|p| dim_with_depth(model, p, depth + 1));
+        return slot_ref(entity, 0).and_then(next);
     }
     if is_a("IFCCARTESIANTRANSFORMATIONOPERATOR") {
         // LocalOrigin is slot 2: Axis1, Axis2, LocalOrigin, Scale.
-        return slot_ref(entity, 2).and_then(|p| dim_with_depth(model, p, depth + 1));
+        return slot_ref(entity, 2).and_then(next);
     }
-    if name == "IFCGEOMETRICSET" || name == "IFCGEOMETRICCURVESET" {
-        return first_of_list(entity, 0).and_then(|e| dim_with_depth(model, e, depth + 1));
+    if is_a("IFCGEOMETRICSET") {
+        return first_of_list(entity, 0).and_then(next);
     }
     if is_a("IFCBOOLEANRESULT") {
-        return slot_ref(entity, 1).and_then(|e| dim_with_depth(model, e, depth + 1));
+        return slot_ref(entity, 1).and_then(next);
     }
-    if name == "IFCCOMPOSITECURVESEGMENT" {
-        return slot_ref(entity, 2).and_then(|c| dim_with_depth(model, c, depth + 1));
+    // IfcCompositeCurveSegment.Dim := ParentCurve.Dim (IFC2X3 TC1 to
+    // IFC4X2); IFC4X3 ADD2 derives both segment kinds through
+    // IfcSegmentDim, which reads the same ParentCurve: slot 2 on a composite
+    // curve segment (Transition, SameSense, ParentCurve), slot 4 on an
+    // IfcCurveSegment (Transition, Placement, SegmentStart, SegmentLength,
+    // ParentCurve).
+    if is_a("IFCCOMPOSITECURVESEGMENT") {
+        return slot_ref(entity, 2).and_then(next);
+    }
+    if is_a("IFCCURVESEGMENT") {
+        return slot_ref(entity, 4).and_then(next);
     }
     if is_a("IFCCURVE") {
-        return curve_dim(model, id, entity, &name, depth);
+        return curve_dim(release, model, entity, depth);
     }
     None
 }
 
-/// `IfcCurveDim`, transcribed from the schema.
+/// `IfcCurveDim`, transcribed from each release's schema.
 ///
-/// Order matters: `IfcTrimmedCurve` and the offsets must be tested before the
-/// generic families they would otherwise fall through to.
+/// The releases differ only in the families they add, and each family
+/// exists only in the releases that list it, so one ordered list serves
+/// every release:
+///
+/// - IFC2X3 TC1: line, conic, polyline, trimmed, composite, B-spline,
+///   offset 2D/3D;
+/// - IFC4 ADD2 TC1 adds `IfcPcurve` (3) and `IfcIndexedPolyCurve`;
+/// - IFC4X1 and IFC4X2 add `IfcOffsetCurveByDistances` (3),
+///   `IfcCurveSegment2D` (2) and `IfcAlignmentCurve` (3);
+/// - IFC4X3 ADD2 drops the last two and adds `IfcGradientCurve` and
+///   `IfcSegmentedReferenceCurve` (3, tested before the composite curve
+///   they specialise), `IfcPolynomialCurve` and `IfcSpiral`.
 fn curve_dim(
+    release: &Release,
     model: &Model,
-    id: EntityId,
     entity: &ifc_model::Entity,
-    name: &str,
     depth: usize,
 ) -> Option<usize> {
-    let is_a = |super_type: &str| crate::select::is_a(name, super_type);
+    let is_a = |super_type: &str| release.is_a(&entity.type_name, super_type);
+    let next = |id: EntityId| dim_with_depth(release, model, id, depth + 1);
 
-    if name == "IFCOFFSETCURVE2D" {
+    if is_a("IFCLINE") {
+        // Pnt is slot 0.
+        return slot_ref(entity, 0).and_then(next);
+    }
+    if is_a("IFCCONIC") {
+        // Position is slot 0 and is itself a placement.
+        return slot_ref(entity, 0).and_then(next);
+    }
+    if is_a("IFCPOLYLINE") {
+        return first_of_list(entity, 0).and_then(next);
+    }
+    if is_a("IFCTRIMMEDCURVE") {
+        return slot_ref(entity, 0).and_then(next);
+    }
+    if is_a("IFCGRADIENTCURVE") || is_a("IFCSEGMENTEDREFERENCECURVE") {
+        return Some(3);
+    }
+    if is_a("IFCCOMPOSITECURVE") {
+        return first_of_list(entity, 0).and_then(next);
+    }
+    if is_a("IFCBSPLINECURVE") {
+        // ControlPointsList is slot 1: Degree, ControlPointsList, ...
+        return first_of_list(entity, 1).and_then(next);
+    }
+    if is_a("IFCOFFSETCURVE2D") || is_a("IFCCURVESEGMENT2D") {
         return Some(2);
     }
-    if name == "IFCOFFSETCURVE3D" || name == "IFCPCURVE" {
+    if is_a("IFCOFFSETCURVE3D") || is_a("IFCOFFSETCURVEBYDISTANCES") || is_a("IFCALIGNMENTCURVE") {
+        return Some(3);
+    }
+    if is_a("IFCPOLYNOMIALCURVE") {
+        // Position, CoefficientsX, CoefficientsY, CoefficientsZ: 2 only
+        // for a 2D position without z coefficients.
+        let no_z = matches!(
+            entity.attribute(3).map(|v| v.unwrap_typed()),
+            None | Some(Value::Null)
+        );
+        let position = slot_ref(entity, 0).and_then(next);
+        return Some(if no_z && position == Some(2) { 2 } else { 3 });
+    }
+    if is_a("IFCPCURVE") {
         // A p-curve is a 3D curve lying on a surface; only its reference
         // curve is two-dimensional.
         return Some(3);
     }
-    if name == "IFCLINE" {
-        // Pnt is slot 0.
-        return slot_ref(entity, 0).and_then(|p| dim_with_depth(model, p, depth + 1));
+    if is_a("IFCINDEXEDPOLYCURVE") {
+        return slot_ref(entity, 0).and_then(|p| point_list_dim(release, model, p));
     }
-    if is_a("IFCCONIC") {
-        // Position is slot 0 and is itself a placement.
-        return slot_ref(entity, 0).and_then(|p| dim_with_depth(model, p, depth + 1));
+    if is_a("IFCSPIRAL") {
+        // Position is slot 0.
+        return slot_ref(entity, 0).and_then(next);
     }
-    if name == "IFCPOLYLINE" {
-        return first_of_list(entity, 0).and_then(|p| dim_with_depth(model, p, depth + 1));
-    }
-    if name == "IFCTRIMMEDCURVE" {
-        return slot_ref(entity, 0).and_then(|c| dim_with_depth(model, c, depth + 1));
-    }
-    if is_a("IFCCOMPOSITECURVE") {
-        return first_of_list(entity, 0).and_then(|s| dim_with_depth(model, s, depth + 1));
-    }
-    if is_a("IFCBSPLINECURVE") {
-        // ControlPointsList is slot 1: Degree, ControlPointsList, ...
-        return first_of_list(entity, 1).and_then(|p| dim_with_depth(model, p, depth + 1));
-    }
-    if name == "IFCINDEXEDPOLYCURVE" {
-        return slot_ref(entity, 0).and_then(|p| point_list_dim(model, p));
-    }
-    let _ = id;
     None
 }
 
 /// `IfcPointListDim`: 2 for a 2D point list, 3 for a 3D one.
-fn point_list_dim(model: &Model, id: EntityId) -> Option<usize> {
-    let entity = model.get(id)?;
-    match entity.type_name.to_ascii_uppercase().as_str() {
-        "IFCCARTESIANPOINTLIST2D" => Some(2),
-        "IFCCARTESIANPOINTLIST3D" => Some(3),
-        _ => None,
+fn point_list_dim(release: &Release, model: &Model, id: EntityId) -> Option<usize> {
+    if release.ref_is_a(model, id, "IFCCARTESIANPOINTLIST2D") {
+        Some(2)
+    } else if release.ref_is_a(model, id, "IFCCARTESIANPOINTLIST3D") {
+        Some(3)
+    } else {
+        None
     }
 }
 
@@ -184,10 +228,14 @@ pub fn list_refs(entity: &ifc_model::Entity, slot: usize) -> Vec<EntityId> {
 ///
 /// Returns `None` when the list agrees, is empty, or nothing resolves --
 /// a rule cannot fire on data it cannot read.
-pub fn first_dim_disagreement(model: &Model, ids: &[EntityId]) -> Option<(usize, usize, EntityId)> {
+pub(crate) fn first_dim_disagreement(
+    release: &Release,
+    model: &Model,
+    ids: &[EntityId],
+) -> Option<(usize, usize, EntityId)> {
     let mut expected: Option<usize> = None;
     for id in ids {
-        let Some(dim) = dim_of(model, *id) else {
+        let Some(dim) = dim_of(release, model, *id) else {
             continue;
         };
         match expected {
@@ -225,9 +273,10 @@ mod probe {
             EntityId(4),
             Entity::new("IFCPCURVE", vec![Value::Null, Value::Ref(EntityId(3))]),
         );
-        assert_eq!(dim_of(&m, EntityId(3)), Some(2), "polyline is 2D");
+        let release = Release::of(&m);
+        assert_eq!(dim_of(&release, &m, EntityId(3)), Some(2), "polyline is 2D");
         assert_eq!(
-            dim_of(&m, EntityId(4)),
+            dim_of(&release, &m, EntityId(4)),
             Some(3),
             "IfcCurveDim: p-curve is 3D"
         );

@@ -85,9 +85,21 @@ fn basis_with_depth(model: &Model, curve: EntityId, depth: usize) -> BTreeSet<En
 fn composite_intersection(model: &Model, entity: &Entity, depth: usize) -> BTreeSet<EntityId> {
     let mut acc: Option<BTreeSet<EntityId>> = None;
     // Segments is slot 0 on IfcCompositeCurve; ParentCurve is slot 2 on
-    // IfcCompositeCurveSegment (Transition, SameSense, ParentCurve).
+    // IfcCompositeCurveSegment (Transition, SameSense, ParentCurve) and slot
+    // 4 on IFC4X3 ADD2's IfcCurveSegment (Transition, Placement,
+    // SegmentStart, SegmentLength, ParentCurve), whose IfcGetBasisSurface
+    // reads `Segments[i]\IfcCurveSegment.ParentCurve`. Reading slot 2 of a
+    // curve segment would find no curve and empty the intersection.
     for segment in list_refs(entity, 0) {
-        let Some(parent) = model.get(segment).and_then(|s| slot_ref(s, 2)) else {
+        let parent = model.get(segment).and_then(|s| {
+            let kind = s.type_name.to_ascii_uppercase();
+            if crate::select::is_a(&kind, "IFCCURVESEGMENT") {
+                slot_ref(s, 4)
+            } else {
+                slot_ref(s, 2)
+            }
+        });
+        let Some(parent) = parent else {
             continue;
         };
         let surfaces = basis_with_depth(model, parent, depth + 1);

@@ -15,9 +15,17 @@ everything released before per-crate changelogs began.
 Semver: an `IfcIndexedPolyCurve` whose collinear `IfcArcIndex` was
 refused as `Degenerate` now lowers (#396), and `rules::validate` no longer
 reports `BoundaryType` for an IFC4X3 `IfcIndexedPolyCurve` boundary or a
-subtype of `IfcCompositeCurve` (#397). No public item is added or removed;
-previously refused curves now lower, as for #335 and #393, so the next
-release is a minor one (0.15.0).
+subtype of `IfcCompositeCurve` (#397). Every where-rule is now checked in
+the file's declared release and reported under that release's name (#400):
+an IFC2X3 file's violations are named `WR1`, `WR31`, ... as IFC2X3 TC1
+names them, and the set of violations changes for IFC2X3 and IFC4X3 files
+as listed below. No public item is added, removed or changes signature
+(`rules::validate`, `rules::validate_model`, `rules::placement::check`,
+`rules::solid::check` and `RuleViolation` are as before); a consumer
+matching IFC2X3 violations by their IFC4 rule name must match the `WRnn`
+name instead. Behaviour changes only, so the next release is a minor one
+(0.15.0); nothing is breaking at the API level. No committed fixture's
+violation set changes.
 
 ### Changed
 
@@ -56,6 +64,55 @@ release is a minor one (0.15.0).
   `TYPEOF` includes supertypes, a subtype of an admitted type (an
   `IfcBoundaryCurve`) satisfies the rule, judged in that release's entity
   table.
+- Every where-rule in `rules` is checked against the declared release's own
+  text (#400). One helper, `rules/release.rs`, reads the release from
+  `FILE_SCHEMA` (IFC4 ADD2 TC1 when none known is declared), lists which
+  rules each bundled release declares on which entity, and answers every
+  `IN TYPEOF` test in that release's entity table; no rule matches names by
+  hand any more. Two tests hold it to the schemas: the rule list must equal
+  each bundled release's own table, and each rule's EXPRESS text in every
+  release (from `references/ifc-spec`) must be IFC4's except where the code
+  branches on and cites the difference.
+  - `IfcBooleanClippingResult.FirstOperandType`: IFC2X3 TC1 (`WR1`) admits
+    only an `IfcSweptAreaSolid` or `IfcBooleanClippingResult`, so an IFC2X3
+    swept disk is now reported. IFC4 ADD2 TC1 to IFC4X3 ADD2 spell the third
+    disjunct `IFCSWEPTDISCSOLID`, which names no entity; it is read as
+    `IfcSweptDiskSolid`, as buildingSMART/IFC4.x-development#927 and its
+    open correction #1107 state, so a clipped swept disk stays admitted.
+  - Rules IFC2X3 TC1 does not declare are no longer applied to IFC2X3
+    files: `IfcBooleanResult.FirstOperandClosed`/`SecondOperandClosed`,
+    `IfcDirection.MagnitudeGreaterZero`,
+    `IfcRepresentationMap.ApplicableMappedRepr`, and `DirectrixBounded`.
+  - `IfcRevolvedAreaSolid.AxisStartInXY` in IFC4X3 ADD2 also requires
+    `Axis.Location` to be an `IfcCartesianPoint`; IFC4X3's `LocationIsCP`
+    on `IfcAxis1Placement`, `IfcAxis2Placement2D` and `IfcAxis2Placement3D`
+    is now checked too.
+  - `DirectrixBounded` in IFC4X3 ADD2 is declared on
+    `IfcDirectrixCurveSweptAreaSolid` and so binds every subtype, including
+    `IfcDirectrixDerivedReferenceSweptAreaSolid`, which was not checked.
+  - IFC2X3 TC1's `IfcSweptSurface.WR1` (no `IfcDerivedProfileDef` as the
+    swept curve), dropped in IFC4, is checked for IFC2X3 files.
+  - A violation names its rule as the declared release does (`WR1`-`WR5`
+    on an IFC2X3 `IfcAxis2Placement3D`), and its `type_name` is the
+    violating entity's own type (an `IfcExtrudedAreaSolidTapered` was
+    reported as `IFCEXTRUDEDAREASOLID`).
+  - Rules declared on a supertype now bind subtypes the name matching
+    missed: `First`/`SecondOperandClosed` read `Closed` on an IFC4X1-on
+    `IfcTriangulatedIrregularNetwork`, and `ApplicableMappedRepr` judges
+    the release's whole `IfcShapeModel` family.
+  - `Dim` follows each release's `IfcCurveDim` and IFC4X3's
+    `IfcSegmentDim`: the IFC4X1-on and IFC4X3 curve families
+    (`IfcOffsetCurveByDistances`, `IfcGradientCurve`, `IfcPolynomialCurve`,
+    `IfcSpiral`, ...) and an `IfcCurveSegment`'s `ParentCurve` (slot 4)
+    resolve, so the dimensional rules reach IFC4X3 alignment geometry, and
+    `IfcGridAxis.WR1` derives `AxisCurve.Dim` the same way. In
+    `IfcGetBasisSurface`, an IFC4X3 `IfcCurveSegment` contributes its
+    `ParentCurve`'s surface, where slot 2 was read and an
+    `IfcCompositeCurveOnSurface` of curve segments was reported as
+    `SameSurface`.
+  - A build that leaves the declared release's table out answers subtype
+    tests from the compiled geometry chains and does not report a rule that
+    demands a type for an entity those chains cannot classify.
 
 ## [0.14.0] - 2026-10-09
 

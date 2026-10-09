@@ -316,10 +316,11 @@ fn bounded_half_space(schema: Option<&str>, type_name: &str) -> Model {
     m
 }
 
+/// `BoundaryType` violations, under IFC4's name or IFC2X3 TC1's `WR42`.
 fn boundary_type_violations(m: &Model) -> Vec<rules::RuleViolation> {
     rules::validate(m, EntityId(2))
         .into_iter()
-        .filter(|v| v.rule == "BoundaryType")
+        .filter(|v| v.rule == "BoundaryType" || v.rule == "WR42")
         .collect()
 }
 
