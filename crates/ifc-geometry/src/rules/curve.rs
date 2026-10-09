@@ -50,7 +50,12 @@ pub(crate) fn check(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
         same_dim_list(s, 0, rule, "Segments", out);
     }
     composite_curve_continuity(s, out);
-    consistent_profile_types(s, out);
+    two_d_composite_curve_dim(s, out);
+    if let Some(rule) = s.rule("IFCSECTIONEDSPINE", "ConsistentProfileTypes") {
+        // CrossSections is slot 1: SpineCurve, CrossSections,
+        // CrossSectionPositions.
+        profile_types_agree(s, 1, rule, out);
+    }
     transformation_operator(s, out);
 }
 
@@ -73,7 +78,7 @@ fn same_dim_list(
 }
 
 /// A referenced entity must have exactly the dimensionality the schema fixes.
-fn fixed_dim_ref(
+pub(super) fn fixed_dim_ref(
     s: &Subject<'_>,
     slot: usize,
     want: usize,
@@ -145,7 +150,7 @@ fn transformation_operator(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
     }
 }
 
-/// `CurveContinuous`, `IsClosed`, and `ConsistentProfileTypes`.
+/// `CurveContinuous`, `IsClosed`, and IFC2X3 TC1 `Ifc2DCompositeCurve.WR1`.
 ///
 /// # The discontinuous-segment count
 ///
@@ -156,9 +161,15 @@ fn transformation_operator(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
 ///
 /// The rule is skipped when `ClosedCurve` is not a written boolean: it is
 /// `IfcLogical`, so `UNKNOWN` is legal and decides nothing.
+///
+/// IFC2X3 TC1 `Ifc2DCompositeCurve.WR1 : SELF\IfcCompositeCurve.ClosedCurve`
+/// demands the same derived flag `IfcBoundaryCurve.IsClosed` does in IFC4
+/// on, and is read the same way.
 fn composite_curve_continuity(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
     let continuous = s.rule("IFCCOMPOSITECURVE", "CurveContinuous");
-    let is_closed = s.rule("IFCBOUNDARYCURVE", "IsClosed");
+    let is_closed = s
+        .rule("IFCBOUNDARYCURVE", "IsClosed")
+        .or_else(|| s.rule("IFC2DCOMPOSITECURVE", "WR1"));
     if continuous.is_none() && is_closed.is_none() {
         return;
     }
@@ -199,32 +210,51 @@ fn composite_curve_continuity(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
         ));
     }
 
-    // IfcBoundaryCurve.IsClosed: the same curve, additionally required to
-    // close. A boundary that does not close bounds nothing.
+    // IfcBoundaryCurve.IsClosed (and Ifc2DCompositeCurve.WR1): the same
+    // curve, additionally required to close. A boundary that does not
+    // close bounds nothing.
     if let Some(rule) = is_closed.filter(|_| !closed) {
-        out.push(
-            s.violation(
-                rule,
-                ViolationKind::Disagreement,
-                "a boundary curve must be closed, but its segments end in a \
-             discontinuity"
-                    .to_string(),
-            ),
-        );
+        out.push(s.violation(
+            rule,
+            ViolationKind::Disagreement,
+            "the curve must be closed, but its segments end in a discontinuity",
+        ));
     }
 }
 
-/// `IfcSectionedSpine.ConsistentProfileTypes`.
+/// IFC2X3 TC1 `Ifc2DCompositeCurve.WR2 : SELF\IfcCurve.Dim = 2`.
 ///
-/// Every cross-section must share the first one's `ProfileType`; a spine
-/// mixing AREA and CURVE profiles has no coherent swept result.
-fn consistent_profile_types(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
-    let Some(rule) = s.rule("IFCSECTIONEDSPINE", "ConsistentProfileTypes") else {
+/// `Dim` is `IfcCurveDim(SELF)`, the first segment's dimensionality; an
+/// undecidable `Dim` leaves the rule UNKNOWN.
+fn two_d_composite_curve_dim(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
+    let Some(rule) = s.rule("IFC2DCOMPOSITECURVE", "WR2") else {
         return;
     };
-    let (model, entity) = (s.model, s.entity);
-    // CrossSections is slot 1: SpineCurve, CrossSections, CrossSectionPositions.
-    let sections = super::dimension::list_refs(entity, 1);
+    match dim_of(s.release, s.model, s.id) {
+        Some(dim) if dim != 2 => out.push(s.violation(
+            rule,
+            ViolationKind::Dimensionality,
+            format!("the curve is {dim}D, must be 2D"),
+        )),
+        _ => {}
+    }
+}
+
+/// `ConsistentProfileTypes` on `IfcSectionedSpine` and (IFC4X1 on)
+/// `IfcSectionedSolid`: `SIZEOF(QUERY(temp <* CrossSections |
+/// CrossSections[1].ProfileType <> temp.ProfileType)) = 0`.
+///
+/// Every cross-section in the list at `slot` must share the first one's
+/// `ProfileType`; a sweep mixing AREA and CURVE profiles has no coherent
+/// result.
+pub(super) fn profile_types_agree(
+    s: &Subject<'_>,
+    slot: usize,
+    rule: &'static str,
+    out: &mut Vec<RuleViolation>,
+) {
+    let model = s.model;
+    let sections = super::dimension::list_refs(s.entity, slot);
     let kind = |id: EntityId| -> Option<String> {
         match model.get(id)?.attribute(0).map(|v| v.unwrap_typed()) {
             Some(Value::Enum(e)) => Some(e.to_ascii_uppercase()),

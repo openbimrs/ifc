@@ -12,7 +12,7 @@
 
 use ifc_model::{Entity, Value};
 
-use super::express::constraints_param_bspline;
+use super::express::{constraints_param_bspline, curve_weights_positive};
 use super::release::Subject;
 use super::violation::{RuleViolation, ViolationKind};
 
@@ -20,13 +20,20 @@ use super::violation::{RuleViolation, ViolationKind};
 ///
 /// IFC4 ADD2 TC1 introduced the knotted B-spline entities, and every later
 /// bundled release states these rules and their functions identically;
-/// IFC2X3 TC1 has none of them.
+/// IFC2X3 TC1 has none of them, but states `IfcCurveWeightsPositive` on
+/// its rational Bezier curve.
 pub(crate) fn check(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
     if let Some(rule) = s.rule("IFCBSPLINECURVEWITHKNOTS", "ConsistentBSpline") {
         curve_with_knots(s, rule, out);
     }
+    // WeightsData is slot 8 on the knotted rational curve and slot 5 on
+    // IFC2X3 TC1's rational Bezier curve (`WR2 :
+    // IfcCurveWeightsPositive(SELF)`); ControlPointsList is slot 1 on both.
     if let Some(rule) = s.rule("IFCRATIONALBSPLINECURVEWITHKNOTS", "WeightsGreaterZero") {
-        curve_weights(s, rule, out);
+        curve_weights(s, 8, rule, out);
+    }
+    if let Some(rule) = s.rule("IFCRATIONALBEZIERCURVE", "WR2") {
+        curve_weights(s, 5, rule, out);
     }
     const SURFACE: &str = "IFCBSPLINESURFACEWITHKNOTS";
     let directions = [
@@ -149,12 +156,17 @@ fn surface_with_knots(
 /// `IfcCurveWeightsPositive`: every weight must be strictly positive.
 ///
 /// A zero or negative weight makes the rational basis undefined at that
-/// span, so this is a degeneracy rather than a stylistic complaint.
-fn curve_weights(s: &Subject<'_>, rule: &'static str, out: &mut Vec<RuleViolation>) {
-    // WeightsData is slot 8, after the knotted-curve slots.
-    let Some(weights) = real_list(s.entity, 8) else {
+/// span, so this is a degeneracy rather than a stylistic complaint. The
+/// function reads the derived `Weights` array, which is undefined when
+/// `WeightsData` (at `slot`) and `ControlPointsList` differ in length; the
+/// rule then holds ([`curve_weights_positive`]).
+fn curve_weights(s: &Subject<'_>, slot: usize, rule: &'static str, out: &mut Vec<RuleViolation>) {
+    let (Some(weights), Some(points)) = (real_list(s.entity, slot), list_len(s.entity, 1)) else {
         return;
     };
+    if curve_weights_positive(&weights, points) {
+        return;
+    }
     if let Some((i, w)) = weights.iter().enumerate().find(|(_, w)| **w <= 0.0) {
         out.push(s.violation(
             rule,

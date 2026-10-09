@@ -19,7 +19,9 @@ use super::violation::{RuleViolation, ViolationKind};
 ///
 /// The B-spline, curve-on-surface and seam rules exist from IFC4 ADD2 TC1
 /// on; `IfcSectionedSpine.CorrespondingSectionPositions` is IFC2X3 TC1
-/// `WR1`. Each reads the same in every release that declares it.
+/// `WR1`; the rational Bezier curve is IFC2X3 TC1 only, the sectioned
+/// solid IFC4X1 on and the sectioned surface IFC4X3 ADD2. Each reads the
+/// same in every release that declares it.
 pub(crate) fn check(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
     let entity = s.entity;
 
@@ -45,6 +47,31 @@ pub(crate) fn check(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
             "IFCSECTIONEDSPINE",
             "CorrespondingSectionPositions",
             (1, 2),
+            ("CrossSections", "CrossSectionPositions"),
+        ),
+        // IFC2X3 TC1 `IfcRationalBezierCurve.WR1 : SIZEOF(WeightsData) =
+        // SIZEOF(SELF\IfcBSplineCurve.ControlPointsList)`: WeightsData is
+        // slot 5, after the five IfcBSplineCurve slots.
+        (
+            "IFCRATIONALBEZIERCURVE",
+            "WR1",
+            (5, 1),
+            ("WeightsData", "ControlPointsList"),
+        ),
+        // `SIZEOF(CrossSections) = SIZEOF(CrossSectionPositions)`:
+        // IfcSectionedSolidHorizontal (IFC4X1 on: Directrix, CrossSections,
+        // CrossSectionPositions) and IfcSectionedSurface (IFC4X3 ADD2:
+        // Directrix, CrossSectionPositions, CrossSections).
+        (
+            "IFCSECTIONEDSOLIDHORIZONTAL",
+            "CorrespondingSectionPositions",
+            (1, 2),
+            ("CrossSections", "CrossSectionPositions"),
+        ),
+        (
+            "IFCSECTIONEDSURFACE",
+            "CorrespondingSectionPositions",
+            (2, 1),
             ("CrossSections", "CrossSectionPositions"),
         ),
     ] {

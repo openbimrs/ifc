@@ -91,14 +91,12 @@ fn axis2_placement_3d(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
     // directions must not be parallel. This is the rule that silently produces
     // a degenerate basis when ignored.
     if let (Some(rule), Some(a), Some(r)) = (s.rule(TYPE, "AxisToRefDirPosition"), axis, ref_dir) {
-        if let (Some(av), Some(rv)) = (direction_ratios(model, a), direction_ratios(model, r)) {
-            if is_parallel(&av, &rv) {
-                out.push(s.violation(
-                    rule,
-                    ViolationKind::Degenerate,
-                    format!("Axis {a} is parallel to RefDirection {r}; the basis is degenerate"),
-                ));
-            }
+        if cross_product_vanishes(model, a, r) {
+            out.push(s.violation(
+                rule,
+                ViolationKind::Degenerate,
+                format!("Axis {a} is parallel to RefDirection {r}; the basis is degenerate"),
+            ));
         }
     }
 }
@@ -300,6 +298,20 @@ fn direction_dim(model: &Model, id: EntityId) -> Option<usize> {
 fn direction_ratios(model: &Model, id: EntityId) -> Option<Vec<f64>> {
     let entity = model.get(id)?;
     Direction::new(id, entity).ratios().ok()
+}
+
+/// `IfcCrossProduct(a, b).Magnitude > 0.0` is FALSE for two referenced
+/// directions: both resolve, both are 3D, and they are parallel.
+///
+/// `IfcCrossProduct` returns `?` for a 2D argument, which makes the rule
+/// UNKNOWN, so only 3D pairs are judged. Shared by
+/// `IfcAxis2Placement3D.AxisToRefDirPosition` and
+/// `IfcAxis2PlacementLinear.WR2`, whose texts are the same.
+pub(super) fn cross_product_vanishes(model: &Model, a: EntityId, b: EntityId) -> bool {
+    match (direction_ratios(model, a), direction_ratios(model, b)) {
+        (Some(av), Some(bv)) => is_parallel(&av, &bv),
+        _ => false,
+    }
 }
 
 /// Are two vectors parallel (cross product effectively zero)?

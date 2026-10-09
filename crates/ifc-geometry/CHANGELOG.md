@@ -25,7 +25,48 @@ as listed below. No public item is added, removed or changes signature
 matching IFC2X3 violations by their IFC4 rule name must match the `WRnn`
 name instead. Behaviour changes only, so the next release is a minor one
 (0.15.0); nothing is breaking at the API level. No committed fixture's
-violation set changes.
+violation set changes. The where-rules of the geometry entities IFC4 does
+not declare (#402) add violations only, on files that break them, and
+public API is unchanged, so they join the same minor release.
+
+### Added
+
+- `rules::validate` and `rules::validate_model` check the where-rules of
+  the geometry entities IFC4 ADD2 TC1 does not declare, each in the
+  releases that declare it, under that release's name and text (#402), and
+  the `DECLARED` table lists them so the schema-backed tests hold them to
+  each bundled release:
+  - IFC2X3 TC1 `Ifc2DCompositeCurve.WR1` (`ClosedCurve`) and `WR2`
+    (`Dim = 2`); `IfcRationalBezierCurve.WR1` (one weight per control
+    point) and `WR2` (`IfcCurveWeightsPositive`);
+  - IFC4X1 on: `IfcSectionedSolid.ConsistentProfileTypes`,
+    `DirectrixIs3D` and `SectionsSameType`;
+    `IfcSectionedSolidHorizontal.CorrespondingSectionPositions` and
+    `NoLongitudinalOffsets` (IFC4X1 and IFC4X2 read the offset on the
+    `IfcDistanceExpression` position, IFC4X3 ADD2 on the position's
+    `IfcPointByDistanceExpression` location);
+    `IfcTriangulatedIrregularNetwork.NotClosed` (a written `Closed = TRUE`
+    violates; an omitted one is UNKNOWN and conforms);
+  - IFC4X3 ADD2: `IfcAxis2PlacementLinear.WR1` (the location is an
+    `IfcPointByDistanceExpression`) and `WR2` (Axis not parallel to
+    RefDirection, read as `AxisToRefDirPosition` is);
+    `IfcPolynomialCurve.CorrectPositionDim` and `ValidCoefficients`;
+    `IfcSectionedSurface.AreaProfileTypes` (at least one `CURVE`
+    cross-section, as its text demands), `CorrespondingSectionPositions`,
+    `DirectrixIs3D`, `NoOffsets` and `SectionsSameType`.
+
+  #402 listed the sectioned solids and the TIN as IFC4X3-only; IFC4X1 and
+  IFC4X2 declare them too, and are checked. `IfcCurveWeightsPositive` is
+  transcribed once (`rules/express.rs`) for both the Bezier curve and IFC4's
+  `IfcRationalBSplineCurveWithKnots.WeightsGreaterZero`: its `Weights` array
+  is `IfcListToArray(...) = ?` when `WeightsData` and `ControlPointsList`
+  differ in length, and the function then returns TRUE, so a rational
+  B-spline with mismatched lists now reports only
+  `SameNumOfWeightsAndPoints`, not also `WeightsGreaterZero`. `Dim` follows
+  `IfcPointDim` (IFC4X3 ADD2) and the `Dim` of `IfcPointOnCurve` and
+  `IfcPointOnSurface` (every release): a point's `BasisCurve` or
+  `BasisSurface`, and an `IfcPointByDistanceExpression`'s `BasisCurve`,
+  where it was undecided.
 
 ### Changed
 
