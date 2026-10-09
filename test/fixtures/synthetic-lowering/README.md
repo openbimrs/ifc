@@ -21,7 +21,7 @@ python3 tools/gen_lowering_fixtures.py test/fixtures/synthetic-lowering
 | `indexed_profile_boundaries_ifc4x3.ifc` | IFC4X3_ADD2 | The same profiles, the D shapes' point lists carrying a `TagList` (#335) | `crates/ifc-geometry/tests/indexed_profile_boundary.rs` |
 | `curve_bounded_plane_composite.ifc` | IFC4 | `IfcCurveBoundedPlane`s bounded by `IfcCompositeCurve`s of `IfcPolyline` segments: three outer segments, one with `SameSense` FALSE, around a two-segment hole, and one reversed segment wrapping a clockwise ring (#336) | `crates/ifc-geometry/tests/curve_bounded_composite_compile.rs` |
 | `flush_openings_site_placements.ifc` | IFC4 | A wall with two openings flush with both its faces, under four site placements (at the origin or at (600 000, 5 600 000, 200), turned 2.3 degrees or not), plus that wall with openings placed relative to the site, as two solids, and with absolutely placed openings (#388) | `crates/ifc-geometry/tests/net_host_frame.rs` |
-| `halfspace_boundaries_ifc4x3.ifc` | IFC4X3_ADD2 | Walls clipped by `IfcPolygonalBoundedHalfSpace`s whose boundary is an `IfcCompositeCurve` of polylines (one with `SameSense` FALSE), a polyline closed by a trimmed `IfcLine`, and an `IfcIndexedPolyCurve` without and with `IfcLineIndex` segments and with a collinear `IfcArcIndex`, each beside the wall bounded by the equivalent `IfcPolyline` (#393, #396) | `crates/ifc-geometry/tests/halfspace_boundary.rs` |
+| `halfspace_boundaries_ifc4x3.ifc` | IFC4X3_ADD2 | Walls clipped by `IfcPolygonalBoundedHalfSpace`s whose boundary is an `IfcCompositeCurve` of polylines (one with `SameSense` FALSE), a polyline closed by a trimmed `IfcLine`, and an `IfcIndexedPolyCurve` without and with `IfcLineIndex` segments and with a collinear `IfcArcIndex`, each beside the wall bounded by the equivalent `IfcPolyline` (#393, #396); and boundaries with genuine circular arcs: a composite of six segments, two of them trimmed `IfcCircle` arcs of radius 1.2, and an `IfcIndexedPolyCurve` with an `IfcArcIndex` (#398) | `crates/ifc-geometry/tests/halfspace_boundary.rs` |
 | `indexed_curve_arcs.ifc` | IFC4 | Proxies whose `Axis` representation is an `IfcIndexedPolyCurve` with an `IfcArcIndex` that is collinear (its middle point between, and beyond, the others), collinear within the declared `Precision`, or a genuine arc (#396) | `crates/ifc-geometry/tests/indexed_curve_arcs.rs` |
 | `station_seams_ifc4x3.ifc` | IFC4X3_ADD2 | Stations on the tangent discontinuities of an `IfcGradientCurve` (a grade break from 0.02 to -0.01 at 40 m) and an L-shaped `IfcPolyline` (a left corner at 10 m): points on each seam and 4 um before it, inside the 1e-5 m `Precision`; an `IfcSectionedSolidHorizontal`, an `IfcOffsetCurveByDistances` and an `IfcSweptDiskSolid` along it across the corner; an `IfcSectionedSurface` across the grade break (#346) | `crates/ifc-geometry/tests/stations/seams.rs`, `crates/ifc-geometry/tests/stations/compile.rs` |
 
@@ -31,7 +31,8 @@ point list and an open inner curve), and the collinear-arc and precision
 cases, each edit one record of `indexed_profile_boundaries.ifc` in memory:
 every item of a committed fixture must lower
 (`crates/ifc-geometry/tests/lower_dispatch_corpus.rs`). Likewise the #393
-genuine `IfcArcIndex`, refused, and refusals (a gap, an open curve, a point
-off the plane, a trimmed `IfcCircle`, an `IfcCurveSegment` member) edit
+refusals (a gap, an open curve, a point off the plane, an `IfcCurveSegment`
+member) and the #398 ones (an arc boundary that crosses itself, an arc
+whose circle is placed in 3D, a gap at an arc's end) edit
 `halfspace_boundaries_ifc4x3.ifc` in memory, and the #396 `Precision` and
 coincident-point cases edit `indexed_curve_arcs.ifc`.

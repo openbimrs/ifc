@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate the product-lowering fixtures for #335, #336, #346, #351, #353,
-#354, #357, #362, #363, #388, #393 and #396.
+#354, #357, #362, #363, #388, #393, #396 and #398.
 
 Thirteen small files, each one edge case of `crates/ifc-geometry`'s product
 lowering. No licence-clean public corpus isolates these cases, so they are
@@ -139,12 +139,12 @@ through the wall's whole thickness and flush with both faces. Net volume
 - `ABSOLUTE` (in `ORIGIN`): the openings placed with no `PlacementRelTo`,
   sharing no placement with the wall.
 
-`halfspace_boundaries_ifc4x3.ifc` (IFC4X3_ADD2, #393). Walls named as their
-case, each a 4 x 1 x 3 extrusion over [0, 4] x [0, 1] clipped by an
+`halfspace_boundaries_ifc4x3.ifc` (IFC4X3_ADD2, #393, #398). Walls named as
+their case, each a 4 x 1 x 3 extrusion over [0, 4] x [0, 1] clipped by an
 `IfcPolygonalBoundedHalfSpace`: the plane z = 2, `AgreementFlag` FALSE (the
-material above it is cut), `Position` the identity, and a boundary stating
-the anticlockwise pentagon (1, -1), (3, -1), (3, 0.5), (2, 2), (1, 0.5). The
-wall keeps 12 - 11/6 = 61/6. Boundaries:
+material above it is cut), `Position` the identity, and a boundary. The
+first six state the anticlockwise pentagon (1, -1), (3, -1), (3, 0.5),
+(2, 2), (1, 0.5), and the wall keeps 12 - 11/6 = 61/6. Boundaries:
 
 - `POLYLINE`: the pentagon as an `IfcPolyline`, closed by repeating its
   first point's reference: the twin every other wall must equal.
@@ -155,11 +155,27 @@ wall keeps 12 - 11/6 = 61/6. Boundaries:
 - `INDEXED`: an `IfcIndexedPolyCurve` without `Segments`, closed by
   repeating its first point.
 - `INDEXED_SEGMENTS`: an `IfcIndexedPolyCurve` with the `IfcLineIndex`
-  segments (1, 2, 3), (3, 4) and (4, 5, 1). The test turns (3, 4) into a
-  genuine `IfcArcIndex` in memory, which the half-space refuses.
+  segments (1, 2, 3), (3, 4) and (4, 5, 1).
 - `INDEXED_COLLINEAR_ARC` (#396): the same segments with (3, 4) an
   `IfcArcIndex` (3, 6, 4) through a sixth point (2.5, 1.25), the gable
   edge's midpoint: collinear, so "treated as a polyline segment".
+
+Two more walls have boundaries with genuine circular arcs (#398), which
+lower to an exact profile contour, and have no polyline twin:
+
+- `COMPOSITE_ARCS`: six `IfcCompositeCurveSegment`s, four two-point
+  polylines and two `IfcTrimmedCurve`s on one `IfcCircle` of radius 1.2
+  about (1, 0.5): the rectangle [1, 3.5] x [-0.22, 2.5] less that disk,
+  the arc split at (2.2, 0.5). The upper arc is trimmed by parameter 0 to
+  pi/2 and walked backwards (`SameSense` FALSE); the lower is trimmed by
+  Cartesian points (2.2, 0.5) to (1.96, -0.22) with `SenseAgreement`
+  FALSE. The wall keeps 12 - (2.5 - S), S the disk's area within the
+  wall's strip 0 <= y <= 1 (`integral of sqrt(1.44 - u^2)` over
+  |u| <= 0.5).
+- `INDEXED_ARC`: an `IfcIndexedPolyCurve` over (1, -1), (3, -1), (3, 0.5),
+  (2, 1.5), (1, 0.5) with segments `IfcLineIndex` (1, 2, 3), `IfcArcIndex`
+  (3, 4, 5) and `IfcLineIndex` (5, 1): the rectangle under a half circle of
+  radius 1 about (2, 0.5). The wall keeps 12 - (1 + sqrt(3)/4 + pi/6).
 
 `indexed_curve_arcs.ifc` (IFC4, #396). Proxies whose `Axis` representation
 (`Curve3D`) is an `IfcIndexedPolyCurve` over an `IfcCartesianPointList3D`,
@@ -900,6 +916,45 @@ def halfspace_boundaries():
     collinear = indexed(f, v + [(2.5, 1.25)], [
         ("line", (1, 2, 3)), ("arc", (3, 6, 4)), ("line", (4, 5, 1))])
     walls.append(wall(len(walls), "INDEXED_COLLINEAR_ARC", collinear))
+
+    # #398: boundaries with genuine circular arcs, lowered as exact profile
+    # contours. Created last so the ids above stay as #393 and #396
+    # committed them.
+    #
+    # COMPOSITE_ARCS: six segments, two of them arcs over one IfcCircle of
+    # radius 1.2 about (1, 0.5), as the downstream wall's boundary
+    # (axioval/engine#307): the rectangle [1, 3.5] x [-0.22, 2.5] less that
+    # disk, run anticlockwise, the bite clockwise and split at (2.2, 0.5).
+    # The bottom edge lies 0.72 below the centre, so the arc meets it at
+    # (1.96, -0.22) exactly.
+    circle = f.create_entity(
+        "IfcCircle", Position=f.create_entity("IfcAxis2Placement2D",
+                                              Location=point2(f, (1.0, 0.5))),
+        Radius=1.2)
+    # Authored 0 -> pi/2 by parameter and walked backwards by SameSense FALSE.
+    upper = f.create_entity(
+        "IfcTrimmedCurve", BasisCurve=circle,
+        Trim1=[f.create_entity("IfcParameterValue", 0.0)],
+        Trim2=[f.create_entity("IfcParameterValue", math.pi / 2.0)],
+        SenseAgreement=True, MasterRepresentation="PARAMETER")
+    # Authored clockwise by Cartesian points.
+    lower = f.create_entity(
+        "IfcTrimmedCurve", BasisCurve=circle,
+        Trim1=[point2(f, (2.2, 0.5))], Trim2=[point2(f, (1.96, -0.22))],
+        SenseAgreement=False, MasterRepresentation="CARTESIAN")
+    arcs = composite(f, [
+        (polyline2(f, [(1.96, -0.22), (3.5, -0.22)]), True),
+        (polyline2(f, [(3.5, -0.22), (3.5, 2.5)]), True),
+        (polyline2(f, [(3.5, 2.5), (1.0, 2.5)]), True),
+        (polyline2(f, [(1.0, 2.5), (1.0, 1.7)]), True),
+        (upper, False),
+        (lower, True)])
+    walls.append(wall(len(walls), "COMPOSITE_ARCS", arcs))
+    # INDEXED_ARC: the 2 x 1.5 rectangle under a half circle of radius 1
+    # about (2, 0.5), the IfcArcIndex (3, 4, 5) through its top (2, 1.5).
+    semicircle = indexed(f, [(1.0, -1.0), (3.0, -1.0), (3.0, 0.5), (2.0, 1.5), (1.0, 0.5)], [
+        ("line", (1, 2, 3)), ("arc", (3, 4, 5)), ("line", (5, 1))])
+    walls.append(wall(len(walls), "INDEXED_ARC", semicircle))
     contain(f, label, site, walls)
     return f
 
