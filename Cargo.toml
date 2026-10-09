@@ -72,9 +72,15 @@ axiolid-reference = { version = "0.3.6" }
 # Dev-only: the worked example indexing product bounds (#36). The index is
 # Axiolid's; this repository only produces the boxes it consumes.
 axiolid-spatial = { version = "0.3.0" }
-axiolid-curve = { version = "0.3.4" }
-axiolid-evaluate = { version = "0.3.8" }
-axiolid-curve-evaluate-contract = { version = "0.3.0" }
+# 0.3.3 of the contract (with axiolid-curve 0.3.5 and axiolid-evaluate
+# 0.3.9): `CurveEvaluator::frame_at_on` and its siblings read the side of a
+# seam a measure lies on, and the reference provider answers both sides
+# (axiolid/kernel#286); a derived linear placement on a seam reads the
+# incoming side (#409). kernel#242 documents `frame_at` as x tangent, y up,
+# z right.
+axiolid-curve = { version = "0.3.5" }
+axiolid-evaluate = { version = "0.3.9" }
+axiolid-curve-evaluate-contract = { version = "0.3.3" }
 # Dev-only: the exact volume of a compiled body, to check an arc-bounded
 # half-space clip against its closed form (#398).
 axiolid-measure = { version = "0.3.10" }
@@ -93,7 +99,9 @@ axiolid-contracts = { version = "0.3.1" }
 # compiles a bounded half-space whose boundary is a line-and-arc `Profile`
 # contour, with a certified deviation (axiolid/kernel#277; #398), and
 # resolves stations along curve relations (axiolid/kernel#285; #346).
-axiolid-mesh-compile = { version = "0.3.16" }
+# 0.3.17 is the release built with the wave-2 curve and evaluate crates
+# (axiolid/kernel#286).
+axiolid-mesh-compile = { version = "0.3.17" }
 axiolid-mesh-compile-contract = { version = "0.3.3" }
 axiolid-mesh-boolean-boolmesh = { version = "0.3.0" }
 # Not used directly: `axiolid-mesh-compile` reaches it. Pinned here only to

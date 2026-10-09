@@ -38,8 +38,12 @@
 //!
 //! IFC4.3 ADD2 fixes the frame, so it is built here from the evaluator's
 //! point and unit tangent alone, never from the evaluator's own axis
-//! labelling (the contract and the reference provider disagree on which of
-//! `y` and `z` is up):
+//! labelling. That labelling is `x` the tangent, `y` up and `z` to the
+//! right (the contract's text, corrected by axiolid/kernel#242 to what the
+//! reference provider always returned), so the frame below is `(x, -z, y)`
+//! of it for a reference-up evaluator; reading only `x` keeps the frame
+//! right for any provider whatever it calls its other axes, and a banked
+//! curve's roll never reaches it.
 //!
 //! - `x` is the tangent: `IfcAxis2PlacementLinear.RefDirection` defaults to
 //!   it (8.9.3.4), and `OffsetLongitudinal` runs along it.
@@ -54,6 +58,30 @@
 //! Explicit `Axis`/`RefDirection` on the placement are components in that
 //! `(tangent, left, up)` frame (8.9.3.4), the reading the station lowering
 //! uses too, and [`derive_linear_placement_transform`] composes them.
+//!
+//! # Tangent discontinuities (#409)
+//!
+//! IFC4.3 ADD2 8.9.3.48.3: "If DistanceAlong coincides with a point of
+//! tangential discontinuity (within precision limits), then the tangent of
+//! the previous segment governs." The derivation reads such a placement as
+//! the station lowering does (`lower::station`, #346): the seams are read
+//! from the basis curve's stored data, a `DistanceAlong` within the model's
+//! declared `Precision` (capped at 1 mm) or rounding of one is snapped to
+//! the seam's own distance, and the evaluator is asked for the frame there
+//! with [`CurveEvaluator::frame_at_on`] and [`SeamSide::Incoming`]. Off a
+//! seam it is asked side-lessly, as before. The derived placement thus
+//! equals the lowered station's frame on and near a seam, and `Verify`
+//! compares a cache against the incoming frame.
+//!
+//! A native parameter on a polyline vertex is located by its distance, an
+//! exact running sum of edge lengths, and read at that distance: the
+//! contract lets a provider refuse the incoming side of a polyline's native
+//! parameter, and the distance names the same place.
+//!
+//! An evaluator that does not implement seam sides refuses `Incoming` with
+//! `SEAM_SIDE_UNSUPPORTED`; that is [`GeometryError::SeamSideUnsupported`]
+//! naming the placement, its basis curve and the seam, never the outgoing
+//! frame in its place.
 //!
 //! # Which distance
 //!
@@ -75,16 +103,20 @@ use axiolid_contracts::GeomError;
 use axiolid_core::Frame3;
 use axiolid_curve::Curve3;
 use axiolid_curve_evaluate_contract::{
-    CurveEvaluator, CurveMeasure as KernelMeasure, DistanceConvention,
+    CurveEvaluator, CurveMeasure as KernelMeasure, DistanceConvention, SeamSide,
+    SEAM_SIDE_UNSUPPORTED,
 };
 use axiolid_model::GeometryNode;
-use ifc_alignment::{AlignmentUnits, CurveMeasure, LinearPlacement, PointByDistance};
+use ifc_alignment::{
+    AlignmentUnits, CurveMeasure, LinearPlacement, PointByDistance, SeamTolerance,
+};
 use ifc_model::{EntityId, Model, Value};
 
 use crate::constraint::tolerance;
 use crate::error::{GeometryError, GeometryResult};
 use crate::lower::curve::lower_curve_node;
 use crate::lower::session::LoweringSession;
+use crate::lower::station::seams::{nearest, seams3};
 use crate::resource::direction::resolve_unit;
 use crate::transform::Transform;
 use crate::units::UnitScale;
@@ -339,6 +371,9 @@ fn explicit_axes(model: &Model, placement: EntityId) -> GeometryResult<([f64; 3]
 /// - the authored value is an `IfcParameterValue` on a basis curve whose
 ///   IFC parameterisation is undefined (an alignment centreline)
 /// - the tangent is vertical, so there is no horizontal left
+/// - `DistanceAlong` lies on a tangent discontinuity and the evaluator
+///   cannot read its incoming side ([`GeometryError::SeamSideUnsupported`],
+///   module documentation)
 pub fn derive_placement_transform(
     model: &Model,
     units: &UnitScale,
@@ -376,13 +411,38 @@ pub fn derive_placement_transform(
         CurveMeasure::Parameter(value) => KernelMeasure::Parameter(value),
     };
 
-    let frame = evaluator
-        .frame_at(&curve, at)
-        .map_err(|error| GeometryError::Unsupported {
-            entity: placement,
-            type_name: "IFCLINEARPLACEMENT".into(),
-            detail: refusal_detail(&error),
-        })?;
+    let refused = |error: GeomError| GeometryError::Unsupported {
+        entity: placement,
+        type_name: "IFCLINEARPLACEMENT".into(),
+        detail: refusal_detail(&error),
+    };
+    let frame = match seam_at(model, units, placement, &curve, at)? {
+        // On a tangent discontinuity the previous segment governs
+        // (8.9.3.48.3): the incoming side, read at the seam's own distance,
+        // as `lower::station` stores it (module documentation).
+        Some(seam) => {
+            if !at.is_distance() && evaluator.distance_convention(&curve) != convention {
+                return Err(GeometryError::Unsupported {
+                    entity: placement,
+                    type_name: "IFCLINEARPLACEMENT".into(),
+                    detail: SEAM_PARAMETER_CONVENTION,
+                });
+            }
+            evaluator
+                .frame_at_on(&curve, KernelMeasure::Distance(seam), SeamSide::Incoming)
+                .map_err(|error| match error {
+                    GeomError::UnsupportedInput { input, .. } if input == SEAM_SIDE_UNSUPPORTED => {
+                        GeometryError::SeamSideUnsupported {
+                            placement,
+                            basis: expression.basis_curve,
+                            distance: seam,
+                        }
+                    }
+                    other => refused(other),
+                })?
+        }
+        None => evaluator.frame_at(&curve, at).map_err(refused)?,
+    };
 
     offset_frame(&frame, expression, units).ok_or(GeometryError::Unsupported {
         entity: placement,
@@ -391,6 +451,82 @@ pub fn derive_placement_transform(
                  direction and the placement no roll",
     })
 }
+
+/// The distance of the tangent discontinuity `at` lies on, in metres, if
+/// any (#409).
+///
+/// The same reading as `lower::station`: the seams are read from the
+/// curve's stored data (`lower::station::seams`), and `at` is on one within
+/// the model's declared `Precision` (capped at 1 mm) or rounding. A native
+/// parameter is located by its distance: on the neutral polyline, the only
+/// curve a parameter reaches here, that is an exact running sum.
+fn seam_at(
+    model: &Model,
+    units: &UnitScale,
+    placement: EntityId,
+    curve: &Curve3,
+    at: KernelMeasure,
+) -> GeometryResult<Option<f64>> {
+    let distance = match at {
+        KernelMeasure::Distance(distance) => Some(distance),
+        KernelMeasure::Parameter(parameter) => polyline_distance(curve, parameter),
+        _ => None,
+    };
+    let Some(distance) = distance.filter(|d| d.is_finite()) else {
+        // Not a place along the curve: the evaluator refuses it by name.
+        return Ok(None);
+    };
+    let seams = seams3(curve).map_err(|reason| GeometryError::Unsupported {
+        entity: placement,
+        type_name: "IFCLINEARPLACEMENT".into(),
+        detail: reason,
+    })?;
+    if seams.is_empty() {
+        return Ok(None);
+    }
+    let precision = SeamTolerance::for_model(
+        model,
+        AlignmentUnits {
+            length_to_metres: units.length_to_metres,
+            angle_to_radians: units.angle_to_radians,
+        },
+    )
+    .map_err(|_| GeometryError::Degenerate {
+        entity: placement,
+        type_name: "IFCLINEARPLACEMENT".into(),
+        detail: "the model's declared Precision is not a usable seam tolerance".into(),
+    })?
+    .length();
+    Ok(nearest(&seams, distance, precision).map(|seam| seam.distance))
+}
+
+/// The distance along a neutral polyline at its native `parameter` (one
+/// unit per segment, see the `polyline` submodule); `None` off its range or
+/// on another curve.
+fn polyline_distance(curve: &Curve3, parameter: f64) -> Option<f64> {
+    let Curve3::Polyline(polyline) = curve else {
+        return None;
+    };
+    let lengths: Vec<f64> = polyline
+        .points
+        .windows(2)
+        .map(|w| (w[1] - w[0]).length())
+        .collect();
+    let segments = lengths.len() as f64;
+    if !parameter.is_finite() || parameter < 0.0 || parameter > segments {
+        return None;
+    }
+    let whole = (parameter.floor() as usize).min(lengths.len().saturating_sub(1));
+    let before: f64 = lengths[..whole].iter().sum();
+    Some(before + (parameter - whole as f64) * lengths.get(whole).copied().unwrap_or(0.0))
+}
+
+/// Why a native parameter on a seam is refused when the evaluator measures
+/// another distance there.
+const SEAM_PARAMETER_CONVENTION: &str =
+    "DistanceAlong is a parameter on a tangent discontinuity of the basis curve, which is \
+     read at the seam's distance from the incoming side (IFC4.3 ADD2 8.9.3.48.3), and the \
+     evaluator measures a different distance along this curve";
 
 /// The basis curve as a neutral `Curve3`.
 ///

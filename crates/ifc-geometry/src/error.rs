@@ -196,6 +196,32 @@ pub enum GeometryError {
         tolerance: f64,
     },
 
+    /// An `IfcLinearPlacement`'s `DistanceAlong` lies on a tangent
+    /// discontinuity of its basis curve, and the caller's curve evaluator
+    /// cannot read the seam's incoming side (#409).
+    ///
+    /// IFC4.3 ADD2 8.9.3.48.3: "If DistanceAlong coincides with a point of
+    /// tangential discontinuity (within precision limits), then the tangent
+    /// of the previous segment governs." The placement is derived through
+    /// `CurveEvaluator::frame_at_on` with `SeamSide::Incoming`; an evaluator
+    /// that does not implement seam sides refuses that with
+    /// `SEAM_SIDE_UNSUPPORTED`, and the outgoing frame it could answer is
+    /// the wrong one, so the placement is refused rather than placed by it.
+    #[cfg(feature = "compile")]
+    #[error(
+        "{placement} (IFCLINEARPLACEMENT): DistanceAlong lies on a tangent discontinuity of \
+         basis curve {basis} at {distance} m, where IFC4.3 ADD2 (8.9.3.48.3) takes the tangent \
+         of the previous segment; the curve evaluator reads only the segment that starts there"
+    )]
+    SeamSideUnsupported {
+        /// The `IfcLinearPlacement`.
+        placement: EntityId,
+        /// Its basis curve.
+        basis: EntityId,
+        /// The seam's distance along the basis curve, in metres.
+        distance: f64,
+    },
+
     /// The two straight axes of an `IfcVirtualGridIntersection` are parallel,
     /// so they have no intersection to place anything at (#362).
     ///
@@ -363,6 +389,8 @@ impl GeometryError {
             Self::NotASolid { entity, .. } => Some(*entity),
             #[cfg(feature = "compile")]
             Self::CachedPlacementMismatch { placement, .. } => Some(*placement),
+            #[cfg(feature = "compile")]
+            Self::SeamSideUnsupported { placement, .. } => Some(*placement),
             // The opening is what failed; `host` stays readable on the variant.
             Self::OpeningNotSubtracted { opening, .. } => Some(*opening),
             Self::Units(_)
@@ -379,6 +407,9 @@ impl GeometryError {
     pub fn is_unsupported(&self) -> bool {
         match self {
             Self::Unsupported { .. } => true,
+            // Valid IFC this evaluator cannot read; one with seam sides can.
+            #[cfg(feature = "compile")]
+            Self::SeamSideUnsupported { .. } => true,
             // A net refusal is as supported as the reason behind it.
             Self::OpeningNotSubtracted { cause, .. } => cause.is_unsupported(),
             _ => false,

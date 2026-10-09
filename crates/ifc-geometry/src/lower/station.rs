@@ -184,7 +184,7 @@ impl Basis {
     /// How far apart two distances may be and still name the same place:
     /// the declared precision, or rounding at the distance's magnitude.
     pub(crate) fn tolerance(&self, distance: f64) -> f64 {
-        self.precision.max(1e-9 * distance.abs().max(1.0))
+        seams::window(self.precision, distance)
     }
 
     /// Refuse a distance outside the curve, by name.
@@ -234,17 +234,11 @@ impl Basis {
         owner_type: &str,
         distance: f64,
     ) -> GeometryResult<Option<seams::Seam>> {
-        let tolerance = self.tolerance(distance);
-        Ok(self
-            .known_seams(session, owner, owner_type)?
-            .iter()
-            .filter(|seam| (seam.distance - distance).abs() <= tolerance)
-            .min_by(|a, b| {
-                (a.distance - distance)
-                    .abs()
-                    .total_cmp(&(b.distance - distance).abs())
-            })
-            .copied())
+        Ok(seams::nearest(
+            self.known_seams(session, owner, owner_type)?,
+            distance,
+            self.precision,
+        ))
     }
 
     /// The distance a station of a run is stored at: the seam's own
