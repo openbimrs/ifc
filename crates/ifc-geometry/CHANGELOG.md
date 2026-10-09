@@ -16,12 +16,17 @@ Semver: a minor release. Behaviour changes on seams: a linear placement
 derived through a `CurveEvaluator` on a tangent discontinuity takes the
 incoming tangent, and an evaluator that cannot read that side is now
 refused there. `GeometryError` gains a variant (the enum is
-`#[non_exhaustive]`). The Axiolid requirements rise to `axiolid-curve`
-0.3.5, `axiolid-evaluate` 0.3.9, `axiolid-curve-evaluate-contract` 0.3.3
-and `axiolid-mesh-compile` 0.3.17 (axiolid/kernel#286), all additive.
+`#[non_exhaustive]`). The dependency floors rise with the workspace
+(#364, below); the seam sides are axiolid/kernel#286 in the same releases.
 
 ### Changed
 
+- Requires `axiolid-curve` 0.3.5, `axiolid-curve-evaluate-contract` 0.3.3
+  and, behind `compile`, `axiolid-mesh-compile` 0.3.17 (and
+  `axiolid-evaluate` 0.3.9 for the tests): the releases that rotate a
+  banked curve about a held rail (axiolid/kernel#279), which
+  `ifc-alignment` now lowers a Viennese bend onto. Nothing here builds a
+  banked curve; every test passes unchanged against them.
 - A derived `IfcLinearPlacement` on a tangent discontinuity takes the
   incoming tangent (#409), as IFC4.3 ADD2 8.9.3.48.3 asks ("the tangent of
   the previous segment governs") and as the lowered station has since
