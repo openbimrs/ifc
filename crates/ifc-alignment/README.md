@@ -47,10 +47,14 @@ The [`openbim-ifc`](https://crates.io/crates/openbim-ifc) facade also provides i
   reading IFC4.3 states). Both read a Viennese bend as the standard writes
   it, for the section's bank angle, with the rails `D / 2` either side of
   a rotation point that stays put. About a held rail (the low rail, say)
-  the cant evaluation keeps that rail and places the other `D` from it,
-  but the banked centreline refuses the bend (#364): its rotation point
-  follows the bank angle, which a height-form pivot law cannot carry. A
-  pivot that moves with neither rail held is refused by both.
+  both keep that rail and place the other `D` from it (#364): the banked
+  centreline's pivot is Axiolid's held-rail piece
+  (`CantPiece::about_rail`), its rotation point following the bank angle.
+  On a grade the banked section's rail heads, square to the tangent, stand
+  `(D / 2)(1 - cos theta)` nearer the rotation point than the vertical
+  rail heights the cant layout states (0.015 mm for 150 mm cant on 2%);
+  cant, bank angle and rotation point agree exactly. A pivot that moves
+  with neither rail held is refused by both.
 - A multi-segment horizontal layout elevates as one exact plan curve: the
   first segment's start frame plus one curvature piece per segment, or an
   arc-length chain when it holds a `CUBIC`. Seams are checked in closed

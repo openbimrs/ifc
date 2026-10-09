@@ -12,11 +12,43 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
-Semver: a patch release. No code, API or behaviour changes; only the
-dependency floor rises with the workspace (#346).
+Semver: a minor release (0.8.0). No public item changes, but
+`lower_segmented_reference_curve` and `segmented_reference_curve3` now
+return a curve for input they refused, and its pivot law can hold a
+held-rail piece (`CantForm::AboutRail`), which only `axiolid-curve` 0.3.5
+and `axiolid-evaluate` 0.3.9 or later read. Dependency floors rise to
+those releases.
+
+### Added
+
+- `lower_segmented_reference_curve` / `segmented_reference_curve3` lower a
+  `VIENNESEBEND` that rotates about a held rail (#364): when one rail has
+  the same height at both ends (at the model's declared precision, as
+  `CantLayout` compares it), the pivot law is Axiolid's held-rail piece,
+  `CantPiece::about_rail`, on that rail at its authored height, and the
+  rotation point `held -+ b sin(psi) / 2` follows the bend's angle law
+  (axiolid/kernel#279, Axiolid ADR 0081 amendment). The banked curve and
+  `CantLayout::frame_at_distance` now agree inside such a bend: cant, bank
+  angle and rotation point to rounding; the rail heads within the
+  `BankConvention::TangentRotation` drift `(D / 2)(1 - cos theta)`, the
+  banked section's rails standing square to the tangent while the cant
+  layout states them vertically (under 0.02 mm for 150 mm cant on a 2%
+  grade, nothing on the level).
 
 ### Changed
 
+- The rotation stays `BankConvention::TangentRotation`: IFC4.3 ADD2 states
+  cant as the angle `psi = arcsin(D / b)` (`IfcAlignmentCantSegmentTypeEnum`,
+  8.7.2.1) and `IfcSegmentedReferenceCurve` (8.9.3.62) carries it by
+  interpolating the placement axes, a rotation of the section frame. A
+  held rail therefore drifts by `(D / 2)(1 - cos theta)` from its authored
+  height on a grade, `theta` the climb of the rotation point's path; this
+  is documented in `curve/reference.rs` and `cant/frame.rs`.
+- The `Unsupported` reason naming the missing angle-form pivot is gone. A
+  Viennese bend whose pivot moves with neither rail held is still refused
+  by both the lowering and `CantLayout`, with the same typed error.
+- Requires `axiolid-curve` 0.3.5 (the held-rail pivot), and for the tests
+  `axiolid-evaluate` 0.3.9, which evaluates it.
 - Requires `axiolid-model` 0.3.7 (and `axiolid-evaluate` 0.3.8 for the
   tests), the releases that measure stations along curve relations
   (axiolid/kernel#285) which `ifc-geometry` lowers onto. Nothing here

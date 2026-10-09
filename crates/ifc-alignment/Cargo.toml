@@ -13,8 +13,7 @@ readme = "README.md"
 [package.metadata.openbim]
 # implemented | partial | scaffold -- a judgement, never inferred from size.
 # `gaps`: the open issues behind the status; a partial crate names one.
-status = "partial"
-gaps = [364]
+status = "implemented"
 # core | domain | geometry | facade | binding
 group = "geometry"
 

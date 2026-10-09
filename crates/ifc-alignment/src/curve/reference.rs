@@ -20,7 +20,13 @@
 //!   section's rotation point sits midway between them, at the profile for
 //!   a rotation about the centreline and at `D / 2` for one about the low
 //!   rail. Each rail follows the segment's form, so their mean follows the
-//!   same form with the mean values.
+//!   same form with the mean values. A `VIENNESEBEND` states the bank angle,
+//!   not the rails, so its pivot follows the rule `cant_at` uses (#312,
+//!   #364): a rotation point that stays put is a constant piece, and a held
+//!   rail (one with the same height at both ends, the low rail say) is a
+//!   held-rail piece, `CantPiece::about_rail`, whose rotation point
+//!   `held -+ b sin(psi) / 2` Axiolid derives from the bend's angle law
+//!   (axiolid/kernel#279, Axiolid ADR 0081 amendment).
 //!
 //! # The convention: rotation about the tangent
 //!
@@ -37,27 +43,31 @@
 //! in height by `D cos(theta)`, not `D`; the standard does not ask for the
 //! other reading, and this is the rotation `CantFrame` documents.
 //!
+//! The rail heights `IfcAlignmentCantSegment` states are "measured
+//! relatively to vertical alignment", vertically; the banked section places
+//! them `b / 2` either side of the rotation point square to the point
+//! path's tangent. Where that path climbs at angle `theta` (the grade, plus
+//! the rotation point's own rate when it moves), each rail head therefore
+//! stands `(D / 2)(1 - cos(theta))` closer to the rotation point's height
+//! than `cant_at`'s `e +- D / 2`, and so does a held rail: under
+//! `TangentRotation` it drifts by `(D / 2)(1 - cos(theta))` from its
+//! authored height (Axiolid ADR 0081 amendment), about 0.015 mm for a
+//! 150 mm cant on a 2% grade. On level track the two agree exactly. The
+//! cant, the bank angle and the rotation point agree everywhere.
+//!
 //! # Refusals that remain
 //!
-//! - A Viennese bend about a held rail (the low rail, say): the bend gives
-//!   the bank angle, so the rotation point there is `held -+ b sin(psi) / 2`,
-//!   an angle form a height-form pivot law cannot carry (Axiolid refuses it
-//!   as `BankError::AngleInPivot`); refused with its own reason until
-//!   `axiolid-curve` has an angle-form pivot (#364).
-//!   `CantLayout::cant_at_distance` and `CantLayout::frame_at_distance`
-//!   evaluate this bend, so for it, and only for it, the section frame has
-//!   a value where the banked curve refuses.
 //! - A Viennese bend whose pivot moves with neither rail held: the
 //!   standard does not determine the rails, and `CantLayout` refuses it
 //!   with the same error. A pivot that stays put through the bend, such as
-//!   rotation about the centreline, lowers, and agrees with the section
-//!   frame (#312).
+//!   rotation about the centreline (#312), or a held rail (#364) lowers, and
+//!   agrees with the section frame.
 //! - A cant layout that does not cover the plan from its start to its end:
 //!   the banked curve's span is the cant law's, and a station without cant
 //!   is not zero cant.
 //! - `USERDEFINED`, `NOTDEFINED` and unknown cant types, which state no law.
 
-use axiolid_curve::{bank_angle, BankConvention, Banked3, CantLaw, CantPiece, Curve3};
+use axiolid_curve::{bank_angle, BankConvention, Banked3, CantLaw, CantPiece, Curve3, RailSide};
 use axiolid_model::{GeometryGraphBuilder, GeometryNode};
 use ifc_model::{EntityId, Model};
 
@@ -65,10 +75,7 @@ use super::assemble::{finish, LoweredAlignmentCurve};
 use super::gradient::{compose, sole_layout};
 use super::seam::HorizontalSeam;
 use super::tolerance::SeamTolerance;
-use crate::cant::{
-    viennese_rotation, CantLayout, CantSegment, CantSegmentType, VienneseRotation,
-    HELD_RAIL_ANGLE_PIVOT,
-};
+use crate::cant::{viennese_rotation, CantLayout, CantSegment, CantSegmentType, VienneseRotation};
 use crate::error::{AlignmentError, AlignmentResult};
 use crate::horizontal::AlignmentUnits;
 use crate::view::AlignmentView;
@@ -91,7 +98,7 @@ use crate::view::AlignmentView;
 /// - Everything the gradient curve refuses.
 /// - [`AlignmentError::Unsupported`] for a cant layout that does not cover
 ///   the whole plan, a cant segment type with no law, and a Viennese bend
-///   whose pivot moves.
+///   whose pivot moves with neither rail held.
 /// - [`AlignmentError::SemanticViolation`] for a cant beyond the rail-head
 ///   distance (`|D| > b`) at a segment end; every form is monotone between
 ///   its ends, so none exceeds it inside.
@@ -239,22 +246,21 @@ fn cant_laws(
                 pivot.push(CantPiece::sine(length, e[0], e[1]));
             }
             CantSegmentType::VienneseBend => {
-                // A held rail's pivot is an angle form the height-form
-                // pivot law cannot carry; `cant_at` evaluates it (#364).
-                match viennese_rotation(segment.entity, left, right, tolerance)? {
-                    VienneseRotation::FixedPivot(_) => {}
-                    VienneseRotation::HeldLeft(_) | VienneseRotation::HeldRight(_) => {
-                        return Err(AlignmentError::Unsupported {
-                            entity: segment.entity,
-                            type_name: "VIENNESEBEND".to_owned(),
-                            detail: HELD_RAIL_ANGLE_PIVOT,
-                        });
+                // The bend states the bank angle; the pivot follows the
+                // rule `cant_at` uses, so the two give the same section.
+                let about = match viennese_rotation(segment.entity, left, right, tolerance)? {
+                    VienneseRotation::FixedPivot(height) => CantPiece::constant(length, height),
+                    VienneseRotation::HeldLeft(height) => {
+                        CantPiece::about_rail(length, RailSide::Left, height)
                     }
-                }
+                    VienneseRotation::HeldRight(height) => {
+                        CantPiece::about_rail(length, RailSide::Right, height)
+                    }
+                };
                 // |D| <= b was checked above, so both angles exist.
                 let psi = |value: f64| (value / b).asin();
                 cant.push(CantPiece::viennese_bend(length, psi(d[0]), psi(d[1])));
-                pivot.push(CantPiece::constant(length, e[0]));
+                pivot.push(about);
             }
             _ => {
                 return Err(AlignmentError::Unsupported {

@@ -12,7 +12,7 @@
       ],
       "released": "0.7.1",
       "released_date": "2026-10-09",
-      "status": "partial",
+      "status": "implemented",
       "version": "0.7.1"
     },
     "ifc-approval": {
@@ -492,8 +492,8 @@
   },
   "crates": {
     "by_status": {
-      "implemented": 30,
-      "partial": 3,
+      "implemented": 31,
+      "partial": 2,
       "scaffold": 0
     },
     "groups": [

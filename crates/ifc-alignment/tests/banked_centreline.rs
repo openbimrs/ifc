@@ -19,7 +19,7 @@
 
 use std::f64::consts::PI;
 
-use axiolid_curve::{BankConvention, Banked3, CantForm, Curve3};
+use axiolid_curve::{BankConvention, Banked3, CantForm, Curve3, RailSide};
 use ifc_alignment::{
     alignment, alignment_segment, cant_layout, cant_segment, gradient_curve3, horizontal_layout,
     horizontal_segment, lower_segmented_reference_curve, segmented_reference_curve3,
@@ -220,44 +220,138 @@ fn the_viennese_bend_lowers_as_its_bank_angle() {
     }
 }
 
-/// A low-rail pivot through a Viennese bend follows the bank angle,
-/// `b sin(psi) / 2`: the banked lowering refuses it with a reason naming
-/// the angle-form pivot gap (#364), while the section frame evaluates it,
-/// the right rail held and the left rail `D(xi)` from the angle law. The
-/// two differ here, and only here, until Axiolid has an angle-form pivot.
+/// A Viennese bend about a held rail (#364) lowers: the pivot law is
+/// Axiolid's held-rail piece, its rail and height the authored ones, and
+/// inside the bend the banked section agrees with `CantFrame`.
+///
+/// Right held (the issue's example, left 0 -> 150 mm, right 0) and left
+/// held (left 4 mm, right 4 mm -> 154 mm, a negative cant), on the 2%
+/// grade. Cant, bank angle, roll and rotation point agree to rounding, and
+/// `CantFrame::orient` with the banked curve's own tangent gives the
+/// section's frame. The rail heads agree within the documented
+/// `TangentRotation` drift: each stands `(D / 2)(1 - cos(theta))` nearer
+/// the rotation point's height than `CantFrame`'s vertical rails, `theta`
+/// the point path's climb, so the held rail drifts by that much, and by
+/// nothing at the ends where `D = 0` or on the level.
 #[test]
-fn a_held_rail_viennese_bend_evaluates_but_does_not_lower() {
-    let (model, a, ids) = track(&[(0.0, 100.0, 0.0, Some(0.15), 0.0, Some(0.0), "VIENNESEBEND")]);
-    let error = lower_segmented_reference_curve(&model, a, metres()).expect_err("angle pivot");
-    assert!(
-        matches!(&error, AlignmentError::Unsupported { entity, type_name, detail }
-            if *entity == ids[0] && type_name == "VIENNESEBEND"
-                && detail.contains("held rail") && detail.contains("AngleInPivot")
-                && detail.contains("angle-form pivot")),
-        "{error:?}"
+fn a_held_rail_viennese_bend_lowers_and_agrees_with_the_cant_frame() {
+    let right_held: Cant = (0.0, 100.0, 0.0, Some(0.15), 0.0, Some(0.0), "VIENNESEBEND");
+    let left_held: Cant = (
+        0.0,
+        100.0,
+        0.004,
+        Some(0.004),
+        0.004,
+        Some(0.154),
+        "VIENNESEBEND",
     );
-    let cant = CantLayout::for_alignment(&model, a, metres()).expect("cant");
-    let psi2 = (0.15_f64 / B).asin();
-    for xi in STATIONS {
-        let frame = cant.frame_at_distance(100.0 * xi).expect("held rail");
-        let blend = xi.powi(4) * (35.0 - 84.0 * xi + 70.0 * xi * xi - 20.0 * xi.powi(3));
-        let psi = psi2 * blend;
-        assert_eq!(frame.right, 0.0, "held rail at {xi}");
-        assert!((frame.left - B * psi.sin()).abs() < 1e-15, "left at {xi}");
-        assert!((frame.bank_angle - psi).abs() < 1e-15, "psi at {xi}");
-        assert!(
-            (frame.axis_elevation - B * psi.sin() / 2.0).abs() < 1e-15,
-            "pivot at {xi}"
+    for (segment, rail, held, sign) in [
+        (right_held, RailSide::Right, 0.0, 1.0),
+        (left_held, RailSide::Left, 0.004, -1.0),
+    ] {
+        let (model, a, _) = track(&[segment]);
+        lower_segmented_reference_curve(&model, a, metres()).expect("held rail lowers");
+        let curve = banked(&model, a);
+        assert_eq!(curve.convention, BankConvention::TangentRotation);
+        assert_eq!(
+            curve.pivot.pieces[0].form,
+            CantForm::AboutRail {
+                rail,
+                elevation: held
+            },
+            "{rail:?}"
         );
-    }
-    for (station, left) in [(0.0, 0.0), (100.0, 0.15)] {
-        let frame = cant.frame_at_distance(station).expect("authored end");
-        assert_eq!((frame.left, frame.right), (left, 0.0), "at {station}");
+        let Curve3::Elevated(elevated) = gradient_curve3(&model, a, metres()).expect("gradient")
+        else {
+            panic!("expected an elevated curve");
+        };
+        let cant = CantLayout::for_alignment(&model, a, metres()).expect("cant");
+        let psi2 = sign * (0.15_f64 / B).asin();
+        let mut largest_drift: f64 = 0.0;
+        for i in 0..=40 {
+            let xi = f64::from(i) / 40.0;
+            let d = 100.0 * xi;
+            let at = format!("{rail:?} at {xi}");
+            let section = axiolid_evaluate::banked_section(&curve, d).expect("section");
+            let frame = cant.frame_at_distance(d).expect("frame");
+            let blend = xi.powi(4) * (35.0 - 84.0 * xi + 70.0 * xi * xi - 20.0 * xi.powi(3));
+            let psi = psi2 * blend;
+
+            // cant_at: the held rail stays, the other is held +- D.
+            let (held_rail, free_rail) = match rail {
+                RailSide::Right => (frame.right, frame.left - B * psi.sin()),
+                RailSide::Left => (frame.left, frame.right + B * psi.sin()),
+            };
+            assert_eq!(held_rail, held, "held rail {at}");
+            assert!((free_rail - held).abs() < 1e-14, "free rail {at}");
+
+            // The section the lowering carries; rounding only (CantFrame
+            // reads the angle back as asin(b sin(psi) / b)).
+            assert!((frame.bank_angle - psi).abs() < 1e-14, "psi {at}");
+            assert!(
+                (section.bank_angle - frame.bank_angle).abs() < 1e-14,
+                "angle {at}"
+            );
+            assert!((section.roll - frame.bank_angle).abs() < 1e-14, "roll {at}");
+            assert!((section.cant - frame.cant).abs() < 1e-14, "cant {at}");
+            assert!(
+                (section.pivot - frame.axis_elevation).abs() < 1e-14,
+                "rotation point {at}: {} != {}",
+                section.pivot,
+                frame.axis_elevation
+            );
+            let point = axiolid_evaluate::elevated_point(&elevated, d).expect("point");
+            let oriented = frame.orient(point, section.tangent).expect("oriented");
+            for (actual, expected, what) in [
+                (oriented.origin, section.point, "rotation point"),
+                (oriented.x, section.tangent, "tangent"),
+                (oriented.y, section.lateral, "rail axis"),
+                (oriented.z, section.up, "section up"),
+            ] {
+                assert!(
+                    (actual - expected).length() < 1e-12,
+                    "{what} {at}: {actual:?} != {expected:?}"
+                );
+            }
+
+            // Rails: CantFrame's vertical heights against the section's
+            // rail heads, apart by the documented drift.
+            let cos = 1.0 / section.grade.hypot(1.0);
+            let drift = 0.5 * frame.cant * (1.0 - cos);
+            let (left, right) = section.rail_heads();
+            let (left, right) = (left.z - point.z, right.z - point.z);
+            assert!((left - (frame.left - drift)).abs() < 1e-12, "left {at}");
+            assert!((right - (frame.right + drift)).abs() < 1e-12, "right {at}");
+            let held_head = if rail == RailSide::Right { right } else { left };
+            assert!(
+                (held_head - held - sign * drift).abs() < 1e-12,
+                "held rail drift {at}"
+            );
+            largest_drift = largest_drift.max(drift.abs());
+        }
+        // A real drift, of the documented size: 150 mm cant, a 2% grade
+        // and the pivot's own climb give under 0.02 mm.
+        assert!(
+            largest_drift > 1e-5 && largest_drift < 2e-5,
+            "{rail:?} drift {largest_drift:e}"
+        );
+        for (station, left, right) in [
+            (0.0, segment.2, segment.4),
+            (100.0, segment.3.unwrap(), segment.5.unwrap()),
+        ] {
+            let frame = cant.frame_at_distance(station).expect("authored end");
+            assert_eq!(
+                (frame.left, frame.right),
+                (left, right),
+                "{rail:?} at {station}"
+            );
+        }
     }
 }
 
 /// A pivot that moves with neither rail held: the rails are not
-/// determined, and the lowering and the section frame refuse it alike.
+/// determined, and the lowering and the section frame refuse it alike,
+/// with the same typed error (#364 lowers only the held rail).
 #[test]
 fn a_moving_pivot_without_a_held_rail_is_refused() {
     let (model, a, ids) = track(&[(
