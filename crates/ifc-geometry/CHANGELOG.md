@@ -15,9 +15,13 @@ everything released before per-crate changelogs began.
 Semver: `IfcPolygonalBoundedHalfSpace` boundaries this crate refused as
 `Unsupported` now lower, and a malformed composite or indexed boundary is
 refused as `Degenerate` (an empty composite, a gap, an open curve, a point
-off the plane) instead of `Unsupported`. No public item is added or
-removed, and `PARTIAL` gains two rows; behaviour changes as it did for
-#335, so the next release is a minor one (0.14.0).
+off the plane) instead of `Unsupported`. An `IfcIndexedPolyCurve` whose
+collinear `IfcArcIndex` was refused as `Degenerate` now lowers (#396), and
+`rules::validate` no longer reports `BoundaryType` for an IFC4X3
+`IfcIndexedPolyCurve` boundary or a subtype of `IfcCompositeCurve` (#397).
+No public item is added or removed, and `PARTIAL` gains two rows;
+behaviour changes as it did for #335, so the next release is a minor one
+(0.14.0).
 
 ### Added
 
@@ -49,6 +53,44 @@ removed, and `PARTIAL` gains two rows; behaviour changes as it did for
   `halfspace_boundaries_ifc4x3.ifc` clips a wall by each form beside its
   `IfcPolyline` twin; each lowers to the twin's polyline and compiles with
   `compile-reference-backend` to its volume.
+
+### Changed
+
+- The general curve lowering (`lower_curve_node`, and every representation
+  item, axis or directrix that reaches it) treats a collinear `IfcArcIndex`
+  as IFC4 ADD2 TC1 and IFC4X3 ADD2 prescribe: "The three points shall not
+  be co-linear. In case that this informal proposition is not maintained,
+  the arc segment shall be treated as a polyline segment" (#396). Three
+  distinct points collinear within the model's `Precision` lower as a
+  straight `Curve3::Polyline` segment of the composite, start -> end when
+  the middle point lies between the others and start -> mid -> end when it
+  does not; they were refused as `Degenerate`. Two points that coincide
+  within `Precision` are still `Degenerate`. Both tests now use the model's
+  `Precision` (in the curve's own coordinates, `1.E-5` project units when
+  none is declared) instead of an absolute `f64::EPSILON` bound on a
+  squared area, and they are one helper, `constraint::tolerance::arc_points`,
+  shared with the profile and half-space boundary reader of #335 and #393,
+  whose results are unchanged except that its tolerance, like every point
+  comparison's, is floored at floating-point rounding for very large
+  coordinates. A model whose declared `Precision` is not a finite positive
+  number now refuses an indexed curve with an arc segment, as it refuses an
+  indexed profile boundary. The fixture `indexed_curve_arcs.ifc` (IFC4)
+  lowers representation curves with a collinear, an out-and-back collinear,
+  a nearly collinear and a genuine arc, and `halfspace_boundaries_ifc4x3.ifc`
+  gains a wall whose boundary has a collinear arc; both pass the dispatch
+  corpus.
+
+### Fixed
+
+- The where-rule `IfcPolygonalBoundedHalfSpace.BoundaryType` is checked in
+  the file's own release (#397). IFC4X3 ADD2 admits `IfcPolyline`,
+  `IfcCompositeCurve` and `IfcIndexedPolyCurve`; IFC2X3 TC1 (`WR42`), IFC4
+  ADD2 TC1, IFC4X1 and IFC4X2 admit only the first two. An IFC4X3 file with
+  an indexed boundary was flagged `WrongType`. The release is the header's
+  `FILE_SCHEMA`, IFC4 ADD2 TC1 when none known is declared, and, as
+  `TYPEOF` includes supertypes, a subtype of an admitted type (an
+  `IfcBoundaryCurve`) satisfies the rule, judged in that release's entity
+  table.
 
 ## [0.13.0] - 2026-10-09
 

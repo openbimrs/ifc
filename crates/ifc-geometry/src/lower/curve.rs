@@ -42,7 +42,7 @@ use crate::curve::line::Line;
 use crate::curve::offset::{
     OffsetCurve2D, OffsetCurve3D, PCurve, PreferredSurfaceCurveRepresentation, SurfaceCurve,
 };
-use crate::curve::polyline::{IndexedPolyCurve, PolySegment, Polyline};
+use crate::curve::polyline::Polyline;
 use crate::curve::trimmed::{TrimmedCurve, TrimmingPreference};
 use crate::error::GeometryResult;
 use crate::lower::session::LoweringSession;
@@ -50,7 +50,7 @@ use crate::lower::station::offset::offset_curve_by_distances;
 use crate::lower::surface::lower_surface_node;
 use crate::resource::direction::resolve_unit;
 use crate::resource::placement::axis_placement_transform;
-use crate::resource::point::{CartesianPoint, CartesianPointList2D, CartesianPointList3D};
+use crate::resource::point::CartesianPoint;
 use crate::transform::Transform;
 
 mod composite_range;
@@ -216,109 +216,9 @@ fn polyline(
     )
 }
 
-/// Lower indexed line and arc segments against one shared point list.
-fn indexed_polycurve(
-    session: &mut LoweringSession<'_>,
-    id: EntityId,
-    frame: Transform,
-) -> GeometryResult<NodeId> {
-    let entity = session.entity(id, id)?;
-    let view = IndexedPolyCurve::new(id, entity);
-    let point_list_ref = view.points_ref()?;
-    let points = indexed_points(session, id, point_list_ref, frame)?;
-    let explicit = view.has_explicit_segments();
-    let segments = view.segments(points.len())?;
-
-    if !explicit {
-        return session.node_for(
-            id,
-            GeometryNode::Curve3(Curve3::Polyline(Polyline3 {
-                points,
-                closed: false,
-            })),
-        );
-    }
-
-    let mut children = Vec::with_capacity(segments.len());
-    for segment in segments {
-        let curve = match segment {
-            PolySegment::Line(indices) => {
-                let closed = indices.first() == indices.last();
-                let mut selected: Vec<_> = indices.into_iter().map(|i| points[i]).collect();
-                if closed && selected.len() > 1 {
-                    selected.pop();
-                }
-                session.node_for(
-                    id,
-                    GeometryNode::Curve3(Curve3::Polyline(Polyline3 {
-                        points: selected,
-                        closed,
-                    })),
-                )?
-            }
-            PolySegment::Arc { start, mid, end } => {
-                indexed_arc(session, id, points[start], points[mid], points[end])?
-            }
-        };
-        children.push(CurveSegment {
-            curve,
-            same_sense: true,
-            transition: Transition::Continuous,
-        });
-    }
-    session.node_for(
-        id,
-        GeometryNode::CurveRelation(CurveRelation::Composite { segments: children }),
-    )
-}
-
-fn indexed_points(
-    session: &LoweringSession<'_>,
-    owner: EntityId,
-    list_id: EntityId,
-    frame: Transform,
-) -> GeometryResult<Vec<Point3>> {
-    let entity = session.entity(owner, list_id)?;
-    let raw: Vec<[f64; 3]> = match entity.type_name.to_ascii_uppercase().as_str() {
-        "IFCCARTESIANPOINTLIST2D" => CartesianPointList2D::new(list_id, entity)
-            .coordinates()?
-            .into_iter()
-            .map(|p| [p[0], p[1], 0.0])
-            .collect(),
-        "IFCCARTESIANPOINTLIST3D" => CartesianPointList3D::new(list_id, entity).coordinates()?,
-        other => {
-            return Err(session.unsupported(
-                list_id,
-                other,
-                "indexed curve requires IfcCartesianPointList2D or IfcCartesianPointList3D",
-            ));
-        }
-    };
-    if raw.len() < 2 {
-        return Err(session.degenerate(
-            list_id,
-            &entity.type_name,
-            "point list needs at least two points",
-        ));
-    }
-    raw.into_iter()
-        .map(|p| {
-            let metres = p.map(|value| session.units().length(value));
-            if !metres.iter().all(|value| value.is_finite()) {
-                return Err(session.degenerate(
-                    list_id,
-                    &entity.type_name,
-                    "coordinates must be finite",
-                ));
-            }
-            Ok(Point3::from_array(frame.apply(metres)))
-        })
-        .collect()
-}
-
 mod indexed;
 
-use indexed::indexed_arc;
+use indexed::indexed_polycurve;
 
 /// `IfcLine`: origin point plus an `IfcVector` direction.
 ///

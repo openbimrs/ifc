@@ -8,6 +8,7 @@
 use super::{RuleViolation, ViolationKind};
 use crate::resource::direction::Direction;
 use ifc_model::{Entity, EntityId, Model, Value};
+use ifc_schema::SchemaVersion;
 
 /// Run the solid rules that apply to this entity.
 pub fn check(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleViolation>) {
@@ -178,10 +179,25 @@ fn boolean_result(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<Ru
     }
 }
 
-/// `IfcPolygonalBoundedHalfSpace.BoundaryType` and `BoundaryDim`.
+/// `IfcPolygonalBoundedHalfSpace.BoundaryType`, in the model's own release.
 ///
-/// The boundary must be a 2D polyline or composite curve. Any other curve type
-/// cannot bound the extruded region the schema describes.
+/// `BoundaryDim` is checked with the other dimension rules. The admitted
+/// boundary types differ by release:
+///
+/// - IFC4 ADD2 TC1: `SIZEOF(TYPEOF(PolygonalBoundary) *
+///   ['IFC4.IFCPOLYLINE', 'IFC4.IFCCOMPOSITECURVE']) = 1`; IFC2X3 TC1
+///   (`WR42`), IFC4X1 and IFC4X2 state the same two types under their own
+///   schema prefix;
+/// - IFC4X3 ADD2: `SIZEOF(TYPEOF(PolygonalBoundary) *
+///   ['IFC4X3_ADD2.IFCPOLYLINE', 'IFC4X3_ADD2.IFCCOMPOSITECURVE',
+///   'IFC4X3_ADD2.IFCINDEXEDPOLYCURVE']) = 1`.
+///
+/// The release is the header's `FILE_SCHEMA`. A file that declares none, or
+/// one this crate does not know, is read as IFC4 ADD2 TC1, the crate's
+/// baseline. `TYPEOF` carries every supertype, and the admitted types are
+/// disjoint, so the rule holds exactly when the boundary is one of them or a
+/// subtype of one (an `IfcBoundaryCurve` is an `IfcCompositeCurve`), judged
+/// in that release's own entity table.
 fn polygonal_bounded_half_space(
     model: &Model,
     id: EntityId,
@@ -196,15 +212,51 @@ fn polygonal_bounded_half_space(
     let Some(curve) = model.get(boundary) else {
         return;
     };
+    let release = model_release(model);
+    let admitted: &[&str] = match release {
+        SchemaVersion::Ifc4x3 => &["IFCPOLYLINE", "IFCCOMPOSITECURVE", "IFCINDEXEDPOLYCURVE"],
+        _ => &["IFCPOLYLINE", "IFCCOMPOSITECURVE"],
+    };
     let name = curve.type_name.to_ascii_uppercase();
-    if name != "IFCPOLYLINE" && name != "IFCCOMPOSITECURVE" {
+    if !admitted
+        .iter()
+        .any(|ancestor| is_a_in_release(release, &name, ancestor))
+    {
+        let names = match release {
+            SchemaVersion::Ifc4x3 => "IfcPolyline, IfcCompositeCurve or IfcIndexedPolyCurve",
+            _ => "IfcPolyline or IfcCompositeCurve",
+        };
         out.push(RuleViolation::new(
             id,
             "IFCPOLYGONALBOUNDEDHALFSPACE",
             "BoundaryType",
             ViolationKind::WrongType,
-            format!("PolygonalBoundary must be IfcPolyline or IfcCompositeCurve, found {name}"),
+            format!(
+                "PolygonalBoundary must be {names} in {}, found {name}",
+                release.release_id()
+            ),
         ));
+    }
+}
+
+/// The release the model declares in `FILE_SCHEMA`, or IFC4 (ADD2 TC1, the
+/// crate's baseline) when it declares none this crate knows.
+fn model_release(model: &Model) -> SchemaVersion {
+    model
+        .header()
+        .schema_token()
+        .and_then(SchemaVersion::from_header_token)
+        .unwrap_or(SchemaVersion::Ifc4)
+}
+
+/// Is `entity` `ancestor` or a subtype of it in `release`?
+///
+/// Uses the release's bundled entity table; a build that leaves the release
+/// out falls back to the compiled IFC4/IFC4X3 chains.
+fn is_a_in_release(release: SchemaVersion, entity: &str, ancestor: &str) -> bool {
+    match ifc_schema::for_version(release) {
+        Ok(schema) => schema.is_a(entity, ancestor),
+        Err(_) => crate::select::is_a_in(release, entity, ancestor),
     }
 }
 

@@ -470,7 +470,7 @@ other curve families are refused as unsupported.
 
 | Capability | Status | Module |
 | --- | --- | --- |
-| `IfcPolyline`, `IfcIndexedPolyCurve` | <span class="status-implemented">Implemented</span> | exact line and three-point arc segments |
+| `IfcPolyline`, `IfcIndexedPolyCurve` | <span class="status-implemented">Implemented</span> | exact line and three-point arc segments; an arc collinear within the model's `Precision` is its polyline segment, as IFC prescribes (#396) |
 | `IfcCircle`, `IfcEllipse` | <span class="status-implemented">Implemented</span> | `curve/conic.rs` |
 | `IfcLine` | <span class="status-implemented">Implemented</span> | `curve/line.rs` |
 | `IfcTrimmedCurve` | <span class="status-implemented">Implemented</span> | `curve/trimmed.rs` |

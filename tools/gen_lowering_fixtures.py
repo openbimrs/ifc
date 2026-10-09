@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate the product-lowering fixtures for #335, #336, #351, #353, #354,
-#357, #362, #363, #388 and #393.
+#357, #362, #363, #388, #393 and #396.
 
-Eleven small files, each one edge case of `crates/ifc-geometry`'s product
+Twelve small files, each one edge case of `crates/ifc-geometry`'s product
 lowering. No licence-clean public corpus isolates these cases, so they are
 generated; the output is our own data. Metres and radians, fixed GUIDs and
 time stamp: regeneration is byte-stable.
@@ -156,9 +156,24 @@ wall keeps 12 - 11/6 = 61/6. Boundaries:
   repeating its first point.
 - `INDEXED_SEGMENTS`: an `IfcIndexedPolyCurve` with the `IfcLineIndex`
   segments (1, 2, 3), (3, 4) and (4, 5, 1). The test turns (3, 4) into a
-  collinear and a genuine `IfcArcIndex` in memory: a committed item must
-  lower as a standalone curve too, and the 3D curve lowering refuses a
-  collinear arc.
+  genuine `IfcArcIndex` in memory, which the half-space refuses.
+- `INDEXED_COLLINEAR_ARC` (#396): the same segments with (3, 4) an
+  `IfcArcIndex` (3, 6, 4) through a sixth point (2.5, 1.25), the gable
+  edge's midpoint: collinear, so "treated as a polyline segment".
+
+`indexed_curve_arcs.ifc` (IFC4, #396). Proxies whose `Axis` representation
+(`Curve3D`) is an `IfcIndexedPolyCurve` over an `IfcCartesianPointList3D`,
+named as their case:
+
+- `COLLINEAR_ARC`: (0,0,0) -> (2,0,0) as an `IfcLineIndex`, the
+  `IfcArcIndex` (2,0,0), (3,0,0), (4,0,0) -- its middle point between the
+  others -- and (4,0,0) -> (4,2,0).
+- `OUT_AND_BACK_ARC`: the `IfcArcIndex` (0,0,1), (4,0,1), (2,0,1), whose
+  middle point lies beyond its end, then (2,0,1) -> (2,2,1).
+- `NEAR_COLLINEAR_ARC`: the `IfcArcIndex` (0,0,2), (1,4e-6,2), (2,0,2),
+  its middle point 4e-6 m off the chord, inside the declared 1e-5 m
+  `Precision`.
+- `ARC`: the genuine half circle (0,0,3), (1,1,3), (2,0,3).
 
 Run:  python3 tools/gen_lowering_fixtures.py test/fixtures/synthetic-lowering
 """
@@ -846,8 +861,63 @@ def halfspace_boundaries():
             ObjectPlacement=local(f, (10.0 * index, 0.0, 0.0)), PredefinedType="NOTDEFINED",
             Representation=shape(f, [rep(f, body_ctx, "Body", "Clipping", [result])]))
 
-    contain(f, label, site,
-            [wall(index, name, boundary) for index, (name, boundary) in enumerate(boundaries)])
+    walls = [wall(index, name, boundary) for index, (name, boundary) in enumerate(boundaries)]
+    # #396: the gable edge as an IfcArcIndex through its midpoint, collinear,
+    # so "treated as a polyline segment". Created after the five walls so
+    # their ids stay as #393 committed them.
+    collinear = indexed(f, v + [(2.5, 1.25)], [
+        ("line", (1, 2, 3)), ("arc", (3, 6, 4)), ("line", (4, 5, 1))])
+    walls.append(wall(len(walls), "INDEXED_COLLINEAR_ARC", collinear))
+    contain(f, label, site, walls)
+    return f
+
+
+def indexed_curve_arcs():
+    """#396: `IfcIndexedPolyCurve` representation curves whose `IfcArcIndex`
+    is collinear, nearly collinear or a genuine arc."""
+    label = "indexed-curve-arcs"
+    f = ifcopenshell.file(schema="IFC4")
+    _, site = spatial_root(f, label)
+    model_ctx = f.by_type("IfcGeometricRepresentationContext", include_subtypes=False)[0]
+    axis_ctx = f.create_entity(
+        "IfcGeometricRepresentationSubContext", ContextIdentifier="Axis",
+        ContextType="Model", ParentContext=model_ctx, TargetView="GRAPH_VIEW")
+
+    def curve(points, segments):
+        return f.create_entity(
+            "IfcIndexedPolyCurve",
+            Points=f.create_entity("IfcCartesianPointList3D", CoordList=[
+                [float(c) for c in p] for p in points]),
+            Segments=[
+                f.create_entity("IfcLineIndex" if kind == "line" else "IfcArcIndex", indices)
+                for kind, indices in segments],
+            SelfIntersect=False)
+
+    curves = [
+        # The middle point between the others: one straight edge (2,0)-(4,0).
+        ("COLLINEAR_ARC", curve(
+            [(0, 0, 0), (2, 0, 0), (3, 0, 0), (4, 0, 0), (4, 2, 0)],
+            [("line", (1, 2)), ("arc", (2, 3, 4)), ("line", (4, 5))])),
+        # The middle point beyond the end: out to (4,0,1) and back to (2,0,1).
+        ("OUT_AND_BACK_ARC", curve(
+            [(0, 0, 1), (4, 0, 1), (2, 0, 1), (2, 2, 1)],
+            [("arc", (1, 2, 3)), ("line", (3, 4))])),
+        # The middle point 4e-6 m off the chord, inside the 1e-5 m Precision.
+        ("NEAR_COLLINEAR_ARC", curve(
+            [(0, 0, 2), (1, 0.000004, 2), (2, 0, 2)],
+            [("arc", (1, 2, 3))])),
+        # A genuine half circle of radius 1 about (1, 0, 3).
+        ("ARC", curve(
+            [(0, 0, 3), (1, 1, 3), (2, 0, 3)],
+            [("arc", (1, 2, 3))])),
+    ]
+    products = [
+        f.create_entity(
+            "IfcBuildingElementProxy", GlobalId=guid(label + "/" + name), Name=name,
+            ObjectPlacement=local(f),
+            Representation=shape(f, [rep(f, axis_ctx, "Axis", "Curve3D", [item])]))
+        for name, item in curves]
+    contain(f, label, site, products)
     return f
 
 
@@ -981,6 +1051,7 @@ FIXTURES = {
     "curve_bounded_plane_composite.ifc": curve_bounded_plane_composite,
     "flush_openings_site_placements.ifc": flush_openings,
     "halfspace_boundaries_ifc4x3.ifc": halfspace_boundaries,
+    "indexed_curve_arcs.ifc": indexed_curve_arcs,
 }
 
 

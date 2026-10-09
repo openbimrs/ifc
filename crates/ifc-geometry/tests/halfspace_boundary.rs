@@ -1,7 +1,7 @@
 //! `IfcCompositeCurve` and `IfcIndexedPolyCurve` half-space boundaries (#393).
 //!
 //! The fixture (`tools/gen_lowering_fixtures.py`,
-//! `halfspace_boundaries_ifc4x3.ifc`, IFC4X3_ADD2) has five walls, each a
+//! `halfspace_boundaries_ifc4x3.ifc`, IFC4X3_ADD2) has six walls, each a
 //! 4 x 1 x 3 extrusion over `[0, 4] x [0, 1]` cut above `z = 2` by an
 //! `IfcPolygonalBoundedHalfSpace` whose boundary states the anticlockwise
 //! pentagon `(1,-1) (3,-1) (3,0.5) (2,2) (1,0.5)`. The walls are named by
@@ -12,12 +12,18 @@
 //!   `SameSense` FALSE;
 //! - `COMPOSITE_LINE`: a polyline closed by a trimmed `IfcLine`;
 //! - `INDEXED`: an `IfcIndexedPolyCurve` without `Segments`;
-//! - `INDEXED_SEGMENTS`: three `IfcLineIndex` segments.
+//! - `INDEXED_SEGMENTS`: three `IfcLineIndex` segments;
+//! - `INDEXED_COLLINEAR_ARC`: the same with the gable edge an `IfcArcIndex`
+//!   through its midpoint, "treated as a polyline segment" (#396).
 //!
 //! Each lowers to the twin's `Polyline2` and compiles to its volume,
-//! `12 - 11/6`. The arcs and refusals edit one record in memory: every item
-//! of a committed fixture must lower (`tests/lower_dispatch_corpus.rs`),
-//! and the 3D curve lowering refuses even a collinear `IfcArcIndex`.
+//! `12 - 11/6`. The genuine arc and the refusals edit one record in memory:
+//! every item of a committed fixture must lower
+//! (`tests/lower_dispatch_corpus.rs`), and a genuine arc does not lower as
+//! a half-space boundary.
+//!
+//! `BoundaryType` is read in the file's release (#397): IFC4X3 ADD2 admits
+//! the indexed boundaries, IFC4 ADD2 TC1 does not.
 
 #![cfg(feature = "lowering")]
 
@@ -32,7 +38,13 @@ use ifc_model::{Codec, EntityId, Model, Value};
 use ifc_step::StepCodec;
 
 const FIXTURE: &str = "halfspace_boundaries_ifc4x3.ifc";
-const TWINS: [&str; 4] = ["COMPOSITE", "COMPOSITE_LINE", "INDEXED", "INDEXED_SEGMENTS"];
+const TWINS: [&str; 5] = [
+    "COMPOSITE",
+    "COMPOSITE_LINE",
+    "INDEXED",
+    "INDEXED_SEGMENTS",
+    "INDEXED_COLLINEAR_ARC",
+];
 const PENTAGON: [[f64; 2]; 5] = [[1.0, -1.0], [3.0, -1.0], [3.0, 0.5], [2.0, 2.0], [1.0, 0.5]];
 
 fn text() -> String {
@@ -302,13 +314,14 @@ fn with_arc(middle: &str) -> Model {
 }
 
 /// An `IfcArcIndex` whose middle point lies on the chord is "treated as a
-/// polyline segment" (#335's fallback) and lowers to the twin; a genuine
-/// arc is refused by name, never polygonised.
+/// polyline segment" (#335's fallback, committed as
+/// `INDEXED_COLLINEAR_ARC`) and lowers to the twin; a genuine arc is
+/// refused by name, never polygonised.
 #[test]
 fn an_indexed_arc_is_refused_unless_collinear() {
-    let model = with_arc("(2.5,1.25)");
+    let model = parse(&text());
     assert_eq!(
-        boundary(&model, "INDEXED_SEGMENTS").expect("a collinear arc is a polyline segment"),
+        boundary(&model, "INDEXED_COLLINEAR_ARC").expect("a collinear arc is a polyline segment"),
         boundary(&model, "POLYLINE").expect("the twin lowers")
     );
 
@@ -324,7 +337,10 @@ fn an_indexed_arc_is_refused_unless_collinear() {
 /// An open indexed curve is refused, with and without `Segments`.
 #[test]
 fn an_open_indexed_curve_is_refused() {
-    let model = edited(&[("IFCLINEINDEX((4,5,1))", "IFCLINEINDEX((4,5))")]);
+    let model = edited(&[(
+        "IFCLINEINDEX((3,4)),IFCLINEINDEX((4,5,1))",
+        "IFCLINEINDEX((3,4)),IFCLINEINDEX((4,5))",
+    )]);
     let (entity, _, detail) = degenerate(&model, "INDEXED_SEGMENTS");
     assert_eq!(entity, EntityId(52));
     assert!(detail.contains("open"), "{detail}");
@@ -408,5 +424,43 @@ fn each_clipped_wall_compiles_to_its_polyline_twins_volume() {
             (clipped - twin).abs() < 1e-9,
             "{name}: {clipped}, its polyline twin {twin}"
         );
+    }
+}
+
+fn boundary_type_violations(model: &Model) -> Vec<(EntityId, String)> {
+    ifc_geometry::rules::validate_model(model)
+        .into_iter()
+        .filter(|violation| violation.rule == "BoundaryType")
+        .map(|violation| (violation.entity, violation.detail))
+        .collect()
+}
+
+/// `BoundaryType` is the declared release's (#397). IFC4X3 ADD2 admits
+/// `IfcIndexedPolyCurve`, so the fixture has no violation; declared IFC4
+/// (ADD2 TC1 admits only `IfcPolyline` and `IfcCompositeCurve`), the same
+/// file is flagged at exactly the half-spaces with an indexed boundary.
+#[test]
+fn boundary_type_is_read_in_the_declared_release() {
+    let model = parse(&text());
+    assert_eq!(model.header().schema_token(), Some("IFC4X3_ADD2"));
+    assert_eq!(boundary_type_violations(&model), vec![]);
+
+    let ifc4 = edited(&[("FILE_SCHEMA(('IFC4X3_ADD2'));", "FILE_SCHEMA(('IFC4'));")]);
+    let flagged = boundary_type_violations(&ifc4);
+    let indexed: Vec<EntityId> = ["INDEXED", "INDEXED_SEGMENTS", "INDEXED_COLLINEAR_ARC"]
+        .into_iter()
+        .map(|name| half_space(&ifc4, name))
+        .collect();
+    assert_eq!(
+        flagged
+            .iter()
+            .map(|(entity, _)| *entity)
+            .collect::<Vec<_>>(),
+        indexed,
+        "{flagged:?}"
+    );
+    for (_, message) in &flagged {
+        assert!(message.contains("IFC4_ADD2_TC1"), "{message}");
+        assert!(message.contains("IFCINDEXEDPOLYCURVE"), "{message}");
     }
 }

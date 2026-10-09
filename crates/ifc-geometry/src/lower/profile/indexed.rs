@@ -26,6 +26,8 @@
 //! factor into account, given by the applicable
 //! IfcGeometricRepresentationContext": the model's declared `Precision`
 //! (`constraint::tolerance`), `1.E-5` project units when none is declared.
+//! The three points of an arc are classified by `tolerance::arc_points`,
+//! which the general curve lowering shares (#396).
 //!
 //! The edges are written exactly as the `IfcCompositeCurve` reader writes the
 //! same boundary (`super::composite`), so an indexed boundary and its
@@ -70,7 +72,9 @@ use axiolid_profile::{Contour, ProfileSegment};
 use ifc_model::{EntityId, Model};
 
 use super::role::{BoundaryRole, HALF_SPACE_ARC};
-use crate::constraint::tolerance::{model_precision_metres, points_coincide};
+use crate::constraint::tolerance::{
+    arc_points, model_precision_metres, points_coincide, ArcPoints,
+};
 use crate::curve::{IndexedPolyCurve, PolySegment};
 use crate::error::{GeometryError, GeometryResult};
 use crate::resource::point::CartesianPointList;
@@ -267,34 +271,32 @@ impl Boundary {
     /// written in increasing angle; `same_sense` says whether the arc runs
     /// with it (anticlockwise) or against it (clockwise).
     fn arc(&mut self, start: Point2, mid: Point2, end: Point2) -> GeometryResult<()> {
-        let chord = end - start;
-        let coincide =
-            |a: Point2, b: Point2| points_coincide(self.precision, a.to_array(), b.to_array());
-        if coincide(start, mid) || coincide(mid, end) || coincide(start, end) {
-            return Err(refuse(
-                self.id,
-                "an IfcArcIndex has two coincident points, so no circle is defined",
-            ));
-        }
-        let u = mid - start;
-        let turn = u.perp_dot(chord);
-        // The distance of the on-arc point from the chord: the arc's sagitta
-        // seen from its middle point.
-        let sagitta = turn.abs() / chord.length();
-        if sagitta.is_nan() {
-            return Err(refuse(self.id, "an IfcArcIndex's points are not finite"));
-        }
-        if sagitta <= self.precision {
+        let planar = |p: Point2| [p.x, p.y, 0.0];
+        match arc_points(self.precision, planar(start), planar(mid), planar(end)) {
+            ArcPoints::Coincident => {
+                return Err(refuse(
+                    self.id,
+                    "an IfcArcIndex has two coincident points, so no circle is defined",
+                ))
+            }
+            ArcPoints::NonFinite => {
+                return Err(refuse(self.id, "an IfcArcIndex's points are not finite"))
+            }
             // "In case that this informal proposition is not maintained, the
             // arc segment shall be treated as a polyline segment."
-            let along = u.dot(chord) / chord.length_squared();
-            if (0.0..=1.0).contains(&along) {
+            ArcPoints::Collinear { through_mid: false } => {
                 self.lines(&[start, end]);
-            } else {
-                self.lines(&[start, mid, end]);
+                return Ok(());
             }
-            return Ok(());
+            ArcPoints::Collinear { through_mid: true } => {
+                self.lines(&[start, mid, end]);
+                return Ok(());
+            }
+            ArcPoints::Circular => {}
         }
+        let chord = end - start;
+        let u = mid - start;
+        let turn = u.perp_dot(chord);
         if self.role == BoundaryRole::HalfSpace {
             return Err(GeometryError::Unsupported {
                 entity: self.id,
