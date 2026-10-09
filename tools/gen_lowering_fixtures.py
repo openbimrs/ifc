@@ -222,8 +222,9 @@ measures end to end through their pieces (axiolid/kernel#285):
   round the arc, 9 m from (0,10) at 45 degrees. An `IfcAxis2PlacementLinear`
   on the corner stands in no representation.
 - `GAP`: a composite of (0,0) -> (10,0) and (10,1) -> (10,10), whose pieces
-  do not meet; `OVAL`: a quarter ellipse then a line, whose joint lies at
-  a quadrature; `OFFSET`: an `IfcOffsetCurve2D`. A point along each.
+  do not meet, and a point along it: it lowers, and the kernel refuses
+  the gap. The bases refused while lowering (an ellipse piece, an offset
+  curve) are inline in the tests.
 - `KERB`: an `IfcCompositeCurve` of two `IfcCurveSegment`s over a 3D
   `IfcLine`, placed by `IfcAxis2PlacementLinear` at stations 10 and 30 of
   the `IfcGradientCurve` of `station_seams_ifc4x3.ifc`, 3 m left, each
@@ -1127,23 +1128,6 @@ def station_relations():
         (polyline2(f, [(0.0, 0.0), (10.0, 0.0)]), True),
         (polyline2(f, [(10.0, 1.0), (10.0, 10.0)]), True),
     ])
-    # An ellipse quarter before a line: the joint lies at a quadrature.
-    ellipse = f.create_entity(
-        "IfcEllipse", Position=f.create_entity(
-            "IfcAxis2Placement2D", Location=point2(f, (0.0, 0.0))),
-        SemiAxis1=4.0, SemiAxis2=2.0)
-    oval = plain([
-        (f.create_entity(
-            "IfcTrimmedCurve", BasisCurve=ellipse,
-            Trim1=[f.create_entity("IfcParameterValue", 0.0)],
-            Trim2=[f.create_entity("IfcParameterValue", math.pi / 2)],
-            SenseAgreement=True, MasterRepresentation="PARAMETER"), True),
-        (polyline2(f, [(0.0, 2.0), (-5.0, 2.0)]), True),
-    ])
-    offset = f.create_entity(
-        "IfcOffsetCurve2D", BasisCurve=polyline2(f, [(0.0, 0.0), (10.0, 0.0)]),
-        Distance=1.0, SelfIntersect=False)
-
     # Two IfcLine pieces placed at stations 10 and 30 of the gradient
     # curve, 3 m to its left, laid along its 0.02 grade: they meet at
     # station 30 and end at the grade break.
@@ -1187,8 +1171,6 @@ def station_relations():
         points("PATH_TANGENT_JOINT", along(path, 20.0, lateral=1.0)),
         points("PATH_ARC", along(path, 20.0 + quarter / 2, lateral=1.0)),
         points("GAP", along(gap, 5.0)),
-        points("OVAL", along(oval, 1.0)),
-        points("OFFSET", along(offset, 1.0)),
         product("ALIGNMENT", [rep(f, ctx, "FootPrint", "Curve2D", [plan]),
                               rep(f, ctx, "Axis", "Curve3D", [gradient])]),
         product("KERB", [rep(f, ctx, "Axis", "Curve3D", [kerb])]),

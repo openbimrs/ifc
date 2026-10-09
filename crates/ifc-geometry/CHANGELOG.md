@@ -51,8 +51,7 @@ rise (`axiolid-model` 0.3.7, and with `compile-reference-backend`
 - `synthetic-lowering/station_relations_ifc4x3.ifc`: a plain composite of
   a polyline, a polyline stored backwards (`SameSense` false) and a
   quarter circle trimmed by Cartesian points, with points on its joints
-  and 4 um past one; a composite with a gap, one with an ellipse piece, an
-  offset curve; and two `IfcLine` segments placed at stations 10 and 30 of
+  and 4 um past one; a composite with a gap; and two `IfcLine` segments placed at stations 10 and 30 of
   a gradient curve. Tests resolve them through the reference kernel
   against closed forms.
 

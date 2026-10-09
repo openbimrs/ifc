@@ -16,7 +16,7 @@
 use axiolid_model::{CurveRelation, GeometryNode, OrientedCurveStation, SeamSide};
 use ifc_model::Model;
 
-use super::common::{lower, refused, root};
+use super::common::{lower, refused, root, step};
 use super::seams::item;
 
 /// `sqrt(1 + 0.02^2)`: the kerb's 3D length per metre of plan.
@@ -111,17 +111,26 @@ fn segments_placed_at_stations_lower_to_instances_at_stations() {
 /// curve.
 #[test]
 fn relation_bases_without_stated_joints_are_refused_by_name() {
-    let model = relations();
-    refused(
-        lower(&model, item(&model, "OVAL", "Reference")),
-        true,
-        "not stated by its data",
+    let model = step(
+        "#10=IFCCARTESIANPOINT((0.,0.));
+#11=IFCAXIS2PLACEMENT2D(#10,$);
+#12=IFCELLIPSE(#11,4.,2.);
+#13=IFCTRIMMEDCURVE(#12,(IFCPARAMETERVALUE(0.)),(IFCPARAMETERVALUE(1.5707963267948966)),.T.,.PARAMETER.);
+#14=IFCCARTESIANPOINT((0.,2.));
+#15=IFCCARTESIANPOINT((-5.,2.));
+#16=IFCPOLYLINE((#14,#15));
+#17=IFCCOMPOSITECURVESEGMENT(.CONTINUOUS.,.T.,#13);
+#18=IFCCOMPOSITECURVESEGMENT(.DISCONTINUOUS.,.T.,#16);
+#19=IFCCOMPOSITECURVE((#17,#18),.F.);
+#20=IFCPOINTBYDISTANCEEXPRESSION(IFCLENGTHMEASURE(1.),$,$,$,#19);
+#21=IFCCARTESIANPOINT((10.,0.));
+#22=IFCPOLYLINE((#10,#21));
+#23=IFCOFFSETCURVE2D(#22,1.,.F.);
+#24=IFCPOINTBYDISTANCEEXPRESSION(IFCLENGTHMEASURE(1.),$,$,$,#23);",
+        false,
     );
-    refused(
-        lower(&model, item(&model, "OFFSET", "Reference")),
-        true,
-        "offset curve",
-    );
+    refused(lower(&model, 20), true, "not stated by its data");
+    refused(lower(&model, 24), true, "offset curve");
 }
 
 #[cfg(feature = "compile-reference-backend")]
