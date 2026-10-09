@@ -130,5 +130,13 @@ syn = { version = "2", features = ["full", "parsing", "visit"] }
 name = "product_bvh"
 required-features = ["compile-reference-backend"]
 
+# Two backends over one corpus (#31). `compile` alone is enough: the
+# caller-supplied backend it defines links no engine, and the reference
+# joins the comparison when `compile-reference-backend` is on too.
+[[example]]
+name = "backend_compare"
+path = "examples/backend_compare/main.rs"
+required-features = ["compile"]
+
 [lints]
 workspace = true

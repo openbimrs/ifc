@@ -165,6 +165,14 @@ gate_features() {
     # pairing corpus, which needs the feature explicitly.
     cargo test -p ifc-geometry --features compile
     cargo clippy -p ifc-geometry --features compile --all-targets -- -D warnings
+    # The cross-backend comparison (#31, ADR 0012), run quick under both
+    # columns. `compile` alone runs only the backend the example defines,
+    # so the bring-your-own path is shown to build and run with no engine;
+    # beside the reference backend, `--strict` fails on any divergence.
+    # Refusals are reported and never fail it.
+    cargo run -p ifc-geometry --features compile --example backend_compare -- --quick
+    cargo run -p ifc-geometry --features compile-reference-backend \
+        --example backend_compare -- --quick --strict
 
     # `spatial` and `properties` need a release to read through (#306), so
     # their combinations name one; both crates refuse to compile without.

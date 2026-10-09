@@ -27,6 +27,25 @@
 //! same model must agree on what the file means, so choosing between them is
 //! a question of speed, robustness, or licence -- which is why this module
 //! refuses to pick for you beyond the documented default.
+//!
+//! # Comparing backends
+//!
+//! Because the backend is a parameter, comparing two kernels over one corpus
+//! is a loop. The `backend_compare` example ([source][backend-compare], #31)
+//! is that loop, written as a caller would: it compiles a fixed corpus of
+//! committed fixtures through the reference backend and through a small
+//! [`MeshCompiler`] defined in the example itself, prints wall time and mesh
+//! size per fixture keyed by `BackendId`, and checks that the two agree on
+//! volume, area and bounding box, listing every divergence and every
+//! refusal. Its own backend builds under `compile` alone. The timings carry
+//! their method and are not a cross-kernel performance claim.
+//!
+//! ```text
+//! cargo run --release -p ifc-geometry --features compile-reference-backend \
+//!     --example backend_compare
+//! ```
+//!
+//! [backend-compare]: https://github.com/openbimrs/ifc/tree/main/crates/ifc-geometry/examples/backend_compare
 
 mod bounds;
 

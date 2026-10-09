@@ -12,6 +12,10 @@ Two sets of measurements, each with the machine and method it was taken on:
   every object's property sets from the binding core, one call per object
   against one batch call (#358). Measured comparison:
   [`baseline.md`](baseline.md#property-sets-through-the-bindings-358).
+- [Cross-backend geometry comparison](#cross-backend-geometry-comparison):
+  one fixture corpus compiled through the reference geometry backend and a
+  caller-supplied one, agreement checked (#31). Sample output:
+  [`baseline.md`](baseline.md#cross-backend-geometry-comparison-31).
 - [Cross-implementation parse benchmark](#cross-implementation-parse-benchmark):
   this parser against ifc-lite and IfcOpenShell on identical files.
 
@@ -255,6 +259,49 @@ PACKAGE=openbim-ifc-binding-core BENCH=property_sets SCALES="props-1k props-10k"
     BENCH_ARGS="--bench-only bindings.property_sets_many.every_object" \
     benchmarks/run-baseline.sh out-dir
 ```
+
+## Cross-backend geometry comparison
+
+`crates/ifc-geometry/examples/backend_compare/`, an example rather than a
+bench target, because its first job is to show a consumer the
+bring-your-own-kernel loop of ADR 0012 and to check agreement. Timing is
+secondary. It compiles 13 committed fixtures through every backend in one
+list: the reference backend (`scalar-compile`) and `polygon-extruder`, a
+straight-edged `MeshCompiler` the example defines against the published
+contracts alone.
+
+**What is timed.** One pass compiles every product of a fixture once, through
+`compile_product_mesh_with`: lowering (identical for every backend) plus
+compilation. Parsing and product discovery are not timed. The first pass is
+reported on its own, then `--iterations` passes (default 10) as median and
+min..max. Refusals are timed too.
+
+**What it is not.** It is not a cross-kernel performance claim. The
+example kernel refuses curves, booleans and sweeps, so on most fixtures it
+does less work than the reference. Times compare only on rows whose `meshed`
+counts are equal. Even there, a ratio describes these two programs on these
+files, not the kernels in general.
+
+**Agreement.** Where both mesh a product, signed volume, area and each
+bounding-box coordinate must satisfy `|a - b| <= r * max(|a|, |b|, 1)`, with
+`r = 1e-6` by default. Every metric outside it is listed by fixture,
+product and value. A product one backend meshes and the other refuses is
+listed as a coverage difference and does not stop the run.
+
+```sh
+# The gate's run (scripts/gate.sh features): debug, 2 passes, both columns.
+cargo run -p ifc-geometry --features compile --example backend_compare -- --quick
+cargo run -p ifc-geometry --features compile-reference-backend \
+    --example backend_compare -- --quick --strict
+
+# A measurement: release, a quiet window (1-minute load below 3), pinned.
+cargo build --release -p ifc-geometry --features compile-reference-backend \
+    --example backend_compare
+taskset -c 12-19 target/release/examples/backend_compare --iterations 20
+```
+
+The output starts with the method, machine, profile and load before and after,
+so a table pasted elsewhere keeps them.
 
 ## Cross-implementation parse benchmark
 

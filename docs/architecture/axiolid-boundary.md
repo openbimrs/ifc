@@ -163,6 +163,17 @@ lowering and compilation and asserts every product reaches a typed answer.
 operand is a half-space is unbounded, so no finite mesh exists. Without it the
 refusal branch would never execute and its assertion would be unfalsifiable.
 
+**Comparing backends is a loop.** The `backend_compare` example
+([`crates/ifc-geometry/examples/backend_compare/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-geometry/examples/backend_compare))
+compiles one fixture corpus through the reference backend and through a
+straight-edged `MeshCompiler` it defines itself, which builds under `compile`
+alone. It reports wall time and mesh size per fixture keyed by `BackendId`,
+compares volume, area and bounding box wherever both mesh a product, and
+lists every divergence and refusal without aborting. The gate runs it in a
+quick mode under both features and fails on a divergence. Its timings are
+printed with their method and are not a cross-kernel performance claim; see
+[ADR 0012](/adr/0012-geometry-backends-are-swappable#amendment-2026-10-09-the-comparison-is-committed-31).
+
 **Tolerance is in model units.** Lowering converts every length to metres, so
 `Tolerance::MILLIMETRE` (1e-3) is a millimetre regardless of what the file
 declared. Deriving a tolerance from the file's unit scale would apply the

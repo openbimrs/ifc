@@ -12,6 +12,35 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+Semver: no public item is added, removed or changed, and no behaviour
+changes; the published archive gains an example and the `compile` module
+docs a section, so this is a patch release.
+
+### Added
+
+- `examples/backend_compare/` (#31; `required-features = ["compile"]`)
+  compiles a fixed corpus of committed fixtures through every backend in
+  one list, with no `cfg` in the traversal. The list holds the reference
+  backend under `compile-reference-backend`, and `polygon-extruder`, a
+  `MeshCompiler` defined in the example that names only the published
+  contracts and builds under `compile` alone. `polygon-extruder` compiles
+  collections and instances, triangle and polygon meshes, faceted B-reps,
+  extrusions of polygonal profiles with holes, and blocks, and refuses
+  everything else with `GeomError::UnsupportedInput`. The example prints:
+  - wall time per fixture, keyed by `BackendId`: the first pass reported
+    on its own, then the median and range of `--iterations` passes;
+  - mesh size (vertices, triangles) and coverage (meshed, refused, no
+    body) per fixture;
+  - agreement on signed volume, area and bounding box within a stated
+    relative tolerance, every divergence named by fixture, product, metric
+    and both values;
+  - every product one backend meshed and the other refused.
+
+  The method, machine, profile and load are printed beside the numbers,
+  which are not a cross-kernel performance claim. `scripts/gate.sh` runs it
+  quick under both features and with `--strict` beside the reference. The
+  `compile` module docs and ADR 0012 (amendment) link it.
+
 ## [0.15.0] - 2026-10-09
 
 Semver: an `IfcIndexedPolyCurve` whose collinear `IfcArcIndex` was
