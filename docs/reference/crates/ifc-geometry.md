@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.18.0 (2026-10-09) |
+| Latest release | 0.19.0 (2026-10-09) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -42,77 +42,51 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.18.0 (2026-10-09):
+Latest release, 0.19.0 (2026-10-09):
 
-Semver: a minor release. No public item is added, removed or changes
-signature, but behaviour changes: stations along curve relations (#346)
-and `IfcCurveSegment`s placed by an `IfcAxis2PlacementLinear` (#311),
-refused by name until now, lower. The Axiolid requirements are the ones
-#398 raised (`axiolid-model` 0.3.7, `axiolid-mesh-compile` 0.3.16).
-
-### Added
-
-- Stations along curve relations (#346). Axiolid measures a station along
-  a composite, a trim, a surface curve whose 3D curve governs and a curve
-  placed at a station since `axiolid-model` 0.3.7 (axiolid/kernel#285, ADR
-  0082 amendment): end to end through the pieces, each in its own curve's
-  convention, every joint a seam. So an `IfcPointByDistanceExpression`,
-  an `IfcAxis2PlacementLinear` and the runs of `IfcSectionedSolidHorizontal`,
-  `IfcSectionedSurface` and `IfcOffsetCurveByDistances` on a plain
-  `IfcCompositeCurve`, an `IfcTrimmedCurve` or a composite of segments
-  placed at stations lower. On a joint, and within the model's precision
-  of one, a station stands on the joint reading `SeamSide::Incoming`, the
-  previous segment, as IFC4.3 ADD2 8.9.3.48.3 asks. The joints are read
-  from the stored relation (`lower::station::relation`, repeating the
-  compiler's flattening, since `axiolid-evaluate` is an execution provider
-  this crate does not link): pieces' lengths from a line's direction, a
-  circle's radius, a polyline's edges and the measure of a curve
-  parameterised by it; trims by parameter, by arc length, or by a point on
-  a line or a circle, a closed conic's within one turn; a segment whose
-  sense disagrees reversed. The tests pin them against the kernel's own
-  seams.
-- An `IfcCurveSegment` placed by an `IfcAxis2PlacementLinear` (#311)
-  lowers to an `InstanceAtStation`: the parent's piece in local
-  coordinates (start at the origin, tangent along `x`) placed in the frame
-  of the `OrientedCurveStation` the placement lowers to, whose local `x`,
-  `y`, `z` are the station's tangent, left and up as IFC4.3 ADD2 8.9.3.4
-  reads them. A composite of such segments is measured in the segments'
-  own arc length, whatever base they stand on. Part of #311:
-  `IfcSegmentedReferenceCurve` stays refused (below).
-- `synthetic-lowering/station_relations_ifc4x3.ifc`: a plain composite of
-  a polyline, a polyline stored backwards (`SameSense` false) and a
-  quarter circle trimmed by Cartesian points, with points on its joints
-  and 4 um past one; a composite with a gap; and two `IfcLine` segments placed at stations 10 and 30 of
-  a gradient curve. Tests resolve them through the reference kernel
-  against closed forms.
+Semver: a minor release. Behaviour changes on seams: a linear placement
+derived through a `CurveEvaluator` on a tangent discontinuity takes the
+incoming tangent, and an evaluator that cannot read that side is now
+refused there. `GeometryError` gains a variant (the enum is
+`#[non_exhaustive]`). The dependency floors rise with the workspace
+(#364, below); the seam sides are axiolid/kernel#286 in the same releases.
 
 ### Changed
 
-- `IfcSegmentedReferenceCurve`'s refusal (`dispatch::PLANNED`) names what
-  remains open in #311 precisely: its segments are curves in the
-  (distance along, deviating elevation) space of its base curve, and no
-  normative rule maps a segment's `ParentCurve` and placement `Axis` to a
-  cant law and pivot; implementations differ in the coefficient scaling
-  and the cross-slope formula.
-- An `IfcCurveSegment` in an `IfcGradientCurve` placed by an
-  `IfcAxis2PlacementLinear` keeps its refusal, now naming why: a gradient
-  curve's segments are read as plan and profile pieces, which need a
-  resolved placement.
-- Uses the Axiolid releases #398 raised the workspace to (`axiolid-model`
-  0.3.7, axiolid/kernel#285 for stations along relations). Upstream now
-  refuses a tilted placement of a plan-measured curve only, reading a
-  tilted arc-length one in its own reference-up frame; nothing lowered
-  before reached that rule, and no test's result changed with the bump
-  alone.
+- Requires `axiolid-curve` 0.3.5, `axiolid-curve-evaluate-contract` 0.3.3
+  and, behind `compile`, `axiolid-mesh-compile` 0.3.17 (and
+  `axiolid-evaluate` 0.3.9 for the tests): the releases that rotate a
+  banked curve about a held rail (axiolid/kernel#279), which
+  `ifc-alignment` now lowers a Viennese bend onto. Nothing here builds a
+  banked curve; every test passes unchanged against them.
+- A derived `IfcLinearPlacement` on a tangent discontinuity takes the
+  incoming tangent (#409), as IFC4.3 ADD2 8.9.3.48.3 asks ("the tangent of
+  the previous segment governs") and as the lowered station has since
+  #346. `derive_placement_transform` locates the seams as `lower::station`
+  does, from the basis curve's stored data, snaps a `DistanceAlong` within
+  the model's precision (capped at 1 mm) to the seam's distance, and asks
+  the evaluator for `CurveEvaluator::frame_at_on(.., SeamSide::Incoming)`
+  there (axiolid/kernel#286). A polyline parameter on a vertex is read at
+  the vertex's distance. Off a seam nothing changes. Before, the derived
+  frame on a grade break or a polyline corner was the outgoing one, so it
+  disagreed with the same station lowered as geometry, and
+  `CachedPositionPolicy::Verify` refused a cache an exporter computed with
+  the incoming tangent while accepting one computed with the outgoing
+  tangent; now the reverse holds.
 
-### Refused by name
+### Added
 
-- A station along an offset curve (`IfcOffsetCurve2D`/`3D`), which
-  Axiolid measures no station along; along a relation joining a gradient
-  curve with arc-length pieces, through which no one distance runs; and
-  along a relation with an ellipse or a B-spline piece, or a trim whose
-  ends are not stated by its data, whose joints lie at an arc-length
-  integral. A composite whose pieces do not meet, or whose undeclared
-  sense runs a piece backwards, is refused by the kernel.
+- `GeometryError::SeamSideUnsupported` (`compile` feature) names the
+  placement, its basis curve and the seam's distance when a caller's
+  evaluator does not implement seam sides and refuses `Incoming` with
+  `SEAM_SIDE_UNSUPPORTED`. The outgoing frame is never used in its place.
+  `is_unsupported()` is true for it.
+
+### Documentation
+
+- The derived frame's documentation states the evaluator's axes as
+  kernel#242 documents them (x tangent, y up, z right); the derivation
+  reads only the tangent, and a test pins the IFC frame
+  `(tangent, left, up)` to `(x, -z, y)` on and off a seam.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)

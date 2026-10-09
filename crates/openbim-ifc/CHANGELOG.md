@@ -12,6 +12,15 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-10-09
+
+### Changed
+
+- Requires `ifc-alignment` 0.8 and `ifc-geometry` 0.19: a Viennese cant
+  bend about a held rail lowers to the banked curve (#364), and derived
+  linear placements on a seam take the incoming tangent (#409), on
+  Axiolid's wave-2 line. Semver: minor, following the dependencies.
+
 ## [0.24.0] - 2026-10-09
 
 ### Changed
@@ -577,7 +586,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.24.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.25.0...HEAD
+[0.25.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.25.0
 [0.24.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.24.0
 [0.23.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.23.0
 [0.22.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.22.0
