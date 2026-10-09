@@ -331,3 +331,96 @@ answers for the sampled walls (`every_object`: every wall).
   until it returns: 372 MB retained at 10^5 walls, with 3.7 property sets
   per wall on average. A host that wants less at once can pass the ids in
   chunks and still gets linear time, because each chunk is one pass.
+
+## Cross-backend geometry comparison (#31)
+
+A sample run of `crates/ifc-geometry/examples/backend_compare` (see the
+[README](README.md#cross-backend-geometry-comparison)): the reference
+backend (`scalar-compile`) against `polygon-extruder`, the straight-edged
+`MeshCompiler` the example defines. It is recorded to show what the output
+looks like and what the two backends agree on. **It is not a cross-kernel
+performance claim.** `polygon-extruder` refuses curves, booleans and sweeps,
+so on most fixtures it does less work. Even where both mesh the same
+products, a ratio describes these two programs on these files.
+
+### Environment
+
+- date: 2026-10-09, 10:22:51-10:22:52 UTC (three processes back to back)
+- machine: Intel Xeon w7-3565X, 20 cores, 63 GiB RAM, shared VM; pinned
+  with `taskset -c 12-19`; the harness calls each backend from one thread
+- OS: Debian GNU/Linux 13 (trixie), kernel 6.12.105+deb13-cloud-amd64,
+  glibc malloc
+- toolchain: rustc 1.88.0 (6b00bc388 2025-06-23); workspace release profile
+  (opt-level 3, thin LTO, 1 codegen unit)
+- commit: the #31 branch at 09272670, code identical (only comments changed
+  since the build)
+- plan: `--iterations 20`, the first pass reported on its own; 3 processes
+- load (1 min): 2.91 before the first process and after the last; another
+  agent's builds had kept it at 8-11 minutes earlier, and the run waited
+  for it to fall below 3
+
+### Results
+
+The first process, unedited. The other two have the same sizes, coverage
+and agreement. Their medians are within 0.04 ms of these, except
+`shared_point_faceted_brep.ifc` (reference 5.23-5.64 ms, polygon-extruder
+1.84-2.05 ms) and `issue_1155_halfspace_flyaway.ifc` (reference
+10.46-10.81 ms).
+
+| fixture | backend | products | meshed | refused | no body | vertices | triangles | first pass (ms) | median of 20 (ms) | min..max (ms) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| issue_098_wall_W.ifc | `scalar-compile` | 15 | 15 | 0 | 0 | 610 | 1124 | 1.133 | 0.679 | 0.626..0.800 |
+| issue_098_wall_W.ifc | `polygon-extruder` | 15 | 15 | 0 | 0 | 610 | 1124 | 0.294 | 0.238 | 0.229..0.251 |
+| issue_1985_scaled_kinds.ifc | `scalar-compile` | 5 | 5 | 0 | 0 | 252 | 492 | 0.384 | 0.211 | 0.206..0.235 |
+| issue_1985_scaled_kinds.ifc | `polygon-extruder` | 5 | 1 | 4 | 0 | 8 | 12 | 0.028 | 0.020 | 0.019..0.027 |
+| issue_2019_wall_two_overlapping_openings.ifc | `scalar-compile` | 4 | 4 | 0 | 0 | 32 | 48 | 0.022 | 0.015 | 0.015..0.017 |
+| issue_2019_wall_two_overlapping_openings.ifc | `polygon-extruder` | 4 | 4 | 0 | 0 | 32 | 48 | 0.013 | 0.010 | 0.010..0.016 |
+| mapped_instances_multi_item.ifc | `scalar-compile` | 4 | 4 | 0 | 0 | 64 | 96 | 0.041 | 0.032 | 0.032..0.033 |
+| mapped_instances_multi_item.ifc | `polygon-extruder` | 4 | 4 | 0 | 0 | 64 | 96 | 0.020 | 0.018 | 0.017..0.022 |
+| mapped_instances_nested.ifc | `scalar-compile` | 3 | 3 | 0 | 0 | 24 | 36 | 0.026 | 0.021 | 0.021..0.022 |
+| mapped_instances_nested.ifc | `polygon-extruder` | 3 | 3 | 0 | 0 | 24 | 36 | 0.014 | 0.012 | 0.012..0.018 |
+| nested_mapped_item.ifc | `scalar-compile` | 1 | 1 | 0 | 0 | 16 | 24 | 0.015 | 0.011 | 0.010..0.013 |
+| nested_mapped_item.ifc | `polygon-extruder` | 1 | 1 | 0 | 0 | 16 | 24 | 0.006 | 0.005 | 0.005..0.006 |
+| mapped_instances_indexed_colour.ifc | `scalar-compile` | 2 | 2 | 0 | 0 | 16 | 10 | 0.037 | 0.011 | 0.010..0.021 |
+| mapped_instances_indexed_colour.ifc | `polygon-extruder` | 2 | 2 | 0 | 0 | 16 | 10 | 0.010 | 0.007 | 0.007..0.008 |
+| bath_csg_solid.ifc | `scalar-compile` | 1 | 1 | 0 | 0 | 80 | 156 | 0.561 | 0.462 | 0.436..0.484 |
+| bath_csg_solid.ifc | `polygon-extruder` | 1 | 0 | 1 | 0 | 0 | 0 | 0.009 | 0.003 | 0.003..0.005 |
+| issue_1155_halfspace_flyaway.ifc | `scalar-compile` | 1 | 1 | 0 | 0 | 1552 | 3104 | 11.089 | 10.779 | 10.183..12.553 |
+| issue_1155_halfspace_flyaway.ifc | `polygon-extruder` | 1 | 0 | 1 | 0 | 0 | 0 | 0.024 | 0.004 | 0.004..0.007 |
+| swept_disk_composite_arc_crankbar.ifc | `scalar-compile` | 1 | 1 | 0 | 0 | 112 | 220 | 0.164 | 0.101 | 0.099..0.120 |
+| swept_disk_composite_arc_crankbar.ifc | `polygon-extruder` | 1 | 0 | 1 | 0 | 0 | 0 | 0.009 | 0.007 | 0.007..0.008 |
+| shared_point_faceted_brep.ifc | `scalar-compile` | 12 | 12 | 0 | 0 | 2352 | 4056 | 5.276 | 5.231 | 5.163..5.347 |
+| shared_point_faceted_brep.ifc | `polygon-extruder` | 12 | 12 | 0 | 0 | 2352 | 4056 | 1.950 | 2.049 | 1.891..2.159 |
+| meshing_coverage.ifc | `scalar-compile` | 9 | 8 | 1 | 0 | 208 | 382 | 0.367 | 0.224 | 0.206..0.269 |
+| meshing_coverage.ifc | `polygon-extruder` | 9 | 5 | 4 | 0 | 52 | 86 | 0.062 | 0.040 | 0.038..0.048 |
+| indexed_profile_boundaries.ifc | `scalar-compile` | 7 | 7 | 0 | 0 | 816 | 1608 | 0.329 | 0.275 | 0.270..0.309 |
+| indexed_profile_boundaries.ifc | `polygon-extruder` | 7 | 2 | 5 | 0 | 16 | 24 | 0.023 | 0.018 | 0.017..0.026 |
+
+Agreement: 49 products meshed by both backends, 49 agree within
+`1e-6 * max(|a|, |b|, 1)` on signed volume, area and every bounding-box
+coordinate, 0 divergent metrics.
+
+### Reading the numbers
+
+The agreement and coverage findings are the durable part.
+They are the same in the debug run the gate makes.
+
+- **Agreement.** Wherever both backends mesh a product, they agree on
+  volume, area and bounds, and their vertex and triangle counts are equal
+  too. That covers extrusions with and without holes, mapped and nested
+  instances, triangulated face sets and twelve shared-point faceted B-reps.
+- **One construct the two read differently.** `meshing_coverage.ifc` #229
+  (`surface-model-bowtie-cap`, kernel#171) has a face whose loop is a
+  zero-area bowtie. The reference meshes it (8 triangles).
+  `polygon-extruder` refuses it as `Degenerate("face encloses no area")`.
+  Whether that face means anything is a question about the file, so this is
+  listed as a coverage difference, not a speed detail.
+- **Refused by both.** `meshing_coverage.ifc` #144: lowering refuses its
+  collapsed `IfcPolyLoop` before either backend runs.
+- **Coverage.** `polygon-extruder` refuses 15 products the reference
+  meshes, each with `UnsupportedInput` naming the construct: circle
+  profiles, curved contour segments, swept disks and booleans.
+- **Time.** On the rows where `meshed` is equal, the example kernel is
+  faster. It handles only straight-edged input and nothing more general.
+  Read that as the cost of generality in the reference on such input, not
+  as a ranking of kernels.
