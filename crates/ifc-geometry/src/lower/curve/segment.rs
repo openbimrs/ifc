@@ -41,7 +41,7 @@
 use axiolid_core::Frame3;
 use axiolid_curve::{BSplineCurve3, Circle3, CurvatureLaw, Curve3, Intrinsic3, Polyline3};
 use axiolid_model::{
-    CurveRelation, CurveSegment, GeometryNode, NodeId, TrimSelector,
+    CurveRelation, CurveSegment, GeometryNode, InstanceAtStation, NodeId, TrimSelector,
     TrimmingPreference as KernelPreference,
 };
 use ifc_model::{EntityId, Value};
@@ -62,11 +62,13 @@ pub(crate) const PARAMETER_MEASURE: &str =
     "SegmentStart/SegmentLength given as IfcParameterValue: IFC4.3 ADD2 defines no parametric \
      space for IfcCurveSegment parents yet (informal proposition 1 requires IfcLengthMeasure)";
 
-/// Why an `IfcAxis2PlacementLinear` placement is refused.
+/// Why an `IfcAxis2PlacementLinear` placement is refused where a resolved
+/// transform is needed: in a gradient curve, whose segments are read as
+/// plan and profile pieces, not placed at stations.
 pub(crate) const LINEAR_PLACEMENT: &str =
-    "an IfcAxis2PlacementLinear placement stands at a station along a basis curve; the station \
-     itself lowers (#307), but the neutral model places a curve only by a resolved transform \
-     and has no curve placed in a station's frame (#311)";
+    "an IfcAxis2PlacementLinear placement stands at a station along a basis curve, which only a \
+     kernel resolves; a segment of an IfcGradientCurve is read as a plan or profile piece and \
+     needs a resolved placement";
 
 /// Why an `IfcPolynomialCurve` met on its own is refused.
 pub(crate) const STANDALONE_POLYNOMIAL: &str =
@@ -102,19 +104,35 @@ pub(crate) struct Segment {
     pub(crate) parent_kind: String,
 }
 
-/// Read segment `id`.
+/// Read segment `id`; one placed by an `IfcAxis2PlacementLinear` is
+/// refused, since its placement is no resolved transform.
 pub(crate) fn read_segment(session: &LoweringSession<'_>, id: EntityId) -> GeometryResult<Segment> {
+    match read_placed_segment(session, id)? {
+        (segment, None) => Ok(segment),
+        (_, Some(_)) => Err(session.unsupported(id, TYPE, LINEAR_PLACEMENT)),
+    }
+}
+
+/// Read segment `id`, with the `IfcAxis2PlacementLinear` placing it, if
+/// any. Such a segment's `placement` is the identity: it is read in the
+/// frame of the station, which a kernel resolves (#311).
+pub(crate) fn read_placed_segment(
+    session: &LoweringSession<'_>,
+    id: EntityId,
+) -> GeometryResult<(Segment, Option<EntityId>)> {
     let slots = session.slots(id)?;
     let placement_ref = slots.req_ref(1, "Placement")?;
     let placement_entity = session.entity(id, placement_ref)?;
     let placement_kind = placement_entity.type_name.to_ascii_uppercase();
+    let mut linear = None;
     let placement = match placement_kind.as_str() {
         "IFCAXIS2PLACEMENT2D" | "IFCAXIS2PLACEMENT3D" => {
             axis_placement_transform(session.model(), placement_ref, placement_entity)?
                 .to_metres(session.units())
         }
         "IFCAXIS2PLACEMENTLINEAR" => {
-            return Err(session.unsupported(id, TYPE, LINEAR_PLACEMENT));
+            linear = Some(placement_ref);
+            Transform::identity()
         }
         _ => {
             return Err(session.unsupported(
@@ -127,7 +145,7 @@ pub(crate) fn read_segment(session: &LoweringSession<'_>, id: EntityId) -> Geome
     let start = measure(session, id, slots.req(2, "SegmentStart")?)?;
     let length = measure(session, id, slots.req(3, "SegmentLength")?)?;
     let parent = slots.req_ref(4, "ParentCurve")?;
-    Ok(Segment {
+    let segment = Segment {
         id,
         placement,
         planar_placement: placement_kind == "IFCAXIS2PLACEMENT2D",
@@ -135,7 +153,8 @@ pub(crate) fn read_segment(session: &LoweringSession<'_>, id: EntityId) -> Geome
         length,
         parent,
         parent_kind: session.type_name(parent)?,
-    })
+    };
+    Ok((segment, linear))
 }
 
 /// One `IfcCurveMeasureSelect`, as metres of arc length.
@@ -228,12 +247,38 @@ pub(crate) fn circle_radius(
 }
 
 /// Lower `IfcCurveSegment` `id` as a world-space curve.
+///
+/// A segment placed by an `IfcAxis2PlacementLinear` is its piece of the
+/// parent in local coordinates (start at the origin, tangent along `x`),
+/// placed in the frame of the station the placement lowers to: an
+/// `InstanceAtStation`, whose local `x`, `y` and `z` are the station's
+/// oriented tangent, left lateral and up, as the placement reads its own
+/// axes (8.9.3.4; ADR 0082 amendment, axiolid/kernel#264). The station is
+/// resolved by the kernel.
 pub(super) fn lower_segment(
     session: &mut LoweringSession<'_>,
     id: EntityId,
     frame: Transform,
 ) -> GeometryResult<NodeId> {
-    let segment = read_segment(session, id)?;
+    let (segment, linear) = read_placed_segment(session, id)?;
+    let Some(placement) = linear else {
+        return lower_placed(session, segment, frame);
+    };
+    let station = crate::lower::station::linear_placement_station(session, placement, frame)?;
+    let local = lower_placed(session, segment, Transform::identity())?;
+    session.node_for(
+        id,
+        GeometryNode::InstanceAtStation(InstanceAtStation::new(local, station)),
+    )
+}
+
+/// Lower a read segment under `frame` composed with its placement.
+fn lower_placed(
+    session: &mut LoweringSession<'_>,
+    segment: Segment,
+    frame: Transform,
+) -> GeometryResult<NodeId> {
+    let id = segment.id;
     let placed = frame.compose(&segment.placement);
     let Some(start) = rigid_frame(&placed) else {
         return Err(session.unsupported(id, TYPE, NOT_RIGID));
@@ -488,7 +533,7 @@ pub(super) fn composite_member(
     last: bool,
     frame: Transform,
 ) -> GeometryResult<Option<CurveSegment>> {
-    let segment = read_segment(session, segment_ref)?;
+    let (segment, _) = read_placed_segment(session, segment_ref)?;
     if segment.length == 0.0 {
         if last {
             return Ok(None);

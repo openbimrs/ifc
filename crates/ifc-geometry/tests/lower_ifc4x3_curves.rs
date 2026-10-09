@@ -286,7 +286,41 @@ fn ifc4x3_partial_rows_match_runtime_behaviour() {
         ),
         (
             "IFCCURVESEGMENT",
-            "Placement is an IfcAxis2PlacementLinear",
+            "Placement is an IfcAxis2PlacementLinear, the segment met on its \
+             own or in a plain IfcCompositeCurve",
+            edited(&|m: &mut Model| {
+                m.insert(
+                    next,
+                    Entity::new(
+                        "IFCPOINTBYDISTANCEEXPRESSION",
+                        vec![
+                            Value::Typed {
+                                type_name: "IFCLENGTHMEASURE".into(),
+                                value: Box::new(Value::Real(10.0)),
+                            },
+                            Value::Null,
+                            Value::Null,
+                            Value::Null,
+                            Value::Ref(gradient_id),
+                        ],
+                    ),
+                );
+                m.insert(
+                    EntityId(next.0 + 1),
+                    Entity::new(
+                        "IFCAXIS2PLACEMENTLINEAR",
+                        vec![Value::Ref(next), Value::Null, Value::Null],
+                    ),
+                );
+                let mut placed = segment(plan[0]);
+                placed.attributes[1] = Value::Ref(EntityId(next.0 + 1));
+                m.insert(EntityId(next.0 + 2), placed);
+            }),
+            EntityId(next.0 + 2),
+        ),
+        (
+            "IFCCURVESEGMENT",
+            "Placement is an IfcAxis2PlacementLinear in an IfcGradientCurve",
             edited(&|m: &mut Model| {
                 m.insert(
                     next,
@@ -294,7 +328,7 @@ fn ifc4x3_partial_rows_match_runtime_behaviour() {
                 );
                 with_slot(plan[0], 1, Value::Ref(next))(m);
             }),
-            plan[0],
+            gradient_id,
         ),
         (
             "IFCGRADIENTCURVE",

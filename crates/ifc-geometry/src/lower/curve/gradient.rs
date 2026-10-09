@@ -84,9 +84,11 @@ const SEGMENT: &str = "IFCCURVESEGMENT";
 
 /// Why an `IfcSegmentedReferenceCurve` is refused.
 pub(crate) const SEGMENTED_REFERENCE: &str =
-    "IfcSegmentedReferenceCurve states cant through segments placed at stations along its base \
-     curve and parent curves with no normative mapping to a cant law; the business cant layout \
-     lowers to a banked curve through ifc-alignment (#311)";
+    "IfcSegmentedReferenceCurve segments are curves in the (distance along, deviating elevation) \
+     space of its base curve, and no normative rule maps a segment's ParentCurve and placement \
+     Axis to a cant law and pivot: implementations differ in the coefficient scaling (cant \
+     kappa*L or kappa*L^2) and the cross slope (sine or tangent of cant over rail head \
+     distance); the business cant layout lowers to a banked curve through ifc-alignment (#311)";
 
 /// Largest heading difference, in radians, accepted at a plan seam.
 const HEADING_TOLERANCE: f64 = 1e-6;

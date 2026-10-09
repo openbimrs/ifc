@@ -62,7 +62,8 @@ axiolid-core = { version = "0.3.0" }
 axiolid-mesh = { version = "0.3.0" }
 # 0.3.6: station seam sides (`SeamSide`, axiolid/kernel#263; #346). 0.3.7: a
 # bounded half-space's boundary may be a `Profile` contour of lines and
-# circular arcs (axiolid/kernel#277, Axiolid ADR 0084; #398).
+# circular arcs (axiolid/kernel#277, Axiolid ADR 0084; #398), and stations
+# run along curve relations (axiolid/kernel#285; #346).
 axiolid-model = { version = "0.3.7" }
 axiolid-primitive = { version = "0.3.0" }
 axiolid-profile = { version = "0.3.0" }
@@ -90,7 +91,8 @@ axiolid-contracts = { version = "0.3.1" }
 # 0.3.15 reads a station on a seam from the side it names and mitres runs of
 # sections and offsets across seams (axiolid/kernel#263; #346). 0.3.16
 # compiles a bounded half-space whose boundary is a line-and-arc `Profile`
-# contour, with a certified deviation (axiolid/kernel#277; #398).
+# contour, with a certified deviation (axiolid/kernel#277; #398), and
+# resolves stations along curve relations (axiolid/kernel#285; #346).
 axiolid-mesh-compile = { version = "0.3.16" }
 axiolid-mesh-compile-contract = { version = "0.3.3" }
 axiolid-mesh-boolean-boolmesh = { version = "0.3.0" }

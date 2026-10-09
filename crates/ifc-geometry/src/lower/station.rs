@@ -74,12 +74,24 @@
 //! Axiolid's `MITRE_TOLERANCE`, `seams::MITRE_TOLERANCE`) inside a run is
 //! refused by name.
 //!
+//! **Relation bases.** A plain `IfcCompositeCurve`, an `IfcTrimmedCurve`
+//! and segments placed at stations lower to a curve relation, along which
+//! Axiolid measures a station end to end through its pieces since
+//! `axiolid-model` 0.3.7 (axiolid/kernel#285, ADR 0082 amendment): each
+//! piece in its own curve's convention, every joint a seam whose
+//! `SeamSide::Incoming` reads the piece that ends there, IFC's previous
+//! segment. The joints' distances are read from the stored relation
+//! (`relation`), and a station within precision of one is snapped onto it
+//! and reads that side, as on an atomic basis. An offset curve, which
+//! Axiolid measures no station along, and a relation joining a gradient
+//! curve with arc-length pieces are refused by name; a gap or an
+//! undeclared reversed piece is refused by the kernel.
+//!
 //! **Bases whose seams are unknown.** The seams are read from stored data,
 //! never by evaluation. A B-spline with a corner knot (whose distance is an
-//! arc-length integral; Axiolid's `exact_station_seams` refuses it too) and
-//! a basis that lowers to a curve relation are refused by name. Axiolid
-//! resolves no station along a curve relation, which is what a plain
-//! `IfcCompositeCurve` lowers to; that gap remains (#346).
+//! arc-length integral; Axiolid's `exact_station_seams` refuses it too), and
+//! a relation with an ellipse or a B-spline piece, whose joints lie at such
+//! integrals, are refused by name.
 //!
 //! # Frames
 //!
@@ -100,6 +112,7 @@ use crate::transform::Transform;
 pub(crate) mod axes;
 pub(crate) mod offset;
 pub(crate) mod read;
+pub(crate) mod relation;
 pub(crate) mod seams;
 #[cfg(test)]
 mod tests;
@@ -148,11 +161,16 @@ impl Basis {
         let node = lower_curve_node(session, curve, frame)?;
         let (seams, length) = match session.atomic_curve(node) {
             Some(curve) => (seams::tangent_seams(curve), seams::stated_length(curve)),
-            None => (Err(seams::RELATION), None),
+            None => match relation::relation_seams(session, node) {
+                Ok((seams, length)) => (Ok(seams), Some(length)),
+                Err(reason) => (Err(reason), None),
+            },
         };
         if let Err(reason) = seams {
-            if reason == seams::BANKED {
-                return Err(session.unsupported(owner, owner_type, seams::BANKED));
+            // Refused whatever the station: no station along such a basis
+            // resolves, or the kernel reads its frame unlike IFC.
+            if [seams::BANKED, relation::UNSUPPORTED, relation::MIXED].contains(&reason) {
+                return Err(session.unsupported(owner, owner_type, reason));
             }
         }
         Ok(Self {
@@ -308,16 +326,27 @@ pub fn lower_axis2_placement_linear_node(
     frame: Transform,
 ) -> GeometryResult<NodeId> {
     memoized(session, id, frame, |session| {
-        let placement = axes::read_placement(session, id)?;
-        let (basis, station, side) = located(session, id, PLACEMENT, placement.location, frame)?;
-        let orientation = axes::placement_orientation(session, id, &placement)?;
-        let mut oriented =
-            OrientedCurveStation::new(CurveStation::new(basis.node, station), orientation);
-        if let Some(side) = side {
-            oriented = oriented.with_seam_side(side);
-        }
+        let oriented = linear_placement_station(session, id, frame)?;
         session.node_for(id, GeometryNode::OrientedCurveStation(oriented))
     })
+}
+
+/// The `OrientedCurveStation` an `IfcAxis2PlacementLinear` lowers to, as a
+/// value: what places a curve at a station (`InstanceAtStation`, #311).
+pub(crate) fn linear_placement_station(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<OrientedCurveStation> {
+    let placement = axes::read_placement(session, id)?;
+    let (basis, station, side) = located(session, id, PLACEMENT, placement.location, frame)?;
+    let orientation = axes::placement_orientation(session, id, &placement)?;
+    let mut oriented =
+        OrientedCurveStation::new(CurveStation::new(basis.node, station), orientation);
+    if let Some(side) = side {
+        oriented = oriented.with_seam_side(side);
+    }
+    Ok(oriented)
 }
 
 /// Read the point `point`, lower its basis and place the station on it: at

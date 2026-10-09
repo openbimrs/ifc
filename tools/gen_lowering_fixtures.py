@@ -223,6 +223,31 @@ Products, each an `IfcBuildingElementProxy` at the origin:
   7 x 10 sqrt(1.0004) and 7 x 10 sqrt(1.0001) m2 meeting at
   (40, +-3.5, 10.8).
 
+`station_relations_ifc4x3.ifc` (IFC4X3_ADD2, #346 and #311, declared
+`Precision` 1e-5 m). Stations along curve relations, which Axiolid
+measures end to end through their pieces (axiolid/kernel#285):
+
+- `PATH`: a plain 2D `IfcCompositeCurve` of `IfcPolyline` (0,0) -> (10,0);
+  `IfcPolyline` (10,10) -> (10,0) with `SameSense` FALSE, so (10,0) ->
+  (10,10), a left corner at 10 m; and an `IfcTrimmedCurve` of the circle of
+  radius 10 about (0,10) from (10,10) to (0,20), trimmed by Cartesian
+  points (`MasterRepresentation` CARTESIAN), a tangent-continuous joint
+  at 20 m. Points 1 m left: `PATH_CORNER_AT` at 10 m and
+  `PATH_CORNER_NEAR` 4 um past it, both (10, 1) on the previous segment
+  (8.9.3.48.3); `PATH_TANGENT_JOINT` at 20 m, (9, 10); `PATH_ARC` halfway
+  round the arc, 9 m from (0,10) at 45 degrees. An `IfcAxis2PlacementLinear`
+  on the corner stands in no representation.
+- `GAP`: a composite of (0,0) -> (10,0) and (10,1) -> (10,10), whose pieces
+  do not meet, and a point along it: it lowers, and the kernel refuses
+  the gap. The bases refused while lowering (an ellipse piece, an offset
+  curve) are inline in the tests.
+- `KERB`: an `IfcCompositeCurve` of two `IfcCurveSegment`s over a 3D
+  `IfcLine`, placed by `IfcAxis2PlacementLinear` at stations 10 and 30 of
+  the `IfcGradientCurve` of `station_seams_ifc4x3.ifc`, 3 m left, each
+  laid along the 0.02 grade (20 and 10 m of plan, `sqrt(1.0004)` times
+  that long): from (10, 3, 10.2) through (30, 3, 10.6) to (40, 3, 10.8).
+  `KERB_START` 5 m along it; `KERB_JOINT` on its joint, 1 m up.
+
 Run:  python3 tools/gen_lowering_fixtures.py test/fixtures/synthetic-lowering
 """
 
@@ -1013,15 +1038,9 @@ SEAM_GRADES = ((40.0, 0.02), (60.0, -0.01))
 SEAM_START_HEIGHT = 10.0
 
 
-def station_seams():
-    """#346: stations, sections and offsets on and across tangent
-    discontinuities of a gradient curve and of a polyline."""
-    label = "station-seams"
-    f = ifcopenshell.file(schema="IFC4X3_ADD2")
-    body_ctx, site = spatial_root(f, label)
-    ctx = f.by_type("IfcGeometricRepresentationContext", include_subtypes=False)[0]
-
-    # The gradient curve: a straight plan, two grades with no vertical curve.
+def seam_gradient(f):
+    """The gradient curve of `SEAM_GRADES`: a straight plan along +X, two
+    grades with no vertical curve between. Returns (plan, gradient)."""
     line = line2(f)
     plan_length = sum(run for run, _ in SEAM_GRADES)
     plan = f.create_entity("IfcCompositeCurve", Segments=[
@@ -1040,6 +1059,18 @@ def station_seams():
                            "DISCONTINUOUS"))
     gradient = f.create_entity("IfcGradientCurve", Segments=profile, SelfIntersect=False,
                                BaseCurve=plan)
+    return plan, gradient
+
+
+def station_seams():
+    """#346: stations, sections and offsets on and across tangent
+    discontinuities of a gradient curve and of a polyline."""
+    label = "station-seams"
+    f = ifcopenshell.file(schema="IFC4X3_ADD2")
+    body_ctx, site = spatial_root(f, label)
+    ctx = f.by_type("IfcGeometricRepresentationContext", include_subtypes=False)[0]
+
+    plan, gradient = seam_gradient(f)
 
     corner = f.create_entity("IfcPolyline", Points=[
         point(f, (0.0, 0.0, 0.0)), point(f, (10.0, 0.0, 0.0)), point(f, (10.0, 10.0, 0.0))])
@@ -1101,6 +1132,109 @@ def station_seams():
         product("CARRIAGEWAY", [rep(f, body_ctx, "Body", "SectionedSurface", [carriageway])]),
     ]
     contain(f, label, site, products)
+    return f
+
+
+# #346 / #311: the stations of `station_relations_ifc4x3.ifc`.
+RELATION_ARC_RADIUS = 10.0
+
+
+def station_relations():
+    """#346 / #311: stations along curve relations, and segments placed at
+    stations of a gradient curve."""
+    label = "station-relations"
+    f = ifcopenshell.file(schema="IFC4X3_ADD2")
+    body_ctx, site = spatial_root(f, label)
+    ctx = f.by_type("IfcGeometricRepresentationContext", include_subtypes=False)[0]
+
+    def segments(parts):
+        """`IfcCompositeCurveSegment`s of (parent, SameSense), the last one
+        closing nothing."""
+        last = len(parts) - 1
+        return [f.create_entity(
+            "IfcCompositeCurveSegment",
+            Transition="DISCONTINUOUS" if index == last else "CONTINUOUS",
+            SameSense=same_sense, ParentCurve=parent)
+            for index, (parent, same_sense) in enumerate(parts)]
+
+    def plain(parts):
+        return f.create_entity("IfcCompositeCurve", Segments=segments(parts),
+                               SelfIntersect=False)
+
+    # (0,0) -> (10,0), a left corner, -> (10,10) along a polyline stored the
+    # other way round, then a quarter circle about (0,10) to (0,20) trimmed
+    # by Cartesian points.
+    circle = f.create_entity(
+        "IfcCircle", Position=f.create_entity(
+            "IfcAxis2Placement2D", Location=point2(f, (0.0, 10.0))),
+        Radius=RELATION_ARC_RADIUS)
+    arc = f.create_entity(
+        "IfcTrimmedCurve", BasisCurve=circle,
+        Trim1=[point2(f, (10.0, 10.0)), f.create_entity("IfcParameterValue", 0.0)],
+        Trim2=[point2(f, (0.0, 20.0)), f.create_entity("IfcParameterValue", math.pi / 2)],
+        SenseAgreement=True, MasterRepresentation="CARTESIAN")
+    path = plain([
+        (polyline2(f, [(0.0, 0.0), (10.0, 0.0)]), True),
+        (polyline2(f, [(10.0, 10.0), (10.0, 0.0)]), False),
+        (arc, True),
+    ])
+    # A composite whose pieces do not meet: (0,0) -> (10,0), (10,1) -> (10,10).
+    gap = plain([
+        (polyline2(f, [(0.0, 0.0), (10.0, 0.0)]), True),
+        (polyline2(f, [(10.0, 1.0), (10.0, 10.0)]), True),
+    ])
+    # Two IfcLine pieces placed at stations 10 and 30 of the gradient
+    # curve, 3 m to its left, laid along its 0.02 grade: they meet at
+    # station 30 and end at the grade break.
+    plan, gradient = seam_gradient(f)
+    norm = math.hypot(1.0, SEAM_GRADES[0][1])
+    line3 = f.create_entity(
+        "IfcLine", Pnt=point(f, (0.0, 0.0, 0.0)),
+        Dir=f.create_entity("IfcVector", Orientation=direction(f, (1.0, 0.0, 0.0)),
+                            Magnitude=1.0))
+
+    def along(basis, distance, lateral=None, vertical=None):
+        return f.create_entity(
+            "IfcPointByDistanceExpression", DistanceAlong=length(f, distance),
+            OffsetLateral=lateral, OffsetVertical=vertical, BasisCurve=basis)
+
+    def placed(station, run, transition):
+        return f.create_entity(
+            "IfcCurveSegment", Transition=transition,
+            Placement=f.create_entity("IfcAxis2PlacementLinear",
+                                      Location=along(gradient, station, lateral=3.0)),
+            SegmentStart=length(f, 0.0), SegmentLength=length(f, run * norm),
+            ParentCurve=line3)
+    kerb = f.create_entity("IfcCompositeCurve", Segments=[
+        placed(10.0, 20.0, "CONTSAMEGRADIENT"),
+        placed(30.0, 10.0, "DISCONTINUOUS"),
+    ], SelfIntersect=False)
+
+    def product(name, representations):
+        return f.create_entity(
+            "IfcBuildingElementProxy", GlobalId=guid(label + "/" + name), Name=name,
+            ObjectPlacement=local(f), Representation=shape(f, representations))
+
+    def points(name, item):
+        return product(name, [rep(f, ctx, "Reference", "Point", [item])])
+
+    quarter = RELATION_ARC_RADIUS * math.pi / 2
+    products = [
+        product("PATH", [rep(f, ctx, "Axis", "Curve2D", [path])]),
+        points("PATH_CORNER_AT", along(path, 10.0, lateral=1.0)),
+        points("PATH_CORNER_NEAR", along(path, 10.000004, lateral=1.0)),
+        points("PATH_TANGENT_JOINT", along(path, 20.0, lateral=1.0)),
+        points("PATH_ARC", along(path, 20.0 + quarter / 2, lateral=1.0)),
+        points("GAP", along(gap, 5.0)),
+        product("ALIGNMENT", [rep(f, ctx, "FootPrint", "Curve2D", [plan]),
+                              rep(f, ctx, "Axis", "Curve3D", [gradient])]),
+        product("KERB", [rep(f, ctx, "Axis", "Curve3D", [kerb])]),
+        points("KERB_START", along(kerb, 5.0)),
+        points("KERB_JOINT", along(kerb, 20.0 * norm, vertical=1.0)),
+    ]
+    contain(f, label, site, products)
+    # The frame on the corner, an item of no representation type.
+    f.create_entity("IfcAxis2PlacementLinear", Location=along(path, 10.0))
     return f
 
 
@@ -1236,6 +1370,7 @@ FIXTURES = {
     "halfspace_boundaries_ifc4x3.ifc": halfspace_boundaries,
     "indexed_curve_arcs.ifc": indexed_curve_arcs,
     "station_seams_ifc4x3.ifc": station_seams,
+    "station_relations_ifc4x3.ifc": station_relations,
 }
 
 

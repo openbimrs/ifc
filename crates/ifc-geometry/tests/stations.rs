@@ -8,7 +8,8 @@
 //! `compile-reference-backend` feature, through the reference mesh compiler.
 //! Each checks a hand-computed point, frame or volume. Every refusal is
 //! checked by name. `stations/seams.rs` covers tangent discontinuities
-//! (#346).
+//! (#346), `stations/relations.rs` stations along curve relations (#346)
+//! and segments placed at stations (#311).
 
 #![cfg(feature = "lowering")]
 
@@ -17,6 +18,7 @@ mod stations {
     mod compile;
     mod offset;
     mod points;
+    mod relations;
     pub mod seams;
     mod sectioned;
 }

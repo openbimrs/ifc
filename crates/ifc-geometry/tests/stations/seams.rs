@@ -240,10 +240,11 @@ fn a_section_within_precision_of_a_corner_is_stored_at_it() {
 
 /// What stays refused, by name: a run across a seam where the curve turns
 /// back on itself (no mitre plane), and a station on a basis whose seams
-/// cannot be read from stored data (a composite or trimmed curve, which
-/// Axiolid resolves no station along; a B-spline with a corner knot).
+/// cannot be read from stored data (a B-spline with a corner knot). A
+/// composite's joint, refused until Axiolid measured stations along curve
+/// relations (axiolid/kernel#285), is a seam like a corner.
 #[test]
-fn reversals_and_unreadable_seams_are_refused_by_name() {
+fn reversals_and_unreadable_seams_are_refused_by_name_and_joints_lower() {
     let records = format!(
         "{BASES}\n{}\n{}\n\
          #30=IFCSECTIONEDSOLIDHORIZONTAL(#14,(#40,#40),(#20,#22));\n\
@@ -264,7 +265,14 @@ fn reversals_and_unreadable_seams_are_refused_by_name() {
     let model = step(&records, false);
     refused(lower(&model, 30), true, "turns back on itself");
     refused(lower(&model, 31), true, "turns back on itself");
-    refused(lower(&model, 55), true, "curve relation");
-    refused(lower(&model, 56), true, "#346");
+    // A composite's joint is a seam like a polyline corner (#346).
+    let inside = lower(&model, 55).expect("a station inside a piece");
+    assert!(matches!(root(&inside), GeometryNode::CurveStation(_)));
+    let joint = lower(&model, 56).expect("a station on a joint");
+    let GeometryNode::OrientedCurveStation(station) = root(&joint) else {
+        panic!("an OrientedCurveStation: {:?}", root(&joint));
+    };
+    assert_eq!(station.seam, SeamSide::Incoming);
+    assert_eq!(station.station.station.distance, 10.0);
     refused(lower(&model, 61), true, "multiplicity at least its degree");
 }

@@ -179,6 +179,11 @@ pub struct LoweringSession<'a> {
     /// are, and its stated length, needs the curve's stored data, which the
     /// append-only builder does not hand back.
     curves: BTreeMap<NodeId, AtomicCurve>,
+    /// Every curve relation and node placed at a station appended, kept
+    /// for station lowering along a relation basis (#346): the seams of a
+    /// composite are its joints, at running sums of its pieces' lengths,
+    /// which only the stored relation states.
+    relations: BTreeMap<NodeId, GeometryNode>,
     /// What to do with a collapsed poly-loop face (#46).
     face_policy: DegenerateFacePolicy,
     /// How a product's `IfcLinearPlacement` is resolved (#353).
@@ -226,6 +231,16 @@ impl AtomicCurve {
     }
 }
 
+/// A copy of `node` when it is a curve relation or a node placed at a
+/// station, the relations a station basis is flattened through (#346).
+fn relation_of(node: &GeometryNode) -> Option<GeometryNode> {
+    matches!(
+        node,
+        GeometryNode::CurveRelation(_) | GeometryNode::InstanceAtStation(_)
+    )
+    .then(|| node.clone())
+}
+
 impl NodeShape {
     fn of(node: &GeometryNode) -> Self {
         match node {
@@ -266,6 +281,7 @@ impl<'a> LoweringSession<'a> {
             texture_maps: None,
             shapes: BTreeMap::new(),
             curves: BTreeMap::new(),
+            relations: BTreeMap::new(),
             face_policy: DegenerateFacePolicy::default(),
             linear: LinearResolution::cache_only(),
             #[cfg(feature = "compile")]
@@ -384,6 +400,7 @@ impl<'a> LoweringSession<'a> {
         let source = self.active.last().copied();
         let shape = NodeShape::of(&node);
         let curve = AtomicCurve::of(&node);
+        let relation = relation_of(&node);
         let id = self
             .builder
             .push(node)
@@ -392,6 +409,9 @@ impl<'a> LoweringSession<'a> {
         self.shapes.insert(id, shape);
         if let Some(curve) = curve {
             self.curves.insert(id, curve);
+        }
+        if let Some(relation) = relation {
+            self.relations.insert(id, relation);
         }
         if let Some(source) = source {
             self.provenance.record(id, source);
@@ -403,6 +423,7 @@ impl<'a> LoweringSession<'a> {
     pub fn node_for(&mut self, entity: EntityId, node: GeometryNode) -> GeometryResult<NodeId> {
         let shape = NodeShape::of(&node);
         let curve = AtomicCurve::of(&node);
+        let relation = relation_of(&node);
         let id = self
             .builder
             .push(node)
@@ -411,6 +432,9 @@ impl<'a> LoweringSession<'a> {
         self.shapes.insert(id, shape);
         if let Some(curve) = curve {
             self.curves.insert(id, curve);
+        }
+        if let Some(relation) = relation {
+            self.relations.insert(id, relation);
         }
         self.provenance.record(id, entity);
         Ok(id)
@@ -425,6 +449,12 @@ impl<'a> LoweringSession<'a> {
     /// node, a curve relation included.
     pub(crate) fn atomic_curve(&self, node: NodeId) -> Option<&AtomicCurve> {
         self.curves.get(&node)
+    }
+
+    /// The stored data of an appended curve relation or node placed at a
+    /// station; `None` for any other node.
+    pub(crate) fn relation(&self, node: NodeId) -> Option<&GeometryNode> {
+        self.relations.get(&node)
     }
 
     /// Source attribution accumulated so far.

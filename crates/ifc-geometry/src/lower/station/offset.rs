@@ -16,8 +16,10 @@
 //!   value towards the head and tail of the basis curve." That is stated
 //!   data, not extrapolation: a station at the start and one at the end with
 //!   the same offsets carry it exactly, and they are added when the basis
-//!   states its length ([`super::seams::stated_length`]). Without one (an
-//!   unbounded line, a B-spline, a relation) the curve is refused by name:
+//!   states its length ([`super::seams::stated_length`], or a relation's
+//!   pieces summed, [`super::relation`]). Without one (an unbounded line, a
+//!   B-spline, a relation with an ellipse or a B-spline piece) the curve is
+//!   refused by name:
 //!   Axiolid's curve stops at its last station and does not extend.
 //!
 //! - **Across a tangent discontinuity** (#346). The offset curve would

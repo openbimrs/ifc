@@ -175,9 +175,11 @@ pub const PLANNED: &[(&str, &str)] = &[
          using it; it lowers exactly only as the ParentCurve of an IfcCurveSegment"),
     ("IFCPOLYNOMIALCURVE", "an IfcPolynomialCurve is unbounded (-inf < u < inf) and the neutral vocabulary has no \
          unbounded polynomial curve; it lowers exactly as the ParentCurve of an IfcCurveSegment"),
-    ("IFCSEGMENTEDREFERENCECURVE", "IfcSegmentedReferenceCurve states cant through segments placed at stations along its base \
-         curve and parent curves with no normative mapping to a cant law; the business cant layout \
-         lowers to a banked curve through ifc-alignment (#311)"),
+    ("IFCSEGMENTEDREFERENCECURVE", "IfcSegmentedReferenceCurve segments are curves in the (distance along, deviating elevation) \
+         space of its base curve, and no normative rule maps a segment's ParentCurve and placement \
+         Axis to a cant law and pivot: implementations differ in the coefficient scaling (cant \
+         kappa*L or kappa*L^2) and the cross slope (sine or tangent of cant over rail head \
+         distance); the business cant layout lowers to a banked curve through ifc-alignment (#311)"),
 ];
 
 /// A subtype the supertype's lowering handles exactly.
@@ -402,11 +404,21 @@ pub const PARTIAL: &[Variant] = &[
     },
     Variant {
         family: "IFCCURVESEGMENT",
-        variant: "Placement is an IfcAxis2PlacementLinear",
+        variant: "Placement is an IfcAxis2PlacementLinear, the segment met on its \
+                  own or in a plain IfcCompositeCurve",
+        support: Support::Admitted,
+        rationale: "an InstanceAtStation: the parent's piece in local coordinates \
+                    placed in the frame of the OrientedCurveStation the placement \
+                    lowers to, local X, Y, Z on the station's tangent, left and up \
+                    as 8.9.3.4 reads them; the kernel resolves the station",
+    },
+    Variant {
+        family: "IFCCURVESEGMENT",
+        variant: "Placement is an IfcAxis2PlacementLinear in an IfcGradientCurve",
         support: Support::Refused,
-        rationale: "an IfcAxis2PlacementLinear placement stands at a station along a basis curve; the station \
-         itself lowers (#307), but the neutral model places a curve only by a resolved transform \
-         and has no curve placed in a station's frame (#311)",
+        rationale: "an IfcAxis2PlacementLinear placement stands at a station along a basis curve, which only a \
+     kernel resolves; a segment of an IfcGradientCurve is read as a plan or profile piece and \
+     needs a resolved placement",
     },
     Variant {
         family: "IFCGRADIENTCURVE",
@@ -464,13 +476,34 @@ pub const PARTIAL: &[Variant] = &[
     },
     Variant {
         family: "IFCPOINTBYDISTANCEEXPRESSION",
+        variant: "DistanceAlong on a composite, trimmed or surface curve, or on \
+                  segments placed at stations, whose pieces' lengths are stated \
+                  by their data",
+        support: Support::Admitted,
+        rationale: "a station along the curve relation, measured end to end \
+                    through its pieces (axiolid/kernel#285); every joint is a \
+                    seam, and within precision of one the station stands on it \
+                    reading SeamSide::Incoming, the previous segment \
+                    (8.9.3.48.3)",
+    },
+    Variant {
+        family: "IFCPOINTBYDISTANCEEXPRESSION",
         variant: "DistanceAlong on a basis whose tangent discontinuities cannot \
-                  be located from stored data: a curve relation (a plain \
-                  IfcCompositeCurve), a B-spline with a corner knot",
+                  be located from stored data: a relation with an ellipse or a \
+                  B-spline piece, a B-spline with a corner knot",
         support: Support::Refused,
-        rationale: "Axiolid resolves no station along a curve relation (#346), \
-                    and a corner knot's distance is an arc-length integral, so \
-                    the previous segment's side (8.9.3.48.3) cannot be stated",
+        rationale: "their distances are arc-length integrals, so a station cannot \
+                    be snapped to the seam where the previous segment's side \
+                    (8.9.3.48.3) is read",
+    },
+    Variant {
+        family: "IFCPOINTBYDISTANCEEXPRESSION",
+        variant: "DistanceAlong on an IfcOffsetCurve2D/3D, or on a relation \
+                  joining gradient curves with other pieces",
+        support: Support::Refused,
+        rationale: "kernel: Axiolid measures a station along no offset curve \
+                    relation, and no one distance runs through pieces measured \
+                    in plan distance and in arc length",
     },
     Variant {
         family: "IFCAXIS2PLACEMENTLINEAR",
