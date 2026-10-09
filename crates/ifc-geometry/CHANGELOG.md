@@ -12,6 +12,18 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+Semver: a patch release. No code, API or behaviour changes; only the
+dependency floors rise with the workspace (#364).
+
+### Changed
+
+- Requires `axiolid-curve` 0.3.5, `axiolid-curve-evaluate-contract` 0.3.3
+  and, behind `compile`, `axiolid-mesh-compile` 0.3.17 (and
+  `axiolid-evaluate` 0.3.9 for the tests): the releases that rotate a
+  banked curve about a held rail (axiolid/kernel#279), which
+  `ifc-alignment` now lowers a Viennese bend onto. Nothing here builds a
+  banked curve; every test passes unchanged against them.
+
 ## [0.18.0] - 2026-10-09
 
 Semver: a minor release. No public item is added, removed or changes

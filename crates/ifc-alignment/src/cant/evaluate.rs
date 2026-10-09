@@ -30,12 +30,11 @@
 //!   [`AlignmentError::Unsupported`]. At `ξ = 0` and `ξ = 1` the rails are
 //!   the authored `StartCant*` / `EndCant*` values, which need no law.
 //!
-//! The banked centreline (`lower_segmented_reference_curve`) carries only
-//! the first rule. A held rail's pivot is an angle form, `held ∓ b sin(ψ) / 2`,
-//! which Axiolid's height-form pivot law refuses
-//! (`BankError::AngleInPivot`), so the lowering refuses that bend with
-//! [`HELD_RAIL_ANGLE_PIVOT`] while `cant_at` evaluates it: the two differ
-//! there until `axiolid-curve` has an angle-form pivot (#364).
+//! The banked centreline (`lower_segmented_reference_curve`) applies the same
+//! rule: a pivot that stays put is a constant pivot piece, and a held rail is
+//! Axiolid's held-rail pivot piece (`CantPiece::about_rail`), whose rotation
+//! point `held ∓ b sin(ψ) / 2` it derives from the bend's angle law. A
+//! moving pivot with neither rail held is refused by both.
 
 use crate::cant::segment::{CantSegment, CantSegmentType};
 use crate::curve::SeamTolerance;
@@ -48,13 +47,6 @@ pub(crate) const MOVING_VIENNESE_PIVOT: &str =
     "the section's rotation point moves through a Viennese bend and neither rail is held: \
      IFC4.3 states the bend for the section's cant angle only, so the rail heights are not \
      determined";
-
-/// Why the banked lowering refuses a Viennese bend about a held rail, which
-/// `cant_at` evaluates: the rotation point follows the bank angle.
-pub(crate) const HELD_RAIL_ANGLE_PIVOT: &str =
-    "the Viennese bend rotates about a held rail, so its rotation point is \
-     held -+ b sin(psi) / 2, an angle form; Axiolid's height-form pivot law cannot carry it \
-     (BankError::AngleInPivot) until axiolid-curve has an angle-form pivot (#364)";
 
 /// How a Viennese bend's rails follow its cant `D(ξ)`.
 #[derive(Debug, Clone, Copy, PartialEq)]

@@ -17,9 +17,7 @@
 //! frame come from that angle law and the rails sit `D/2` either side of a
 //! rotation point that stays put (#312), or a held rail stays and the other
 //! sits `D` from it (#364). A rotation point that moves with neither rail
-//! held is refused, as the banked centreline refuses it; the banked
-//! centreline also refuses the held-rail bend, whose rotation point is an
-//! angle form its pivot law cannot carry yet.
+//! held is refused, as the banked centreline refuses it.
 //!
 //! The frame is the section rotated by `psi` about the centreline tangent,
 //! right-handed: in the basis `(t, n, u)` -- `t` the unit 3D tangent of the
@@ -30,7 +28,15 @@
 //! This is the same rotation the lowered banked centreline carries
 //! (`lower_segmented_reference_curve`, `BankConvention::TangentRotation`),
 //! stated as data at one station: the tangent comes from whichever
-//! evaluator the caller uses. [`CantFrame::orient`] turns a caller-supplied
+//! evaluator the caller uses. Where the rotation point moves (a low-rail
+//! pivot, a held rail through a Viennese bend), the banked curve turns the
+//! section about its own point path's tangent, which climbs by the
+//! point's rate over the profile; given that tangent, [`CantFrame::orient`]
+//! gives the banked section's frame. The rail heights here are the
+//! vertical ones the cant layout states; the banked section's rail heads,
+//! `b / 2` from the rotation point square to that tangent, stand
+//! `(D / 2)(1 - cos(theta))` closer to the rotation point's height, `theta`
+//! the climb of the point path (see `lower_segmented_reference_curve`). [`CantFrame::orient`] turns a caller-supplied
 //! point and tangent into a world frame; it is algebra on those vectors,
 //! not evaluation of any curve.
 

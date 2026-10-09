@@ -72,7 +72,7 @@ changes; the [capability matrix](/capabilities) says what each implements.
 
 | Crate | Status | Depends on | Description |
 | --- | --- | --- | --- |
-| [`ifc-alignment`](/reference/crates/ifc-alignment) | <span class="status-partial">Partial</span> | [`ifc-model`](/reference/crates/ifc-model), [`ifc-schema`](/reference/crates/ifc-schema) | IFC4x3 linear positioning: alignments, referents, linear placement, spirals. |
+| [`ifc-alignment`](/reference/crates/ifc-alignment) | <span class="status-implemented">Implemented</span> | [`ifc-model`](/reference/crates/ifc-model), [`ifc-schema`](/reference/crates/ifc-schema) | IFC4x3 linear positioning: alignments, referents, linear placement, spirals. |
 | [`ifc-geometry`](/reference/crates/ifc-geometry) | <span class="status-partial">Partial</span> | [`ifc-alignment`](/reference/crates/ifc-alignment), [`ifc-model`](/reference/crates/ifc-model), [`ifc-schema`](/reference/crates/ifc-schema) | IFC semantic views lowered into the format-neutral geometry DAG. |
 | [`ifc-georef`](/reference/crates/ifc-georef) | <span class="status-implemented">Implemented</span> | [`ifc-model`](/reference/crates/ifc-model), [`ifc-schema`](/reference/crates/ifc-schema) | Georeferencing: map conversion, coordinate reference systems, site placement. |
 
