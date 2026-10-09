@@ -109,6 +109,29 @@ pub(crate) fn precision(
         })
 }
 
+/// How far apart two distances may be and still name the same place, IFC's
+/// "within precision limits" (8.9.3.48.3): the declared `precision` (see
+/// [`precision`]), or rounding at the distance's magnitude where that is
+/// larger.
+pub(crate) fn window(precision: f64, distance: f64) -> f64 {
+    precision.max(1e-9 * distance.abs().max(1.0))
+}
+
+/// The seam of `seams` that `distance` lies on within [`window`], the
+/// nearest if two are that close.
+pub(crate) fn nearest(seams: &[Seam], distance: f64, precision: f64) -> Option<Seam> {
+    let tolerance = window(precision, distance);
+    seams
+        .iter()
+        .filter(|seam| (seam.distance - distance).abs() <= tolerance)
+        .min_by(|a, b| {
+            (a.distance - distance)
+                .abs()
+                .total_cmp(&(b.distance - distance).abs())
+        })
+        .copied()
+}
+
 /// Where the tangent is not shown continuous, ascending; `Err` naming why
 /// the seams cannot be located.
 pub(crate) fn tangent_seams(curve: &AtomicCurve) -> Result<Vec<Seam>, &'static str> {
@@ -138,7 +161,9 @@ fn seams2(curve: &Curve2) -> Result<Vec<Seam>, &'static str> {
     }
 }
 
-fn seams3(curve: &Curve3) -> Result<Vec<Seam>, &'static str> {
+/// [`tangent_seams`] of a neutral 3D curve; also what a derived linear
+/// placement (`constraint::placement::derive`, #409) locates its seam by.
+pub(crate) fn seams3(curve: &Curve3) -> Result<Vec<Seam>, &'static str> {
     match curve {
         Curve3::Line(_) | Curve3::Circle(_) | Curve3::Ellipse(_) | Curve3::Intrinsic(_) => {
             Ok(Vec::new())

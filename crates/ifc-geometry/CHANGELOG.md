@@ -12,8 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
-Semver: a patch release. No code, API or behaviour changes; only the
-dependency floors rise with the workspace (#364).
+Semver: a minor release. Behaviour changes on seams: a linear placement
+derived through a `CurveEvaluator` on a tangent discontinuity takes the
+incoming tangent, and an evaluator that cannot read that side is now
+refused there. `GeometryError` gains a variant (the enum is
+`#[non_exhaustive]`). The dependency floors rise with the workspace
+(#364, below); the seam sides are axiolid/kernel#286 in the same releases.
 
 ### Changed
 
@@ -23,6 +27,35 @@ dependency floors rise with the workspace (#364).
   banked curve about a held rail (axiolid/kernel#279), which
   `ifc-alignment` now lowers a Viennese bend onto. Nothing here builds a
   banked curve; every test passes unchanged against them.
+- A derived `IfcLinearPlacement` on a tangent discontinuity takes the
+  incoming tangent (#409), as IFC4.3 ADD2 8.9.3.48.3 asks ("the tangent of
+  the previous segment governs") and as the lowered station has since
+  #346. `derive_placement_transform` locates the seams as `lower::station`
+  does, from the basis curve's stored data, snaps a `DistanceAlong` within
+  the model's precision (capped at 1 mm) to the seam's distance, and asks
+  the evaluator for `CurveEvaluator::frame_at_on(.., SeamSide::Incoming)`
+  there (axiolid/kernel#286). A polyline parameter on a vertex is read at
+  the vertex's distance. Off a seam nothing changes. Before, the derived
+  frame on a grade break or a polyline corner was the outgoing one, so it
+  disagreed with the same station lowered as geometry, and
+  `CachedPositionPolicy::Verify` refused a cache an exporter computed with
+  the incoming tangent while accepting one computed with the outgoing
+  tangent; now the reverse holds.
+
+### Added
+
+- `GeometryError::SeamSideUnsupported` (`compile` feature) names the
+  placement, its basis curve and the seam's distance when a caller's
+  evaluator does not implement seam sides and refuses `Incoming` with
+  `SEAM_SIDE_UNSUPPORTED`. The outgoing frame is never used in its place.
+  `is_unsupported()` is true for it.
+
+### Documentation
+
+- The derived frame's documentation states the evaluator's axes as
+  kernel#242 documents them (x tangent, y up, z right); the derivation
+  reads only the tangent, and a test pins the IFC frame
+  `(tangent, left, up)` to `(x, -z, y)` on and off a seam.
 
 ## [0.18.0] - 2026-10-09
 
