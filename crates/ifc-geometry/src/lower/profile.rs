@@ -30,8 +30,10 @@ use crate::units::UnitScale;
 mod composite;
 mod indexed;
 mod open;
+mod role;
 mod sections;
 pub use open::lower_open_profile_node;
+pub(crate) use role::{BoundaryRole, HALF_SPACE_ARC};
 
 /// Concrete `IfcProfileDef` families represented exactly by the neutral profile model.
 pub const IMPLEMENTED_PROFILES: &[&str] = &[
@@ -134,17 +136,22 @@ fn build(
 ) -> GeometryResult<Profile> {
     let profile = match &description.parameters {
         ProfileParameters::ArbitraryClosed { outer_curve } => Profile::Contour(ContourProfile {
-            outer: curve_to_contour(model, *outer_curve, units)?,
+            outer: curve_to_contour(model, *outer_curve, units, BoundaryRole::Profile)?,
             holes: Vec::new(),
         }),
         ProfileParameters::ArbitraryWithVoids {
             outer_curve,
             inner_curves,
         } => {
-            let outer = curve_to_contour(model, *outer_curve, units)?;
+            let outer = curve_to_contour(model, *outer_curve, units, BoundaryRole::Profile)?;
             let mut holes = Vec::with_capacity(inner_curves.len());
             for curve in inner_curves {
-                holes.push(curve_to_contour(model, *curve, units)?);
+                holes.push(curve_to_contour(
+                    model,
+                    *curve,
+                    units,
+                    BoundaryRole::Profile,
+                )?);
             }
             Profile::Contour(ContourProfile { outer, holes })
         }
@@ -225,7 +232,16 @@ fn operator_2d(operator: &ProfileOperator) -> Transform2 {
 /// lowered in `composite`, which refuses gaps rather than bridging them.
 /// `IfcIndexedPolyCurve` lines and three-point arcs (#335) are lowered in
 /// `indexed`, which refuses an open curve rather than closing it.
-fn curve_to_contour(model: &Model, id: EntityId, units: &UnitScale) -> GeometryResult<Contour> {
+///
+/// `role` says who reads the contour: a profile, or a polygonal bounded
+/// half-space boundary (#393), which takes the same composite and indexed
+/// readings but admits straight edges only (see [`BoundaryRole`]).
+pub(crate) fn curve_to_contour(
+    model: &Model,
+    id: EntityId,
+    units: &UnitScale,
+    role: BoundaryRole,
+) -> GeometryResult<Contour> {
     let entity = model.get(id).ok_or(GeometryError::MissingEntity {
         referrer: id,
         missing: id,
@@ -233,8 +249,8 @@ fn curve_to_contour(model: &Model, id: EntityId, units: &UnitScale) -> GeometryR
     let type_name = entity.type_name.to_ascii_uppercase();
     match type_name.as_str() {
         "IFCPOLYLINE" => {}
-        "IFCCOMPOSITECURVE" => return composite::composite_contour(model, id, units),
-        "IFCINDEXEDPOLYCURVE" => return indexed::indexed_contour(model, id, units),
+        "IFCCOMPOSITECURVE" => return composite::composite_contour(model, id, units, role),
+        "IFCINDEXEDPOLYCURVE" => return indexed::indexed_contour(model, id, units, role),
         _ => {
             return Err(GeometryError::Unsupported {
                 entity: id,
@@ -246,7 +262,7 @@ fn curve_to_contour(model: &Model, id: EntityId, units: &UnitScale) -> GeometryR
     }
 
     let slots = Slots::new(id, entity);
-    let mut points = polyline_points(model, id, units)?;
+    let mut points = polyline_points(model, id, units, role)?;
     drop_closing_duplicate(&mut points);
     if points.len() < 3 {
         return Err(slots.degenerate("profile boundary has fewer than 3 distinct points"));
@@ -272,8 +288,13 @@ fn curve_to_contour(model: &Model, id: EntityId, units: &UnitScale) -> GeometryR
 /// An `IfcPolyline`'s points as 2D metres, in authored order.
 ///
 /// Shared by the closed-ring and composite-segment readers so both apply the
-/// same unit conversion and the same 2D check.
-fn polyline_points(model: &Model, id: EntityId, units: &UnitScale) -> GeometryResult<Vec<Vec2>> {
+/// same unit conversion and the same 2D check, the one `role` states.
+fn polyline_points(
+    model: &Model,
+    id: EntityId,
+    units: &UnitScale,
+    role: BoundaryRole,
+) -> GeometryResult<Vec<Vec2>> {
     let entity = model.get(id).ok_or(GeometryError::MissingEntity {
         referrer: id,
         missing: id,
@@ -286,17 +307,8 @@ fn polyline_points(model: &Model, id: EntityId, units: &UnitScale) -> GeometryRe
             missing: point_id,
         })?;
         let coordinates = Slots::new(point_id, point).req_f64_list(0, "Coordinates")?;
-        if coordinates.len() < 2 {
-            return Err(GeometryError::Degenerate {
-                entity: point_id,
-                type_name: point.type_name.to_string(),
-                detail: "profile boundary point is not at least 2D".to_string(),
-            });
-        }
-        points.push(Vec2::new(
-            units.length(coordinates[0]),
-            units.length(coordinates[1]),
-        ));
+        let [x, y] = role.planar(point_id, &point.type_name, &coordinates)?;
+        points.push(Vec2::new(units.length(x), units.length(y)));
     }
     Ok(points)
 }

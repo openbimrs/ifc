@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate the product-lowering fixtures for #335, #336, #351, #353, #354,
-#357, #362, #363 and #388.
+#357, #362, #363, #388 and #393.
 
-Ten small files, each one edge case of `crates/ifc-geometry`'s product
+Eleven small files, each one edge case of `crates/ifc-geometry`'s product
 lowering. No licence-clean public corpus isolates these cases, so they are
 generated; the output is our own data. Metres and radians, fixed GUIDs and
 time stamp: regeneration is byte-stable.
@@ -138,6 +138,27 @@ through the wall's whole thickness and flush with both faces. Net volume
   between the openings.
 - `ABSOLUTE` (in `ORIGIN`): the openings placed with no `PlacementRelTo`,
   sharing no placement with the wall.
+
+`halfspace_boundaries_ifc4x3.ifc` (IFC4X3_ADD2, #393). Walls named as their
+case, each a 4 x 1 x 3 extrusion over [0, 4] x [0, 1] clipped by an
+`IfcPolygonalBoundedHalfSpace`: the plane z = 2, `AgreementFlag` FALSE (the
+material above it is cut), `Position` the identity, and a boundary stating
+the anticlockwise pentagon (1, -1), (3, -1), (3, 0.5), (2, 2), (1, 0.5). The
+wall keeps 12 - 11/6 = 61/6. Boundaries:
+
+- `POLYLINE`: the pentagon as an `IfcPolyline`, closed by repeating its
+  first point's reference: the twin every other wall must equal.
+- `COMPOSITE`: an `IfcCompositeCurve` of three polylines, the middle one
+  (the gable's two edges) authored backwards with `SameSense` FALSE.
+- `COMPOSITE_LINE`: an open polyline through the five points, closed by an
+  `IfcTrimmedCurve` on an `IfcLine`.
+- `INDEXED`: an `IfcIndexedPolyCurve` without `Segments`, closed by
+  repeating its first point.
+- `INDEXED_SEGMENTS`: an `IfcIndexedPolyCurve` with the `IfcLineIndex`
+  segments (1, 2, 3), (3, 4) and (4, 5, 1). The test turns (3, 4) into a
+  collinear and a genuine `IfcArcIndex` in memory: a committed item must
+  lower as a standalone curve too, and the 3D curve lowering refuses a
+  collinear arc.
 
 Run:  python3 tools/gen_lowering_fixtures.py test/fixtures/synthetic-lowering
 """
@@ -762,6 +783,74 @@ def curve_bounded_plane_composite():
     contain(f, label, site, products)
     return f
 
+# #393: the boundary every clipped wall is cut by, anticlockwise: a 2 x 1.5
+# rectangle under a gable reaching (2, 2). The wall is [0, 4] x [0, 1], so
+# the footprint it removes is x in [1, 3], y in [0, 0.5] (area 1) plus the
+# gable's part below y = 1 (area 5/6): 11/6.
+HALFSPACE_BOUNDARY = [(1.0, -1.0), (3.0, -1.0), (3.0, 0.5), (2.0, 2.0), (1.0, 0.5)]
+
+
+def halfspace_boundaries():
+    """#393: walls clipped by polygonal bounded half-spaces whose boundary is
+    an `IfcCompositeCurve` or `IfcIndexedPolyCurve`, each beside the wall
+    whose boundary is the equivalent `IfcPolyline`."""
+    label = "halfspace-boundaries"
+    f = ifcopenshell.file(schema="IFC4X3_ADD2")
+    body_ctx, site = spatial_root(f, label)
+    v = HALFSPACE_BOUNDARY
+    closed = v + v[:1]
+
+    def trimmed_line(origin, heading, length):
+        return f.create_entity(
+            "IfcTrimmedCurve", BasisCurve=line_through(f, origin, heading),
+            Trim1=[f.create_entity("IfcParameterValue", 0.0)],
+            Trim2=[f.create_entity("IfcParameterValue", float(length))],
+            SenseAgreement=True, MasterRepresentation="PARAMETER")
+
+    # Closed as conforming exporters close a polyline: by repeating the
+    # first point's reference.
+    twin = [point2(f, p) for p in v]
+    boundaries = [
+        ("POLYLINE", f.create_entity("IfcPolyline", Points=twin + twin[:1])),
+        # The gable's two edges authored backwards, read with SameSense FALSE.
+        ("COMPOSITE", composite(f, [
+            (polyline2(f, v[0:3]), True),
+            (polyline2(f, [v[4], v[3], v[2]]), False),
+            (polyline2(f, [v[4], v[0]]), True)])),
+        # The closing edge as an IfcTrimmedCurve on an IfcLine.
+        ("COMPOSITE_LINE", composite(f, [
+            (polyline2(f, v), True),
+            (trimmed_line(v[4], (0.0, -1.0), 1.5), True)])),
+        ("INDEXED", indexed(f, closed)),
+        ("INDEXED_SEGMENTS", indexed(f, v, [
+            ("line", (1, 2, 3)), ("line", (3, 4)), ("line", (4, 5, 1))])),
+    ]
+
+    def wall(index, name, boundary):
+        # A 4 x 1 x 3 wall, cut above z = 2 inside the boundary's prism.
+        profile = f.create_entity(
+            "IfcRectangleProfileDef", ProfileType="AREA", XDim=4.0, YDim=1.0,
+            Position=f.create_entity("IfcAxis2Placement2D",
+                                     Location=point2(f, (2.0, 0.5))))
+        body = f.create_entity(
+            "IfcExtrudedAreaSolid", SweptArea=profile, Position=place3(f),
+            ExtrudedDirection=direction(f, (0.0, 0.0, 1.0)), Depth=3.0)
+        clip = f.create_entity(
+            "IfcPolygonalBoundedHalfSpace",
+            BaseSurface=f.create_entity("IfcPlane", Position=place3(f, (0.0, 0.0, 2.0))),
+            AgreementFlag=False, Position=place3(f), PolygonalBoundary=boundary)
+        result = f.create_entity("IfcBooleanClippingResult", Operator="DIFFERENCE",
+                                 FirstOperand=body, SecondOperand=clip)
+        return f.create_entity(
+            "IfcWall", GlobalId=guid(label + "/" + name), Name=name,
+            ObjectPlacement=local(f, (10.0 * index, 0.0, 0.0)), PredefinedType="NOTDEFINED",
+            Representation=shape(f, [rep(f, body_ctx, "Body", "Clipping", [result])]))
+
+    contain(f, label, site,
+            [wall(index, name, boundary) for index, (name, boundary) in enumerate(boundaries)])
+    return f
+
+
 # #388: the site placements the flush-opening wall is put under. A survey
 # origin of (600 000, 5 600 000, 200) and a turn of about 2.3 degrees to
 # grid north are what a georeferenced export writes.
@@ -891,6 +980,7 @@ FIXTURES = {
     "indexed_profile_boundaries_ifc4x3.ifc": lambda: profile_boundaries("IFC4X3_ADD2"),
     "curve_bounded_plane_composite.ifc": curve_bounded_plane_composite,
     "flush_openings_site_placements.ifc": flush_openings,
+    "halfspace_boundaries_ifc4x3.ifc": halfspace_boundaries,
 }
 
 

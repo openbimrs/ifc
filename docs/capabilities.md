@@ -265,7 +265,7 @@ neither implemented nor planned with a reason.
 | `IfcAdvancedBrepWithVoids` | <span class="status-implemented">Implemented</span> |
 | `IfcHalfSpaceSolid` | <span class="status-implemented">Implemented</span> |
 | `IfcBoxedHalfSpace` | <span class="status-implemented">Implemented</span> |
-| `IfcPolygonalBoundedHalfSpace` | <span class="status-implemented">Implemented</span> |
+| `IfcPolygonalBoundedHalfSpace` | <span class="status-partial">Partial</span> — 1 authored form(s) refused; see [variants](#partially-supported-variants) |
 | `IfcTriangulatedFaceSet` | <span class="status-implemented">Implemented</span> |
 | `IfcTriangulatedIrregularNetwork` | <span class="status-partial">Partial</span> — 2 authored form(s) refused; see [variants](#partially-supported-variants) |
 | `IfcPolygonalFaceSet` | <span class="status-implemented">Implemented</span> |
@@ -384,6 +384,8 @@ Those are listed with their reasoning in
 | `IfcPointByDistanceExpression` | DistanceAlong is an IfcLengthMeasure on the basis curve, clear of its tangent discontinuities | <span class="status-implemented">Admitted</span> | a CurveStation: distance (plan distance on a gradient curve, arc length otherwise) and the lateral (left), vertical and longitudinal offsets, in the same frame IFC4.3 ADD2 8.9.3.48 states |
 | `IfcPointByDistanceExpression` | DistanceAlong is an IfcParameterValue | <span class="status-partial">Refused</span> | IFC4.3 ADD2 gives most basis curves no parameterisation a distance can be read from, and a neutral station is a distance |
 | `IfcPointByDistanceExpression` | DistanceAlong on a tangent discontinuity of the basis curve, or on a basis whose discontinuities cannot be located (a curve relation, a B-spline with a multiple knot) | <span class="status-partial">Refused</span> | IFC lets the previous segment's tangent govern there (8.9.3.48.3); the neutral station reads the next one's |
+| `IfcPolygonalBoundedHalfSpace` | PolygonalBoundary is an IfcPolyline, or a closed IfcCompositeCurve or IfcIndexedPolyCurve of straight segments | <span class="status-implemented">Admitted</span> | one closed Polyline2 in Position's XY plane, the kernel's BoundedHalfSpace contract: composite joints within the model's Precision, SameSense honoured, and a collinear IfcArcIndex a polyline segment as IFC prescribes (#393) |
+| `IfcPolygonalBoundedHalfSpace` | PolygonalBoundary has a circular-arc segment (a trimmed IfcCircle or a non-collinear IfcArcIndex) | <span class="status-partial">Refused</span> | kernel: Axiolid's BoundedHalfSpace takes only a Polyline2 boundary, and an arc is refused rather than polygonised |
 | `IfcSectionedSolidHorizontal` | area sections at positions along the Directrix, clear of its tangent discontinuities | <span class="status-implemented">Admitted</span> | SectionsAtStations in the curve's frame, matched by ring and index; RefDirection is the profile normal and Axis profile Y (IFC4.x-IF#147, IFC4.x-development#1010) |
 | `IfcSectionedSolidHorizontal` | positions off the Directrix, or spanning a tangent discontinuity | <span class="status-partial">Refused</span> | a station measures along its own basis, and IFC mitres at a kink (8.8.3.35.1) where the neutral sections turn with the frame |
 | `IfcSectionedSurface` | open sections tagged throughout or not at all, with one tag set | <span class="status-implemented">Admitted</span> | OpenSectionsAtStations joined by tag, forwards or reversed; profile X to the left as IfcOpenCrossProfileDef states (8.15.3.15.1, #344) |
