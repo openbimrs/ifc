@@ -12,6 +12,80 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+Semver: a minor release (0.17.0). No public item is added, removed or
+changes signature, but behaviour changes: stations along curve relations
+(#346) and `IfcCurveSegment`s placed by an `IfcAxis2PlacementLinear`
+(#311), refused by name until now, lower, and the Axiolid requirements
+rise (`axiolid-model` 0.3.7, and with `compile-reference-backend`
+`axiolid-mesh-compile` 0.3.16 and `axiolid-construct` 0.3.17).
+
+### Added
+
+- Stations along curve relations (#346). Axiolid measures a station along
+  a composite, a trim, a surface curve whose 3D curve governs and a curve
+  placed at a station since `axiolid-model` 0.3.7 (axiolid/kernel#285, ADR
+  0082 amendment): end to end through the pieces, each in its own curve's
+  convention, every joint a seam. So an `IfcPointByDistanceExpression`,
+  an `IfcAxis2PlacementLinear` and the runs of `IfcSectionedSolidHorizontal`,
+  `IfcSectionedSurface` and `IfcOffsetCurveByDistances` on a plain
+  `IfcCompositeCurve`, an `IfcTrimmedCurve` or a composite of segments
+  placed at stations lower. On a joint, and within the model's precision
+  of one, a station stands on the joint reading `SeamSide::Incoming`, the
+  previous segment, as IFC4.3 ADD2 8.9.3.48.3 asks. The joints are read
+  from the stored relation (`lower::station::relation`, repeating the
+  compiler's flattening, since `axiolid-evaluate` is an execution provider
+  this crate does not link): pieces' lengths from a line's direction, a
+  circle's radius, a polyline's edges and the measure of a curve
+  parameterised by it; trims by parameter, by arc length, or by a point on
+  a line or a circle, a closed conic's within one turn; a segment whose
+  sense disagrees reversed. The tests pin them against the kernel's own
+  seams.
+- An `IfcCurveSegment` placed by an `IfcAxis2PlacementLinear` (#311)
+  lowers to an `InstanceAtStation`: the parent's piece in local
+  coordinates (start at the origin, tangent along `x`) placed in the frame
+  of the `OrientedCurveStation` the placement lowers to, whose local `x`,
+  `y`, `z` are the station's tangent, left and up as IFC4.3 ADD2 8.9.3.4
+  reads them. A composite of such segments is measured in the segments'
+  own arc length, whatever base they stand on. Part of #311:
+  `IfcSegmentedReferenceCurve` stays refused (below).
+- `synthetic-lowering/station_relations_ifc4x3.ifc`: a plain composite of
+  a polyline, a polyline stored backwards (`SameSense` false) and a
+  quarter circle trimmed by Cartesian points, with points on its joints
+  and 4 um past one; a composite with a gap, one with an ellipse piece, an
+  offset curve; and two `IfcLine` segments placed at stations 10 and 30 of
+  a gradient curve. Tests resolve them through the reference kernel
+  against closed forms.
+
+### Changed
+
+- `IfcSegmentedReferenceCurve`'s refusal (`dispatch::PLANNED`) names what
+  remains open in #311 precisely: its segments are curves in the
+  (distance along, deviating elevation) space of its base curve, and no
+  normative rule maps a segment's `ParentCurve` and placement `Axis` to a
+  cant law and pivot; implementations differ in the coefficient scaling
+  and the cross-slope formula.
+- An `IfcCurveSegment` in an `IfcGradientCurve` placed by an
+  `IfcAxis2PlacementLinear` keeps its refusal, now naming why: a gradient
+  curve's segments are read as plan and profile pieces, which need a
+  resolved placement.
+- Workspace requirements: `axiolid-model` 0.3.7, `axiolid-evaluate` 0.3.8
+  (dev), `axiolid-mesh-compile` 0.3.16 and `axiolid-construct` 0.3.17;
+  the lock also moves `axiolid-brep-boolean` 0.1.6, `axiolid-overlay`
+  0.3.11 and `axiolid-measure` 0.3.10. Upstream refuses a tilted placement
+  of a plan-measured curve only, reading a tilted arc-length one in its
+  own reference-up frame; nothing lowered before reached that rule, and
+  no test's result changed with the bump alone.
+
+### Refused by name
+
+- A station along an offset curve (`IfcOffsetCurve2D`/`3D`), which
+  Axiolid measures no station along; along a relation joining a gradient
+  curve with arc-length pieces, through which no one distance runs; and
+  along a relation with an ellipse or a B-spline piece, or a trim whose
+  ends are not stated by its data, whose joints lie at an arc-length
+  integral. A composite whose pieces do not meet, or whose undeclared
+  sense runs a piece backwards, is refused by the kernel.
+
 ## [0.16.0] - 2026-10-09
 
 Semver: a minor release (0.16.0). No public item is added, removed or

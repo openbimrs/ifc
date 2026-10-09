@@ -280,7 +280,12 @@ fn stations_ifc_and_axiolid_cannot_share_are_refused_by_name() {
     refused(lower(&model, 24), false, "typed IfcLengthMeasure");
     refused(lower(&model, 30), false, "WR2");
     refused(lower(&model, 33), false, "direction ratios");
-    refused(lower(&model, 45), true, "curve relation");
+    // A trimmed line is a curve relation, measured along its piece (#346).
+    let trimmed = lower(&model, 45).expect("a station along a trimmed curve");
+    let GeometryNode::CurveStation(station) = root(&trimmed) else {
+        panic!("a CurveStation: {:?}", root(&trimmed));
+    };
+    assert_eq!(station.station.distance, 1.0);
     // An unbounded line has no end to be beyond.
     lower(&model, 46).expect("a line is unbounded");
 

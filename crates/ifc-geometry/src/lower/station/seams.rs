@@ -31,12 +31,6 @@ use ifc_model::EntityId;
 use crate::error::GeometryResult;
 use crate::lower::session::{AtomicCurve, LoweringSession};
 
-/// Why a station along a curve relation is refused.
-pub(crate) const RELATION: &str =
-    "the basis curve lowers to a curve relation (a composite, trimmed or offset curve), and \
-     Axiolid resolves a station only along an atomic curve, so neither its seams nor the side \
-     IFC4.3 ADD2 (8.9.3.48.3) reads at one can be stated on it (#346)";
-
 /// Why a B-spline with a possible kink is refused.
 const SPLINE: &str =
     "the basis B-spline has an interior knot of multiplicity at least its degree, where its \
