@@ -11,6 +11,8 @@ documents) is this crate's public interface.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-09
+
 ### Added (#329, the first part)
 
 - The `openbim-ifc` command, over the `openbim-ifc` facade only:
@@ -63,3 +65,6 @@ documents) is this crate's public interface.
 - A Windows Arm64 binary (`aarch64-pc-windows-msvc`) on each release.
 
 Semver: a new crate, first release 0.1.0.
+
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-cli-v0.1.0...HEAD
+[0.1.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.1.0

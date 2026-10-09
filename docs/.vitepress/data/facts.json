@@ -432,9 +432,15 @@
     "openbim-ifc-cli": {
       "description": "The openbim-ifc command: validate, convert and inspect IFC files (STEP and ifcXML) from a shell or CI.",
       "group": "tool",
-      "registries": [],
-      "released": null,
-      "released_date": null,
+      "registries": [
+        {
+          "package": "openbim-ifc-cli",
+          "registry": "crates.io",
+          "url": "https://crates.io/crates/openbim-ifc-cli"
+        }
+      ],
+      "released": "0.1.0",
+      "released_date": "2026-10-09",
       "status": "partial",
       "version": "0.1.0"
     },
