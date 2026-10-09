@@ -83,6 +83,8 @@ refused by name until now, lower. The Axiolid requirements are the ones
   integral. A composite whose pieces do not meet, or whose undeclared
   sense runs a piece backwards, is refused by the kernel.
 
+## [0.17.0] - 2026-10-09
+
 Semver: a minor release. No public item is added, removed or changes
 signature, but behaviour changes as it did for #393: half-space boundaries
 with circular arcs, refused as `Unsupported` until now, lower, so a
@@ -1509,7 +1511,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.16.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.17.0...HEAD
+[0.17.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.17.0
 [0.16.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.16.0
 [0.15.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.15.0
 [0.14.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.14.0

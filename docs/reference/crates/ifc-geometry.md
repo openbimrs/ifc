@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.16.0 (2026-10-09) |
+| Latest release | 0.17.0 (2026-10-09) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -42,100 +42,41 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.16.0 (2026-10-09):
+Latest release, 0.17.0 (2026-10-09):
 
-Semver: a minor release (0.16.0). No public item is added, removed or
-changes signature, but behaviour changes (#346): stations on a tangent
-discontinuity and runs of sections and offsets across one, refused by
-name until now, lower (an `IfcPointByDistanceExpression` on a seam to an
-`OrientedCurveStation`, the only station that carries a seam side, where
-one off a seam stays a `CurveStation`); and the Axiolid
-requirements rise (`axiolid-model` 0.3.6, `axiolid-curve` 0.3.4, and with
-`compile-reference-backend` `axiolid-mesh-compile` 0.3.15,
-`axiolid-mesh-compile-contract` 0.3.3 and `axiolid-construct` 0.3.16). The
-example below and the `compile` module's new section alone would be a
-patch.
+Semver: a minor release. No public item is added, removed or changes
+signature, but behaviour changes as it did for #393: half-space boundaries
+with circular arcs, refused as `Unsupported` until now, lower, so a
+consumer matching on the boundary node now meets a `Profile` as well as a
+`Curve2`; `PARTIAL` loses the family's two rows; and the Axiolid
+requirements rise (`axiolid-model` 0.3.7, `axiolid-evaluate` 0.3.8, and
+with `compile-reference-backend` `axiolid-mesh-compile` 0.3.16 and
+`axiolid-construct` 0.3.17).
 
 ### Added
 
-- `examples/backend_compare/` (#31; `required-features = ["compile"]`)
-  compiles a fixed corpus of committed fixtures through every backend in
-  one list, with no `cfg` in the traversal. The list holds the reference
-  backend under `compile-reference-backend`, and `polygon-extruder`, a
-  `MeshCompiler` defined in the example that names only the published
-  contracts and builds under `compile` alone. `polygon-extruder` compiles
-  collections and instances, triangle and polygon meshes, faceted B-reps,
-  extrusions of polygonal profiles with holes, and blocks, and refuses
-  everything else with `GeomError::UnsupportedInput`. The example prints:
-  - wall time per fixture, keyed by `BackendId`: the first pass reported
-    on its own, then the median and range of `--iterations` passes;
-  - mesh size (vertices, triangles) and coverage (meshed, refused, no
-    body) per fixture;
-  - agreement on signed volume, area and bounding box within a stated
-    relative tolerance, every divergence named by fixture, product, metric
-    and both values;
-  - every product one backend meshed and the other refused.
-
-  The method, machine, profile and load are printed beside the numbers,
-  which are not a cross-kernel performance claim. `scripts/gate.sh` runs it
-  quick under both features and with `--strict` beside the reference. The
-  `compile` module docs and ADR 0012 (amendment) link it.
-
-- Stations on tangent discontinuities (#346). IFC4.3 ADD2 8.9.3.48.3:
-  "If DistanceAlong coincides with a point of tangential discontinuity
-  (within precision limits), then the tangent of the previous segment
-  governs." Axiolid now states a seam side (`SeamSide`, `axiolid-model`
-  0.3.6, ADR 0082 amendment, axiolid/kernel#263), so such a station lowers
-  with `SeamSide::Incoming`: an `IfcAxis2PlacementLinear` as an
-  `OrientedCurveStation` reading the incoming side, an
-  `IfcPointByDistanceExpression` as `CurveStation::with_seam_side`'s
-  unturned oriented station. `OffsetLongitudinal` then runs along the
-  incoming tangent.
-- Runs across tangent discontinuities (#346): `IfcSectionedSolidHorizontal`,
-  `IfcSectionedSurface` and `IfcOffsetCurveByDistances` whose stations
-  span a polyline corner or a grade break lower, and Axiolid cuts them in
-  the half-angle mitre plane 8.8.3.35.1 and 8.8.3.37.1 ask for (the plane
-  normal to the bisector of the two tangents). IFC states no join for the
-  offset curve; the mitre is the one the sweeps on the same stations take.
-- `synthetic-lowering/station_seams_ifc4x3.ifc`: a gradient curve with a
-  grade break and an L-shaped polyline, with points on and within the
-  precision of each seam, a sectioned solid and an offset curve (and a disk
-  swept along it) across the corner, and a sectioned surface across the
-  grade break. Tests resolve them through `axiolid-reference` and the
-  reference mesh compiler against closed forms: the incoming tangent, the
-  mitre's corners, the volume and the area.
-
-### Changed
-
-- A station within the model's declared `Precision` of a seam (capped at
-  1 mm, or `1e-9 * max(1, |s|)` where larger) is stored at the seam's own
-  distance (#346). Axiolid reads a station on a seam only within
-  `ARC_LENGTH_TOLERANCE * max(1, s)` (`1e-12`); snapping to the distance
-  Axiolid itself reads from the same stored data (pinned against
-  `exact_station_seams` in the tests) makes the two rules agree, where a
-  station 4 um off a corner would otherwise be on the corner for IFC and
-  on one leg for the kernel. A station of a run is snapped the same way,
-  so its section stands in the mitre plane; two that snap onto one seam
-  are refused as out of order.
-- The seam reader carries whether the curve turns back on itself at a
-  seam, by Axiolid's `MITRE_TOLERANCE` (1e-6 on the cosine of half the
-  turn), repeated in `lower::station::seams` because `axiolid-evaluate` is
-  an execution provider this crate does not link (ADR 0004).
-- Workspace requirements: `axiolid-model` 0.3.6, `axiolid-curve` 0.3.4,
-  `axiolid-evaluate` 0.3.7 (dev), `axiolid-mesh-compile` 0.3.15,
-  `axiolid-mesh-compile-contract` 0.3.3 and `axiolid-construct` 0.3.16.
-  The kernel now reads a station within `ARC_LENGTH_TOLERANCE` of a seam
-  at the seam; no test's result changed with the bump.
-
-### Refused by name
-
-- A run of sections or offsets across a seam where the basis turns back
-  on itself: "very sharp edges may result in nearly impossible miter"
-  (8.8.3.35.1), and the half-angle plane has no extent there.
-- Still: a station on a basis whose seams cannot be read from stored data.
-  A curve relation (a plain `IfcCompositeCurve`, a trimmed or offset
-  curve): Axiolid resolves no station along one, which remains open in
-  #346. A B-spline with a corner knot, whose distance is an arc-length
-  integral (Axiolid's `exact_station_seams` refuses it too).
+- `IfcPolygonalBoundedHalfSpace` boundaries with circular-arc segments
+  (#398): an `IfcCompositeCurve` with trimmed `IfcCircle` segments, or an
+  `IfcIndexedPolyCurve` with a non-collinear `IfcArcIndex`, lowers to a
+  `Profile::Contour` boundary (no holes) whose arcs are exact `Circle2`
+  segments, never chords. `SolidOperation::BoundedHalfSpace` takes a
+  profile boundary since `axiolid-model` 0.3.7 (axiolid/kernel#277,
+  Axiolid ADR 0084): the reference exact compiler clips by a right
+  circular cylinder per arc, and the mesh compiler flattens the arcs
+  under its chord budget with a certified deviation. A boundary of
+  straight edges still lowers to the same closed `Polyline2` as before,
+  so its output is unchanged. Still refused, by name: as `Degenerate`, a
+  gap at an arc's end (judged within the model's `Precision`), an open
+  curve, a point off the plane and an `IfcArcIndex` with coincident
+  points; as `Unsupported`, a boundary circle placed by an
+  `IfcAxis2Placement3D`, an `IfcCurveSegment` member, a reparametrised
+  segment and any other curve family. A boundary that crosses or touches
+  itself is the kernel's to refuse (`InvalidInput`, named alike in both
+  compilers); it reaches the caller as `CompilationRefused`.
+  `IfcPolygonalBoundedHalfSpace` is now listed as implemented, with no
+  variant rows. `halfspace_boundaries_ifc4x3.ifc` gains two walls, one
+  clipped by a six-segment composite with two arcs of radius 1.2, one by
+  an indexed boundary with an `IfcArcIndex`; each compiles, exact and
+  meshed, to its closed-form volume.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)

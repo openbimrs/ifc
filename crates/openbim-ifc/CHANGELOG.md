@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-10-09
+
+### Changed
+
+- Requires `ifc-geometry` 0.17: polygonal half-space boundaries with
+  circular-arc segments lower exactly (#398), on Axiolid's 0.3.16 line.
+  Semver: minor, following the dependency.
+
 ## [0.22.0] - 2026-10-09
 
 ### Changed
@@ -560,7 +568,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.22.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.23.0...HEAD
+[0.23.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.23.0
 [0.22.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.22.0
 [0.21.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.21.0
 [0.20.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.20.0
