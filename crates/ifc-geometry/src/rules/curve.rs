@@ -4,86 +4,67 @@
 //! [`super::dimension`] for the derivation itself; this module only decides
 //! what to do when the derived answer disagrees with the schema.
 
-use ifc_model::{Entity, EntityId, Model, Value};
+use ifc_model::{EntityId, Value};
 
 use super::dimension::{dim_of, first_dim_disagreement, list_refs};
+use super::release::Subject;
 use super::violation::{RuleViolation, ViolationKind};
 
-/// The entity a rule is being evaluated against.
-///
-/// These three travel together through every helper; passing them as one
-/// value keeps the signatures readable and satisfies the argument-count lint.
-#[derive(Clone, Copy)]
-struct Subject<'a> {
-    id: EntityId,
-    entity: &'a Entity,
-    type_name: &'a str,
-}
-
 /// Run the dimensional curve/operator rules that apply to this entity.
-pub fn check(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleViolation>) {
-    let name = entity.type_name.to_ascii_uppercase();
-    let subject = Subject {
-        id,
-        entity,
-        type_name: &name,
-    };
-    match name.as_str() {
-        "IFCPOLYLINE" => same_dim_list(model, subject, 0, "SameDim", "Points", out),
-        "IFCGEOMETRICSET" | "IFCGEOMETRICCURVESET" => {
-            same_dim_list(model, subject, 0, "ConsistentDim", "Elements", out)
-        }
-        "IFCLINE" => line_same_dim(model, subject, out),
-        "IFCPCURVE" => fixed_dim_ref(model, subject, 1, 2, "DimIs2D", out),
-        "IFCOFFSETCURVE2D" => fixed_dim_ref(model, subject, 0, 2, "DimIs2D", out),
-        "IFCOFFSETCURVE3D" => fixed_dim_ref(model, subject, 0, 3, "DimIs2D", out),
-        "IFCSURFACECURVE" | "IFCINTERSECTIONCURVE" | "IFCSEAMCURVE" => {
-            fixed_dim_ref(model, subject, 0, 3, "CurveIs3D", out)
-        }
-        "IFCSWEPTDISKSOLID" | "IFCSWEPTDISKSOLIDPOLYGONAL" => {
-            fixed_dim_ref(model, subject, 0, 3, "DirectrixDim", out)
-        }
-        "IFCSECTIONEDSPINE" => fixed_dim_ref(model, subject, 0, 3, "SpineCurveDim", out),
-        "IFCPOLYGONALBOUNDEDHALFSPACE" => fixed_dim_ref(model, subject, 3, 2, "BoundaryDim", out),
-        _ => {}
+///
+/// Each rule is looked up by the entity that declares it, so it binds that
+/// entity's subtypes in the release, and is reported under the release's
+/// own name (`WR41` for `IfcPolyline.SameDim` in IFC2X3 TC1). The text of
+/// every rule here is the same in every release that declares it.
+pub(crate) fn check(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
+    if let Some(rule) = s.rule("IFCPOLYLINE", "SameDim") {
+        same_dim_list(s, 0, rule, "Points", out);
     }
-    if crate::select::is_a(&name, "IFCBSPLINECURVE") {
+    if let Some(rule) = s.rule("IFCGEOMETRICSET", "ConsistentDim") {
+        same_dim_list(s, 0, rule, "Elements", out);
+    }
+    if let Some(rule) = s.rule("IFCLINE", "SameDim") {
+        line_same_dim(s, rule, out);
+    }
+    // ReferenceCurve is slot 1 on IfcPcurve; BasisCurve slot 0 on the
+    // offsets. IfcOffsetCurve3D's rule is labelled DimIs2D in IFC4 on even
+    // though it demands 3: the schema's own label, kept verbatim.
+    for (declared_on, label, slot, want) in [
+        ("IFCPCURVE", "DimIs2D", 1usize, 2usize),
+        ("IFCOFFSETCURVE2D", "DimIs2D", 0, 2),
+        ("IFCOFFSETCURVE3D", "DimIs2D", 0, 3),
+        ("IFCSURFACECURVE", "CurveIs3D", 0, 3),
+        ("IFCSWEPTDISKSOLID", "DirectrixDim", 0, 3),
+        ("IFCSECTIONEDSPINE", "SpineCurveDim", 0, 3),
+        ("IFCPOLYGONALBOUNDEDHALFSPACE", "BoundaryDim", 3, 2),
+    ] {
+        if let Some(rule) = s.rule(declared_on, label) {
+            fixed_dim_ref(s, slot, want, rule, out);
+        }
+    }
+    if let Some(rule) = s.rule("IFCBSPLINECURVE", "SameDim") {
         // ControlPointsList is slot 1.
-        same_dim_list(model, subject, 1, "SameDim", "ControlPointsList", out);
+        same_dim_list(s, 1, rule, "ControlPointsList", out);
     }
-    if crate::select::is_a(&name, "IFCCOMPOSITECURVE") {
-        same_dim_list(model, subject, 0, "SameDim", "Segments", out);
+    if let Some(rule) = s.rule("IFCCOMPOSITECURVE", "SameDim") {
+        same_dim_list(s, 0, rule, "Segments", out);
     }
-    composite_curve_continuity(model, subject, out);
-    consistent_profile_types(model, subject, out);
-
-    // The subtype table does not carry the transformation-operator family,
-    // so match the name directly rather than through `is_a`: an unknown
-    // entity has an empty supertype chain and would silently never dispatch.
-    if name.starts_with("IFCCARTESIANTRANSFORMATIONOPERATOR") {
-        transformation_operator(model, subject, out);
-    }
+    composite_curve_continuity(s, out);
+    consistent_profile_types(s, out);
+    transformation_operator(s, out);
 }
 
 /// Every member of a list-valued slot must share one dimensionality.
 fn same_dim_list(
-    model: &Model,
-    subject: Subject<'_>,
+    s: &Subject<'_>,
     slot: usize,
     rule: &'static str,
     label: &str,
     out: &mut Vec<RuleViolation>,
 ) {
-    let Subject {
-        id,
-        entity,
-        type_name,
-    } = subject;
-    let ids = list_refs(entity, slot);
-    if let Some((expected, found, offender)) = first_dim_disagreement(model, &ids) {
-        out.push(RuleViolation::new(
-            id,
-            type_name.to_string(),
+    let ids = list_refs(s.entity, slot);
+    if let Some((expected, found, offender)) = first_dim_disagreement(s.release, s.model, &ids) {
+        out.push(s.violation(
             rule,
             ViolationKind::Disagreement,
             format!("{label} starts {expected}D but {offender} is {found}D"),
@@ -93,28 +74,20 @@ fn same_dim_list(
 
 /// A referenced entity must have exactly the dimensionality the schema fixes.
 fn fixed_dim_ref(
-    model: &Model,
-    subject: Subject<'_>,
+    s: &Subject<'_>,
     slot: usize,
     want: usize,
     rule: &'static str,
     out: &mut Vec<RuleViolation>,
 ) {
-    let Subject {
-        id,
-        entity,
-        type_name,
-    } = subject;
-    let Some(Value::Ref(target)) = entity.attribute(slot).map(|v| v.unwrap_typed()) else {
+    let Some(Value::Ref(target)) = s.entity.attribute(slot).map(|v| v.unwrap_typed()) else {
         return;
     };
-    let Some(found) = dim_of(model, *target) else {
+    let Some(found) = dim_of(s.release, s.model, *target) else {
         return;
     };
     if found != want {
-        out.push(RuleViolation::new(
-            id,
-            type_name.to_string(),
+        out.push(s.violation(
             rule,
             ViolationKind::Dimensionality,
             format!("{target} is {found}D, must be {want}D"),
@@ -123,26 +96,22 @@ fn fixed_dim_ref(
 }
 
 /// `IfcLine.SameDim`: the direction and the point must agree.
-fn line_same_dim(model: &Model, subject: Subject<'_>, out: &mut Vec<RuleViolation>) {
-    let Subject {
-        id,
-        entity,
-        type_name,
-    } = subject;
+fn line_same_dim(s: &Subject<'_>, rule: &'static str, out: &mut Vec<RuleViolation>) {
     let (Some(Value::Ref(pnt)), Some(Value::Ref(dir))) = (
-        entity.attribute(0).map(|v| v.unwrap_typed()),
-        entity.attribute(1).map(|v| v.unwrap_typed()),
+        s.entity.attribute(0).map(|v| v.unwrap_typed()),
+        s.entity.attribute(1).map(|v| v.unwrap_typed()),
     ) else {
         return;
     };
-    let (Some(pd), Some(dd)) = (dim_of(model, *pnt), dim_of(model, *dir)) else {
+    let (Some(pd), Some(dd)) = (
+        dim_of(s.release, s.model, *pnt),
+        dim_of(s.release, s.model, *dir),
+    ) else {
         return;
     };
     if pd != dd {
-        out.push(RuleViolation::new(
-            id,
-            type_name.to_string(),
-            "SameDim",
+        out.push(s.violation(
+            rule,
             ViolationKind::Disagreement,
             format!("Pnt {pnt} is {pd}D but Dir {dir} is {dd}D"),
         ));
@@ -153,40 +122,26 @@ fn line_same_dim(model: &Model, subject: Subject<'_>, out: &mut Vec<RuleViolatio
 /// optional axis.
 ///
 /// `Dim` here is `LocalOrigin.Dim`, so `DimEqual2`/`DimIs3D` are really
-/// statements about the local origin point.
-fn transformation_operator(model: &Model, subject: Subject<'_>, out: &mut Vec<RuleViolation>) {
-    let Subject {
-        id,
-        entity,
-        type_name,
-    } = subject;
-    // Same reason as the dispatch above: name-prefix, not the subtype table.
-    // The NONUNIFORM subtypes end in 2DNONUNIFORM / 3DNONUNIFORM, so test the
-    // dimension marker rather than a suffix.
-    let subject = Subject {
-        id,
-        entity,
-        type_name,
-    };
-    let (want, dim_rule) = if type_name.starts_with("IFCCARTESIANTRANSFORMATIONOPERATOR3D") {
-        (3usize, "DimIs3D")
-    } else if type_name.starts_with("IFCCARTESIANTRANSFORMATIONOPERATOR2D") {
-        (2usize, "DimEqual2")
-    } else {
-        return;
-    };
-
-    // LocalOrigin is slot 2 and carries the operator's own Dim.
-    fixed_dim_ref(model, subject, 2, want, dim_rule, out);
-
-    // Axis1/Axis2 are optional; Axis3 exists only on the 3D operator.
-    let axes: &[(usize, &'static str)] = if want == 3 {
-        &[(0, "Axis1Is3D"), (1, "Axis2Is3D"), (4, "Axis3Is3D")]
-    } else {
-        &[(0, "Axis1Is2D"), (1, "Axis2Is2D")]
-    };
-    for (slot, rule) in axes {
-        fixed_dim_ref(model, subject, *slot, want, rule, out);
+/// statements about the local origin point. The non-uniform operators are
+/// subtypes and are bound by the same rules.
+fn transformation_operator(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
+    const OP2: &str = "IFCCARTESIANTRANSFORMATIONOPERATOR2D";
+    const OP3: &str = "IFCCARTESIANTRANSFORMATIONOPERATOR3D";
+    // LocalOrigin is slot 2 and carries the operator's own Dim; Axis1/Axis2
+    // are optional; Axis3 exists only on the 3D operator.
+    let rules: [(&str, &str, usize, usize); 7] = [
+        (OP2, "DimEqual2", 2, 2),
+        (OP2, "Axis1Is2D", 0, 2),
+        (OP2, "Axis2Is2D", 1, 2),
+        (OP3, "DimIs3D", 2, 3),
+        (OP3, "Axis1Is3D", 0, 3),
+        (OP3, "Axis2Is3D", 1, 3),
+        (OP3, "Axis3Is3D", 4, 3),
+    ];
+    for (declared_on, label, slot, want) in rules {
+        if let Some(rule) = s.rule(declared_on, label) {
+            fixed_dim_ref(s, slot, want, rule, out);
+        }
     }
 }
 
@@ -201,11 +156,13 @@ fn transformation_operator(model: &Model, subject: Subject<'_>, out: &mut Vec<Ru
 ///
 /// The rule is skipped when `ClosedCurve` is not a written boolean: it is
 /// `IfcLogical`, so `UNKNOWN` is legal and decides nothing.
-fn composite_curve_continuity(model: &Model, subject: Subject<'_>, out: &mut Vec<RuleViolation>) {
-    let (id, entity, name) = (subject.id, subject.entity, subject.type_name);
-    if !crate::select::is_a(name, "IFCCOMPOSITECURVE") {
+fn composite_curve_continuity(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
+    let continuous = s.rule("IFCCOMPOSITECURVE", "CurveContinuous");
+    let is_closed = s.rule("IFCBOUNDARYCURVE", "IsClosed");
+    if continuous.is_none() && is_closed.is_none() {
         return;
     }
+    let (model, entity) = (s.model, s.entity);
     // ClosedCurve is DERIVED, never written:
     //   ClosedCurve := Segments[NSegments].Transition <> Discontinuous
     // so it depends on the LAST segment alone, not on the total count.
@@ -231,11 +188,9 @@ fn composite_curve_continuity(model: &Model, subject: Subject<'_>, out: &mut Vec
         .count();
 
     let want = if closed { 0 } else { 1 };
-    if discontinuous != want {
-        out.push(RuleViolation::new(
-            id,
-            name.to_string(),
-            "CurveContinuous",
+    if let Some(rule) = continuous.filter(|_| discontinuous != want) {
+        out.push(s.violation(
+            rule,
             ViolationKind::Disagreement,
             format!(
                 "{discontinuous} segments are DISCONTINUOUS; a closed curve \
@@ -246,16 +201,16 @@ fn composite_curve_continuity(model: &Model, subject: Subject<'_>, out: &mut Vec
 
     // IfcBoundaryCurve.IsClosed: the same curve, additionally required to
     // close. A boundary that does not close bounds nothing.
-    if crate::select::is_a(name, "IFCBOUNDARYCURVE") && !closed {
-        out.push(RuleViolation::new(
-            id,
-            name.to_string(),
-            "IsClosed",
-            ViolationKind::Disagreement,
-            "a boundary curve must be closed, but its segments end in a \
+    if let Some(rule) = is_closed.filter(|_| !closed) {
+        out.push(
+            s.violation(
+                rule,
+                ViolationKind::Disagreement,
+                "a boundary curve must be closed, but its segments end in a \
              discontinuity"
-                .to_string(),
-        ));
+                    .to_string(),
+            ),
+        );
     }
 }
 
@@ -263,11 +218,11 @@ fn composite_curve_continuity(model: &Model, subject: Subject<'_>, out: &mut Vec
 ///
 /// Every cross-section must share the first one's `ProfileType`; a spine
 /// mixing AREA and CURVE profiles has no coherent swept result.
-fn consistent_profile_types(model: &Model, subject: Subject<'_>, out: &mut Vec<RuleViolation>) {
-    let (id, entity, name) = (subject.id, subject.entity, subject.type_name);
-    if name != "IFCSECTIONEDSPINE" {
+fn consistent_profile_types(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
+    let Some(rule) = s.rule("IFCSECTIONEDSPINE", "ConsistentProfileTypes") else {
         return;
-    }
+    };
+    let (model, entity) = (s.model, s.entity);
     // CrossSections is slot 1: SpineCurve, CrossSections, CrossSectionPositions.
     let sections = super::dimension::list_refs(entity, 1);
     let kind = |id: EntityId| -> Option<String> {
@@ -284,10 +239,8 @@ fn consistent_profile_types(model: &Model, subject: Subject<'_>, out: &mut Vec<R
             continue;
         };
         if other != first {
-            out.push(RuleViolation::new(
-                id,
-                name.to_string(),
-                "ConsistentProfileTypes",
+            out.push(s.violation(
+                rule,
                 ViolationKind::Disagreement,
                 format!("cross-section {section} is {other}, but the first is {first}"),
             ));

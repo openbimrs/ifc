@@ -10,25 +10,40 @@
 //! rules therefore run the same constraint check twice, once per
 //! direction, with `UUpper`/`VUpper` derived from the grid.
 
-use ifc_model::{Entity, EntityId, Model, Value};
+use ifc_model::{Entity, Value};
 
 use super::express::constraints_param_bspline;
+use super::release::Subject;
 use super::violation::{RuleViolation, ViolationKind};
 
 /// Run the B-spline rules that apply to this entity.
-pub fn check(_model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleViolation>) {
-    let name = entity.type_name.to_ascii_uppercase();
-    if name == "IFCBSPLINECURVEWITHKNOTS" || name == "IFCRATIONALBSPLINECURVEWITHKNOTS" {
-        curve_with_knots(id, entity, &name, out);
+///
+/// IFC4 ADD2 TC1 introduced the knotted B-spline entities, and every later
+/// bundled release states these rules and their functions identically;
+/// IFC2X3 TC1 has none of them.
+pub(crate) fn check(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
+    if let Some(rule) = s.rule("IFCBSPLINECURVEWITHKNOTS", "ConsistentBSpline") {
+        curve_with_knots(s, rule, out);
     }
-    if name == "IFCRATIONALBSPLINECURVEWITHKNOTS" {
-        curve_weights(id, entity, &name, out);
+    if let Some(rule) = s.rule("IFCRATIONALBSPLINECURVEWITHKNOTS", "WeightsGreaterZero") {
+        curve_weights(s, rule, out);
     }
-    if name == "IFCBSPLINESURFACEWITHKNOTS" || name == "IFCRATIONALBSPLINESURFACEWITHKNOTS" {
-        surface_with_knots(id, entity, &name, out);
+    const SURFACE: &str = "IFCBSPLINESURFACEWITHKNOTS";
+    let directions = [
+        s.rule(SURFACE, "UDirectionConstraints")
+            .zip(s.rule(SURFACE, "CorrespondingULists")),
+        s.rule(SURFACE, "VDirectionConstraints")
+            .zip(s.rule(SURFACE, "CorrespondingVLists")),
+    ];
+    if directions.iter().any(Option::is_some) {
+        surface_with_knots(s, directions, out);
     }
-    if name == "IFCRATIONALBSPLINESURFACEWITHKNOTS" {
-        surface_weights(id, entity, &name, out);
+    const RATIONAL: &str = "IFCRATIONALBSPLINESURFACEWITHKNOTS";
+    if let (Some(lists), Some(values)) = (
+        s.rule(RATIONAL, "CorrespondingWeightsDataLists"),
+        s.rule(RATIONAL, "WeightValuesGreaterZero"),
+    ) {
+        surface_weights(s, (lists, values), out);
     }
 }
 
@@ -36,7 +51,8 @@ pub fn check(_model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleVi
 ///
 /// Slots: Degree, ControlPointsList, CurveForm, ClosedCurve,
 /// SelfIntersect, KnotMultiplicities, Knots, KnotSpec.
-fn curve_with_knots(id: EntityId, entity: &Entity, type_name: &str, out: &mut Vec<RuleViolation>) {
+fn curve_with_knots(s: &Subject<'_>, rule: &'static str, out: &mut Vec<RuleViolation>) {
+    let entity = s.entity;
     let Some(degree) = int_at(entity, 0) else {
         return;
     };
@@ -56,10 +72,8 @@ fn curve_with_knots(id: EntityId, entity: &Entity, type_name: &str, out: &mut Ve
     let up_cp = cps as i64 - 1;
 
     if !constraints_param_bspline(degree, up_knots, up_cp, &mult, &knots) {
-        out.push(RuleViolation::new(
-            id,
-            type_name.to_string(),
-            "ConsistentBSpline",
+        out.push(s.violation(
+            rule,
             ViolationKind::Disagreement,
             format!(
                 "degree {degree} with {up_knots} knots and {cps} control points \
@@ -75,12 +89,15 @@ fn curve_with_knots(id: EntityId, entity: &Entity, type_name: &str, out: &mut Ve
 /// Slots: UDegree, VDegree, ControlPointsList, SurfaceForm, UClosed,
 /// VClosed, SelfIntersect, UMultiplicities, VMultiplicities, UKnots,
 /// VKnots, KnotSpec.
+///
+/// `directions` holds, for u then v, the release's names for the
+/// direction's constraint and correspondence rules.
 fn surface_with_knots(
-    id: EntityId,
-    entity: &Entity,
-    type_name: &str,
+    s: &Subject<'_>,
+    directions: [Option<(&'static str, &'static str)>; 2],
     out: &mut Vec<RuleViolation>,
 ) {
+    let entity = s.entity;
     // UUpper := SIZEOF(ControlPointsList) - 1;
     // VUpper := SIZEOF(ControlPointsList[1]) - 1.
     let Some(rows) = list_len(entity, 2) else {
@@ -88,26 +105,14 @@ fn surface_with_knots(
     };
     let cols = first_row_len(entity, 2);
 
-    for (degree_slot, mult_slot, knot_slot, upper, rule, corr, label) in [
-        (
-            0usize,
-            7usize,
-            9usize,
-            rows,
-            "UDirectionConstraints",
-            "CorrespondingULists",
-            "U",
-        ),
-        (
-            1usize,
-            8usize,
-            10usize,
-            cols.unwrap_or(0),
-            "VDirectionConstraints",
-            "CorrespondingVLists",
-            "V",
-        ),
+    let [u_rules, v_rules] = directions;
+    for (degree_slot, mult_slot, knot_slot, upper, rules, label) in [
+        (0usize, 7usize, 9usize, rows, u_rules, "U"),
+        (1usize, 8usize, 10usize, cols.unwrap_or(0), v_rules, "V"),
     ] {
+        let Some((rule, corr)) = rules else {
+            continue;
+        };
         let (Some(degree), Some(mult), Some(knots)) = (
             int_at(entity, degree_slot),
             int_list(entity, mult_slot),
@@ -118,9 +123,7 @@ fn surface_with_knots(
         // KnotUUpper := SIZEOF(UKnots), so the correspondence rule is
         // simply that the two parallel lists agree in length.
         if mult.len() != knots.len() {
-            out.push(RuleViolation::new(
-                id,
-                type_name.to_string(),
+            out.push(s.violation(
                 corr,
                 ViolationKind::Disagreement,
                 format!(
@@ -134,9 +137,7 @@ fn surface_with_knots(
             continue;
         }
         if !constraints_param_bspline(degree, knots.len() as i64, upper as i64 - 1, &mult, &knots) {
-            out.push(RuleViolation::new(
-                id,
-                type_name.to_string(),
+            out.push(s.violation(
                 rule,
                 ViolationKind::Disagreement,
                 format!("the {label} direction is not a valid B-spline parametrisation"),
@@ -149,16 +150,14 @@ fn surface_with_knots(
 ///
 /// A zero or negative weight makes the rational basis undefined at that
 /// span, so this is a degeneracy rather than a stylistic complaint.
-fn curve_weights(id: EntityId, entity: &Entity, type_name: &str, out: &mut Vec<RuleViolation>) {
+fn curve_weights(s: &Subject<'_>, rule: &'static str, out: &mut Vec<RuleViolation>) {
     // WeightsData is slot 8, after the knotted-curve slots.
-    let Some(weights) = real_list(entity, 8) else {
+    let Some(weights) = real_list(s.entity, 8) else {
         return;
     };
     if let Some((i, w)) = weights.iter().enumerate().find(|(_, w)| **w <= 0.0) {
-        out.push(RuleViolation::new(
-            id,
-            type_name.to_string(),
-            "WeightsGreaterZero",
+        out.push(s.violation(
+            rule,
             ViolationKind::Degenerate,
             format!("WeightsData[{i}] is {w}, must be greater than 0"),
         ));
@@ -169,7 +168,14 @@ fn curve_weights(id: EntityId, entity: &Entity, type_name: &str, out: &mut Vec<R
 ///
 /// Also carries `CorrespondingWeightsDataLists`, which requires the weight
 /// grid to match the control point grid in both directions.
-fn surface_weights(id: EntityId, entity: &Entity, type_name: &str, out: &mut Vec<RuleViolation>) {
+///
+/// `rules` holds the release's names for the two rules, in that order.
+fn surface_weights(
+    s: &Subject<'_>,
+    (lists, values): (&'static str, &'static str),
+    out: &mut Vec<RuleViolation>,
+) {
+    let entity = s.entity;
     // WeightsData is slot 12 on the rational surface.
     let Some(Value::List(rows)) = entity.attribute(12).map(|v| v.unwrap_typed()) else {
         return;
@@ -181,10 +187,8 @@ fn surface_weights(id: EntityId, entity: &Entity, type_name: &str, out: &mut Vec
         _ => None,
     });
     if cp_rows != Some(rows.len()) || (cp_cols.is_some() && cp_cols != w_cols) {
-        out.push(RuleViolation::new(
-            id,
-            type_name.to_string(),
-            "CorrespondingWeightsDataLists",
+        out.push(s.violation(
+            lists,
             ViolationKind::Disagreement,
             format!(
                 "WeightsData is {}x{:?} but ControlPointsList is {:?}x{:?}",
@@ -206,10 +210,8 @@ fn surface_weights(id: EntityId, entity: &Entity, type_name: &str, out: &mut Vec
                 _ => continue,
             };
             if w <= 0.0 {
-                out.push(RuleViolation::new(
-                    id,
-                    type_name.to_string(),
-                    "WeightValuesGreaterZero",
+                out.push(s.violation(
+                    values,
                     ViolationKind::Degenerate,
                     format!("WeightsData[{i}][{j}] is {w}, must be greater than 0"),
                 ));

@@ -4,58 +4,60 @@
 //! them. `WR1` keeps an axis curve in the 2D grid plane; `WR2` keeps an
 //! axis in exactly one of the U/V/W lists.
 
-use ifc_model::{Entity, EntityId, Model};
+use ifc_model::Model;
 
+use super::release::Subject;
 use super::violation::{RuleViolation, ViolationKind};
 use crate::constraint::grid::GridAxis;
-use crate::resource::point::CartesianPoint;
 
 /// Dispatch grid rules for one entity.
-pub fn check(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleViolation>) {
-    if entity.type_name.eq_ignore_ascii_case("IFCGRIDAXIS") {
-        grid_axis(model, id, entity, out);
+///
+/// IFC2X3 TC1 to IFC4X3 ADD2 all declare `WR1` and `WR2` with the same
+/// text and the same labels.
+pub(crate) fn check(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
+    if let Some(rule) = s.rule("IFCGRIDAXIS", "WR1") {
+        axis_curve_is_2d(s, rule, out);
+    }
+    if let Some(rule) = s.rule("IFCGRIDAXIS", "WR2") {
+        grid_axis_membership(s, rule, out);
     }
 }
 
-/// `IfcGridAxis`: `WR1` (AxisCurve.Dim = 2) and `WR2` (exactly one of
-/// PartOfU / PartOfV / PartOfW).
+/// `WR1`: `AxisCurve.Dim = 2`, with `Dim` derived by the release's
+/// `IfcCurveDim`.
+fn axis_curve_is_2d(s: &Subject<'_>, rule: &'static str, out: &mut Vec<RuleViolation>) {
+    let view = GridAxis::new(s.id, s.entity);
+    let Ok(curve) = view.curve() else {
+        return;
+    };
+    if let Some(dim) = super::dimension::dim_of(s.release, s.model, curve) {
+        if dim != 2 {
+            out.push(s.violation(
+                rule,
+                ViolationKind::Dimensionality,
+                format!("AxisCurve {curve} is {dim}D, must be 2D"),
+            ));
+        }
+    }
+}
+
+/// `WR2`: an axis belongs to exactly one of a grid's U/V/W lists.
 ///
 /// `WR2` is stated over inverse attributes, which a Part 21 file does not
 /// carry: an instance lists no PartOfU/V/W, the grid lists its axes. It is
 /// checked by counting the grid axis lists that reference this axis, which
 /// is the same relation read from the owning side.
-fn grid_axis(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleViolation>) {
-    const TYPE: &str = "IFCGRIDAXIS";
-    let view = GridAxis::new(id, entity);
-    if let Ok(curve) = view.curve() {
-        if let Some(dim) = curve_dim(model, curve) {
-            if dim != 2 {
-                out.push(RuleViolation::new(
-                    id,
-                    TYPE,
-                    "WR1",
-                    ViolationKind::Dimensionality,
-                    format!("AxisCurve {curve} is {dim}D, must be 2D"),
-                ));
-            }
-        }
-    }
-    grid_axis_membership(model, id, out);
-}
-
-/// `WR2`: an axis belongs to exactly one of a grid's U/V/W lists.
 ///
 /// An axis referenced by two lists is ambiguous -- the same line would be
 /// both a U and a V axis -- and one referenced by none is unreachable from
 /// any grid. Both are reported, because both make the axis unusable.
-fn grid_axis_membership(model: &Model, id: EntityId, out: &mut Vec<RuleViolation>) {
-    const TYPE: &str = "IFCGRIDAXIS";
+fn grid_axis_membership(s: &Subject<'_>, rule: &'static str, out: &mut Vec<RuleViolation>) {
+    let model: &Model = s.model;
     let mut memberships = 0usize;
-    for (grid_id, grid) in model.iter() {
-        if !grid.type_name.eq_ignore_ascii_case("IFCGRID") {
+    for (_, grid) in model.iter() {
+        if !s.release.is_a(&grid.type_name, "IFCGRID") {
             continue;
         }
-        let _ = grid_id;
         for slot in [grid_slot::U_AXES, grid_slot::V_AXES, grid_slot::W_AXES] {
             let Some(list) = grid.attributes.get(slot).and_then(|value| value.as_list()) else {
                 continue;
@@ -63,17 +65,15 @@ fn grid_axis_membership(model: &Model, id: EntityId, out: &mut Vec<RuleViolation
             if list
                 .iter()
                 .filter_map(ifc_model::Value::as_ref_id)
-                .any(|a| a == id)
+                .any(|a| a == s.id)
             {
                 memberships += 1;
             }
         }
     }
     if memberships != 1 {
-        out.push(RuleViolation::new(
-            id,
-            TYPE,
-            "WR2",
+        out.push(s.violation(
+            rule,
             ViolationKind::Disagreement,
             format!("axis belongs to {memberships} grid axis lists, must belong to exactly 1"),
         ));
@@ -93,49 +93,9 @@ pub(crate) mod grid_slot {
     pub const W_AXES: usize = 9;
 }
 
-/// Dimensionality of a grid axis curve, from the geometry it is defined by.
-///
-/// A curve has no dimensionality attribute; EXPRESS derives `Dim` per
-/// family. Only the families a grid axis actually uses are resolved, and
-/// anything else returns `None` so an unknown family is reported by no
-/// rule rather than by a wrong one.
-fn curve_dim(model: &Model, id: EntityId) -> Option<usize> {
-    let entity = model.get(id)?;
-    match entity.type_name.to_ascii_uppercase().as_str() {
-        "IFCPOLYLINE" => {
-            let first = entity.attributes.first()?.as_list()?.first()?.as_ref_id()?;
-            point_dim(model, first)
-        }
-        "IFCLINE" => {
-            let pnt = entity.attributes.first()?.as_ref_id()?;
-            point_dim(model, pnt)
-        }
-        "IFCCIRCLE" | "IFCELLIPSE" => {
-            let position = entity.attributes.first()?.as_ref_id()?;
-            let placement = model.get(position)?;
-            match placement.type_name.to_ascii_uppercase().as_str() {
-                "IFCAXIS2PLACEMENT2D" => Some(2),
-                "IFCAXIS2PLACEMENT3D" => Some(3),
-                _ => None,
-            }
-        }
-        _ => None,
-    }
-}
-
-/// Dimensionality of a referenced `IfcCartesianPoint`.
-fn point_dim(model: &Model, id: EntityId) -> Option<usize> {
-    let entity = model.get(id)?;
-    CartesianPoint::new(id, entity)
-        .coordinates()
-        .ok()
-        .map(|c| c.len())
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use ifc_model::Value;
+    use ifc_model::{Entity, EntityId, Model, Value};
 
     fn point(model: &mut Model, id: u64, coords: &[f64]) {
         model.insert(

@@ -5,34 +5,41 @@
 //! self-intersects, a swept disk whose inner radius exceeds its outer has
 //! no material. Each is cheap here and expensive in a kernel.
 
-use ifc_model::{Entity, EntityId, Model, Value};
+use ifc_model::{Entity, Value};
 
+use super::release::Subject;
 use super::violation::{RuleViolation, ViolationKind};
 
 /// Run the surface and swept-solid rules that apply to this entity.
-pub fn check(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleViolation>) {
-    let name = entity.type_name.to_ascii_uppercase();
+///
+/// Each rule reads the same in every release that declares it, except
+/// `DirectrixBounded`, which IFC4X3 ADD2 moves (see [`directrix_bounded`]).
+pub(crate) fn check(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
+    let entity = s.entity;
 
     // A trimmed surface needs two distinct parameters in each direction,
     // and the sense flag must agree with their order.
-    if name == "IFCRECTANGULARTRIMMEDSURFACE" {
-        // BasisSurface, U1, V1, U2, V2, Usense, Vsense.
-        let (u1, v1, u2, v2) = (
-            real_at(entity, 1),
-            real_at(entity, 2),
-            real_at(entity, 3),
-            real_at(entity, 4),
-        );
-        distinct(id, &name, "U1AndU2Different", "U1", "U2", u1, u2, out);
-        distinct(id, &name, "V1AndV2Different", "V1", "V2", v1, v2, out);
-        // VsenseCompatible is unconditional; Usense is exempt on closed
-        // surfaces, where wrapping makes the comparison meaningless.
+    // BasisSurface, U1, V1, U2, V2, Usense, Vsense.
+    const TRIMMED: &str = "IFCRECTANGULARTRIMMEDSURFACE";
+    let (u1, v1, u2, v2) = (
+        real_at(entity, 1),
+        real_at(entity, 2),
+        real_at(entity, 3),
+        real_at(entity, 4),
+    );
+    if let Some(rule) = s.rule(TRIMMED, "U1AndU2Different") {
+        distinct(s, rule, ("U1", "U2"), (u1, u2), out);
+    }
+    if let Some(rule) = s.rule(TRIMMED, "V1AndV2Different") {
+        distinct(s, rule, ("V1", "V2"), (v1, v2), out);
+    }
+    // VsenseCompatible is unconditional; Usense is exempt on closed
+    // surfaces, where wrapping makes the comparison meaningless.
+    if let Some(rule) = s.rule(TRIMMED, "VsenseCompatible") {
         if let (Some(a), Some(b), Some(sense)) = (v1, v2, bool_at(entity, 6)) {
             if sense != (b > a) {
-                out.push(RuleViolation::new(
-                    id,
-                    name.clone(),
-                    "VsenseCompatible",
+                out.push(s.violation(
+                    rule,
                     ViolationKind::Disagreement,
                     format!("Vsense is {sense} but V2 > V1 is {}", b > a),
                 ));
@@ -40,20 +47,18 @@ pub fn check(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleVio
         }
     }
 
-    directrix_bounded(model, id, entity, &name, out);
-    trim_values_consistent(id, entity, &name, out);
-    usense_compatible(model, id, entity, &name, out);
-    applicable_mapped_repr(model, id, entity, &name, out);
+    directrix_bounded(s, out);
+    trim_values_consistent(s, out);
+    usense_compatible(s, out);
+    applicable_mapped_repr(s, out);
 
     // A torus whose minor radius reaches its major degenerates: the tube
     // closes through its own axis.
-    if name == "IFCTOROIDALSURFACE" {
+    if let Some(rule) = s.rule("IFCTOROIDALSURFACE", "MajorLargerMinor") {
         if let (Some(major), Some(minor)) = (real_at(entity, 1), real_at(entity, 2)) {
             if minor >= major {
-                out.push(RuleViolation::new(
-                    id,
-                    name.clone(),
-                    "MajorLargerMinor",
+                out.push(s.violation(
+                    rule,
                     ViolationKind::Degenerate,
                     format!("MinorRadius {minor} is not less than MajorRadius {major}"),
                 ));
@@ -62,13 +67,11 @@ pub fn check(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleVio
     }
 
     // A swept disk with a hollow core needs the core strictly inside.
-    if name == "IFCSWEPTDISKSOLID" || name == "IFCSWEPTDISKSOLIDPOLYGONAL" {
+    if let Some(rule) = s.rule("IFCSWEPTDISKSOLID", "InnerRadiusSize") {
         if let (Some(radius), Some(inner)) = (real_at(entity, 1), real_at(entity, 2)) {
             if radius <= inner {
-                out.push(RuleViolation::new(
-                    id,
-                    name.clone(),
-                    "InnerRadiusSize",
+                out.push(s.violation(
+                    rule,
                     ViolationKind::Degenerate,
                     format!("InnerRadius {inner} is not smaller than Radius {radius}"),
                 ));
@@ -77,13 +80,11 @@ pub fn check(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleVio
     }
 
     // A fillet cannot be tighter than the disk it rounds.
-    if name == "IFCSWEPTDISKSOLIDPOLYGONAL" {
+    if let Some(rule) = s.rule("IFCSWEPTDISKSOLIDPOLYGONAL", "CorrectRadii") {
         if let (Some(radius), Some(fillet)) = (real_at(entity, 1), real_at(entity, 5)) {
             if fillet < radius {
-                out.push(RuleViolation::new(
-                    id,
-                    name.clone(),
-                    "CorrectRadii",
+                out.push(s.violation(
+                    rule,
                     ViolationKind::Degenerate,
                     format!("FilletRadius {fillet} is smaller than Radius {radius}"),
                 ));
@@ -92,13 +93,11 @@ pub fn check(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleVio
     }
 
     // A point needs at least two coordinates to place anything.
-    if name == "IFCCARTESIANPOINT" {
+    if let Some(rule) = s.rule("IFCCARTESIANPOINT", "CP2Dor3D") {
         if let Some(Value::List(c)) = entity.attribute(0).map(|v| v.unwrap_typed()) {
             if c.len() < 2 {
-                out.push(RuleViolation::new(
-                    id,
-                    name.clone(),
-                    "CP2Dor3D",
+                out.push(s.violation(
+                    rule,
                     ViolationKind::Dimensionality,
                     format!("Coordinates holds {}, must hold at least 2", c.len()),
                 ));
@@ -108,54 +107,33 @@ pub fn check(model: &Model, id: EntityId, entity: &Entity, out: &mut Vec<RuleVio
 
     // A solid sweeps an AREA profile; a surface sweeps a CURVE profile.
     // Sweeping the wrong kind yields a shape of the wrong dimension.
-    if crate::select::is_a(&name, "IFCSWEPTAREASOLID") {
-        profile_type(
-            model,
-            id,
-            entity,
-            &name,
-            0,
-            "AREA",
-            "SweptAreaType",
-            "SweptArea",
-            out,
-        );
+    if let Some(rule) = s.rule("IFCSWEPTAREASOLID", "SweptAreaType") {
+        profile_type(s, 0, "AREA", rule, "SweptArea", out);
     }
-    if name == "IFCEXTRUDEDAREASOLIDTAPERED" || name == "IFCREVOLVEDAREASOLIDTAPERED" {
-        tapered_profiles(model, id, entity, &name, out);
+    let tapered = s
+        .rule("IFCEXTRUDEDAREASOLIDTAPERED", "CorrectProfileAssignment")
+        .or_else(|| s.rule("IFCREVOLVEDAREASOLIDTAPERED", "CorrectProfileAssignment"));
+    if let Some(rule) = tapered {
+        tapered_profiles(s, rule, out);
     }
-    if crate::select::is_a(&name, "IFCSWEPTSURFACE") {
-        profile_type(
-            model,
-            id,
-            entity,
-            &name,
-            0,
-            "CURVE",
-            "SweptCurveType",
-            "SweptCurve",
-            out,
-        );
+    if let Some(rule) = s.rule("IFCSWEPTSURFACE", "SweptCurveType") {
+        profile_type(s, 0, "CURVE", rule, "SweptCurve", out);
     }
 }
 
 /// The referenced profile must declare the given `ProfileType`.
-#[allow(clippy::too_many_arguments)]
 fn profile_type(
-    model: &Model,
-    id: EntityId,
-    entity: &Entity,
-    type_name: &str,
+    s: &Subject<'_>,
     slot: usize,
     want: &str,
     rule: &'static str,
     label: &str,
     out: &mut Vec<RuleViolation>,
 ) {
-    let Some(Value::Ref(target)) = entity.attribute(slot).map(|v| v.unwrap_typed()) else {
+    let Some(Value::Ref(target)) = s.entity.attribute(slot).map(|v| v.unwrap_typed()) else {
         return;
     };
-    let Some(profile) = model.get(*target) else {
+    let Some(profile) = s.model.get(*target) else {
         return;
     };
     // ProfileType is slot 0 on every IfcProfileDef.
@@ -165,9 +143,7 @@ fn profile_type(
     if kind.eq_ignore_ascii_case(want) {
         return;
     }
-    out.push(RuleViolation::new(
-        id,
-        type_name.to_string(),
+    out.push(s.violation(
         rule,
         ViolationKind::WrongType,
         format!("{label} {target} is a {kind} profile, must be {want}"),
@@ -181,41 +157,36 @@ fn profile_type(
 /// are the same parameterised type. Anything else -- notably two
 /// unrelated arbitrary profiles -- is refused, because the taper has no
 /// correspondence to interpolate along.
-fn tapered_profiles(
-    model: &Model,
-    id: EntityId,
-    entity: &Entity,
-    type_name: &str,
-    out: &mut Vec<RuleViolation>,
-) {
+fn tapered_profiles(s: &Subject<'_>, rule: &'static str, out: &mut Vec<RuleViolation>) {
     // SweptArea is slot 0; EndSweptArea is slot 4 on both tapered forms
     // (Position, then the extrusion/revolution pair, come between).
     let (Some(Value::Ref(start)), Some(Value::Ref(end))) = (
-        entity.attribute(0).map(|v| v.unwrap_typed()),
-        entity.attribute(4).map(|v| v.unwrap_typed()),
+        s.entity.attribute(0).map(|v| v.unwrap_typed()),
+        s.entity.attribute(4).map(|v| v.unwrap_typed()),
     ) else {
         return;
     };
-    let (Some(s), Some(e)) = (model.get(*start), model.get(*end)) else {
+    let (Some(start_def), Some(end_def)) = (s.model.get(*start), s.model.get(*end)) else {
         return;
     };
     let (sn, en) = (
-        s.type_name.to_ascii_uppercase(),
-        e.type_name.to_ascii_uppercase(),
+        start_def.type_name.to_ascii_uppercase(),
+        end_def.type_name.to_ascii_uppercase(),
     );
-    let ok = if en == "IFCDERIVEDPROFILEDEF" {
+    // IfcTaperedSweptAreaProfiles: a derived end profile must derive from
+    // the start; otherwise a parameterised start needs an end of the same
+    // TYPEOF set, i.e. the same type.
+    let ok = if s.ref_is_a(*end, "IFCDERIVEDPROFILEDEF") {
         // ParentProfile is slot 2: ProfileType, ProfileName, ParentProfile.
-        matches!(e.attribute(2).map(|v| v.unwrap_typed()), Some(Value::Ref(p)) if *p == *start)
-    } else if crate::select::is_a(&sn, "IFCPARAMETERIZEDPROFILEDEF") {
+        matches!(end_def.attribute(2).map(|v| v.unwrap_typed()), Some(Value::Ref(p)) if *p == *start)
+    } else if s.ref_is_a(*start, "IFCPARAMETERIZEDPROFILEDEF") {
         sn == en
     } else {
         false
     };
     if !ok {
-        out.push(RuleViolation::new(
-            id,
-            type_name.to_string(),
-            "CorrectProfileAssignment",
+        out.push(s.violation(
+            rule,
             ViolationKind::Disagreement,
             format!("SweptArea {sn} and EndSweptArea {en} do not correspond"),
         ));
@@ -223,24 +194,18 @@ fn tapered_profiles(
 }
 
 /// Two parameters that must differ, or the trim has zero extent.
-#[allow(clippy::too_many_arguments)]
 fn distinct(
-    id: EntityId,
-    type_name: &str,
+    s: &Subject<'_>,
     rule: &'static str,
-    label_a: &str,
-    label_b: &str,
-    a: Option<f64>,
-    b: Option<f64>,
+    (label_a, label_b): (&str, &str),
+    values: (Option<f64>, Option<f64>),
     out: &mut Vec<RuleViolation>,
 ) {
-    let (Some(a), Some(b)) = (a, b) else { return };
+    let (Some(a), Some(b)) = values else { return };
     if a != b {
         return;
     }
-    out.push(RuleViolation::new(
-        id,
-        type_name.to_string(),
+    out.push(s.violation(
         rule,
         ViolationKind::Degenerate,
         format!("{label_a} and {label_b} are both {a}, so the trim is empty"),
@@ -264,7 +229,15 @@ fn bool_at(entity: &Entity, slot: usize) -> Option<bool> {
     }
 }
 
-/// `DirectrixBounded` on the three directrix-swept solids.
+/// `DirectrixBounded` on the directrix-swept solids, per release.
+///
+/// IFC4 ADD2 TC1, IFC4X1 and IFC4X2 declare it on `IfcSweptDiskSolid`,
+/// `IfcFixedReferenceSweptAreaSolid` and `IfcSurfaceCurveSweptAreaSolid`.
+/// IFC4X3 ADD2 keeps it on `IfcSweptDiskSolid` and moves the other two up to
+/// their new common supertype `IfcDirectrixCurveSweptAreaSolid`, so it binds
+/// every subtype of that, including the new
+/// `IfcDirectrixDerivedReferenceSweptAreaSolid`. IFC2X3 TC1 declares it
+/// nowhere. The text is the same wherever it is declared.
 ///
 /// # Reading the set intersection
 ///
@@ -277,57 +250,51 @@ fn bool_at(entity: &Entity, slot: usize) -> Option<bool> {
 /// line, say) has no extent, so the file must supply `StartParam` and
 /// `EndParam` instead.
 ///
-/// A curve that is *both* -- an `IfcTrimmedCurve` over a circle is not, but
-/// a hypothetical bounded conic would be -- fails the `= 1` just as a curve
-/// that is neither does. That is the schema's literal text and is preserved
-/// here rather than relaxed to `>= 1`.
-fn directrix_bounded(
-    model: &Model,
-    id: EntityId,
-    entity: &Entity,
-    name: &str,
-    out: &mut Vec<RuleViolation>,
-) {
-    // Directrix is slot 0 on IfcSweptDiskSolid, slot 2 on the two swept-area
+/// A curve that is *both* fails the `= 1` just as a curve that is neither
+/// does. In no bundled release is an entity both -- `IfcConic` and
+/// `IfcBoundedCurve` are siblings under `IfcCurve` -- so only the zero case
+/// is reachable, and that is what is reported.
+fn directrix_bounded(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
+    // Directrix is slot 0 on IfcSweptDiskSolid, slot 2 on the swept-area
     // forms (SweptArea, Position, Directrix, ...); the param slots follow.
-    let (directrix_slot, start_slot, end_slot) = match name {
-        "IFCSWEPTDISKSOLID" | "IFCSWEPTDISKSOLIDPOLYGONAL" => (0usize, 3usize, 4usize),
-        "IFCSURFACECURVESWEPTAREASOLID" | "IFCFIXEDREFERENCESWEPTAREASOLID" => (2, 3, 4),
-        _ => return,
+    let (rule, directrix_slot) = if let Some(rule) = s.rule("IFCSWEPTDISKSOLID", "DirectrixBounded")
+    {
+        (rule, 0usize)
+    } else if let Some(rule) = [
+        "IFCDIRECTRIXCURVESWEPTAREASOLID",
+        "IFCSURFACECURVESWEPTAREASOLID",
+        "IFCFIXEDREFERENCESWEPTAREASOLID",
+    ]
+    .into_iter()
+    .find_map(|declared_on| s.rule(declared_on, "DirectrixBounded"))
+    {
+        (rule, 2)
+    } else {
+        return;
     };
+    let (start_slot, end_slot) = (3usize, 4usize);
 
     let written = |slot: usize| {
-        entity
+        s.entity
             .attribute(slot)
             .is_some_and(|v| !matches!(v.unwrap_typed(), Value::Null))
     };
-    let has_params = written(start_slot) && written(end_slot);
-    if has_params {
+    if written(start_slot) && written(end_slot) {
         return;
     }
 
-    let Some(Value::Ref(directrix)) = entity.attribute(directrix_slot).map(|v| v.unwrap_typed())
+    let Some(Value::Ref(directrix)) = s.entity.attribute(directrix_slot).map(|v| v.unwrap_typed())
     else {
         return;
     };
-    let Some(curve) = model.get(*directrix) else {
+    if s.model.get(*directrix).is_none() {
         return;
-    };
-    let curve_name = curve.type_name.to_ascii_uppercase();
-    // The schema counts how many of the two names the directrix carries and
-    // demands exactly one. In IFC4 no entity is both a conic and a bounded
-    // curve -- IfcConic sits under IfcCurve, IfcBoundedCurve is its sibling
-    // -- so the `= 1` and `>= 1` readings can never disagree on a real file.
-    // Only the zero case is reachable, and that is what is reported; a
-    // "both" branch would be untestable code asserting an impossible state.
-    let bounded_or_conic = crate::select::is_a(&curve_name, "IFCCONIC")
-        || crate::select::is_a(&curve_name, "IFCBOUNDEDCURVE");
-
+    }
+    let bounded_or_conic =
+        s.ref_is_a(*directrix, "IFCCONIC") || s.ref_is_a(*directrix, "IFCBOUNDEDCURVE");
     if !bounded_or_conic {
-        out.push(RuleViolation::new(
-            id,
-            name.to_string(),
-            "DirectrixBounded",
+        out.push(s.violation(
+            rule,
             ViolationKind::Disagreement,
             format!(
                 "the directrix {directrix} is neither a conic nor a bounded \
@@ -344,16 +311,16 @@ fn directrix_bounded(
 /// both. When both are present they must be of *different* kinds -- giving
 /// two parameters or two points for one end says nothing extra and is
 /// almost always a writer bug.
-fn trim_values_consistent(id: EntityId, entity: &Entity, name: &str, out: &mut Vec<RuleViolation>) {
-    if !crate::select::is_a(name, "IFCTRIMMEDCURVE") {
-        return;
-    }
+fn trim_values_consistent(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
     // BasisCurve, Trim1, Trim2, SenseAgreement, MasterRepresentation.
-    for (slot, rule) in [
+    for (slot, label) in [
         (1usize, "Trim1ValuesConsistent"),
         (2, "Trim2ValuesConsistent"),
     ] {
-        let Some(Value::List(items)) = entity.attribute(slot).map(|v| v.unwrap_typed()) else {
+        let Some(rule) = s.rule("IFCTRIMMEDCURVE", label) else {
+            continue;
+        };
+        let Some(Value::List(items)) = s.entity.attribute(slot).map(|v| v.unwrap_typed()) else {
             continue;
         };
         if items.len() < 2 {
@@ -370,9 +337,7 @@ fn trim_values_consistent(id: EntityId, entity: &Entity, name: &str, out: &mut V
             continue;
         };
         if first == second {
-            out.push(RuleViolation::new(
-                id,
-                name.to_string(),
+            out.push(s.violation(
                 rule,
                 ViolationKind::Disagreement,
                 format!("both trim values are {first}; the two must differ in kind"),
@@ -389,84 +354,61 @@ fn trim_values_consistent(id: EntityId, entity: &Entity, name: &str, out: &mut V
 /// across the seam. `IfcPlane` is excluded from that exemption because its
 /// u is a length, and a surface of revolution is exempt for the same
 /// wrapping reason.
-fn usense_compatible(
-    model: &Model,
-    id: EntityId,
-    entity: &Entity,
-    name: &str,
-    out: &mut Vec<RuleViolation>,
-) {
-    if name != "IFCRECTANGULARTRIMMEDSURFACE" {
+fn usense_compatible(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
+    let Some(rule) = s.rule("IFCRECTANGULARTRIMMEDSURFACE", "UsenseCompatible") else {
+        return;
+    };
+    let Some(Value::Ref(basis)) = s.entity.attribute(0).map(|v| v.unwrap_typed()) else {
+        return;
+    };
+    let basis = *basis;
+    if s.model.get(basis).is_none() {
         return;
     }
-    let Some(Value::Ref(basis)) = entity.attribute(0).map(|v| v.unwrap_typed()) else {
-        return;
-    };
-    let Some(surface) = model.get(*basis) else {
-        return;
-    };
-    let surface_name = surface.type_name.to_ascii_uppercase();
-    let wraps_in_u = (crate::select::is_a(&surface_name, "IFCELEMENTARYSURFACE")
-        && !crate::select::is_a(&surface_name, "IFCPLANE"))
-        || crate::select::is_a(&surface_name, "IFCSURFACEOFREVOLUTION");
+    let wraps_in_u = (s.ref_is_a(basis, "IFCELEMENTARYSURFACE") && !s.ref_is_a(basis, "IFCPLANE"))
+        || s.ref_is_a(basis, "IFCSURFACEOFREVOLUTION");
     if wraps_in_u {
         return;
     }
 
     // BasisSurface, U1, V1, U2, V2, Usense, Vsense.
-    let (Some(u1), Some(u2)) = (real_at(entity, 1), real_at(entity, 3)) else {
+    let (Some(u1), Some(u2)) = (real_at(s.entity, 1), real_at(s.entity, 3)) else {
         return;
     };
-    let Some(Value::Bool(usense)) = entity.attribute(5).map(|v| v.unwrap_typed()) else {
+    let Some(Value::Bool(usense)) = s.entity.attribute(5).map(|v| v.unwrap_typed()) else {
         return;
     };
     if *usense != (u2 > u1) {
-        out.push(RuleViolation::new(
-            id,
-            name.to_string(),
-            "UsenseCompatible",
+        out.push(s.violation(
+            rule,
             ViolationKind::Disagreement,
             format!("Usense is {usense} but U1 = {u1} and U2 = {u2}"),
         ));
     }
 }
 
-/// `IfcRepresentationMap.ApplicableMappedRepr`.
+/// `IfcRepresentationMap.ApplicableMappedRepr`, IFC4 ADD2 TC1 on.
 ///
 /// Only a shape model can be mapped: mapping a non-shape representation
-/// would place something with no geometry to place.
-fn applicable_mapped_repr(
-    model: &Model,
-    id: EntityId,
-    entity: &Entity,
-    name: &str,
-    out: &mut Vec<RuleViolation>,
-) {
-    if name != "IFCREPRESENTATIONMAP" {
+/// would place something with no geometry to place. IFC2X3 TC1 declares no
+/// rule on `IfcRepresentationMap`. `'IFCSHAPEMODEL' IN TYPEOF(...)` is
+/// answered in the release's own entity table, which carries the
+/// representation family.
+fn applicable_mapped_repr(s: &Subject<'_>, out: &mut Vec<RuleViolation>) {
+    let Some(rule) = s.rule("IFCREPRESENTATIONMAP", "ApplicableMappedRepr") else {
         return;
-    }
+    };
     // MappingOrigin, MappedRepresentation.
-    let Some(Value::Ref(mapped)) = entity.attribute(1).map(|v| v.unwrap_typed()) else {
+    let Some(Value::Ref(mapped)) = s.entity.attribute(1).map(|v| v.unwrap_typed()) else {
         return;
     };
-    let Some(target) = model.get(*mapped) else {
+    let Some(target) = s.model.get(*mapped) else {
         return;
     };
-    let target_name = target.type_name.to_ascii_uppercase();
-    // IfcShapeModel and its two subtypes are representation-layer entities,
-    // so this geometry crate's subtype table does not carry them and `is_a`
-    // would answer false for every input. The family is closed in IFC4 --
-    // IfcShapeModel abstracts exactly IfcShapeRepresentation and
-    // IfcTopologyRepresentation -- so name them directly.
-    let is_shape_model = matches!(
-        target_name.as_str(),
-        "IFCSHAPEMODEL" | "IFCSHAPEREPRESENTATION" | "IFCTOPOLOGYREPRESENTATION"
-    );
-    if !is_shape_model {
-        out.push(RuleViolation::new(
-            id,
-            name.to_string(),
-            "ApplicableMappedRepr",
+    if s.ref_is_none_of(*mapped, &["IFCSHAPEMODEL"]) {
+        let target_name = target.type_name.to_ascii_uppercase();
+        out.push(s.violation(
+            rule,
             ViolationKind::WrongType,
             format!("the mapped representation {mapped} is {target_name}, not an IfcShapeModel"),
         ));
