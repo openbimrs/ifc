@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.21.0 (2026-10-09) |
+| Latest release | 0.22.0 (2026-10-09) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -95,13 +95,13 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.21.0 (2026-10-09):
+Latest release, 0.22.0 (2026-10-09):
 
 ### Changed
 
-- Requires `ifc-geometry` 0.15: collinear `IfcArcIndex` segments lower as
-  straight segments everywhere (#396), and geometry where-rules follow the
-  declared release, with IFC2X3 `WRnn` names and the release-only rules
-  (#397, #400, #402). Semver: minor, following the dependency.
+- Requires `ifc-geometry` 0.16: stations on seams lower with the incoming
+  tangent and runs mitre across seams (#346, part 1), on Axiolid's
+  0.3.15 line; the backend comparison example (#31). Semver: minor,
+  following the dependency.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)
