@@ -130,10 +130,10 @@
           "url": "https://crates.io/crates/ifc-geometry"
         }
       ],
-      "released": "0.14.0",
+      "released": "0.15.0",
       "released_date": "2026-10-09",
       "status": "partial",
-      "version": "0.14.0"
+      "version": "0.15.0"
     },
     "ifc-georef": {
       "description": "Georeferencing: map conversion, coordinate reference systems, site placement.",
@@ -400,10 +400,10 @@
           "url": "https://crates.io/crates/openbim-ifc"
         }
       ],
-      "released": "0.20.0",
+      "released": "0.21.0",
       "released_date": "2026-10-09",
       "status": "implemented",
-      "version": "0.20.0"
+      "version": "0.21.0"
     },
     "openbim-ifc-binding-core": {
       "description": "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python).",
