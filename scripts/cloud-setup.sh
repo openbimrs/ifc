@@ -27,28 +27,44 @@ as_root() {
   fi
 }
 
+# Optional extras never stop setup: they print what was skipped and what the
+# gate does without it.
+skipped=()
+skip() {
+  printf 'cloud setup: skipped %s\n' "$1" >&2
+  skipped+=("$1")
+}
+
 command -v apt-get >/dev/null || {
   echo 'Cloud setup supports Ubuntu/Debian images with apt-get.' >&2
   exit 1
 }
+
+# ---------------------------------------------------------------------------
+# Required: what scripts/gate.sh needs on every run. A failure stops setup.
+# ---------------------------------------------------------------------------
+
+# dpkg provides dpkg-deb for the CLI's Debian package check (check-deb.sh).
 as_root env DEBIAN_FRONTEND=noninteractive apt-get update
 as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   ca-certificates curl git build-essential pkg-config python3 python3-dev \
-  python3-pip python3-venv xz-utils cmake
+  python3-pip python3-venv xz-utils cmake dpkg
 
 # Make installed commands visible to later shells too: exports from a setup
-# subprocess do not survive `exec ./scripts/cloud-setup.sh`.
+# subprocess do not survive `exec ./scripts/cloud-setup.sh`. The directory is
+# overridable only so the isolated tests never use the host's bin directory.
+bin_dir="${OPENBIM_CLOUD_BIN_DIR:-/usr/local/bin}"
 expose() {
-  [[ "$1" != "/usr/local/bin/$2" ]] || return 0
+  [[ "$1" != "$bin_dir/$2" ]] || return 0
   [[ -x "$1" ]] || { echo "Installed tool missing: $1" >&2; return 1; }
-  as_root mkdir -p /usr/local/bin
-  as_root ln -sfn "$1" "/usr/local/bin/$2"
+  as_root mkdir -p "$bin_dir"
+  as_root ln -sfn "$1" "$bin_dir/$2"
 }
-export PATH="/usr/local/bin:${CARGO_HOME:-$HOME/.cargo}/bin:$HOME/.local/bin:$PATH"
+export PATH="$bin_dir:${CARGO_HOME:-$HOME/.cargo}/bin:$HOME/.local/bin:$PATH"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
-toolchain="1.88.0" # Matches the repository's CI/MSRV.
+toolchain="1.88.0" # Matches rust-toolchain.toml and the repository's CI/MSRV.
 if ! command -v rustup >/dev/null; then
   curl --fail --location --silent --show-error --retry 3 \
     https://sh.rustup.rs --output "$work/rustup-init.sh"
@@ -64,7 +80,14 @@ for tool in rustup cargo rustc rustfmt cargo-fmt cargo-clippy clippy-driver; do
     expose "${CARGO_HOME:-$HOME/.cargo}/bin/$tool" "$tool"
   fi
 done
-rustup target add --toolchain "$toolchain" wasm32-unknown-unknown
+# Browser WASM for the gate's features section, and the static musl target
+# the CLI's install.sh, Debian package and release archives are built for.
+case "$(uname -m)" in
+  x86_64) musl_target=x86_64-unknown-linux-musl ;;
+  aarch64|arm64) musl_target=aarch64-unknown-linux-musl ;;
+  *) echo 'No CLI musl target for this architecture' >&2; exit 1 ;;
+esac
+rustup target add --toolchain "$toolchain" wasm32-unknown-unknown "$musl_target"
 cargo fetch --locked
 
 # Keep a compatible preinstalled Node; otherwise install a checksummed LTS.
@@ -88,12 +111,15 @@ if ! command -v node >/dev/null || ! command -v npm >/dev/null || \
 fi
 node --version
 npm --version
+# The docs toolchain (VitePress, TypeDoc, playwright-core) and the npm
+# package check's webpack, each from its committed lockfile.
 npm ci --no-audit --no-fund
 npm --prefix crates/openbim-ifc-wasm/tools ci --no-audit --no-fund
 
 # These tools belong to the disposable cloud image, not the project lockfile.
 # --user avoids overwriting distro packages; Debian's externally-managed
 # interpreter requires the explicit override even for user-site installs.
+# Versions match .github/workflows/ci.yml.
 pip_args=(--disable-pip-version-check)
 python_bin="$(python3 -c 'import sys; print(sys.prefix + "/bin")')"
 if python3 -c 'import sys; sys.exit(sys.prefix != sys.base_prefix)'; then
@@ -121,20 +147,63 @@ if [[ "$(wasm-bindgen --version 2>/dev/null || true)" != "wasm-bindgen $wasm_ver
 fi
 expose "${CARGO_HOME:-$HOME/.cargo}/bin/wasm-bindgen" wasm-bindgen
 
-# The npm gate discovers Playwright's Chromium cache without an exported
-# CHROME_BIN. Use the normal browser download, never Ubuntu's snap wrapper.
+scripts/fetch-ifc-schemas.sh
+
+# ---------------------------------------------------------------------------
+# Optional: extras whose gate steps skip, or can be told to skip, without
+# them. A failure prints a skip and setup continues.
+# ---------------------------------------------------------------------------
+
+# Headless Chrome for the npm package check and the docs playground check.
+# Both find $CHROME_BIN, the usual names on PATH, then Playwright's cache.
+# Use the locked playwright-core's download, never Ubuntu's snap wrapper.
 browser_found=false
 for browser in google-chrome-stable google-chrome chromium chromium-browser chrome; do
   if command -v "$browser" >/dev/null; then browser_found=true; break; fi
 done
 if [[ -n "${CHROME_BIN:-}" && -x "$CHROME_BIN" ]]; then browser_found=true; fi
+for cached in "$HOME"/.cache/ms-playwright/chromium-*/chrome-linux*/chrome; do
+  if [[ -x "$cached" ]]; then browser_found=true; break; fi
+done
 if [[ "$browser_found" == false ]]; then
-  # Install system libraries with privilege, but cache the browser as the user
-  # who will run the gate (sudo must not send it to root's HOME).
-  as_root "$(command -v npx)" --yes playwright@1.63.0 install-deps chromium
-  npx --yes playwright@1.63.0 install chromium
+  playwright_cli="$repo_root/node_modules/playwright-core/cli.js"
+  # System libraries need privilege; the browser is cached for the user who
+  # runs the gate (sudo must not send it to root's HOME).
+  if ! { as_root "$(command -v node)" "$playwright_cli" install-deps chromium &&
+         node "$playwright_cli" install chromium; }; then
+    skip 'Chromium (browser checks fail without it; set CHROME_BIN or IFC_SKIP_BROWSER=1)'
+  fi
 fi
 
-scripts/fetch-ifc-schemas.sh
+# The .NET 8 SDK and the docfx local tool (.config/dotnet-tools.json) for the
+# .NET binding and its API reference; build-api-docs.sh skips without dotnet.
+# Ubuntu ships dotnet-sdk-8.0 in its archive; Debian needs Microsoft's feed,
+# which setup does not add.
+has_dotnet8() { command -v dotnet >/dev/null && dotnet --list-sdks 2>/dev/null | grep -q '^8\.'; }
+if ! has_dotnet8 && apt-cache show dotnet-sdk-8.0 >/dev/null 2>&1; then
+  as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    dotnet-sdk-8.0 || true
+fi
+if has_dotnet8; then
+  export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
+  dotnet tool restore || skip 'docfx restore (build-api-docs.sh retries it during the gate)'
+else
+  skip '.NET 8 SDK (no dotnet-sdk-8.0 package; the .NET API reference is skipped)'
+fi
 
+# Warm uv's cache with the pinned Python test and docs tools (pandas, mypy,
+# pdoc) that check-python.sh installs into its throwaway venv.
+mapfile -t python_pins < <(grep -oE '"[A-Za-z0-9_.-]+==[^"]+"' \
+  crates/openbim-ifc-py/scripts/check-python.sh | tr -d '"' | sort -u)
+if [[ ${#python_pins[@]} -gt 0 ]]; then
+  if ! { uv venv --quiet --python python3 "$work/python-warm" &&
+         uv pip install --quiet --python "$work/python-warm/bin/python" "${python_pins[@]}"; }; then
+    skip 'Python tool cache (check-python.sh downloads them during the gate)'
+  fi
+fi
+
+if [[ ${#skipped[@]} -gt 0 ]]; then
+  printf '\nOptional extras skipped:\n'
+  printf '  - %s\n' "${skipped[@]}"
+fi
 printf '\nCloud setup complete. Run: %s\n' 'scripts/gate.sh'

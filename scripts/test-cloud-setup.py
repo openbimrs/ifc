@@ -3,6 +3,11 @@
 
 No package installation, networking, or writes outside a TemporaryDirectory.
 The doubles report commands rather than proving remote services are available.
+
+PATH holds only the doubles and a directory of plain utilities linked from the
+host (HOST_UTILITIES), and setup's bin directory is redirected into the
+temporary tree. A host tool such as a runner's real npm or dotnet can therefore
+never stand in for a double: a command without one fails as not found.
 """
 
 import json
@@ -35,8 +40,20 @@ elif name == 'python3':
 elif name == 'node':
     if args == ['--version']:
         print('v22.23.3')
+    elif args and args[0].endswith('playwright-core/cli.js'):
+        if os.environ.get('FAIL_PLAYWRIGHT'):
+            sys.exit(1)
     elif os.environ.get('OLD_NODE'):
         sys.exit(1)
+elif name == 'dotnet':
+    if args == ['--list-sdks']:
+        print(os.environ.get('DOTNET_SDK', '8.0.414') + ' [/usr/share/dotnet/sdk]')
+elif name == 'apt-cache':
+    if os.environ.get('NO_DOTNET_PACKAGE'):
+        sys.exit(100)
+elif name == 'uv':
+    if os.environ.get('FAIL_UV'):
+        sys.exit(2)
 elif name == 'wasm-bindgen':
     print('wasm-bindgen ' + os.environ['WASM_VERSION'])
 elif name == 'pkl':
@@ -74,6 +91,13 @@ elif name == 'curl':
 """
 
 
+# Plain utilities the script and the doubles' shell shims need from the host.
+HOST_UTILITIES = [
+    "bash", "cat", "chmod", "cp", "dirname", "env", "grep", "mktemp", "rm",
+    "sha256sum", "sort", "tar", "tr", "true", "uname", "xz",
+]
+
+
 class CloudSetupTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="cloud-setup-test-")
@@ -85,8 +109,18 @@ class CloudSetupTests(unittest.TestCase):
         source = Path(__file__).resolve().parent.parent
         self.repo.mkdir()
         # Only the metadata needed by setup, never the whole source/build tree.
-        for name in ["Cargo.lock", "rust-toolchain.toml", "package-lock.json"]:
+        for name in [
+            "Cargo.lock",
+            "rust-toolchain.toml",
+            "package.json",
+            "package-lock.json",
+            ".config/dotnet-tools.json",
+            "crates/openbim-ifc-wasm/tools/package.json",
+            "crates/openbim-ifc-wasm/tools/package-lock.json",
+            "crates/openbim-ifc-py/scripts/check-python.sh",
+        ]:
             if (source / name).exists():
+                (self.repo / name).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy(source / name, self.repo / name)
         (self.repo / "scripts").mkdir()
         shutil.copy(source / "scripts/cloud-setup.sh", self.repo / "scripts")
@@ -111,6 +145,8 @@ class CloudSetupTests(unittest.TestCase):
             "node",
             "npm",
             "npx",
+            "dotnet",
+            "apt-cache",
             "wasm-bindgen",
             "uv",
             "maturin",
@@ -127,6 +163,14 @@ class CloudSetupTests(unittest.TestCase):
             path = self.bin / tool
             path.write_text(FAKE)
             path.chmod(0o755)
+        host = self.root / "host-bin"
+        host.mkdir()
+        for tool in HOST_UTILITIES:
+            found = shutil.which(tool)
+            if found is None:
+                self.skipTest(f"host utility {tool} not found")
+            (host / tool).symlink_to(found)
+        (self.root / "system-bin").mkdir()
         for tool in [
             "rustup",
             "cargo",
@@ -145,7 +189,8 @@ class CloudSetupTests(unittest.TestCase):
         match = re.search(r'name = "wasm-bindgen"\nversion = "([^"]+)"', lock)
         self.env = {
             **os.environ,
-            "PATH": str(self.bin) + ":/usr/bin:/bin",
+            "PATH": f"{self.bin}:{host}",
+            "OPENBIM_CLOUD_BIN_DIR": str(self.root / "system-bin"),
             "HOME": str(home),
             "CARGO_HOME": str(home / ".cargo"),
             "SETUP_LOG": str(self.log),
@@ -164,6 +209,10 @@ class CloudSetupTests(unittest.TestCase):
             "BAD_CHECKSUM",
             "PKL_VERSION",
             "WRONG_CORPUS",
+            "FAIL_PLAYWRIGHT",
+            "DOTNET_SDK",
+            "NO_DOTNET_PACKAGE",
+            "FAIL_UV",
         ]:
             self.env.pop(name, None)
         (self.root / "corpus").mkdir()
@@ -207,6 +256,13 @@ class CloudSetupTests(unittest.TestCase):
         if (self.repo / "Cargo.lock").exists():
             self.assertIn(["cargo", "fetch", "--locked"], commands)
         self.assertFalse(any("install" in c and c[0] == "cargo" for c in commands))
+        # Both lockfiles install through the npm double, never the host's npm.
+        self.assertIn(["npm", "ci", "--no-audit", "--no-fund"], commands)
+        self.assertIn(
+            ["npm", "--prefix", "crates/openbim-ifc-wasm/tools", "ci", "--no-audit", "--no-fund"],
+            commands,
+        )
+        self.assertNotIn("Optional extras skipped", result.stdout)
 
     def test_nonroot_uses_noninteractive_sudo(self):
         result = self.run_setup(FAKE_UID="1000")
@@ -266,12 +322,65 @@ class CloudSetupTests(unittest.TestCase):
         if "browser_found=" not in (self.repo / "scripts/cloud-setup.sh").read_text():
             self.skipTest("Workspace does not need Chromium")
         (self.bin / "chromium").unlink()
+        result = self.run_setup(FAKE_UID="1000")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        cli = str(self.repo / "node_modules/playwright-core/cli.js")
+        # System libraries as root, the browser into the user's own cache.
+        self.assertIn(["sudo", "-n", str(self.bin / "node"), cli, "install-deps", "chromium"],
+                      self.commands())
+        self.assertIn(["node", cli, "install", "chromium"], self.commands())
+
+    def test_browser_failure_is_optional(self):
+        (self.bin / "chromium").unlink()
+        result = self.run_setup(FAIL_PLAYWRIGHT="1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("skipped Chromium", result.stderr)
+        self.assertIn("IFC_SKIP_BROWSER=1", result.stdout)
+        self.assertIn("Cloud setup complete", result.stdout)
+
+    def test_cli_targets_and_deb_tools(self):
         result = self.run_setup()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn(
-            ["npx", "--yes", "playwright@1.63.0", "install-deps", "chromium"], self.commands()
-        )
-        self.assertIn(["npx", "--yes", "playwright@1.63.0", "install", "chromium"], self.commands())
+        commands = self.commands()
+        install = next(c for c in commands if c[:2] == ["apt-get", "install"])
+        self.assertIn("dpkg", install)  # dpkg-deb, for check-deb.sh
+        targets = next(c for c in commands if c[:3] == ["rustup", "target", "add"])
+        self.assertIn("wasm32-unknown-unknown", targets)
+        self.assertTrue(any(t.endswith("-unknown-linux-musl") for t in targets))
+
+    def test_dotnet_sdk_restores_docfx(self):
+        result = self.run_setup()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(["dotnet", "tool", "restore"], self.commands())
+        self.assertFalse(any("dotnet-sdk-8.0" in c for c in self.commands()))
+
+    def test_missing_dotnet_installs_ubuntu_package(self):
+        (self.bin / "dotnet").unlink()
+        result = self.run_setup()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(any(c[0] == "apt-get" and "dotnet-sdk-8.0" in c for c in self.commands()))
+        # The double installs nothing, so setup reports the skip and goes on.
+        self.assertIn("skipped .NET 8 SDK", result.stderr)
+        self.assertIn("Cloud setup complete", result.stdout)
+
+    def test_dotnet_without_package_is_optional(self):
+        result = self.run_setup(DOTNET_SDK="6.0.100", NO_DOTNET_PACKAGE="1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(any(c[0] == "apt-get" and "dotnet-sdk-8.0" in c for c in self.commands()))
+        self.assertNotIn(["dotnet", "tool", "restore"], self.commands())
+        self.assertIn("skipped .NET 8 SDK", result.stderr)
+
+    def test_python_tool_cache_uses_gate_pins(self):
+        script = self.repo / "crates/openbim-ifc-py/scripts/check-python.sh"
+        if not script.exists():
+            self.skipTest("Workspace has no Python binding")
+        result = self.run_setup()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        install = next(c for c in self.commands() if c[:3] == ["uv", "pip", "install"])
+        self.assertTrue(any(p.startswith("pdoc==") for p in install), install)
+        failed = self.run_setup(FAIL_UV="1")
+        self.assertEqual(failed.returncode, 0, failed.stderr)
+        self.assertIn("skipped Python tool cache", failed.stderr)
 
     def test_bad_pkl_checksum_stops_setup(self):
         if "pkl-linux-amd64" not in (self.repo / "scripts/cloud-setup.sh").read_text():

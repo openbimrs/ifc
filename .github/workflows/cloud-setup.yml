@@ -1,10 +1,27 @@
 name: Cloud setup checks
 on:
   pull_request:
-    paths: [scripts/cloud-setup.sh, scripts/test-cloud-setup.py, .github/workflows/cloud-setup.yml]
+    paths:
+      - scripts/cloud-setup.sh
+      - scripts/test-cloud-setup.py
+      - .github/workflows/cloud-setup.yml
+      # Pins the setup reads: lockfiles, docfx, the Python tool versions.
+      - package.json
+      - package-lock.json
+      - crates/openbim-ifc-wasm/tools/package-lock.json
+      - .config/dotnet-tools.json
+      - crates/openbim-ifc-py/scripts/check-python.sh
   push:
     branches: [main]
-    paths: [scripts/cloud-setup.sh, scripts/test-cloud-setup.py, .github/workflows/cloud-setup.yml]
+    paths:
+      - scripts/cloud-setup.sh
+      - scripts/test-cloud-setup.py
+      - .github/workflows/cloud-setup.yml
+      - package.json
+      - package-lock.json
+      - crates/openbim-ifc-wasm/tools/package-lock.json
+      - .config/dotnet-tools.json
+      - crates/openbim-ifc-py/scripts/check-python.sh
 permissions:
   contents: read
 jobs:
@@ -21,4 +38,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/cloud-setup.sh
       - name: Check commands in a later shell
-        run: cargo metadata --locked --no-deps --format-version 1 > /dev/null
+        run: |
+          cargo metadata --locked --no-deps --format-version 1 > /dev/null
+          rustup target list --installed | grep -qx x86_64-unknown-linux-musl
+          rustup target list --installed | grep -qx wasm32-unknown-unknown
+          test "$(wasm-bindgen --version)" = "wasm-bindgen $(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | sed -n 's/^version = "\(.*\)"$/\1/p')"
+          uv --version
+          maturin --version
+          dpkg-deb --version > /dev/null
+          npx --no-install typedoc --version
+          test -f node_modules/playwright-core/cli.js
+          dotnet tool run docfx --version
