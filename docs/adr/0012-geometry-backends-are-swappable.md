@@ -81,3 +81,40 @@ fails if the engine leaks into the `compile` feature, if the contracts go
 missing from it, or if either reaches a default build.
 `tests/backend_swap.rs` defines a kernel outside this crate and asserts the
 mesh a caller receives is the one their own code produced.
+
+## Amendment (2026-10-09): the comparison is committed (#31)
+
+"Benchmarking two kernels over one corpus is now a loop" was a claim with
+no loop behind it. The `backend_compare` example of `ifc-geometry`
+([`crates/ifc-geometry/examples/backend_compare/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-geometry/examples/backend_compare))
+is that loop, written as a consumer would write it. The decision above is
+unchanged; this records how it is exercised.
+
+- **Backends are values.** Each one is a `Contestant` in a list, and one
+  traversal runs them all through `compile_product_mesh_with`. The only
+  `cfg` is where the list is built: the reference backend joins it under
+  `compile-reference-backend`.
+- **The second backend is real and foreign.** `polygon-extruder` is defined
+  in the example and names only the published contracts. It compiles a
+  straight-edged subset itself (collections and instances, triangle and
+  polygon meshes, faceted B-reps, extrusions of polygonal profiles with
+  holes, blocks) and refuses everything else with
+  `GeomError::UnsupportedInput`. It builds and runs under `compile` alone.
+  No second engine is a dependency, so no licence surface is added.
+- **Agreement is checked, not assumed.** Where both backends mesh a
+  product, signed volume, area and every bounding-box coordinate must agree
+  within a stated relative tolerance. Each metric outside it is listed with
+  fixture, product and both values. A refusal by one backend is listed as a
+  coverage difference and the run goes on.
+- **Numbers carry their method.** The output states the iteration count,
+  that the first pass is reported separately, what is timed, the machine,
+  the profile and the load. It also states that the times are not a
+  cross-kernel performance claim, because backends that mesh different
+  products do different work.
+- **The gate runs it.** It runs in quick mode under `compile` alone and
+  beside the reference, where `--strict` fails on any divergence.
+
+The harness is shaped for the other contracts. A `MeshBoolean`,
+`MeshPlaneSection`, `Tessellator`, `CurveEvaluator` or `ExactCompiler`
+comparison adds an area, an artifact and a measure, and keeps the
+traversal, timing and report. None is implemented yet.
