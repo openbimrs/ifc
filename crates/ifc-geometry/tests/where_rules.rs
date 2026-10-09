@@ -298,6 +298,76 @@ fn a_half_space_bounded_by_a_circle_is_reported() {
     );
 }
 
+/// A half-space bounded by `boundary` (one record of `type_name`) in a model
+/// declaring `schema` in `FILE_SCHEMA`, or none.
+fn bounded_half_space(schema: Option<&str>, type_name: &str) -> Model {
+    let mut m = Model::new();
+    if let Some(schema) = schema {
+        m.header_mut().schema = vec![schema.to_owned()];
+    }
+    m.insert(EntityId(1), Entity::new(type_name, vec![]));
+    m.insert(
+        EntityId(2),
+        Entity::new(
+            "IFCPOLYGONALBOUNDEDHALFSPACE",
+            vec![r(91), Value::Bool(true), r(92), r(1)],
+        ),
+    );
+    m
+}
+
+fn boundary_type_violations(m: &Model) -> Vec<rules::RuleViolation> {
+    rules::validate(m, EntityId(2))
+        .into_iter()
+        .filter(|v| v.rule == "BoundaryType")
+        .collect()
+}
+
+/// `BoundaryType` is the declared release's (#397): IFC4X3 ADD2 admits
+/// `IfcIndexedPolyCurve`; IFC2X3 TC1, IFC4 ADD2 TC1, IFC4X1 and IFC4X2 admit
+/// only `IfcPolyline` and `IfcCompositeCurve`, as does a file that declares
+/// no release this crate knows (read as IFC4).
+#[test]
+fn an_indexed_half_space_boundary_is_admitted_only_in_ifc4x3() {
+    for schema in ["IFC4X3_ADD2", "IFC4X3"] {
+        let m = bounded_half_space(Some(schema), "IFCINDEXEDPOLYCURVE");
+        assert!(boundary_type_violations(&m).is_empty(), "{schema}");
+    }
+    for schema in [
+        Some("IFC2X3"),
+        Some("IFC4"),
+        Some("IFC4X1"),
+        Some("IFC4X2"),
+        None,
+    ] {
+        let m = bounded_half_space(schema, "IFCINDEXEDPOLYCURVE");
+        let found = boundary_type_violations(&m);
+        assert_eq!(found.len(), 1, "{schema:?}: {found:?}");
+        assert_eq!(found[0].kind, ViolationKind::WrongType);
+    }
+    for schema in [Some("IFC2X3"), Some("IFC4"), Some("IFC4X3_ADD2"), None] {
+        for curve in ["IFCPOLYLINE", "IFCCOMPOSITECURVE"] {
+            let m = bounded_half_space(schema, curve);
+            assert!(
+                boundary_type_violations(&m).is_empty(),
+                "{schema:?} {curve}"
+            );
+        }
+        let m = bounded_half_space(schema, "IFCTRIMMEDCURVE");
+        assert_eq!(boundary_type_violations(&m).len(), 1, "{schema:?}");
+    }
+}
+
+/// `TYPEOF` carries every supertype, so a subtype of `IfcCompositeCurve`
+/// satisfies `BoundaryType` as the composite itself does.
+#[test]
+fn a_composite_curve_subtype_satisfies_boundary_type() {
+    for schema in ["IFC4", "IFC4X3_ADD2"] {
+        let m = bounded_half_space(Some(schema), "IFCBOUNDARYCURVE");
+        assert!(boundary_type_violations(&m).is_empty(), "{schema}");
+    }
+}
+
 /// Validating a whole model reports every violation, not the first.
 #[test]
 fn model_validation_finds_every_violation() {

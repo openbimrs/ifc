@@ -193,7 +193,8 @@ impl<'m> BoxedHalfSpace<'m> {
 ///    system. It is **independent of `BaseSurface`**; the two need not share an
 ///    origin or an orientation.
 /// 2. `PolygonalBoundary` is a **2D** bounded curve (an `IfcPolyline` or an
-///    `IfcCompositeCurve`, per the schema's `BoundaryType` rule) lying in the
+///    `IfcCompositeCurve`, and in IFC4X3 also an `IfcIndexedPolyCurve`, per
+///    the schema's `BoundaryType` rule) lying in the
 ///    **XY plane of `Position`**. Its coordinates are 2D, so it is not a curve
 ///    in world space and cannot be used without applying `Position`.
 /// 3. The bounding body is that polygon extruded **along +Z of `Position`**,
