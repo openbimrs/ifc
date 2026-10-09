@@ -314,6 +314,12 @@ gate_bindings() {
         fi
     fi
 
+    # The docs site's .NET reference (#385): docfx over the OpenBim.Ifc
+    # assembly's XML doc comments, failing on any warning or any member
+    # without a summary. Skipped with a message without a .NET SDK; the Pages
+    # workflow always builds it.
+    crates/openbim-ifc-dotnet/scripts/build-api-docs.sh
+
     # C ABI (#38, ADR 0013): the committed header must match the exports (the
     # `header` test in the `test` section), and a C program compiled as strict
     # C11 and as C++17 must parse, read, edit, write and re-parse through the

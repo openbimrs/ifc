@@ -10,9 +10,8 @@ trimmed copy of `test/fixtures/synthetic-properties/synthetic_properties.ifc`
 (two walls on one storey, with their property sets) and one placed,
 extruded wall.
 
-For the full surface, see the [binding page](/bindings/dotnet), whose
-[API section](/bindings/dotnet#api) lists every member of `IfcModel` and
-`Value`.
+For the full surface, see the [binding page](/bindings/dotnet) and the
+[.NET API reference](/api/dotnet/index.html){target="_self"}.
 
 ## Set up
 
