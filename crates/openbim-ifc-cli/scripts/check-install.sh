@@ -54,7 +54,10 @@ OPENBIM_IFC_PREFIX="$work/tag" sh "$crate/install.sh" --version "openbim-ifc-cli
 
 # 2. A checksum mismatch installs nothing.
 cp "$release/SHA256SUMS" "$work/SHA256SUMS.good"
-sed 's/^./0/; s/^0\(.\)/f\1/' "$work/SHA256SUMS.good" > "$release/SHA256SUMS"
+# Replace each line's first hex digit with a different one (0 becomes 1,
+# anything else 0), so the corruption holds whatever the hash starts with.
+awk '{ c = substr($0, 1, 1); print (c == "0" ? "1" : "0") substr($0, 2) }' \
+    "$work/SHA256SUMS.good" > "$release/SHA256SUMS"
 cmp -s "$release/SHA256SUMS" "$work/SHA256SUMS.good" && fail "the checksum was not corrupted"
 if sh "$crate/install.sh" --version "$version" --prefix "$work/bad" 2>"$work/bad.log"; then
     fail "a corrupted SHA256SUMS was accepted"
