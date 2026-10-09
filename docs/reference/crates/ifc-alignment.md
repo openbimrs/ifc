@@ -11,7 +11,7 @@ IFC4x3 linear positioning: alignments, referents, linear placement, spirals.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.7.1 (2026-10-09) |
+| Latest release | 0.7.2 (2026-10-09) |
 | Registries | [crates.io `ifc-alignment`](https://crates.io/crates/ifc-alignment) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `alignment` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_alignment/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-alignment) |
@@ -33,16 +33,16 @@ consumers should never compile spiral curve laws.
 
 ## Changes
 
-Latest release, 0.7.1 (2026-10-09):
+Latest release, 0.7.2 (2026-10-09):
 
 Semver: a patch release. No code, API or behaviour changes; only the
 dependency floor rises with the workspace (#346).
 
 ### Changed
 
-- Requires `axiolid-model` 0.3.6 and `axiolid-curve` 0.3.4 (and
-  `axiolid-evaluate` 0.3.7 for the tests), the releases that add seam
-  sides to stations (axiolid/kernel#263) which `ifc-geometry` lowers onto.
-  Nothing here reads a station; every test passes unchanged against them.
+- Requires `axiolid-model` 0.3.7 (and `axiolid-evaluate` 0.3.8 for the
+  tests), the releases that measure stations along curve relations
+  (axiolid/kernel#285) which `ifc-geometry` lowers onto. Nothing here
+  reads a station; every test passes unchanged against them.
 
 Full history: [`crates/ifc-alignment/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-alignment/CHANGELOG.md)
