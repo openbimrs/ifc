@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.17.0 (2026-10-09) |
+| Latest release | 0.18.0 (2026-10-09) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -42,41 +42,77 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.17.0 (2026-10-09):
+Latest release, 0.18.0 (2026-10-09):
 
 Semver: a minor release. No public item is added, removed or changes
-signature, but behaviour changes as it did for #393: half-space boundaries
-with circular arcs, refused as `Unsupported` until now, lower, so a
-consumer matching on the boundary node now meets a `Profile` as well as a
-`Curve2`; `PARTIAL` loses the family's two rows; and the Axiolid
-requirements rise (`axiolid-model` 0.3.7, `axiolid-evaluate` 0.3.8, and
-with `compile-reference-backend` `axiolid-mesh-compile` 0.3.16 and
-`axiolid-construct` 0.3.17).
+signature, but behaviour changes: stations along curve relations (#346)
+and `IfcCurveSegment`s placed by an `IfcAxis2PlacementLinear` (#311),
+refused by name until now, lower. The Axiolid requirements are the ones
+#398 raised (`axiolid-model` 0.3.7, `axiolid-mesh-compile` 0.3.16).
 
 ### Added
 
-- `IfcPolygonalBoundedHalfSpace` boundaries with circular-arc segments
-  (#398): an `IfcCompositeCurve` with trimmed `IfcCircle` segments, or an
-  `IfcIndexedPolyCurve` with a non-collinear `IfcArcIndex`, lowers to a
-  `Profile::Contour` boundary (no holes) whose arcs are exact `Circle2`
-  segments, never chords. `SolidOperation::BoundedHalfSpace` takes a
-  profile boundary since `axiolid-model` 0.3.7 (axiolid/kernel#277,
-  Axiolid ADR 0084): the reference exact compiler clips by a right
-  circular cylinder per arc, and the mesh compiler flattens the arcs
-  under its chord budget with a certified deviation. A boundary of
-  straight edges still lowers to the same closed `Polyline2` as before,
-  so its output is unchanged. Still refused, by name: as `Degenerate`, a
-  gap at an arc's end (judged within the model's `Precision`), an open
-  curve, a point off the plane and an `IfcArcIndex` with coincident
-  points; as `Unsupported`, a boundary circle placed by an
-  `IfcAxis2Placement3D`, an `IfcCurveSegment` member, a reparametrised
-  segment and any other curve family. A boundary that crosses or touches
-  itself is the kernel's to refuse (`InvalidInput`, named alike in both
-  compilers); it reaches the caller as `CompilationRefused`.
-  `IfcPolygonalBoundedHalfSpace` is now listed as implemented, with no
-  variant rows. `halfspace_boundaries_ifc4x3.ifc` gains two walls, one
-  clipped by a six-segment composite with two arcs of radius 1.2, one by
-  an indexed boundary with an `IfcArcIndex`; each compiles, exact and
-  meshed, to its closed-form volume.
+- Stations along curve relations (#346). Axiolid measures a station along
+  a composite, a trim, a surface curve whose 3D curve governs and a curve
+  placed at a station since `axiolid-model` 0.3.7 (axiolid/kernel#285, ADR
+  0082 amendment): end to end through the pieces, each in its own curve's
+  convention, every joint a seam. So an `IfcPointByDistanceExpression`,
+  an `IfcAxis2PlacementLinear` and the runs of `IfcSectionedSolidHorizontal`,
+  `IfcSectionedSurface` and `IfcOffsetCurveByDistances` on a plain
+  `IfcCompositeCurve`, an `IfcTrimmedCurve` or a composite of segments
+  placed at stations lower. On a joint, and within the model's precision
+  of one, a station stands on the joint reading `SeamSide::Incoming`, the
+  previous segment, as IFC4.3 ADD2 8.9.3.48.3 asks. The joints are read
+  from the stored relation (`lower::station::relation`, repeating the
+  compiler's flattening, since `axiolid-evaluate` is an execution provider
+  this crate does not link): pieces' lengths from a line's direction, a
+  circle's radius, a polyline's edges and the measure of a curve
+  parameterised by it; trims by parameter, by arc length, or by a point on
+  a line or a circle, a closed conic's within one turn; a segment whose
+  sense disagrees reversed. The tests pin them against the kernel's own
+  seams.
+- An `IfcCurveSegment` placed by an `IfcAxis2PlacementLinear` (#311)
+  lowers to an `InstanceAtStation`: the parent's piece in local
+  coordinates (start at the origin, tangent along `x`) placed in the frame
+  of the `OrientedCurveStation` the placement lowers to, whose local `x`,
+  `y`, `z` are the station's tangent, left and up as IFC4.3 ADD2 8.9.3.4
+  reads them. A composite of such segments is measured in the segments'
+  own arc length, whatever base they stand on. Part of #311:
+  `IfcSegmentedReferenceCurve` stays refused (below).
+- `synthetic-lowering/station_relations_ifc4x3.ifc`: a plain composite of
+  a polyline, a polyline stored backwards (`SameSense` false) and a
+  quarter circle trimmed by Cartesian points, with points on its joints
+  and 4 um past one; a composite with a gap; and two `IfcLine` segments placed at stations 10 and 30 of
+  a gradient curve. Tests resolve them through the reference kernel
+  against closed forms.
+
+### Changed
+
+- `IfcSegmentedReferenceCurve`'s refusal (`dispatch::PLANNED`) names what
+  remains open in #311 precisely: its segments are curves in the
+  (distance along, deviating elevation) space of its base curve, and no
+  normative rule maps a segment's `ParentCurve` and placement `Axis` to a
+  cant law and pivot; implementations differ in the coefficient scaling
+  and the cross-slope formula.
+- An `IfcCurveSegment` in an `IfcGradientCurve` placed by an
+  `IfcAxis2PlacementLinear` keeps its refusal, now naming why: a gradient
+  curve's segments are read as plan and profile pieces, which need a
+  resolved placement.
+- Uses the Axiolid releases #398 raised the workspace to (`axiolid-model`
+  0.3.7, axiolid/kernel#285 for stations along relations). Upstream now
+  refuses a tilted placement of a plan-measured curve only, reading a
+  tilted arc-length one in its own reference-up frame; nothing lowered
+  before reached that rule, and no test's result changed with the bump
+  alone.
+
+### Refused by name
+
+- A station along an offset curve (`IfcOffsetCurve2D`/`3D`), which
+  Axiolid measures no station along; along a relation joining a gradient
+  curve with arc-length pieces, through which no one distance runs; and
+  along a relation with an ellipse or a B-spline piece, or a trim whose
+  ends are not stated by its data, whose joints lie at an arc-length
+  integral. A composite whose pieces do not meet, or whose undeclared
+  sense runs a piece backwards, is refused by the kernel.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)

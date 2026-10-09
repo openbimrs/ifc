@@ -12,6 +12,20 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+Semver: a patch release. No code, API or behaviour changes; only the
+dependency floors rise with the workspace (#364).
+
+### Changed
+
+- Requires `axiolid-curve` 0.3.5, `axiolid-curve-evaluate-contract` 0.3.3
+  and, behind `compile`, `axiolid-mesh-compile` 0.3.17 (and
+  `axiolid-evaluate` 0.3.9 for the tests): the releases that rotate a
+  banked curve about a held rail (axiolid/kernel#279), which
+  `ifc-alignment` now lowers a Viennese bend onto. Nothing here builds a
+  banked curve; every test passes unchanged against them.
+
+## [0.18.0] - 2026-10-09
+
 Semver: a minor release. No public item is added, removed or changes
 signature, but behaviour changes: stations along curve relations (#346)
 and `IfcCurveSegment`s placed by an `IfcAxis2PlacementLinear` (#311),
@@ -1511,7 +1525,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.17.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.18.0...HEAD
+[0.18.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.18.0
 [0.17.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.17.0
 [0.16.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.16.0
 [0.15.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.15.0

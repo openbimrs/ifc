@@ -49,6 +49,14 @@ those releases.
   by both the lowering and `CantLayout`, with the same typed error.
 - Requires `axiolid-curve` 0.3.5 (the held-rail pivot), and for the tests
   `axiolid-evaluate` 0.3.9, which evaluates it.
+
+## [0.7.2] - 2026-10-09
+
+Semver: a patch release. No code, API or behaviour changes; only the
+dependency floor rises with the workspace (#346).
+
+### Changed
+
 - Requires `axiolid-model` 0.3.7 (and `axiolid-evaluate` 0.3.8 for the
   tests), the releases that measure stations along curve relations
   (axiolid/kernel#285) which `ifc-geometry` lowers onto. Nothing here
@@ -408,7 +416,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-alignment-v0.7.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-alignment-v0.7.2...HEAD
+[0.7.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.7.2
 [0.7.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.7.1
 [0.7.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.7.0
 [0.6.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.6.0
