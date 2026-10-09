@@ -46,6 +46,21 @@
 //! - `SelfIntersect` TRUE. The flag is "for information only", but it states
 //!   that the curve crosses itself, and "The OuterCurve shall not intersect".
 //! - A 3D point list (`OuterCurve.Dim = 2`).
+//!
+//! # Half-space boundaries (#393)
+//!
+//! IFC4X3 ADD2 admits an `IfcIndexedPolyCurve` as
+//! `IfcPolygonalBoundedHalfSpace.PolygonalBoundary` (`BoundaryType`); IFC4
+//! ADD2 TC1 does not, but the curve itself is defined identically in both, so
+//! an IFC4 file using it lowers the same way and `BoundaryType` is left to
+//! validation. Under [`BoundaryRole::HalfSpace`] the reading, closure,
+//! collinear-arc fallback and refusals above are unchanged, except:
+//!
+//! - a genuine arc is `Unsupported`: Axiolid's bounded half-space takes a
+//!   `Polyline2` only, and the arc is never polygonised;
+//! - a 3D point list is admitted when every `z` is exactly 0, as a 3D point
+//!   of a boundary `IfcPolyline` is; any other `z` is off the plane
+//!   `BoundaryDim` requires and is refused.
 
 use std::f64::consts::TAU;
 
@@ -54,6 +69,7 @@ use axiolid_curve::{Circle2, Curve2, Line2};
 use axiolid_profile::{Contour, ProfileSegment};
 use ifc_model::{EntityId, Model};
 
+use super::role::{BoundaryRole, HALF_SPACE_ARC};
 use crate::constraint::tolerance::{model_precision_metres, points_coincide};
 use crate::curve::{IndexedPolyCurve, PolySegment};
 use crate::error::{GeometryError, GeometryResult};
@@ -62,11 +78,12 @@ use crate::units::UnitScale;
 
 const TYPE_NAME: &str = "IFCINDEXEDPOLYCURVE";
 
-/// Lower a closed `IfcIndexedPolyCurve` profile boundary into one contour.
+/// Lower a closed `IfcIndexedPolyCurve` boundary into one contour.
 pub(super) fn indexed_contour(
     model: &Model,
     id: EntityId,
     units: &UnitScale,
+    role: BoundaryRole,
 ) -> GeometryResult<Contour> {
     let entity = model.get(id).ok_or(GeometryError::MissingEntity {
         referrer: id,
@@ -76,13 +93,16 @@ pub(super) fn indexed_contour(
     if view.self_intersect() == Some(true) {
         return Err(refuse(
             id,
-            "SelfIntersect is TRUE: the curve crosses itself, and a profile boundary \
-             shall not intersect",
+            format!(
+                "SelfIntersect is TRUE: the curve crosses itself, and {} shall not intersect",
+                role.what()
+            ),
         ));
     }
-    let points = points_2d(model, &view, units)?;
+    let points = points_2d(model, &view, units, role)?;
     let mut boundary = Boundary {
         id,
+        role,
         precision: model_precision_metres(model, units)?,
         segments: Vec::new(),
     };
@@ -95,8 +115,11 @@ pub(super) fn indexed_contour(
         if first.indices().first() != last.indices().last() {
             return Err(refuse(
                 id,
-                "the curve is open: the last index of the last segment is not the first \
-                 index of the first, and a profile boundary must be closed",
+                format!(
+                    "the curve is open: the last index of the last segment is not the first \
+                     index of the first, and {} must be closed",
+                    role.what()
+                ),
             ));
         }
         for pair in segments.windows(2) {
@@ -130,9 +153,10 @@ pub(super) fn indexed_contour(
                 id,
                 format!(
                     "the curve is open: its first and last points are {} m apart, over the \
-                     model's {} m precision, and a profile boundary must be closed",
+                     model's {} m precision, and {} must be closed",
                     first.distance(*last),
-                    boundary.precision
+                    boundary.precision,
+                    role.what()
                 ),
             ));
         }
@@ -149,14 +173,39 @@ pub(super) fn indexed_contour(
     Ok(Contour::new(boundary.segments))
 }
 
-/// The point list as 2D metres; a 3D list or a non-finite value refuses.
+/// The point list as 2D metres; a non-finite value refuses.
+///
+/// A 3D list refuses for a profile. For a half-space boundary it is read
+/// when every `z` is exactly 0, and refused, naming the list, otherwise.
 fn points_2d(
     model: &Model,
     view: &IndexedPolyCurve<'_>,
     units: &UnitScale,
+    role: BoundaryRole,
 ) -> GeometryResult<Vec<Point2>> {
     let raw = match view.points(model)? {
         CartesianPointList::TwoD(list) => list.coordinates()?,
+        CartesianPointList::ThreeD(list) if role == BoundaryRole::HalfSpace => {
+            let mut planar = Vec::new();
+            for (index, row) in list.coordinates()?.into_iter().enumerate() {
+                let [x, y] = role
+                    .planar(list.id(), "IFCCARTESIANPOINTLIST3D", &row)
+                    .map_err(|error| match error {
+                        GeometryError::Degenerate {
+                            entity,
+                            type_name,
+                            detail,
+                        } => GeometryError::Degenerate {
+                            entity,
+                            type_name,
+                            detail: format!("point {}: {detail}", index + 1),
+                        },
+                        other => other,
+                    })?;
+                planar.push([x, y]);
+            }
+            planar
+        }
         CartesianPointList::ThreeD(list) => {
             return Err(GeometryError::Degenerate {
                 entity: list.id(),
@@ -181,6 +230,7 @@ fn points_2d(
 /// Oriented contour segments, accumulated in traversal order.
 struct Boundary {
     id: EntityId,
+    role: BoundaryRole,
     /// The model's `Precision`, in metres.
     precision: f64,
     segments: Vec<ProfileSegment>,
@@ -244,6 +294,13 @@ impl Boundary {
                 self.lines(&[start, mid, end]);
             }
             return Ok(());
+        }
+        if self.role == BoundaryRole::HalfSpace {
+            return Err(GeometryError::Unsupported {
+                entity: self.id,
+                type_name: TYPE_NAME.to_owned(),
+                detail: HALF_SPACE_ARC,
+            });
         }
         let denominator = 2.0 * turn;
         let centre = start

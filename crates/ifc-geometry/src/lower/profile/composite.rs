@@ -28,6 +28,19 @@
 //! A gap wider than [`GAP_TOLERANCE`] is `Degenerate`, naming the segment
 //! whose start misses the previous end. Closing it silently would put a
 //! straight edge into the profile that the file never authored.
+//!
+//! # Half-space boundaries (#393)
+//!
+//! `IfcPolygonalBoundedHalfSpace.PolygonalBoundary` is read by this same walk
+//! under [`BoundaryRole::HalfSpace`]. IFC4 ADD2 TC1 and IFC4X3 ADD2 state that
+//! such a composite "shall only have IfcCompositeCurveSegment's of type
+//! IfcPolyline, or IfcTrimmedCurve (having a BasisCurve of type IfcLine, or
+//! IfcCircle)". The kernel's bounded half-space takes a `Polyline2` only, so
+//! a trimmed `IfcCircle` is refused by name there, never chorded; a point
+//! must lie in `Position`'s XY plane (`z == 0` exactly, as for a boundary
+//! `IfcPolyline`); and joints are judged within the model's `Precision`,
+//! "the tolerance under which two given points are still assumed to be
+//! identical", rather than the fixed profile tolerance.
 
 use std::f64::consts::TAU;
 
@@ -37,6 +50,8 @@ use axiolid_profile::{Contour, ProfileSegment};
 use ifc_model::{EntityId, Model};
 
 use super::polyline_points;
+use super::role::{BoundaryRole, HALF_SPACE_ARC};
+use crate::constraint::tolerance::{model_precision_metres, points_coincide};
 use crate::curve::composite::{CompositeCurve, CompositeCurveSegment};
 use crate::curve::conic::Circle;
 use crate::curve::line::Line;
@@ -68,21 +83,33 @@ pub(crate) const CURVE_SEGMENT_BOUNDARY: &str = "an IfcCurveSegment member of a 
      boundary: profile contours hold only line and circle pieces, and the \
      segment's placed arc-length piece has no exact form among them";
 
+/// [`CURVE_SEGMENT_BOUNDARY`] for a polygonal half-space boundary.
+const CURVE_SEGMENT_HALF_SPACE: &str = "an IfcCurveSegment member of a polygonal half-space \
+     boundary: IFC4X3 admits only IfcCompositeCurveSegments of IfcPolyline or IfcTrimmedCurve \
+     there, and the segment's placed arc-length piece is not lowered as one";
+
 /// Maximum depth of composite-in-composite nesting.
 ///
 /// Real files nest at most one level. The bound exists because a hostile file
 /// can make a composite contain itself, which would otherwise recurse forever.
 const MAX_NESTING: usize = 8;
 
-/// Lower a closed `IfcCompositeCurve` profile boundary into one contour.
+/// Lower a closed `IfcCompositeCurve` boundary into one contour.
 pub(super) fn composite_contour(
     model: &Model,
     id: EntityId,
     units: &UnitScale,
+    role: BoundaryRole,
 ) -> GeometryResult<Contour> {
+    let precision = match role {
+        BoundaryRole::Profile => GAP_TOLERANCE,
+        BoundaryRole::HalfSpace => model_precision_metres(model, units)?,
+    };
     let mut walk = Walk {
         model,
         units,
+        role,
+        precision,
         segments: Vec::new(),
         owners: Vec::new(),
     };
@@ -95,6 +122,10 @@ pub(super) fn composite_contour(
 struct Walk<'a> {
     model: &'a Model,
     units: &'a UnitScale,
+    role: BoundaryRole,
+    /// How far apart two joined ends may be, in metres: [`GAP_TOLERANCE`]
+    /// for a profile, the model's `Precision` for a half-space boundary.
+    precision: f64,
     segments: Vec<ProfileSegment>,
     /// The entity each segment came from, for naming a gap's culprit.
     owners: Vec<EntityId>,
@@ -132,7 +163,10 @@ impl Walk<'_> {
                 return Err(GeometryError::Unsupported {
                     entity: segment_ref,
                     type_name: "IFCCURVESEGMENT".to_string(),
-                    detail: CURVE_SEGMENT_BOUNDARY,
+                    detail: match self.role {
+                        BoundaryRole::Profile => CURVE_SEGMENT_BOUNDARY,
+                        BoundaryRole::HalfSpace => CURVE_SEGMENT_HALF_SPACE,
+                    },
                 });
             }
             let segment = CompositeCurveSegment::new(segment_ref, segment_entity);
@@ -140,8 +174,16 @@ impl Walk<'_> {
                 return Err(GeometryError::Unsupported {
                     entity: segment_ref,
                     type_name: "IFCREPARAMETRISEDCOMPOSITECURVESEGMENT".to_string(),
-                    detail: "reparametrised composite segments are not lowered as profile \
-                             boundaries",
+                    detail: match self.role {
+                        BoundaryRole::Profile => {
+                            "reparametrised composite segments are not lowered as profile \
+                             boundaries"
+                        }
+                        BoundaryRole::HalfSpace => {
+                            "reparametrised composite segments are not lowered as polygonal \
+                             half-space boundaries"
+                        }
+                    },
                 });
             }
             let parent = segment.parent_curve_ref()?;
@@ -167,8 +209,16 @@ impl Walk<'_> {
             _ => Err(GeometryError::Unsupported {
                 entity: id,
                 type_name,
-                detail: "composite profile segments lower IfcPolyline, IfcTrimmedCurve over \
-                         IfcCircle or IfcLine, and nested IfcCompositeCurve only",
+                detail: match self.role {
+                    BoundaryRole::Profile => {
+                        "composite profile segments lower IfcPolyline, IfcTrimmedCurve over \
+                         IfcCircle or IfcLine, and nested IfcCompositeCurve only"
+                    }
+                    BoundaryRole::HalfSpace => {
+                        "composite half-space boundary segments lower IfcPolyline, \
+                         IfcTrimmedCurve over IfcLine, and nested IfcCompositeCurve only"
+                    }
+                },
             }),
         }
     }
@@ -179,7 +229,7 @@ impl Walk<'_> {
     /// Zero-length edges (a repeated point) carry no boundary and are dropped
     /// rather than handed to the kernel as a degenerate line.
     fn polyline(&mut self, id: EntityId, forward: bool) -> GeometryResult<()> {
-        let mut points = polyline_points(self.model, id, self.units)?;
+        let mut points = polyline_points(self.model, id, self.units, self.role)?;
         if points.len() < 2 {
             return Err(Slots::new(id, self.entity(id, id)?)
                 .degenerate("composite polyline segment has fewer than 2 points"));
@@ -217,6 +267,14 @@ impl Walk<'_> {
         let basis_ref = spec.basis_curve;
         let basis_type = self.entity(id, basis_ref)?.type_name.to_ascii_uppercase();
         let basis = match basis_type.as_str() {
+            // The bounded half-space has no curved boundary to carry it.
+            "IFCCIRCLE" if self.role == BoundaryRole::HalfSpace => {
+                return Err(GeometryError::Unsupported {
+                    entity: id,
+                    type_name: "IFCTRIMMEDCURVE".to_string(),
+                    detail: HALF_SPACE_ARC,
+                })
+            }
             "IFCCIRCLE" => self.circle(basis_ref)?,
             "IFCLINE" => self.line(basis_ref)?,
             _ => {
@@ -232,7 +290,7 @@ impl Walk<'_> {
             match trim.preferred(preference) {
                 Some(TrimPoint::Parameter(raw)) => Ok(basis.parameter(raw, self.units)),
                 Some(TrimPoint::Cartesian(point)) => {
-                    let c = cartesian_point_3d(self.model, id, point)?;
+                    let c = self.planar_point(id, point)?;
                     let at = Point2::new(self.units.length(c[0]), self.units.length(c[1]));
                     Ok(basis.project(at))
                 }
@@ -292,11 +350,19 @@ impl Walk<'_> {
     fn line(&self, id: EntityId) -> GeometryResult<Basis> {
         let entity = self.entity(id, id)?;
         let view = Line::new(id, entity);
-        let p = cartesian_point_3d(self.model, id, view.point_ref()?)?;
+        let p = self.planar_point(id, view.point_ref()?)?;
         let origin = Point2::new(self.units.length(p[0]), self.units.length(p[1]));
         let vector_ref = view.direction_vector_ref()?;
         let vector = Slots::new(vector_ref, self.entity(id, vector_ref)?);
         let unit = resolve_unit(self.model, id, vector.req_ref(0, "Orientation")?)?;
+        // A half-space boundary line must stay in Position's XY plane.
+        if self.role == BoundaryRole::HalfSpace && unit[2] != 0.0 {
+            return Err(vector.degenerate(format!(
+                "a polygonal half-space boundary line has direction z = {}; the boundary \
+                 must lie in Position's XY plane (BoundaryDim)",
+                unit[2]
+            )));
+        }
         // The magnitude is a length: a line parameter counts multiples of it.
         let magnitude = self.units.length(vector.req_f64(1, "Magnitude")?);
         let direction = Vec2::new(unit[0], unit[1]) * magnitude;
@@ -333,6 +399,13 @@ impl Walk<'_> {
         })
     }
 
+    /// A point of a trimmed or line segment, in FILE units, under the role's
+    /// plane rule (a half-space boundary point needs `z == 0`).
+    fn planar_point(&self, owner: EntityId, point: EntityId) -> GeometryResult<[f64; 2]> {
+        let c = cartesian_point_3d(self.model, owner, point)?;
+        self.role.planar(point, "IFCCARTESIANPOINT", &c)
+    }
+
     fn push(&mut self, owner: EntityId, segment: ProfileSegment) {
         self.segments.push(segment);
         self.owners.push(owner);
@@ -344,7 +417,11 @@ impl Walk<'_> {
             return Err(GeometryError::Degenerate {
                 entity: id,
                 type_name: "IFCCOMPOSITECURVE".to_string(),
-                detail: "composite profile boundary has no segments".to_string(),
+                detail: match self.role {
+                    BoundaryRole::Profile => "composite profile boundary has no segments",
+                    BoundaryRole::HalfSpace => "composite half-space boundary has no segments",
+                }
+                .to_string(),
             });
         }
         let ends: Vec<(Point2, Point2)> = self.segments.iter().map(endpoints).collect();
@@ -353,18 +430,30 @@ impl Walk<'_> {
             let start = ends[index].0;
             let gap = previous.distance(start);
             // A NaN gap (from a non-finite coordinate) must refuse, not pass.
-            if gap.is_nan() || gap > GAP_TOLERANCE {
+            let meets = match self.role {
+                BoundaryRole::Profile => !gap.is_nan() && gap <= GAP_TOLERANCE,
+                BoundaryRole::HalfSpace => {
+                    points_coincide(self.precision, previous.to_array(), start.to_array())
+                }
+            };
+            if !meets {
                 let what = if index == 0 {
                     "the composite does not close: the last segment ends"
                 } else {
                     "segment starts"
                 };
+                let tolerance = match self.role {
+                    BoundaryRole::Profile => format!("the {GAP_TOLERANCE} m gap tolerance"),
+                    BoundaryRole::HalfSpace => {
+                        format!("the model's {} m Precision", self.precision)
+                    }
+                };
                 return Err(GeometryError::Degenerate {
                     entity: self.owners[index],
                     type_name: "IFCCOMPOSITECURVE".to_string(),
                     detail: format!(
-                        "{what} {gap} m from the previous end, over the {GAP_TOLERANCE} m gap \
-                         tolerance (composite {id}); gaps are refused, never closed"
+                        "{what} {gap} m from the previous end, over {tolerance} (composite \
+                         {id}); gaps are refused, never closed"
                     ),
                 });
             }

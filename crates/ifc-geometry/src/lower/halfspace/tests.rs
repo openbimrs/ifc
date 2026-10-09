@@ -377,10 +377,12 @@ fn a_boundary_point_off_the_plane_is_refused_by_name() {
     assert!(text.contains("BoundaryDim"), "must name the rule: {text}");
 }
 
-/// Composite boundaries are legal IFC but not lowered yet: refused as
-/// unsupported, never routed to a 3D curve the kernel would reject later.
+/// A composite boundary without segments bounds nothing: refused as
+/// degenerate, naming the composite, never routed to a 3D curve the kernel
+/// would reject later. Lowered composites are covered by
+/// `tests/halfspace_boundary.rs` (#393).
 #[test]
-fn a_composite_boundary_is_unsupported_not_mislowered() {
+fn an_empty_composite_boundary_is_refused_as_degenerate() {
     let mut model = bounded_with_boundary([
         point2(0.0, 0.0),
         point2(1.0, 0.0),
@@ -395,8 +397,9 @@ fn a_composite_boundary_is_unsupported_not_mislowered() {
         ),
     );
     let text = lower_boundary(&model, &UnitScale::default())
-        .expect_err("a composite boundary is not lowered yet");
-    assert!(text.contains("Unsupported"), "got {text}");
+        .expect_err("an empty composite boundary must not lower");
+    assert!(text.contains("Degenerate"), "got {text}");
+    assert!(text.contains("EntityId(6)"), "got {text}");
     assert!(text.contains("IFCCOMPOSITECURVE"), "got {text}");
 }
 
