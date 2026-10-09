@@ -8,7 +8,7 @@ one reads the same in the others.
 
 | Language | Package | Latest release | Install | Requires | Reference |
 | --- | --- | --- | --- | --- | --- |
-| Rust | [`openbim-ifc`](https://crates.io/crates/openbim-ifc) | 0.21.0 (2026-10-09) | `cargo add openbim-ifc` | Rust `1.88.0` | [`openbim-ifc`](/reference/crates/openbim-ifc) |
+| Rust | [`openbim-ifc`](https://crates.io/crates/openbim-ifc) | 0.22.0 (2026-10-09) | `cargo add openbim-ifc` | Rust `1.88.0` | [`openbim-ifc`](/reference/crates/openbim-ifc) |
 | JavaScript / TypeScript | [`@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) | 0.4.3 (2026-10-08) | `npm install @openbim/ifc` | Node `>=18` | [`openbim-ifc-wasm`](/reference/crates/openbim-ifc-wasm) |
 | Python | [`openbim-ifc`](https://pypi.org/project/openbim-ifc/) | 0.4.0 (2026-10-08) | `pip install openbim-ifc` | Python `>=3.9` | [`openbim-ifc-py`](/reference/crates/openbim-ifc-py) |
 | C / C++ | [`openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.5) (CMake, prebuilt archives) | 0.1.5 (2026-10-08) | `find_package(openbim_ifc)` | a C11 or C++17 compiler and CMake 3.21; Rust to build from source | [`openbim-ifc-capi`](/reference/crates/openbim-ifc-capi) |

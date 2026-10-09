@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-10-09
+
 Semver: a minor release (0.16.0). No public item is added, removed or
 changes signature, but behaviour changes (#346): stations on a tangent
 discontinuity and runs of sections and offsets across one, refused by
@@ -1401,7 +1403,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.15.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.16.0...HEAD
+[0.16.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.16.0
 [0.15.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.15.0
 [0.14.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.14.0
 [0.13.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.13.0

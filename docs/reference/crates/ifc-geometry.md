@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.15.0 (2026-10-09) |
+| Latest release | 0.16.0 (2026-10-09) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -42,149 +42,100 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.15.0 (2026-10-09):
+Latest release, 0.16.0 (2026-10-09):
 
-Semver: an `IfcIndexedPolyCurve` whose collinear `IfcArcIndex` was
-refused as `Degenerate` now lowers (#396), and `rules::validate` no longer
-reports `BoundaryType` for an IFC4X3 `IfcIndexedPolyCurve` boundary or a
-subtype of `IfcCompositeCurve` (#397). Every where-rule is now checked in
-the file's declared release and reported under that release's name (#400):
-an IFC2X3 file's violations are named `WR1`, `WR31`, ... as IFC2X3 TC1
-names them, and the set of violations changes for IFC2X3 and IFC4X3 files
-as listed below. No public item is added, removed or changes signature
-(`rules::validate`, `rules::validate_model`, `rules::placement::check`,
-`rules::solid::check` and `RuleViolation` are as before); a consumer
-matching IFC2X3 violations by their IFC4 rule name must match the `WRnn`
-name instead. Behaviour changes only, so the next release is a minor one
-(0.15.0); nothing is breaking at the API level. No committed fixture's
-violation set changes. The where-rules of the geometry entities IFC4 does
-not declare (#402) add violations only, on files that break them, and
-public API is unchanged, so they join the same minor release.
+Semver: a minor release (0.16.0). No public item is added, removed or
+changes signature, but behaviour changes (#346): stations on a tangent
+discontinuity and runs of sections and offsets across one, refused by
+name until now, lower (an `IfcPointByDistanceExpression` on a seam to an
+`OrientedCurveStation`, the only station that carries a seam side, where
+one off a seam stays a `CurveStation`); and the Axiolid
+requirements rise (`axiolid-model` 0.3.6, `axiolid-curve` 0.3.4, and with
+`compile-reference-backend` `axiolid-mesh-compile` 0.3.15,
+`axiolid-mesh-compile-contract` 0.3.3 and `axiolid-construct` 0.3.16). The
+example below and the `compile` module's new section alone would be a
+patch.
 
 ### Added
 
-- `rules::validate` and `rules::validate_model` check the where-rules of
-  the geometry entities IFC4 ADD2 TC1 does not declare, each in the
-  releases that declare it, under that release's name and text (#402), and
-  the `DECLARED` table lists them so the schema-backed tests hold them to
-  each bundled release:
-  - IFC2X3 TC1 `Ifc2DCompositeCurve.WR1` (`ClosedCurve`) and `WR2`
-    (`Dim = 2`); `IfcRationalBezierCurve.WR1` (one weight per control
-    point) and `WR2` (`IfcCurveWeightsPositive`);
-  - IFC4X1 on: `IfcSectionedSolid.ConsistentProfileTypes`,
-    `DirectrixIs3D` and `SectionsSameType`;
-    `IfcSectionedSolidHorizontal.CorrespondingSectionPositions` and
-    `NoLongitudinalOffsets` (IFC4X1 and IFC4X2 read the offset on the
-    `IfcDistanceExpression` position, IFC4X3 ADD2 on the position's
-    `IfcPointByDistanceExpression` location);
-    `IfcTriangulatedIrregularNetwork.NotClosed` (a written `Closed = TRUE`
-    violates; an omitted one is UNKNOWN and conforms);
-  - IFC4X3 ADD2: `IfcAxis2PlacementLinear.WR1` (the location is an
-    `IfcPointByDistanceExpression`) and `WR2` (Axis not parallel to
-    RefDirection, read as `AxisToRefDirPosition` is);
-    `IfcPolynomialCurve.CorrectPositionDim` and `ValidCoefficients`;
-    `IfcSectionedSurface.AreaProfileTypes` (at least one `CURVE`
-    cross-section, as its text demands), `CorrespondingSectionPositions`,
-    `DirectrixIs3D`, `NoOffsets` and `SectionsSameType`.
+- `examples/backend_compare/` (#31; `required-features = ["compile"]`)
+  compiles a fixed corpus of committed fixtures through every backend in
+  one list, with no `cfg` in the traversal. The list holds the reference
+  backend under `compile-reference-backend`, and `polygon-extruder`, a
+  `MeshCompiler` defined in the example that names only the published
+  contracts and builds under `compile` alone. `polygon-extruder` compiles
+  collections and instances, triangle and polygon meshes, faceted B-reps,
+  extrusions of polygonal profiles with holes, and blocks, and refuses
+  everything else with `GeomError::UnsupportedInput`. The example prints:
+  - wall time per fixture, keyed by `BackendId`: the first pass reported
+    on its own, then the median and range of `--iterations` passes;
+  - mesh size (vertices, triangles) and coverage (meshed, refused, no
+    body) per fixture;
+  - agreement on signed volume, area and bounding box within a stated
+    relative tolerance, every divergence named by fixture, product, metric
+    and both values;
+  - every product one backend meshed and the other refused.
 
-  #402 listed the sectioned solids and the TIN as IFC4X3-only; IFC4X1 and
-  IFC4X2 declare them too, and are checked. `IfcCurveWeightsPositive` is
-  transcribed once (`rules/express.rs`) for both the Bezier curve and IFC4's
-  `IfcRationalBSplineCurveWithKnots.WeightsGreaterZero`: its `Weights` array
-  is `IfcListToArray(...) = ?` when `WeightsData` and `ControlPointsList`
-  differ in length, and the function then returns TRUE, so a rational
-  B-spline with mismatched lists now reports only
-  `SameNumOfWeightsAndPoints`, not also `WeightsGreaterZero`. `Dim` follows
-  `IfcPointDim` (IFC4X3 ADD2) and the `Dim` of `IfcPointOnCurve` and
-  `IfcPointOnSurface` (every release): a point's `BasisCurve` or
-  `BasisSurface`, and an `IfcPointByDistanceExpression`'s `BasisCurve`,
-  where it was undecided.
+  The method, machine, profile and load are printed beside the numbers,
+  which are not a cross-kernel performance claim. `scripts/gate.sh` runs it
+  quick under both features and with `--strict` beside the reference. The
+  `compile` module docs and ADR 0012 (amendment) link it.
+
+- Stations on tangent discontinuities (#346). IFC4.3 ADD2 8.9.3.48.3:
+  "If DistanceAlong coincides with a point of tangential discontinuity
+  (within precision limits), then the tangent of the previous segment
+  governs." Axiolid now states a seam side (`SeamSide`, `axiolid-model`
+  0.3.6, ADR 0082 amendment, axiolid/kernel#263), so such a station lowers
+  with `SeamSide::Incoming`: an `IfcAxis2PlacementLinear` as an
+  `OrientedCurveStation` reading the incoming side, an
+  `IfcPointByDistanceExpression` as `CurveStation::with_seam_side`'s
+  unturned oriented station. `OffsetLongitudinal` then runs along the
+  incoming tangent.
+- Runs across tangent discontinuities (#346): `IfcSectionedSolidHorizontal`,
+  `IfcSectionedSurface` and `IfcOffsetCurveByDistances` whose stations
+  span a polyline corner or a grade break lower, and Axiolid cuts them in
+  the half-angle mitre plane 8.8.3.35.1 and 8.8.3.37.1 ask for (the plane
+  normal to the bisector of the two tangents). IFC states no join for the
+  offset curve; the mitre is the one the sweeps on the same stations take.
+- `synthetic-lowering/station_seams_ifc4x3.ifc`: a gradient curve with a
+  grade break and an L-shaped polyline, with points on and within the
+  precision of each seam, a sectioned solid and an offset curve (and a disk
+  swept along it) across the corner, and a sectioned surface across the
+  grade break. Tests resolve them through `axiolid-reference` and the
+  reference mesh compiler against closed forms: the incoming tangent, the
+  mitre's corners, the volume and the area.
 
 ### Changed
 
-- The general curve lowering (`lower_curve_node`, and every representation
-  item, axis or directrix that reaches it) treats a collinear `IfcArcIndex`
-  as IFC4 ADD2 TC1 and IFC4X3 ADD2 prescribe: "The three points shall not
-  be co-linear. In case that this informal proposition is not maintained,
-  the arc segment shall be treated as a polyline segment" (#396). Three
-  distinct points collinear within the model's `Precision` lower as a
-  straight `Curve3::Polyline` segment of the composite, start -> end when
-  the middle point lies between the others and start -> mid -> end when it
-  does not; they were refused as `Degenerate`. Two points that coincide
-  within `Precision` are still `Degenerate`. Both tests now use the model's
-  `Precision` (in the curve's own coordinates, `1.E-5` project units when
-  none is declared) instead of an absolute `f64::EPSILON` bound on a
-  squared area, and they are one helper, `constraint::tolerance::arc_points`,
-  shared with the profile and half-space boundary reader of #335 and #393,
-  whose results are unchanged except that its tolerance, like every point
-  comparison's, is floored at floating-point rounding for very large
-  coordinates. A model whose declared `Precision` is not a finite positive
-  number now refuses an indexed curve with an arc segment, as it refuses an
-  indexed profile boundary. The fixture `indexed_curve_arcs.ifc` (IFC4)
-  lowers representation curves with a collinear, an out-and-back collinear,
-  a nearly collinear and a genuine arc, and `halfspace_boundaries_ifc4x3.ifc`
-  gains a wall whose boundary has a collinear arc; both pass the dispatch
-  corpus.
+- A station within the model's declared `Precision` of a seam (capped at
+  1 mm, or `1e-9 * max(1, |s|)` where larger) is stored at the seam's own
+  distance (#346). Axiolid reads a station on a seam only within
+  `ARC_LENGTH_TOLERANCE * max(1, s)` (`1e-12`); snapping to the distance
+  Axiolid itself reads from the same stored data (pinned against
+  `exact_station_seams` in the tests) makes the two rules agree, where a
+  station 4 um off a corner would otherwise be on the corner for IFC and
+  on one leg for the kernel. A station of a run is snapped the same way,
+  so its section stands in the mitre plane; two that snap onto one seam
+  are refused as out of order.
+- The seam reader carries whether the curve turns back on itself at a
+  seam, by Axiolid's `MITRE_TOLERANCE` (1e-6 on the cosine of half the
+  turn), repeated in `lower::station::seams` because `axiolid-evaluate` is
+  an execution provider this crate does not link (ADR 0004).
+- Workspace requirements: `axiolid-model` 0.3.6, `axiolid-curve` 0.3.4,
+  `axiolid-evaluate` 0.3.7 (dev), `axiolid-mesh-compile` 0.3.15,
+  `axiolid-mesh-compile-contract` 0.3.3 and `axiolid-construct` 0.3.16.
+  The kernel now reads a station within `ARC_LENGTH_TOLERANCE` of a seam
+  at the seam; no test's result changed with the bump.
 
-### Fixed
+### Refused by name
 
-- The where-rule `IfcPolygonalBoundedHalfSpace.BoundaryType` is checked in
-  the file's own release (#397). IFC4X3 ADD2 admits `IfcPolyline`,
-  `IfcCompositeCurve` and `IfcIndexedPolyCurve`; IFC2X3 TC1 (`WR42`), IFC4
-  ADD2 TC1, IFC4X1 and IFC4X2 admit only the first two. An IFC4X3 file with
-  an indexed boundary was flagged `WrongType`. The release is the header's
-  `FILE_SCHEMA`, IFC4 ADD2 TC1 when none known is declared, and, as
-  `TYPEOF` includes supertypes, a subtype of an admitted type (an
-  `IfcBoundaryCurve`) satisfies the rule, judged in that release's entity
-  table.
-- Every where-rule in `rules` is checked against the declared release's own
-  text (#400). One helper, `rules/release.rs`, reads the release from
-  `FILE_SCHEMA` (IFC4 ADD2 TC1 when none known is declared), lists which
-  rules each bundled release declares on which entity, and answers every
-  `IN TYPEOF` test in that release's entity table; no rule matches names by
-  hand any more. Two tests hold it to the schemas: the rule list must equal
-  each bundled release's own table, and each rule's EXPRESS text in every
-  release (from `references/ifc-spec`) must be IFC4's except where the code
-  branches on and cites the difference.
-  - `IfcBooleanClippingResult.FirstOperandType`: IFC2X3 TC1 (`WR1`) admits
-    only an `IfcSweptAreaSolid` or `IfcBooleanClippingResult`, so an IFC2X3
-    swept disk is now reported. IFC4 ADD2 TC1 to IFC4X3 ADD2 spell the third
-    disjunct `IFCSWEPTDISCSOLID`, which names no entity; it is read as
-    `IfcSweptDiskSolid`, as buildingSMART/IFC4.x-development#927 and its
-    open correction #1107 state, so a clipped swept disk stays admitted.
-  - Rules IFC2X3 TC1 does not declare are no longer applied to IFC2X3
-    files: `IfcBooleanResult.FirstOperandClosed`/`SecondOperandClosed`,
-    `IfcDirection.MagnitudeGreaterZero`,
-    `IfcRepresentationMap.ApplicableMappedRepr`, and `DirectrixBounded`.
-  - `IfcRevolvedAreaSolid.AxisStartInXY` in IFC4X3 ADD2 also requires
-    `Axis.Location` to be an `IfcCartesianPoint`; IFC4X3's `LocationIsCP`
-    on `IfcAxis1Placement`, `IfcAxis2Placement2D` and `IfcAxis2Placement3D`
-    is now checked too.
-  - `DirectrixBounded` in IFC4X3 ADD2 is declared on
-    `IfcDirectrixCurveSweptAreaSolid` and so binds every subtype, including
-    `IfcDirectrixDerivedReferenceSweptAreaSolid`, which was not checked.
-  - IFC2X3 TC1's `IfcSweptSurface.WR1` (no `IfcDerivedProfileDef` as the
-    swept curve), dropped in IFC4, is checked for IFC2X3 files.
-  - A violation names its rule as the declared release does (`WR1`-`WR5`
-    on an IFC2X3 `IfcAxis2Placement3D`), and its `type_name` is the
-    violating entity's own type (an `IfcExtrudedAreaSolidTapered` was
-    reported as `IFCEXTRUDEDAREASOLID`).
-  - Rules declared on a supertype now bind subtypes the name matching
-    missed: `First`/`SecondOperandClosed` read `Closed` on an IFC4X1-on
-    `IfcTriangulatedIrregularNetwork`, and `ApplicableMappedRepr` judges
-    the release's whole `IfcShapeModel` family.
-  - `Dim` follows each release's `IfcCurveDim` and IFC4X3's
-    `IfcSegmentDim`: the IFC4X1-on and IFC4X3 curve families
-    (`IfcOffsetCurveByDistances`, `IfcGradientCurve`, `IfcPolynomialCurve`,
-    `IfcSpiral`, ...) and an `IfcCurveSegment`'s `ParentCurve` (slot 4)
-    resolve, so the dimensional rules reach IFC4X3 alignment geometry, and
-    `IfcGridAxis.WR1` derives `AxisCurve.Dim` the same way. In
-    `IfcGetBasisSurface`, an IFC4X3 `IfcCurveSegment` contributes its
-    `ParentCurve`'s surface, where slot 2 was read and an
-    `IfcCompositeCurveOnSurface` of curve segments was reported as
-    `SameSurface`.
-  - A build that leaves the declared release's table out answers subtype
-    tests from the compiled geometry chains and does not report a rule that
-    demands a type for an entity those chains cannot classify.
+- A run of sections or offsets across a seam where the basis turns back
+  on itself: "very sharp edges may result in nearly impossible miter"
+  (8.8.3.35.1), and the half-angle plane has no extent there.
+- Still: a station on a basis whose seams cannot be read from stored data.
+  A curve relation (a plain `IfcCompositeCurve`, a trimmed or offset
+  curve): Axiolid resolves no station along one, which remains open in
+  #346. A B-spline with a corner knot, whose distance is an arc-length
+  integral (Axiolid's `exact_station_seams` refuses it too).
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
