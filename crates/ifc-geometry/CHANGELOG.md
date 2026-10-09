@@ -12,49 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
-## [0.14.0] - 2026-10-09
-
-Semver: `IfcPolygonalBoundedHalfSpace` boundaries this crate refused as
-`Unsupported` now lower, and a malformed composite or indexed boundary is
-refused as `Degenerate` (an empty composite, a gap, an open curve, a point
-off the plane) instead of `Unsupported`. An `IfcIndexedPolyCurve` whose
-collinear `IfcArcIndex` was refused as `Degenerate` now lowers (#396), and
-`rules::validate` no longer reports `BoundaryType` for an IFC4X3
-`IfcIndexedPolyCurve` boundary or a subtype of `IfcCompositeCurve` (#397).
-No public item is added or removed, and `PARTIAL` gains two rows;
-behaviour changes as it did for #335, so the next release is a minor one
-(0.14.0).
-
-### Added
-
-- `IfcCompositeCurve` and `IfcIndexedPolyCurve` as
-  `IfcPolygonalBoundedHalfSpace.PolygonalBoundary` (#393). `BoundaryType`
-  admits `IfcCompositeCurve` in IFC2X3, IFC4 ADD2 TC1 and IFC4X3 ADD2 and
-  `IfcIndexedPolyCurve` in IFC4X3 ADD2; an IFC4 file using the latter lowers
-  the same way, the curve being defined identically there, and the rule is
-  left to validation. Both are read by the profile boundary readers
-  (#43's composite walk, #335's indexed reading) under a half-space role,
-  so `SameSense`, nested composites, trimmed `IfcLine` segments, the
-  collinear-arc fallback ("treated as a polyline segment") and the closure
-  rules are shared, and the closed, straight-edged result becomes the one
-  `Curve2::Polyline` with `closed` set that `SolidOperation::BoundedHalfSpace`
-  takes. Composite joints are judged within the model's `Precision`
-  ("the tolerance under which two given points are still assumed to be
-  identical", `1.E-5` project units when none is declared), and a point
-  keeps the `IfcPolyline` boundary's rule: 2D, or 3D with `z == 0` exactly,
-  in `Position`'s XY plane (`BoundaryDim`). Refused, naming the entity:
-  as `Degenerate`, a gap between segments, an open curve, an empty
-  composite, a point off the plane and the indexed refusals of #335; as
-  `Unsupported`, a circular arc (a trimmed `IfcCircle` or a non-collinear
-  `IfcArcIndex`), because Axiolid's `BoundedHalfSpace` takes only a
-  `Polyline2` (`axiolid-mesh-compile` 0.3.14 refuses every other `Curve2`,
-  and `Curve2` has no composite variant) and an arc is never polygonised;
-  an IFC4X3 `IfcCurveSegment` member; and other segment parents. The
-  `IfcPolyline` boundary is unchanged. `PARTIAL` lists the family's
-  admitted and refused boundary forms. The fixture
-  `halfspace_boundaries_ifc4x3.ifc` clips a wall by each form beside its
-  `IfcPolyline` twin; each lowers to the twin's polyline and compiles with
-  `compile-reference-backend` to its volume.
+Semver: an `IfcIndexedPolyCurve` whose collinear `IfcArcIndex` was
+refused as `Degenerate` now lowers (#396), and `rules::validate` no longer
+reports `BoundaryType` for an IFC4X3 `IfcIndexedPolyCurve` boundary or a
+subtype of `IfcCompositeCurve` (#397). No public item is added or removed;
+previously refused curves now lower, as for #335 and #393, so the next
+release is a minor one (0.15.0).
 
 ### Changed
 
@@ -93,6 +56,46 @@ behaviour changes as it did for #335, so the next release is a minor one
   `TYPEOF` includes supertypes, a subtype of an admitted type (an
   `IfcBoundaryCurve`) satisfies the rule, judged in that release's entity
   table.
+
+## [0.14.0] - 2026-10-09
+
+Semver: `IfcPolygonalBoundedHalfSpace` boundaries this crate refused as
+`Unsupported` now lower, and a malformed composite or indexed boundary is
+refused as `Degenerate` (an empty composite, a gap, an open curve, a point
+off the plane) instead of `Unsupported`. No public item is added or
+removed, and `PARTIAL` gains two rows; behaviour changes as it did for
+#335, so the next release is a minor one (0.14.0).
+
+### Added
+
+- `IfcCompositeCurve` and `IfcIndexedPolyCurve` as
+  `IfcPolygonalBoundedHalfSpace.PolygonalBoundary` (#393). `BoundaryType`
+  admits `IfcCompositeCurve` in IFC2X3, IFC4 ADD2 TC1 and IFC4X3 ADD2 and
+  `IfcIndexedPolyCurve` in IFC4X3 ADD2; an IFC4 file using the latter lowers
+  the same way, the curve being defined identically there, and the rule is
+  left to validation. Both are read by the profile boundary readers
+  (#43's composite walk, #335's indexed reading) under a half-space role,
+  so `SameSense`, nested composites, trimmed `IfcLine` segments, the
+  collinear-arc fallback ("treated as a polyline segment") and the closure
+  rules are shared, and the closed, straight-edged result becomes the one
+  `Curve2::Polyline` with `closed` set that `SolidOperation::BoundedHalfSpace`
+  takes. Composite joints are judged within the model's `Precision`
+  ("the tolerance under which two given points are still assumed to be
+  identical", `1.E-5` project units when none is declared), and a point
+  keeps the `IfcPolyline` boundary's rule: 2D, or 3D with `z == 0` exactly,
+  in `Position`'s XY plane (`BoundaryDim`). Refused, naming the entity:
+  as `Degenerate`, a gap between segments, an open curve, an empty
+  composite, a point off the plane and the indexed refusals of #335; as
+  `Unsupported`, a circular arc (a trimmed `IfcCircle` or a non-collinear
+  `IfcArcIndex`), because Axiolid's `BoundedHalfSpace` takes only a
+  `Polyline2` (`axiolid-mesh-compile` 0.3.14 refuses every other `Curve2`,
+  and `Curve2` has no composite variant) and an arc is never polygonised;
+  an IFC4X3 `IfcCurveSegment` member; and other segment parents. The
+  `IfcPolyline` boundary is unchanged. `PARTIAL` lists the family's
+  admitted and refused boundary forms. The fixture
+  `halfspace_boundaries_ifc4x3.ifc` clips a wall by each form beside its
+  `IfcPolyline` twin; each lowers to the twin's polyline and compiles with
+  `compile-reference-backend` to its volume.
 
 ## [0.13.0] - 2026-10-09
 
