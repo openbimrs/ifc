@@ -11,7 +11,7 @@ The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned 
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.1.3 (2026-10-08) |
+| Latest release | 0.2.0 (2026-10-10) |
 | Registries | [NuGet `OpenBim.Ifc`](https://www.nuget.org/packages/OpenBim.Ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_dotnet/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-dotnet/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-dotnet) |
@@ -44,19 +44,19 @@ The behaviour is tested from C# against the packed `.nupkg` by
 
 ## Changes
 
-Latest release, 0.1.3 (2026-10-08):
+Latest release, 0.2.0 (2026-10-10):
 
-### Added (#358, #342)
+### Added (#367, geometry Level 2, ADR 0021)
 
-- `IfcModel.PropertySetsMany(ids)`: `ObjectPropertySets` (object, sets,
-  `PropertyRefusal`) per id, or per object definition when null, resolved
-  in one pass; each exactly what `PropertySets` answers.
-- `IfcModel.SetAttributeByNamePlain(id, name, value)`: a plain .NET value
-  (`string`, integers, `double`, `bool`, a sequence, `EntityHandle`,
-  `null`, or a `Value` written exactly) coerced against the attribute's
-  declared type; `IfcStatus.TypeMismatch` (32) and `AmbiguousValue` (33).
-  Needs the C ABI 0.1.8.
+- `IfcModel.ProductGeometry(ids, encoding)` -> `ProductGraph` per product:
+  its `ProductGeometry` record (transform, encoding, payload size,
+  refusal) and `byte[] Payload`, Axiolid's geometry graph in its wire
+  format 1.0 as UTF-8 JSON (`GeometryEncoding.Json`, also `string Json`)
+  or CBOR (`GeometryEncoding.Cbor`); `ProductGraph.Format` and
+  `FormatVersion`. Needs a native library built with the C ABI's `graph`
+  feature (ABI 0.1.9); the packaged one throws `IfcException` with code
+  `feature-disabled`.
 
-Semver: additive, a patch release.
+Semver: additive, a minor release while 0.x.
 
 Full history: [`crates/openbim-ifc-dotnet/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-dotnet/CHANGELOG.md)

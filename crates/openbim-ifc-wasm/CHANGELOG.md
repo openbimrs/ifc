@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-10
+
 ### Added (#367, geometry Level 2, ADR 0021)
 
 - `IfcModel.productGeometry(ids?, encoding?)` -> `ProductGeometry[]`, each
@@ -292,7 +294,8 @@ Published to npm by hand, before the release workflow existed.
 - `scripts/build-node-pkg.sh` builds a Node package with the pinned
   `wasm-bindgen` CLI and runs the Node smoke and corpus suites.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.4.3...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.5.0...HEAD
+[0.5.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.5.0
 [0.4.3]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.4.3
 [0.4.2]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.4.2
 [0.4.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.4.1

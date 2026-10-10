@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-10-10
+
 ### Added (#367, the neutral graph as a value)
 
 - Feature `wire` (off by default): `ifc_geometry::wire`, a re-export of
@@ -1680,7 +1682,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.20.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.21.0...HEAD
+[0.21.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.21.0
 [0.20.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.20.0
 [0.19.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.19.0
 [0.18.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.18.0
