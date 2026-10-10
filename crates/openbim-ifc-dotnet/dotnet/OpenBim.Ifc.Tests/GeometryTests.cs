@@ -110,9 +110,8 @@ public class GeometryTests
                     continue;
                 }
                 // {"format":"axiolid-geometry-graph","version":"1.0","graph":{...}},
-                // exact, in world metres: hand it to your own kernel.
-                using var envelope = System.Text.Json.JsonDocument.Parse(product.Payload);
-                System.Console.WriteLine($"{product.Geometry.TypeName}: {envelope.RootElement.GetProperty("version")}");
+                // exact, in world metres: hand it to your own kernel's reader.
+                System.Console.WriteLine($"{product.Geometry.TypeName}: {product.Json}");
             }
             // docs:end
 
@@ -120,12 +119,13 @@ public class GeometryTests
             Assert.Null(wall.Geometry.Refusal);
             Assert.Equal("json", wall.Geometry.Encoding);
             Assert.Equal(wall.Geometry.PayloadSize, (long)wall.Payload.Length);
-            using var json = System.Text.Json.JsonDocument.Parse(wall.Json!);
-            Assert.Equal(ProductGraph.Format, json.RootElement.GetProperty("format").GetString());
-            Assert.Equal(ProductGraph.FormatVersion, json.RootElement.GetProperty("version").GetString());
+            // Axiolid's writer orders the envelope: format, version, graph.
+            var head = "{\"format\":\"" + ProductGraph.Format + "\",\"version\":\"" + ProductGraph.FormatVersion + "\",\"graph\":{\"nodes\":[";
+            Assert.StartsWith(head, wall.Json!);
             Assert.Equal("1.0", ProductGraph.FormatVersion);
-            var nodes = json.RootElement.GetProperty("graph").GetProperty("nodes");
-            Assert.Equal(nodes.GetArrayLength() - 1, json.RootElement.GetProperty("graph").GetProperty("roots")[0].GetInt32());
+            Assert.Equal("axiolid-geometry-graph", ProductGraph.Format);
+            // Three nodes (profile, extrusion, placed instance), the last the root.
+            Assert.EndsWith("],\"roots\":[2]}}", wall.Json!);
             Assert.Equal(model.ProductPlacements()[0].Transform, wall.Geometry.Transform);
 
             var cbor = Assert.Single(model.ProductGeometry(null, GeometryEncoding.Cbor));

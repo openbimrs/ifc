@@ -352,9 +352,8 @@ foreach (var product in model.ProductGeometry())
         continue;
     }
     // {"format":"axiolid-geometry-graph","version":"1.0","graph":{...}},
-    // exact, in world metres: hand it to your own kernel.
-    using var envelope = System.Text.Json.JsonDocument.Parse(product.Payload);
-    System.Console.WriteLine($"{product.Geometry.TypeName}: {envelope.RootElement.GetProperty("version")}");
+    // exact, in world metres: hand it to your own kernel's reader.
+    System.Console.WriteLine($"{product.Geometry.TypeName}: {product.Json}");
 }
 ```
 
