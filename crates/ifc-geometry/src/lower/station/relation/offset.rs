@@ -60,7 +60,7 @@
 //! resolves the station, by name.
 
 use axiolid_core::{Scalar, Vec3};
-use axiolid_curve::{Curve2, Curve3, PathOffsets};
+use axiolid_curve::{Curve2, Curve3, OffsetFrame, OffsetLaw, PathOffsets};
 use axiolid_model::{Station, StationFrame};
 
 use super::{pieces_between, Flat, Piece, INEXACT};
@@ -91,17 +91,15 @@ const CUSP_TOLERANCE: Scalar = 1e-6;
 /// test of a circle's axis against `+Z` or a reference direction.
 const PARALLEL: Scalar = 1e-12;
 
-/// An offset law, as the compiler maps the graph's relations to
-/// `axiolid_curve::OffsetLaw`.
-#[derive(Debug, Clone, Copy)]
-pub(super) enum Law {
-    /// `IfcOffsetCurve2D`: the distance along the left normal.
-    Planar(Scalar),
-    /// `IfcOffsetCurve3D`: the distance along `normalise(V x T)`.
-    Directed(Scalar, Vec3),
-    /// One interval of an offset by distances: the offsets linear between
-    /// its ends, in a station frame.
-    Linear(PathOffsets, PathOffsets, StationFrame),
+/// An offset piece: the span of an atomic curve it is beside (reversed or
+/// placed as the flattening left it) and its law, the two parts of
+/// Axiolid's neutral `PathOffset`.
+#[derive(Debug, Clone)]
+pub(crate) struct OffsetPiece<'s> {
+    /// The base span, holding no seam of its curve inside it.
+    pub base: Piece<'s>,
+    /// The displacement from it.
+    pub law: OffsetLaw,
 }
 
 /// The offset of `base`, pieces laid end to end, by `law`: one piece per
@@ -110,40 +108,49 @@ pub(super) enum Law {
 /// first piece's start to its end at the last piece's end.
 pub(super) fn offset_pieces<'s>(
     base: &[Piece<'s>],
-    law: Law,
+    law: OffsetLaw,
 ) -> Result<Vec<Piece<'s>>, &'static str> {
     let total: Scalar = base.iter().map(Piece::length).sum();
     let mut out = Vec::new();
     let mut run = 0.0;
     for piece in base {
-        let Some(curve) = piece.curve else {
+        if piece.offset.is_some() {
             return Err(OFFSET_OF_OFFSET);
-        };
+        }
         if piece.plan {
             return Err(INEXACT);
         }
         let mut cuts = vec![0.0];
-        cuts.extend(vertex_cuts(curve, piece));
+        cuts.extend(vertex_cuts(piece));
         cuts.push(piece.length());
         for pair in cuts.windows(2) {
             let (a, b) = (pair[0], pair[1]);
             let law = match law {
-                Law::Linear(start, end, frame) => Law::Linear(
-                    start.lerp(end, (run + a) / total),
-                    start.lerp(end, (run + b) / total),
+                OffsetLaw::Linear { start, end, frame } => OffsetLaw::Linear {
+                    start: start.lerp(end, (run + a) / total),
+                    end: start.lerp(end, (run + b) / total),
                     frame,
-                ),
+                },
                 other => other,
             };
-            let length = offset_length(curve, piece, b - a, law)?;
+            let mut span = piece.clone();
+            if piece.reversed {
+                span.start = piece.end - b;
+                span.end = piece.end - a;
+            } else {
+                span.start = piece.start + a;
+                span.end = piece.start + b;
+            }
+            let length = offset_length(&span, law)?;
             out.push(Piece {
+                curve: piece.curve,
                 start: 0.0,
                 end: length,
                 reversed: false,
                 plan: false,
                 seams: Vec::new(),
-                curve: None,
-                placed: false,
+                placements: Vec::new(),
+                offset: Some(Box::new(OffsetPiece { base: span, law })),
             });
         }
         run += piece.length();
@@ -155,13 +162,18 @@ pub(super) fn offset_pieces<'s>(
 /// pair of consecutive stations (an atomic one measured from its own start,
 /// a line unbounded), offset by the offsets interpolated between them.
 pub(super) fn by_stations<'s>(
-    base: &Flat<'s>,
+    base: Flat<'s>,
     stations: &[Station],
     frame: StationFrame,
 ) -> Result<Vec<Piece<'s>>, &'static str> {
     if stations.len() < 2 {
         return Err(INEXACT);
     }
+    let frame = match frame {
+        StationFrame::Section => OffsetFrame::Section,
+        StationFrame::Plan => OffsetFrame::Plan,
+        _ => return Err(INEXACT),
+    };
     let offsets = |station: &Station| {
         PathOffsets::new(
             station.offsets.lateral,
@@ -172,11 +184,17 @@ pub(super) fn by_stations<'s>(
     let mut out = Vec::new();
     for pair in stations.windows(2) {
         let (a, b) = (pair[0].distance, pair[1].distance);
-        let span = match base {
-            Flat::Atomic(curve, placed) => vec![super::piece(curve, a, b, *placed)?],
+        let span = match &base {
+            Flat::Atomic(curve, placements) => {
+                vec![super::piece(curve, a, b, placements.clone())?]
+            }
             Flat::Pieces(pieces) => pieces_between(pieces, a, b)?,
         };
-        let law = Law::Linear(offsets(&pair[0]), offsets(&pair[1]), frame);
+        let law = OffsetLaw::Linear {
+            start: offsets(&pair[0]),
+            end: offsets(&pair[1]),
+            frame,
+        };
         out.extend(offset_pieces(&span, law)?);
     }
     Ok(out)
@@ -185,8 +203,8 @@ pub(super) fn by_stations<'s>(
 /// The distances into `piece`, in its direction, of its curve's polyline
 /// vertices strictly inside it: the compiler splits an offset's base there
 /// (`StationPiece::seams`), whether the edges turn or not.
-fn vertex_cuts(curve: &AtomicCurve, piece: &Piece<'_>) -> Vec<Scalar> {
-    let edges: Vec<Scalar> = match curve {
+fn vertex_cuts(piece: &Piece<'_>) -> Vec<Scalar> {
+    let edges: Vec<Scalar> = match piece.curve {
         AtomicCurve::Two(Curve2::Polyline(polyline)) => {
             let points = &polyline.points;
             let mut edges: Vec<Scalar> =
@@ -241,32 +259,29 @@ fn vertex_cuts(curve: &AtomicCurve, piece: &Piece<'_>) -> Vec<Scalar> {
     cuts
 }
 
-/// The length of the offset by `law` of a span `length` long of `piece`'s
-/// curve, holding no seam of it, where stored data states it.
-fn offset_length(
-    curve: &AtomicCurve,
-    piece: &Piece<'_>,
-    length: Scalar,
-    law: Law,
-) -> Result<Scalar, &'static str> {
-    let two_d = matches!(curve, AtomicCurve::Two(_));
-    if matches!(law, Law::Planar(_)) && !two_d {
+/// The length of the offset by `law` of the span `piece`, holding no seam
+/// of its curve, where stored data states it.
+fn offset_length(piece: &Piece<'_>, law: OffsetLaw) -> Result<Scalar, &'static str> {
+    let two_d = matches!(piece.curve, AtomicCurve::Two(_));
+    if matches!(law, OffsetLaw::Planar { .. }) && !two_d {
         return Err(PLANAR_3D);
     }
-    match curve {
+    let length = piece.length();
+    let placed = !piece.placements.is_empty();
+    match piece.curve {
         AtomicCurve::Two(Curve2::Line(_) | Curve2::Polyline(_)) => straight(length, law, true),
         AtomicCurve::Three(Curve3::Line(line)) => {
-            straight(length, law, line.direction.z == 0.0 && !piece.placed)
+            straight(length, law, line.direction.z == 0.0 && !placed)
         }
         AtomicCurve::Three(Curve3::Polyline(polyline)) => {
             let level = polyline.points.iter().all(|p| p.z == polyline.points[0].z);
-            straight(length, law, level && !piece.placed)
+            straight(length, law, level && !placed)
         }
-        AtomicCurve::Two(Curve2::Circle(circle)) if !piece.placed => {
+        AtomicCurve::Two(Curve2::Circle(circle)) if !placed => {
             let normal = Vec3::new(0.0, 0.0, circle.frame.x.perp_dot(circle.frame.y));
             arc(circle.radius, normal, length, piece.reversed, law)
         }
-        AtomicCurve::Three(Curve3::Circle(circle)) if !piece.placed => {
+        AtomicCurve::Three(Curve3::Circle(circle)) if !placed => {
             let normal = circle.frame.x.cross(circle.frame.y);
             arc(circle.radius, normal, length, piece.reversed, law)
         }
@@ -276,11 +291,11 @@ fn offset_length(
 
 /// An offset of a straight span `length` long: a line beside it. `level`:
 /// the span runs horizontally, so its plan frame is its section frame.
-fn straight(length: Scalar, law: Law, level: bool) -> Result<Scalar, &'static str> {
+fn straight(length: Scalar, law: OffsetLaw, level: bool) -> Result<Scalar, &'static str> {
     match law {
-        Law::Planar(_) | Law::Directed(..) => Ok(length),
-        Law::Linear(start, end, frame) => {
-            if frame != StationFrame::Section && !level {
+        OffsetLaw::Planar { .. } | OffsetLaw::Directed { .. } => Ok(length),
+        OffsetLaw::Linear { start, end, frame } => {
+            if frame != OffsetFrame::Section && !level {
                 return Err(INEXACT);
             }
             let along = length + (end.longitudinal - start.longitudinal);
@@ -291,6 +306,7 @@ fn straight(length: Scalar, law: Law, level: bool) -> Result<Scalar, &'static st
             let up = end.vertical - start.vertical;
             Ok((along * along + across * across + up * up).sqrt())
         }
+        _ => Err(INEXACT),
     }
 }
 
@@ -302,7 +318,7 @@ fn arc(
     normal: Vec3,
     length: Scalar,
     reversed: bool,
-    law: Law,
+    law: OffsetLaw,
 ) -> Result<Scalar, &'static str> {
     let axis = normal.normalize();
     let sense = if reversed { -1.0 } else { 1.0 };
@@ -314,14 +330,18 @@ fn arc(
         (direction.cross(axis).length() <= PARALLEL).then(|| direction.dot(axis).signum())
     };
     let towards = match law {
-        Law::Planar(distance) => distance * along(Vec3::Z).ok_or(INEXACT)?,
-        Law::Directed(distance, reference) => distance * along(reference).ok_or(INEXACT)?,
-        Law::Linear(start, end, _) => {
+        OffsetLaw::Planar { distance } => distance * along(Vec3::Z).ok_or(INEXACT)?,
+        OffsetLaw::Directed {
+            distance,
+            reference_direction,
+        } => distance * along(reference_direction).ok_or(INEXACT)?,
+        OffsetLaw::Linear { start, end, .. } => {
             if start != end || start.longitudinal != 0.0 {
                 return Err(INEXACT);
             }
             start.lateral * along(Vec3::Z).ok_or(INEXACT)?
         }
+        _ => return Err(INEXACT),
     } * sense;
     let scale = (radius - towards) / radius;
     if !(scale.is_finite() && scale > CUSP_TOLERANCE) {

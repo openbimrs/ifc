@@ -293,23 +293,8 @@ fn segments_placed_at_stations_off_a_seam_derive_the_stations_frame() {
     }
 }
 
-#[test]
-fn a_placement_on_a_plain_composite_curve_is_refused_by_name_as_before() {
-    // The station lowering reads the joint at 10 m of a composite of
-    // polylines and an arc as a curve relation; the evaluator contract
-    // evaluates one curve, so the derivation refuses that basis by name.
-    let model = relations();
-    let error = derived(&model, 145, &ReferenceCurveEvaluator::default())
-        .expect_err("a composite curve basis");
-    let GeometryError::Unsupported {
-        type_name, detail, ..
-    } = error
-    else {
-        panic!("expected Unsupported, got {error:?}");
-    };
-    assert_eq!(type_name, "IFCCOMPOSITECURVE");
-    assert!(detail.contains("basis curve"), "{detail}");
-}
+// A placement on a plain composite curve, a curve relation, derives
+// through the evaluator's `path_*` queries since #418: `derive_paths.rs`.
 
 // ---- #354: Verify compares against the incoming frame -------------------
 
