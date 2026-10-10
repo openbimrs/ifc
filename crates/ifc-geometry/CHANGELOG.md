@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-10-10
+
 ### Changed (#423, stations on offsets whose length is a quadrature)
 
 - A station (`IfcPointByDistanceExpression`, `IfcAxis2PlacementLinear`,
@@ -1729,7 +1731,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.21.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.22.0...HEAD
+[0.22.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.22.0
 [0.21.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.21.0
 [0.20.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.20.0
 [0.19.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.19.0

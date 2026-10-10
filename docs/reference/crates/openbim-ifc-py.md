@@ -11,7 +11,7 @@ Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.5.0 (2026-10-10) |
+| Latest release | 0.6.0 (2026-10-10) |
 | Registries | [PyPI `openbim-ifc`](https://pypi.org/project/openbim-ifc/) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_py/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-py/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-py) |
@@ -42,18 +42,20 @@ This crate adds calling-convention glue only. IFC behaviour belongs in
 
 ## Changes
 
-Latest release, 0.5.0 (2026-10-10):
+Latest release, 0.6.0 (2026-10-10):
 
-### Added (#367, geometry Level 2, ADR 0021)
+### Changed (#423, wire format 1.1)
 
-- `IfcModel.product_geometry(ids=None, encoding="json")` ->
-  `ProductGeometry` (transform, encoding, payload size, refusal, payload),
-  each product's Body as Axiolid's geometry graph in its wire format 1.0,
-  a `str` (JSON) or `bytes` (`encoding="cbor"`), lowered with the GIL
-  released; `GEOMETRY_FORMAT` and `GEOMETRY_FORMAT_VERSION`. Cargo feature
-  `graph`, opt-in: the published wheel raises `feature-disabled`; build
-  with `maturin build --release --features graph`.
+- The geometry graph payload (#367) is Axiolid's wire format 1.1
+  (`axiolid-model` 0.3.9), a minor version of the format (ADR 0021,
+  amended): a station on an offset whose length is a quadrature now lowers
+  with a seam-snapping window. An envelope carries the lowest wire version
+  its content needs: 1.0, or 1.1 when a station carries a seam-snapping
+  window; `axiolid-model` 0.3.9 labels every payload 1.1
+  (axiolid/kernel#297), and a reader on `axiolid-model` 0.3.8 or older
+  refuses 1.1. `GEOMETRY_FORMAT_VERSION` is `"1.1"`, the newest version
+  the wheel writes.
 
-Semver: additive, a minor release while 0.x.
+Semver: minor, as ADR 0021 states for a minor version of the wire format.
 
 Full history: [`crates/openbim-ifc-py/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-py/CHANGELOG.md)

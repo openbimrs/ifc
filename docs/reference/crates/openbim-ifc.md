@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.27.0 (2026-10-10) |
+| Latest release | 0.28.0 (2026-10-10) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -96,20 +96,19 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.27.0 (2026-10-10):
+Latest release, 0.28.0 (2026-10-10):
 
-### Added (#367, geometry Level 2, ADR 0021)
+### Changed
 
-- Feature `geometry-wire` (`geometry` plus `ifc-geometry/wire`, in `full`):
-  `product_graphs(model, ids)` -> `(EntityId, GeometryResult<ProductGraph>)`
-  per product, `ProductGraph { world, graph }`: each product's Body lowered
-  into Axiolid's neutral `GeometryGraph` exactly as `product_meshes` lowers
-  it, in world coordinates (metres), with its world placement alongside
-  and `None` for a product with no Body. Encode a graph in Axiolid's wire
-  format 1.0 with `GeometryGraph::to_json` / `to_cbor`
-  (`ifc::geometry::wire`). `compiled_features()` reports `geometry-wire`.
+- Requires `ifc-geometry` 0.22: stations on offsets whose length is a
+  quadrature lower with Axiolid's seam-snapping window (#423), and
+  `product_graphs` encodes with `axiolid-model` 0.3.9, wire format 1.1
+  (`ifc::geometry::wire::FORMAT_VERSION`). An envelope carries the lowest
+  wire version its content needs: 1.0, or 1.1 when a station carries a
+  seam-snapping window; `axiolid-model` 0.3.9 labels every payload 1.1
+  (axiolid/kernel#297), and a reader on `axiolid-model` 0.3.8 or older
+  refuses 1.1.
 
-Semver: additive (a new opt-in feature), a minor release while 0.x, since
-the `ifc-geometry` floor rises.
+Semver: minor, following the dependency.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)
