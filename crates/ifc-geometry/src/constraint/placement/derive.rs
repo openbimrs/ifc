@@ -104,8 +104,9 @@
 //! An evaluator that does not implement curve paths refuses them with
 //! `CURVE_PATH_UNSUPPORTED`; that is [`GeometryError::CurvePathUnsupported`]
 //! naming the placement and its basis curve, never a frame read on one
-//! piece in its place. An offset curve is refused by name, as the station
-//! lowering refuses it (#414).
+//! piece in its place. An offset curve is read the same way (#414): its
+//! pieces are `PathCurve::Offset`s of its basis's spans, measured in the
+//! offset's own length, as the station lowering measures it.
 //!
 //! # Which distance
 //!
@@ -586,9 +587,8 @@ enum Basis {
 }
 
 /// The IFC curve types that lower to a curve relation, read as a path
-/// (#418): composites, trims, and surface curves whose 3D curve governs.
-/// Offset curves lower to a relation the station lowering refuses by name
-/// (#414), and are refused alike.
+/// (#418): composites, trims, surface curves whose 3D curve governs, and
+/// offset curves (#414).
 const RELATION_BASES: &[&str] = &[
     "IFCCOMPOSITECURVE",
     "IFCCOMPOSITECURVEONSURFACE",

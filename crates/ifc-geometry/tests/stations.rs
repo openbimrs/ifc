@@ -17,6 +17,7 @@ mod stations {
     pub mod common;
     mod compile;
     mod offset;
+    mod offsets;
     mod points;
     mod relations;
     pub mod seams;

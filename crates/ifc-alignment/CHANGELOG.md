@@ -13,13 +13,14 @@ everything released before per-crate changelogs began.
 ## [Unreleased]
 
 Semver: a patch release. No public item or behaviour changes; the
-dependency floors rise with the workspace (ifc-geometry #418).
+dependency floors rise with the workspace (ifc-geometry #418, #414).
 
 ### Changed
 
 - Requires `axiolid-curve` 0.3.6 (and `axiolid-evaluate` 0.3.10 for the
-  tests), the releases that add the neutral `CurvePath` (axiolid/kernel#290).
-  Nothing here builds one; every test passes unchanged against them.
+  tests), the releases that add the neutral `CurvePath` (axiolid/kernel#290)
+  and measure stations along offsets (axiolid/kernel#289). Nothing here
+  builds either; every test passes unchanged against them.
 
 ## [0.8.0] - 2026-10-09
 

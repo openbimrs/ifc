@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate the product-lowering fixtures for #335, #336, #346, #351, #353,
-#354, #357, #362, #363, #388, #393, #396 and #398.
+#354, #357, #362, #363, #388, #393, #396, #398 and #414.
 
-Thirteen small files, each one edge case of `crates/ifc-geometry`'s product
+Fifteen small files, each one edge case of `crates/ifc-geometry`'s product
 lowering. No licence-clean public corpus isolates these cases, so they are
 generated; the output is our own data. Metres and radians, fixed GUIDs and
 time stamp: regeneration is byte-stable.
@@ -247,6 +247,47 @@ measures end to end through their pieces (axiolid/kernel#285):
   laid along the 0.02 grade (20 and 10 m of plan, `sqrt(1.0004)` times
   that long): from (10, 3, 10.2) through (30, 3, 10.6) to (40, 3, 10.8).
   `KERB_START` 5 m along it; `KERB_JOINT` on its joint, 1 m up.
+
+`station_offsets_ifc4x3.ifc` (IFC4X3_ADD2, #414, declared `Precision`
+1e-5 m). Stations along offset curves, which Axiolid measures in the
+offset's own length (axiolid/kernel#289), every joint of its pieces a seam:
+
+- `LANE`: an `IfcOffsetCurve2D` 1 m left (`Distance` 1, IFC's
+  anticlockwise normal) of a 2D `IfcCompositeCurve`: an `IfcLine` along +X
+  trimmed by parameter to 0..10, then the quarter `IfcCircle` of radius 10
+  about (10,10) from (10,0) to (20,10), tangent to it. The offset runs
+  (0,1) -> (10,1), then 9 m from (10,10): 10 + 4.5 pi m, its sides
+  meeting at the joint 10 m along. `LANE_JOINT_AT` on the joint and
+  `LANE_JOINT_NEAR` 4 um past it, 0.5 m left: (10, 1.5);
+  `LANE_ARC` halfway round the offset arc, 10 + 2.25 pi m along: 9 m from
+  (10,10) at 45 degrees; `LANE_END` at its end, (19, 10).
+- `ARC_LANE`: an `IfcOffsetCurve2D` 1 m right (`Distance` -1) of the
+  quarter `IfcCircle` of radius 10 about the origin trimmed by parameter
+  0..pi/2: a quarter circle of radius 11, 5.5 pi m long. `ARC_LANE_MID`
+  2.75 pi m along: (11 cos 45, 11 sin 45); `ARC_LANE_END` at 5.5 pi m:
+  (0, 11).
+- `KERB`: an `IfcOffsetCurveByDistances` of the 2D `IfcPolyline` (0,0) ->
+  (10,0) -> (10,10), 2 m left at 0, none at the corner (10 m) and 2 m
+  left at 20: (0,2) -> (10,0) -> (8,10), two lines of sqrt(104) m whose
+  sides meet at the basis's corner, a corner of the offset itself.
+  `KERB_CORNER_AT` on it, sqrt(104) m along, and `KERB_CORNER_NEAR` 4 um
+  past it, 1 m left: (10,0) + (2,10) / sqrt(104) on the incoming piece;
+  `KERB_MID` sqrt(104) / 2 along: (5, 1). An `IfcAxis2PlacementLinear` on
+  the corner stands in no representation.
+- `DECK`: an `IfcSectionedSolidHorizontal` along `KERB`, a centred 2 x 1 m
+  rectangle at 5 m and 15 m, across its corner: mitred, 20 m3.
+- `LANE_EDGE`: an `IfcOffsetCurveByDistances` of `LANE`, 0.5 m right at
+  0 m, carried on to its end (8.9.3.42.3, whose length 10 + 4.5 pi the
+  lowering states), and a 0.1 m `IfcSweptDiskSolid` along it, over its
+  whole extent (0 to 10 + 4.5 pi): (0,0.5) -> (10,0.5), then 9.5 m from
+  (10,10) to (19.5,10).
+- `CORNER_LANE`: an `IfcOffsetCurve2D` 1 m left of the same L polyline,
+  whose sides do not meet at the corner ((10,1) and (9,0)); IFC requires
+  "a well-defined tangent direction at every point" of the basis.
+  `CORNER_LANE_POINT` 5 m along it lowers, and the kernel refuses it by
+  name. The offset bases refused while lowering (an offset of an offset,
+  a trim of an offset, an `IfcOffsetCurve2D` of a 3D curve, a collapsed
+  circle) are inline in the tests.
 
 Run:  python3 tools/gen_lowering_fixtures.py test/fixtures/synthetic-lowering
 """
@@ -1238,6 +1279,111 @@ def station_relations():
     return f
 
 
+# #414: the stations of `station_offsets_ifc4x3.ifc`.
+def station_offsets():
+    """#414: stations along offset curves, measured in their own length."""
+    label = "station-offsets"
+    f = ifcopenshell.file(schema="IFC4X3_ADD2")
+    body_ctx, site = spatial_root(f, label)
+    ctx = f.by_type("IfcGeometricRepresentationContext", include_subtypes=False)[0]
+
+    def parameter(value):
+        return f.create_entity("IfcParameterValue", float(value))
+
+    def trimmed(basis, t1, t2):
+        return f.create_entity(
+            "IfcTrimmedCurve", BasisCurve=basis, Trim1=[parameter(t1)],
+            Trim2=[parameter(t2)], SenseAgreement=True, MasterRepresentation="PARAMETER")
+
+    def circle(centre, radius, ref=None):
+        return f.create_entity("IfcCircle", Position=f.create_entity(
+            "IfcAxis2Placement2D", Location=point2(f, centre),
+            RefDirection=direction(f, ref) if ref else None), Radius=radius)
+
+    def along(basis, distance, lateral=None):
+        return f.create_entity(
+            "IfcPointByDistanceExpression", DistanceAlong=length(f, distance),
+            OffsetLateral=lateral, BasisCurve=basis)
+
+    def position(basis, distance):
+        return f.create_entity("IfcAxis2PlacementLinear", Location=along(basis, distance))
+
+    def product(name, representations):
+        return f.create_entity(
+            "IfcBuildingElementProxy", GlobalId=guid(label + "/" + name), Name=name,
+            ObjectPlacement=local(f), Representation=shape(f, representations))
+
+    def points(name, item):
+        return product(name, [rep(f, ctx, "Reference", "Point", [item])])
+
+    def offset2d(basis, distance):
+        return f.create_entity("IfcOffsetCurve2D", BasisCurve=basis, Distance=distance,
+                               SelfIntersect=False)
+
+    # The lane's basis: a line along +X to (10,0), then a quarter circle
+    # about (10,10) starting there heading +X (its x axis points to -Y).
+    road = f.create_entity("IfcCompositeCurve", Segments=[
+        f.create_entity("IfcCompositeCurveSegment", Transition="CONTSAMEGRADIENT",
+                        SameSense=True, ParentCurve=trimmed(line2(f), 0.0, 10.0)),
+        f.create_entity("IfcCompositeCurveSegment", Transition="DISCONTINUOUS",
+                        SameSense=True, ParentCurve=trimmed(
+                            circle((10.0, 10.0), 10.0, (0.0, -1.0)), 0.0, math.pi / 2)),
+    ], SelfIntersect=False)
+    lane = offset2d(road, 1.0)
+    lane_length = 10.0 + 4.5 * math.pi
+
+    arc_lane = offset2d(trimmed(circle((0.0, 0.0), 10.0), 0.0, math.pi / 2), -1.0)
+
+    corner = polyline2(f, [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0)])
+    kerb = f.create_entity(
+        "IfcOffsetCurveByDistances", BasisCurve=corner,
+        OffsetValues=[along(corner, 0.0, lateral=2.0), along(corner, 10.0, lateral=0.0),
+                      along(corner, 20.0, lateral=2.0)],
+        Tag="kerb")
+    side = math.sqrt(104.0)
+
+    rectangle = f.create_entity(
+        "IfcRectangleProfileDef", ProfileType="AREA", ProfileName="deck",
+        Position=f.create_entity("IfcAxis2Placement2D", Location=point2(f, (0.0, 0.0))),
+        XDim=2.0, YDim=1.0)
+    deck = f.create_entity(
+        "IfcSectionedSolidHorizontal", Directrix=kerb,
+        CrossSections=[rectangle, rectangle],
+        CrossSectionPositions=[position(kerb, 5.0), position(kerb, 15.0)])
+
+    edge = f.create_entity(
+        "IfcOffsetCurveByDistances", BasisCurve=lane,
+        OffsetValues=[along(lane, 0.0, lateral=-0.5)], Tag="edge")
+    tube = f.create_entity("IfcSweptDiskSolid", Directrix=edge, Radius=0.1,
+                           StartParam=0.0, EndParam=lane_length)
+
+    corner_lane = offset2d(corner, 1.0)
+
+    products = [
+        product("LANE", [rep(f, ctx, "Axis", "Curve2D", [lane])]),
+        points("LANE_JOINT_AT", along(lane, 10.0, lateral=0.5)),
+        points("LANE_JOINT_NEAR", along(lane, 10.000004, lateral=0.5)),
+        points("LANE_ARC", along(lane, 10.0 + 2.25 * math.pi)),
+        points("LANE_END", along(lane, lane_length)),
+        product("ARC_LANE", [rep(f, ctx, "Axis", "Curve2D", [arc_lane])]),
+        points("ARC_LANE_MID", along(arc_lane, 2.75 * math.pi)),
+        points("ARC_LANE_END", along(arc_lane, 5.5 * math.pi)),
+        product("KERB", [rep(f, ctx, "Axis", "Curve3D", [kerb])]),
+        points("KERB_CORNER_AT", along(kerb, side, lateral=1.0)),
+        points("KERB_CORNER_NEAR", along(kerb, side + 4e-6, lateral=1.0)),
+        points("KERB_MID", along(kerb, side / 2)),
+        product("DECK", [rep(f, body_ctx, "Body", "AdvancedSweptSolid", [deck])]),
+        product("LANE_EDGE", [rep(f, ctx, "Axis", "Curve3D", [edge]),
+                              rep(f, body_ctx, "Body", "AdvancedSweptSolid", [tube])]),
+        product("CORNER_LANE", [rep(f, ctx, "Axis", "Curve2D", [corner_lane])]),
+        points("CORNER_LANE_POINT", along(corner_lane, 5.0)),
+    ]
+    contain(f, label, site, products)
+    # The frame on the kerb's corner, an item of no representation type.
+    f.create_entity("IfcAxis2PlacementLinear", Location=along(kerb, side))
+    return f
+
+
 # #388: the site placements the flush-opening wall is put under. A survey
 # origin of (600 000, 5 600 000, 200) and a turn of about 2.3 degrees to
 # grid north are what a georeferenced export writes.
@@ -1371,6 +1517,7 @@ FIXTURES = {
     "indexed_curve_arcs.ifc": indexed_curve_arcs,
     "station_seams_ifc4x3.ifc": station_seams,
     "station_relations_ifc4x3.ifc": station_relations,
+    "station_offsets_ifc4x3.ifc": station_offsets,
 }
 
 

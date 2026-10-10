@@ -21,7 +21,8 @@
 //! trimmed circle; `#38` a composite with a 1 m gap; `#75` the kerb, two
 //! `IfcLine` segments placed 3 m left of the gradient curve `#64` at its
 //! stations 10 and 30; the model precision is 1e-5 m. Records a case needs
-//! beyond the fixture are appended inline.
+//! beyond the fixture are appended inline. Offset bases (#414) read
+//! `synthetic-lowering/station_offsets_ifc4x3.ifc`.
 
 #![cfg(feature = "compile-reference-backend")]
 
@@ -472,4 +473,103 @@ fn an_evaluator_without_curve_paths_is_refused_naming_the_basis() {
     let gradient = derived(&model, 69, &Pathless::default()).expect("a gradient curve basis");
     let reference = derived(&model, 69, &ReferenceCurveEvaluator::default()).expect("derived");
     assert_eq!(gradient, reference);
+}
+
+// ---- offset bases (#414) -------------------------------------------------
+
+/// `synthetic-lowering/station_offsets_ifc4x3.ifc`: `#27` the lane, an
+/// `IfcOffsetCurve2D` 1 m left of a line and a tangent quarter circle;
+/// `#32` an `IfcOffsetCurve2D` 1 m right of a quarter circle; `#40` the
+/// kerb, an `IfcOffsetCurveByDistances` of an L polyline vanishing at its
+/// corner, sqrt(104) m along its own length.
+fn offsets() -> Model {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test/fixtures/synthetic-lowering/station_offsets_ifc4x3.ifc");
+    ifc_step::StepCodec
+        .read_path(&path)
+        .unwrap_or_else(|e| panic!("{e:?}"))
+}
+
+/// An offset basis reads as a path of `PathCurve::Offset` pieces, one per
+/// span of its basis between seams, in the offset's own length: the same
+/// pieces `axiolid-mesh-compile`'s `station::curve_path` hands out, their
+/// lengths equal within Axiolid's `ARC_LENGTH_TOLERANCE` (the kernel
+/// measures a polyline's offset by quadrature, the derivation states its
+/// closed form), and every frame along both alike.
+#[test]
+fn an_offset_basis_reads_as_the_compilers_offset_path() {
+    let model = offsets();
+    let scale = units::resolve(&model);
+    let evaluator = ReferenceCurveEvaluator::default();
+    for (expression, basis, pieces) in [(59, 27, 2), (93, 32, 1), (113, 40, 2)] {
+        let ours = basis_curve_path(
+            &model,
+            &scale,
+            EntityId(expression),
+            EntityId(basis),
+            &evaluator,
+        )
+        .unwrap_or_else(|e| panic!("#{basis}: {e}"));
+        let (graph, _, node, _) = lowered(&model, expression);
+        let theirs = curve_path(&graph, node).expect("the compiler flattens it");
+        assert_eq!(ours.pieces().len(), pieces, "#{basis}: pieces");
+        assert_eq!(theirs.pieces().len(), pieces, "#{basis}: their pieces");
+        for (a, b) in ours.pieces().iter().zip(theirs.pieces()) {
+            assert!(
+                matches!(
+                    (&a.curve, &b.curve),
+                    (
+                        axiolid_curve::PathCurve::Offset(_),
+                        axiolid_curve::PathCurve::Offset(_)
+                    )
+                ),
+                "#{basis}: offset pieces"
+            );
+            let (x, y) = (a.end - a.start, b.end - b.start);
+            assert!(
+                (x - y).abs() <= 1e-12 * x.max(1.0),
+                "#{basis}: piece length {x} != {y}"
+            );
+        }
+        let length = ours.length();
+        for step in 0..=40 {
+            let at = CurveMeasure::Distance(length * f64::from(step) / 40.0);
+            for side in [SeamSide::Incoming, SeamSide::Outgoing] {
+                let a = evaluator.path_frame_at_on(&ours, at, side).expect("ours");
+                let b = evaluator
+                    .path_frame_at_on(&theirs, at, side)
+                    .expect("theirs");
+                let what = format!("#{basis} at {at:?} {side:?}");
+                close(array(a.origin), array(b.origin), &what);
+                close(array(a.x), array(b.x), &what);
+                close(array(a.y), array(b.y), &what);
+            }
+        }
+    }
+}
+
+/// A placement on an offset basis derives the lowered station's frame: on
+/// the kerb's corner and 4 um past it, the incoming piece (10, -2) /
+/// sqrt(104), 1 m to its left; on the lane's joint; off the joints, half
+/// way round the lane's arc and the radius-11 arc.
+#[test]
+fn a_placement_on_an_offset_derives_the_stations_frame() {
+    let model = offsets();
+    let s = 104.0_f64.sqrt();
+    for expression in [113, 120] {
+        let transform = assert_matches_station(&model, expression, SeamSide::Incoming);
+        close(
+            transform.origin,
+            [10.0 + 2.0 / s, 10.0 / s, 0.0],
+            "1 m left of the incoming piece",
+        );
+        close(
+            transform.basis[0],
+            [10.0 / s, -2.0 / s, 0.0],
+            "the incoming tangent",
+        );
+    }
+    assert_matches_station(&model, 59, SeamSide::Incoming);
+    assert_matches_station(&model, 73, SeamSide::Outgoing);
+    assert_matches_station(&model, 93, SeamSide::Outgoing);
 }

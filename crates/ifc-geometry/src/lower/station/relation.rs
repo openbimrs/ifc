@@ -1,5 +1,5 @@
-//! Seams and length of a basis that lowers to a curve relation (#346), read
-//! from its stored data.
+//! Seams and length of a basis that lowers to a curve relation (#346,
+//! #414), read from its stored data.
 //!
 //! Axiolid resolves a station along a curve relation since `axiolid-model`
 //! 0.3.7 (axiolid/kernel#285, ADR 0082 amendment): a composite, a trim, a
@@ -8,7 +8,10 @@
 //! end to end, and the distance runs through them, each span in its own
 //! curve's convention (plan distance when every span is elevated or banked,
 //! arc length when none is; a mix is refused). Every interior joint is a
-//! seam, smooth or not, and its `SeamSide` picks the piece.
+//! seam, smooth or not, and its `SeamSide` picks the piece. Since
+//! `axiolid-mesh-compile` 0.3.19 (axiolid/kernel#289, the ADR's 2026-10-10
+//! amendment) an offset is a basis too, flattened into offset pieces
+//! measured in their own length ([`offset`]).
 //!
 //! That flattening lives in `axiolid-mesh-compile` and its pieces in
 //! `axiolid-evaluate` (`station::composite`), execution providers this
@@ -29,21 +32,29 @@
 //!   the trim's sense, at most one turn; reversed where the sense
 //!   disagrees;
 //! - a trim of a relation between parameter selectors read as distances
-//!   along it, which needs the relation measured in arc length;
+//!   along it, which needs the relation measured in arc length; a trim
+//!   whose basis is itself an offset is refused by name, as the kernel
+//!   refuses it;
 //! - a curve placed at a station, or a surface curve whose 3D curve
-//!   governs, as its source: a rigid placement keeps the measure.
+//!   governs, as its source: a rigid placement keeps the measure;
+//! - an offset (`IfcOffsetCurve2D`, `IfcOffsetCurve3D`) as one offset piece
+//!   per span of its basis's pieces between their seams, and an offset by
+//!   distances (`IfcOffsetCurveByDistances`) likewise per interval between
+//!   its stations ([`offset`]).
 //!
 //! A piece's length is read only where stored data states it exactly: a
 //! line's `|direction|` times the parameter span, a circle's radius times
-//! the angle, a polyline's edges, and the parameter span of a curve
+//! the angle, a polyline's edges, the parameter span of a curve
 //! parameterised by its measure (an intrinsic curve, a chain, an elevated
-//! curve's plan distance). An ellipse or a B-spline is measured by
-//! quadrature, which `axiolid-evaluate` also reports inexact
-//! (`CompositeBasis::exact_seams`), so a composite holding one is refused by
-//! name, as an atomic B-spline with a corner knot is.
+//! curve's plan distance), and an offset's closed forms ([`offset`]). An
+//! ellipse or a B-spline is measured by quadrature, which `axiolid-evaluate`
+//! also reports inexact (`CompositeBasis::exact_seams`), so a composite
+//! holding one is refused by name, as an atomic B-spline with a corner knot
+//! is.
 //!
 //! The joints' points are not compared here: whether pieces meet is
-//! evaluation. A gap, or an undeclared reversed piece, is refused by name
+//! evaluation. A gap, an undeclared reversed piece, or an offset across a
+//! corner of its basis, whose two sides do not meet, is refused by name
 //! when the kernel resolves the station.
 //!
 //! # The pieces themselves (#418)
@@ -57,9 +68,11 @@
 //! conic's trim is located as `axiolid-evaluate`'s
 //! `StationPiece::between_parameters` locates it: from its start parameter
 //! taken modulo one turn, so the span starts within the curve's measure.
+//! An offset piece (#414) keeps the base span it offsets and its law
+//! ([`offset::OffsetPiece`]), the neutral `PathOffset`'s two parts.
 
 use axiolid_core::{Point3, Scalar};
-use axiolid_curve::{Curve2, Curve3};
+use axiolid_curve::{Curve2, Curve3, OffsetLaw};
 use axiolid_model::{
     CurveRelation, GeometryNode, MasterRepresentation, NodeId, OrientedCurveStation, TrimSelector,
     TrimmingPreference,
@@ -68,19 +81,30 @@ use axiolid_model::{
 use super::seams::{tangent_seams, Seam, BANKED};
 use crate::lower::session::{AtomicCurve, LoweringSession};
 
+mod offset;
+
+pub(crate) use offset::{OffsetPiece, COLLAPSE, OFFSET_OF_OFFSET, PLANAR_3D};
+
 /// Why a relation basis holding a curve measured by quadrature is refused.
 pub(crate) const INEXACT: &str =
     "the basis curve relation holds a piece whose length is not stated by its data (an \
-     ellipse, a B-spline, or a trim whose ends are not a parameter, an arc length on a curve \
-     parameterised by it, or a point on a line or a circle), so the distances of its joints, \
-     where IFC4.3 ADD2 (8.9.3.48.3) reads the previous segment, cannot be located within the \
-     model's precision";
+     ellipse, a B-spline, a trim whose ends are not a parameter, an arc length on a curve \
+     parameterised by it, or a point on a line or a circle, or an offset other than one of a \
+     line or a polyline, or a constant one of a circle in its own plane), so the distances of \
+     its joints, where IFC4.3 ADD2 (8.9.3.48.3) reads the previous segment, cannot be located \
+     within the model's precision";
 
 /// Why a relation the kernel measures no station along is refused.
 pub(crate) const UNSUPPORTED: &str =
-    "the basis curve relation is an offset curve, a parameter-space curve, an offset curve by \
-     distances or an instanced curve; Axiolid measures a station along a composite, a trim, a \
-     surface curve whose 3D curve governs and a curve placed at a station only";
+    "the basis curve relation is a parameter-space curve, a surface curve whose p-curve \
+     governs, or an instanced curve; Axiolid measures a station along a composite, a trim, a \
+     surface curve whose 3D curve governs, a curve placed at a station and an offset only";
+
+/// Why a trim of an offset curve is refused.
+pub(crate) const TRIM_OF_OFFSET: &str =
+    "the basis is a trim of an offset curve; an offset curve takes its parameterisation from \
+     its basis curve (IfcOffsetCurve2D, IfcOffsetCurve3D), which is not its own length, and \
+     Axiolid reads no station along that parameter";
 
 /// Why a basis mixing plan-measured and arc-length pieces is refused.
 pub(crate) const MIXED: &str =
@@ -188,6 +212,10 @@ pub(crate) struct Piece<'s> {
     seams: Vec<Seam>,
     /// The stations the curve is placed at, innermost first.
     pub placements: Vec<&'s OrientedCurveStation>,
+    /// On an offset piece, the base span it offsets and its law; `curve`
+    /// is then the base's, and `[start, end]` the offset's own measure
+    /// `[0, L]`.
+    pub offset: Option<Box<OffsetPiece<'s>>>,
 }
 
 impl Piece<'_> {
@@ -270,6 +298,7 @@ fn piece<'s>(
         plan,
         seams,
         placements,
+        offset: None,
     })
 }
 
@@ -319,6 +348,14 @@ fn flatten<'s>(
             sense_agreement,
             preference,
         })) => {
+            if matches!(
+                session.relation(*basis),
+                Some(GeometryNode::CurveRelation(
+                    CurveRelation::Offset { .. } | CurveRelation::OffsetByStations { .. }
+                ))
+            ) {
+                return Err(TRIM_OF_OFFSET);
+            }
             let pieces = match flatten(session, *basis, depth + 1)? {
                 Flat::Atomic(curve, placements) => {
                     let (lo, hi) =
@@ -346,6 +383,31 @@ fn flatten<'s>(
             master: MasterRepresentation::Curve3d,
             ..
         })) => flatten(session, *curve_3d, depth + 1),
+        Some(GeometryNode::CurveRelation(CurveRelation::Offset {
+            basis,
+            distance,
+            reference_direction,
+        })) => {
+            let law = match reference_direction {
+                None => OffsetLaw::Planar {
+                    distance: *distance,
+                },
+                Some(direction) => OffsetLaw::Directed {
+                    distance: *distance,
+                    reference_direction: *direction,
+                },
+            };
+            let base = flatten(session, *basis, depth + 1)?.into_pieces()?;
+            Ok(Flat::Pieces(offset::offset_pieces(&base, law)?))
+        }
+        Some(GeometryNode::CurveRelation(CurveRelation::OffsetByStations {
+            basis,
+            stations,
+            frame,
+        })) => {
+            let base = flatten(session, *basis, depth + 1)?;
+            Ok(Flat::Pieces(offset::by_stations(base, stations, *frame)?))
+        }
         _ => Err(UNSUPPORTED),
     }
 }
@@ -656,6 +718,7 @@ mod tests {
             plan: false,
             seams: Vec::new(),
             placements: Vec::new(),
+            offset: None,
         };
         let kept = pieces_between(&[piece(0.0, 4.0, false), piece(1.0, 7.0, true)], 2.0, 6.0)
             .expect("inside");

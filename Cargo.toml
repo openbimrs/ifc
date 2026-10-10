@@ -80,7 +80,9 @@ axiolid-spatial = { version = "0.3.0" }
 # z right. 0.3.4 (with axiolid-curve 0.3.6 and axiolid-evaluate 0.3.10)
 # reads a curve relation as a neutral `CurvePath` through the `path_*`
 # queries (axiolid/kernel#290); a derived linear placement on a composite or
-# trimmed basis reads it (#418).
+# trimmed basis reads it (#418). The same releases measure stations along
+# offsets, `PathCurve::Offset` and `StationOffset` (axiolid/kernel#289;
+# #414).
 axiolid-curve = { version = "0.3.6" }
 axiolid-evaluate = { version = "0.3.10" }
 axiolid-curve-evaluate-contract = { version = "0.3.4" }
@@ -105,7 +107,9 @@ axiolid-contracts = { version = "0.3.1" }
 # 0.3.17 is the release built with the wave-2 curve and evaluate crates
 # (axiolid/kernel#286). 0.3.19 is the release built with the wave-3 curve
 # and evaluate crates, and flattens a relation into a `CurvePath`
-# (`station::curve_path`, axiolid/kernel#290; the #418 tests compare it).
+# (`station::curve_path`, axiolid/kernel#290; the #418 tests compare it); it
+# resolves stations along offset curves, measured in the offset's own length
+# (axiolid/kernel#289; #414).
 axiolid-mesh-compile = { version = "0.3.19" }
 axiolid-mesh-compile-contract = { version = "0.3.3" }
 axiolid-mesh-boolean-boolmesh = { version = "0.3.0" }

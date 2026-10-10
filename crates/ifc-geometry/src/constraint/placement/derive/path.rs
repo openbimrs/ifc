@@ -1,9 +1,10 @@
 //! A basis curve that lowers to a curve relation, as Axiolid's neutral
 //! [`CurvePath`] (#418).
 //!
-//! A plain `IfcCompositeCurve`, an `IfcTrimmedCurve` and a composite of
-//! `IfcCurveSegment`s placed by `IfcAxis2PlacementLinear`s lower to curve
-//! relations (#346), which the evaluator's single-curve queries cannot
+//! A plain `IfcCompositeCurve`, an `IfcTrimmedCurve`, a composite of
+//! `IfcCurveSegment`s placed by `IfcAxis2PlacementLinear`s and an offset
+//! curve (`IfcOffsetCurve2D`, `IfcOffsetCurve3D`,
+//! `IfcOffsetCurveByDistances`, #414) lower to curve relations (#346), which the evaluator's single-curve queries cannot
 //! read. Since `axiolid-curve-evaluate-contract` 0.3.4 (axiolid/kernel#290)
 //! an evaluator reads such a basis as a `CurvePath`: spans of atomic curves
 //! laid end to end in their station measure, each forwards or backwards and
@@ -27,7 +28,7 @@
 
 use axiolid_contracts::GeomError;
 use axiolid_core::{Scalar, Transform3, Vec3};
-use axiolid_curve::{Curve2, Curve3, CurvePath, PathCurve, PathPiece};
+use axiolid_curve::{Curve2, Curve3, CurvePath, PathCurve, PathOffset, PathPiece};
 use axiolid_curve_evaluate_contract::{
     CurveEvaluator, CurveMeasure, CurveMeasure as KernelMeasure, DistanceConvention, SeamSide,
     CURVE_PATH_UNSUPPORTED, SEAM_SIDE_UNSUPPORTED,
@@ -145,8 +146,9 @@ pub(super) fn derive_on_path(
 ///
 /// # Errors
 ///
-/// A basis that is not a curve relation this module reads, an offset curve
-/// (refused by the station lowering too), a relation whose pieces' lengths
+/// A basis that is not a curve relation this module reads, a relation the
+/// station lowering refuses (an offset of an offset, say), a relation whose
+/// pieces' lengths
 /// its data does not state, and a placement `evaluator` refuses to frame,
 /// by name; [`GeometryError::CurvePathUnsupported`] when a segment is placed
 /// along a curve relation and `evaluator` reads single curves only.
@@ -226,8 +228,8 @@ const VERTICAL: &str =
 /// # Errors
 ///
 /// A basis that does not lower, or whose relation the station lowering
-/// refuses (an offset curve, a mix of plan-measured and arc-length pieces,
-/// a piece whose length its data does not state), by name; a placement
+/// refuses (an offset of an offset, a mix of plan-measured and arc-length
+/// pieces, a piece whose length its data does not state), by name; a placement
 /// the evaluator refuses to frame, and an evaluator without curve paths,
 /// as [`resolve_placement`].
 pub(super) fn path_basis(
@@ -278,18 +280,30 @@ impl Reader<'_, '_> {
     fn path(&self, pieces: &[Piece<'_>], depth: usize) -> GeometryResult<CurvePath> {
         pieces
             .iter()
-            .map(|piece| {
-                let mut out = PathPiece::new(path_curve(piece.curve), piece.start, piece.end);
-                if piece.reversed {
-                    out = out.reversed();
-                }
-                for station in &piece.placements {
-                    let (rigid, exact) = self.placement(station, depth + 1)?;
-                    out = out.placed(rigid, exact);
-                }
-                Ok(out)
-            })
+            .map(|piece| self.piece(piece, depth))
             .collect()
+    }
+
+    /// One piece as a path piece, its placements resolved: an offset piece
+    /// (#414) as `PathCurve::Offset` of its base span and law, in its own
+    /// measure `[0, L]`, as `axiolid-mesh-compile` hands it out.
+    fn piece(&self, piece: &Piece<'_>, depth: usize) -> GeometryResult<PathPiece> {
+        let curve = match &piece.offset {
+            Some(offset) => PathCurve::Offset(Box::new(PathOffset::new(
+                self.piece(&offset.base, depth)?,
+                offset.law,
+            ))),
+            None => path_curve(piece.curve),
+        };
+        let mut out = PathPiece::new(curve, piece.start, piece.end);
+        if piece.reversed {
+            out = out.reversed();
+        }
+        for station in &piece.placements {
+            let (rigid, exact) = self.placement(station, depth + 1)?;
+            out = out.placed(rigid, exact);
+        }
+        Ok(out)
     }
 
     /// The rigid motion of a node placed at `station`, and whether it is
