@@ -234,7 +234,7 @@ class Cookbook(unittest.TestCase):
         for product in model.product_geometry():  # or encoding="cbor": bytes
             if product.refusal is not None or product.payload is None:
                 continue  # refused, or no Body
-            envelope = json.loads(product.payload)  # Axiolid's wire format 1.0
+            envelope = json.loads(product.payload)  # Axiolid's wire format
             # Each node is tagged by its kind; a reference is an earlier node's index.
             kinds[product.id] = [next(iter(node)) for node in envelope["graph"]["nodes"]]
         # {36: ['Profile', 'SolidOperation', 'Instance'], 46: [...]}

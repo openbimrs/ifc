@@ -8,6 +8,19 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#423, wire format 1.1)
+
+- The geometry graph payload (#367) is Axiolid's wire format 1.1
+  (`axiolid-model` 0.3.9), a minor version of the format (ADR 0021,
+  amended): a station on an offset whose length is a quadrature now lowers
+  with a seam-snapping window. An envelope carries the lowest wire version
+  its content needs: 1.0, or 1.1 when a station carries a seam-snapping
+  window; `axiolid-model` 0.3.9 labels every payload 1.1
+  (axiolid/kernel#297), and a reader on `axiolid-model` 0.3.8 or older
+  refuses 1.1. No `v0_1` symbol changed; the ABI version is unchanged.
+
+Semver: minor, as ADR 0021 states for a minor version of the wire format.
+
 ## [0.1.6] - 2026-10-10
 
 ### Added (#367, geometry Level 2, ADR 0021)

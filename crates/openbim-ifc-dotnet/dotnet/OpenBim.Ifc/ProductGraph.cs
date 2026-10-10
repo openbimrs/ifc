@@ -12,17 +12,22 @@ public enum GeometryEncoding
 
 /// <summary>One product's Body as Axiolid's neutral geometry graph (#367), from <see cref="IfcModel.ProductGeometry"/>.</summary>
 /// <remarks>
-/// The payload is Axiolid's versioned wire format 1.0:
-/// <c>{"format":"axiolid-geometry-graph","version":"1.0","graph":{"nodes":[...],"roots":[...]}}</c>,
-/// exact, in world coordinates, metres. The bytes are a copy the caller owns.
+/// The payload is Axiolid's versioned wire format:
+/// <c>{"format":"axiolid-geometry-graph","version":"1.1","graph":{"nodes":[...],"roots":[...]}}</c>,
+/// exact, in world coordinates, metres. Its <c>version</c> is the lowest the content needs:
+/// <c>1.0</c>, or <c>1.1</c> when a station carries a seam-snapping window (#423).
+/// The bytes are a copy the caller owns.
 /// </remarks>
 public sealed class ProductGraph
 {
     /// <summary>The envelope's <c>format</c>.</summary>
     public const string Format = "axiolid-geometry-graph";
 
-    /// <summary>The wire format version this build writes, the envelope's <c>version</c>.</summary>
-    public const string FormatVersion = "1.0";
+    /// <summary>
+    /// The newest wire format version this build writes. An envelope's <c>version</c> is this or an
+    /// older minor of the same major: the lowest the payload's content needs.
+    /// </summary>
+    public const string FormatVersion = "1.1";
 
     internal ProductGraph(ProductGeometry geometry, byte[] payload)
     {

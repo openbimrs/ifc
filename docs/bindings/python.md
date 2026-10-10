@@ -529,7 +529,7 @@ for product in model.product_geometry():
         continue
     if product.payload is None:
         continue  # no Body: an axis-only product
-    # {"format": "axiolid-geometry-graph", "version": "1.0", "graph":
+    # {"format": "axiolid-geometry-graph", "version": "1.1", "graph":
     # {"nodes": [...], "roots": [...]}}, exact, in world metres.
     envelope = json.loads(product.payload)
     print((product.type_name, envelope["version"], len(envelope["graph"]["nodes"])))
@@ -537,12 +537,16 @@ for product in model.product_geometry():
 
 <!-- /SNIPPET -->
 
-`ProductGeometry.payload` is Axiolid's versioned wire format 1.0 (Axiolid
-ADR 0085), `{"format": "axiolid-geometry-graph", "version": "1.0",
+`ProductGeometry.payload` is Axiolid's versioned wire format (Axiolid
+ADR 0085), `{"format": "axiolid-geometry-graph", "version": "1.1",
 "graph": {"nodes": [...], "roots": [...]}}`: a `str` for `encoding="json"`,
 `bytes` (CBOR, RFC 8949) for `encoding="cbor"`; any other encoding raises
-`ValueError`. `GEOMETRY_FORMAT` and `GEOMETRY_FORMAT_VERSION` name what
-the wheel writes. Nodes come in insertion order; each is tagged by its
+`ValueError`. Its `version` is the lowest the content needs: `1.0`, or `1.1` when a
+station carries a seam-snapping window
+([#423](https://github.com/openbimrs/ifc/issues/423)); `axiolid-model`
+0.3.9 labels every payload `1.1` (axiolid/kernel#297), and a reader on
+`axiolid-model` 0.3.8 or older refuses `1.1`. `GEOMETRY_FORMAT` and `GEOMETRY_FORMAT_VERSION`
+name the format and the newest version the wheel writes, `"1.1"`. Nodes come in insertion order; each is tagged by its
 kind, and a reference to another node is its index. The graph is in world
 coordinates, metres, with the product's `transform` already applied. A
 product with no Body has no payload and no refusal; a refused one carries
@@ -651,7 +655,7 @@ class, record and function of the package with its docstring and types.
 | `model.classifications(id: int) -> List[Classification]` | The classifications of object `id`: its own, then its type's. |
 | `model.material(id: int) -> Optional[MaterialAssignment]` | The material association of object `id`, its own or its type's, or `None`. |
 | `model.product_placements(ids: Optional[Iterable[int]] = None) -> List[ProductPlacement]` | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or every product with a shape. A product that cannot be placed carries a typed `refusal`; the call raises only `unsupported-schema` or `feature-disabled`. |
-| `model.product_geometry(ids: Optional[Iterable[int]] = None, encoding: str = 'json') -> List[ProductGeometry]` | Each product's Body as Axiolid's neutral geometry graph, exact, for `ids` or every product with a shape, in Axiolid's versioned wire format 1.0: `{"format": "axiolid-geometry-graph", "version": "1.0", "graph": {"nodes": [...], "roots": [...]}}`, in world coordinates, metres. `encoding` `"json"` gives the payload as a `str`, `"cbor"` as `bytes`; any other raises `ValueError`. A product that cannot be lowered carries a typed `refusal`; the call raises only `unsupported-schema` or `feature-disabled`. |
+| `model.product_geometry(ids: Optional[Iterable[int]] = None, encoding: str = 'json') -> List[ProductGeometry]` | Each product's Body as Axiolid's neutral geometry graph, exact, for `ids` or every product with a shape, in Axiolid's versioned wire format: `{"format": "axiolid-geometry-graph", "version": "1.1", "graph": {"nodes": [...], "roots": [...]}}` (the lowest version the content needs, `"1.0"` or `"1.1"`), in world coordinates, metres. `encoding` `"json"` gives the payload as a `str`, `"cbor"` as `bytes`; any other raises `ValueError`. A product that cannot be lowered carries a typed `refusal`; the call raises only `unsupported-schema` or `feature-disabled`. |
 | `model.product_meshes(ids: Optional[Iterable[int]] = None) -> List[ProductMesh]` | Each product's Body as triangles from the reference backend, for `ids` or every product with a shape; a product that cannot be meshed carries a typed `refusal`. Needs a wheel built with the `mesh` feature; the published wheel raises `feature-disabled`. |
 | `model.systems() -> Systems` | Every system with its members and served structures, and the memberships the reader could not honour. |
 | `model.cost() -> Cost` | Every cost schedule and cost item; values as authored, typed. |

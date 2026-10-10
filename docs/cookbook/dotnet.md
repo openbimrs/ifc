@@ -252,7 +252,7 @@ site kilometres from the origin keeps its millimetres.
 
 The exact representation instead of triangles
 ([#367](https://github.com/openbimrs/ifc/issues/367)): each Body as
-Axiolid's neutral geometry graph in its wire format 1.0, for your own
+Axiolid's neutral geometry graph in its wire format, for your own
 kernel. It needs a native library built with the C ABI's `graph`
 feature:
 
@@ -264,7 +264,7 @@ feature:
 foreach (var product in model.ProductGeometry()) // or GeometryEncoding.Cbor
 {
     if (product.Geometry.Refusal is { } || product.Payload.Length == 0) continue; // refused, or no Body
-    // Axiolid's wire format 1.0, exact, in world metres: UTF-8 JSON for
+    // Axiolid's wire format, exact, in world metres: UTF-8 JSON for
     // your JSON reader (System.Text.Json, Newtonsoft) or your kernel.
     byte[] payload = product.Payload;
     Console.WriteLine($"{product.Geometry.TypeName}: {payload.Length} bytes, {product.Json!.Substring(0, 52)}");
@@ -274,7 +274,7 @@ foreach (var product in model.ProductGeometry()) // or GeometryEncoding.Cbor
 <!-- /SNIPPET -->
 
 `ProductGraph.Payload` is the envelope `{"format":"axiolid-geometry-graph",
-"version":"1.0","graph":{...}}`, exact, in world coordinates, metres;
+"version":"1.1","graph":{...}}`, exact, in world coordinates, metres;
 `GeometryEncoding.Cbor` gives it as CBOR. The
 [binding page](/bindings/dotnet#geometry) describes it.
 

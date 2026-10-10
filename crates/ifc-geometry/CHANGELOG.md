@@ -12,6 +12,53 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#423, stations on offsets whose length is a quadrature)
+
+- A station (`IfcPointByDistanceExpression`, `IfcAxis2PlacementLinear`,
+  and an `IfcCurveSegment` placed at one) on a basis whose seams lie at
+  arc-length integrals now lowers instead of being refused: an offset
+  beside a gradient curve (a kerb beside an alignment), a spiral, a
+  B-spline or an ellipse, a variable offset of a circle, a relation with
+  an ellipse or a B-spline piece, and a B-spline with a corner knot. It is
+  an `OrientedCurveStation` at its own distance, reading
+  `SeamSide::Incoming`, with the model's precision (capped at 1 mm) as its
+  seam-snapping window (`axiolid-model` 0.3.9, axiolid/kernel#294): the
+  kernel reads it on a seam within the window from the previous segment
+  (IFC4.3 ADD2 8.9.3.48.3), at the seam's certified distance. A station on
+  a basis whose seams are stored data keeps this crate's own exact
+  snapping, so its graph is unchanged (no window, 1.0 content): a run's
+  stations carry no window and need that snapping anyway.
+- A run of sections or offsets (`IfcSectionedSolidHorizontal`,
+  `IfcSectionedSurface`, `IfcOffsetCurveByDistances`) along a basis whose
+  seams are quadratures is refused by name (it was refused before by the
+  basis's reason).
+- `axiolid-model` floor 0.3.9, `axiolid-curve-evaluate-contract` 0.3.5,
+  `axiolid-mesh-compile` 0.3.20 (feature `compile-reference-backend`); all
+  additive. With feature `wire`, `wire::FORMAT_VERSION` is 1.1. An
+  envelope carries the lowest wire version its content needs: 1.0, or 1.1
+  when a station carries a seam-snapping window; `axiolid-model` 0.3.9
+  labels every payload 1.1 (axiolid/kernel#297), and a reader on
+  `axiolid-model` 0.3.8 or older refuses 1.1.
+
+### Added
+
+- `ProvenanceMap::seam_windows`: the stations lowered with a window.
+- With `compile`: `GeometryError::StationSeamWindowRefused { product,
+  stations, refusal }` and `compile::SeamWindowRefusal` (`Ambiguous`,
+  `Straddled`, `UncertifiedLength`): the kernel's refusal of a window (two
+  seams in it, a seam whose certified position straddles its edge, a seam
+  it cannot certify) names the stations, where it was `CompilationRefused`
+  naming the product.
+- With `compile`: `GeometryError::PathPieceLengthUnstated { placement,
+  basis }`: a derived `IfcLinearPlacement` on such a basis is refused by
+  name, since the evaluator's `CurvePath` states each offset piece's span
+  in its own length, which only an execution provider computes (#427,
+  axiolid/kernel#298); it was `Unsupported` with the station lowering's
+  reason.
+
+Semver: minor while 0.x: stations that were refused now lower, a refusal
+changes variant, and the dependency floors rise.
+
 ## [0.21.0] - 2026-10-10
 
 ### Added (#367, the neutral graph as a value)

@@ -204,6 +204,22 @@ four host APIs. The follow-up is
     Rust types as the format", are superseded by this amendment: the
     format is now Axiolid's published one, not its Rust types.
 
+- *Amended 2026-10-10 (#423): wire format 1.1 reaches the bindings as a
+  minor release.* `axiolid-model` 0.3.9 (axiolid/kernel#294) adds format
+  1.1: an `OrientedCurveStation` may carry a seam-snapping window, which
+  `ifc-geometry` sets on a station along an offset whose length is a
+  quadrature (a kerb beside an alignment). Under the stability rule above
+  that is a minor version: `GEOMETRY_FORMAT_VERSION` (and Python's
+  constant, .NET's `ProductGraph.FormatVersion`) is now `"1.1"`, the
+  newest version a build writes, and the npm package, the wheel, the .NET
+  package and the C ABI take a minor release. An envelope's `version` is
+  the lowest its content needs: `1.0`, or `1.1` when a station in the
+  graph carries a window (Axiolid ADR 0085). `axiolid-model` 0.3.9 itself
+  labels every payload `1.1`, a defect Axiolid fixes in a patch
+  (axiolid/kernel#297), so hosts and the binding tests read the version
+  and accept either. A reader on `axiolid-model` 0.3.8 or older refuses a
+  `1.1` payload, as the format's versioning promises.
+
 ## Relation to existing code
 
 - `crates/openbim-ifc/src/product_geometry.rs` and its `mesh` submodule; the

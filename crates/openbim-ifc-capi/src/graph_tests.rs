@@ -111,7 +111,9 @@ mod enabled {
         let wall = std::str::from_utf8(&payloads[0]).expect("UTF-8 JSON");
         let envelope: serde_json::Value = serde_json::from_str(wall).unwrap();
         assert_eq!(envelope["format"], "axiolid-geometry-graph");
-        assert_eq!(envelope["version"], "1.0");
+        // The lowest version the content needs (axiolid-model 0.3.9 labels
+        // every payload 1.1, axiolid/kernel#297).
+        assert!(["1.0", "1.1"].contains(&envelope["version"].as_str().unwrap()));
         let back = GeometryGraph::from_json(wall).expect("Axiolid reads it back");
         assert_eq!(back.to_json().unwrap(), wall, "re-encodes identically");
 

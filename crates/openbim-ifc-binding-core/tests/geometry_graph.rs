@@ -20,7 +20,7 @@ fn fixture() -> IfcModel {
 #[cfg(feature = "graph")]
 mod graph {
     use super::*;
-    use ifc::geometry::wire::{FORMAT_NAME, FORMAT_VERSION};
+    use ifc::geometry::wire::{FormatVersion, FORMAT_NAME, FORMAT_VERSION};
     use ifc::geometry::GeometryGraph;
     use ifc::{Codec, StepCodec};
     use openbim_ifc_binding_core::{GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION};
@@ -61,10 +61,14 @@ mod graph {
         let text = wall.json().expect("JSON text");
         let envelope: serde_json::Value = serde_json::from_str(text).unwrap();
         assert_eq!(envelope["format"], GEOMETRY_FORMAT);
-        assert_eq!(envelope["version"], GEOMETRY_FORMAT_VERSION);
+        // The lowest version the content needs; `axiolid-model` 0.3.9 labels
+        // every payload 1.1 (axiolid/kernel#297), so either is accepted.
+        let version = envelope["version"].as_str().expect("a version");
+        assert!(["1.0", "1.1"].contains(&version), "{version}");
+        assert!(FORMAT_VERSION.reads(FormatVersion::parse(version).unwrap()));
         assert_eq!(
             (GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION),
-            ("axiolid-geometry-graph", "1.0")
+            ("axiolid-geometry-graph", "1.1")
         );
         assert_eq!(GEOMETRY_FORMAT, FORMAT_NAME);
         assert_eq!(GEOMETRY_FORMAT_VERSION, FORMAT_VERSION.to_string());

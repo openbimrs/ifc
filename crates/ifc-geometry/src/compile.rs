@@ -48,6 +48,9 @@
 //! [backend-compare]: https://github.com/openbimrs/ifc/tree/main/crates/ifc-geometry/examples/backend_compare
 
 mod bounds;
+mod window;
+
+pub use window::SeamWindowRefusal;
 
 /// The tolerance every entry point takes and the mesh it returns,
 /// re-exported so a caller that names no `axiolid-*` crate -- the
@@ -162,7 +165,7 @@ pub fn compile_product_mesh_with<B: MeshCompiler>(
     backend
         .compile_mesh(&lowered.graph, lowered.root, &options)
         .map(Some)
-        .map_err(|error| refused(product, error))
+        .map_err(|error| refused(product, error, &lowered.provenance))
 }
 
 /// A compiled mesh and whether it bounds a solid.
@@ -258,7 +261,7 @@ pub fn compile_product_mesh_reported_with<B: MeshCompiler>(
                 mesh: outcome.mesh,
             })
         })
-        .map_err(|error| refused(product, error))
+        .map_err(|error| refused(product, error, &lowered.provenance))
 }
 
 /// A product's NET mesh and the openings removed to produce it.
@@ -332,12 +335,7 @@ pub fn compile_product_mesh_net_with<B: MeshCompiler>(
             openings,
         })),
         Err(error) => Err(attribute_net_refusal(
-            backend,
-            &lowered.graph,
-            &net,
-            &options,
-            product,
-            error,
+            backend, &lowered, &net, &options, product, error,
         )),
     }
 }
@@ -350,19 +348,20 @@ pub fn compile_product_mesh_net_with<B: MeshCompiler>(
 /// unattributed, rather than guessed.
 fn attribute_net_refusal<B: MeshCompiler>(
     backend: &B,
-    graph: &axiolid_model::GeometryGraph,
+    lowered: &crate::lower::LoweredGeometry,
     net: &NetLowering,
     options: &ExecutionOptions,
     product: EntityId,
     original: axiolid_contracts::GeomError,
 ) -> GeometryError {
+    let (graph, provenance) = (&lowered.graph, &lowered.provenance);
     if let Err(error) = backend.compile_mesh(graph, net.gross, options) {
-        return refused(product, error);
+        return refused(product, error, provenance);
     }
     let blame = |opening: EntityId, error| GeometryError::OpeningNotSubtracted {
         host: product,
         opening,
-        cause: Box::new(refused(opening, error)),
+        cause: Box::new(refused(opening, error, provenance)),
     };
     // Step k's graph holds the host, bodies 1..=k and subtractions 1..=k, so
     // the first failing step is the first opening whose body OR whose cut the
@@ -372,7 +371,7 @@ fn attribute_net_refusal<B: MeshCompiler>(
             return blame(step.opening, error);
         }
     }
-    refused(product, original)
+    refused(product, original, provenance)
 }
 
 /// How a product's bounds were obtained.
@@ -457,7 +456,7 @@ pub fn product_bounds_with<B: MeshCompiler>(
             let options = ExecutionOptions::new(tolerance);
             let mesh = backend
                 .compile_mesh(&lowered.graph, lowered.root, &options)
-                .map_err(|error| refused(product, error))?;
+                .map_err(|error| refused(product, error, &lowered.provenance))?;
             (mesh.bounds(), BoundsSource::Tessellated)
         }
     };
@@ -473,7 +472,24 @@ pub fn product_bounds_with<B: MeshCompiler>(
     Ok(Some(ProductBounds { aabb, source }))
 }
 
-fn refused(entity: EntityId, error: axiolid_contracts::GeomError) -> GeometryError {
+/// The backend's refusal of `entity`'s graph, in IFC terms: a refusal of a
+/// station's seam-snapping window (#423) names the stations lowered with
+/// one (`provenance`), anything else is [`GeometryError::CompilationRefused`].
+fn refused(
+    entity: EntityId,
+    error: axiolid_contracts::GeomError,
+    provenance: &crate::lower::ProvenanceMap,
+) -> GeometryError {
+    if let Some(refusal) = SeamWindowRefusal::of(&error) {
+        let stations: Vec<EntityId> = provenance.seam_windows().collect();
+        if !stations.is_empty() {
+            return GeometryError::StationSeamWindowRefused {
+                product: entity,
+                stations,
+                refusal,
+            };
+        }
+    }
     GeometryError::CompilationRefused {
         entity,
         reason: format!("{error:?}"),

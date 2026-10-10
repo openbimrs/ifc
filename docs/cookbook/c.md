@@ -443,7 +443,7 @@ site kilometres from the origin keeps its millimetres.
 
 The exact representation instead of triangles
 ([#367](https://github.com/openbimrs/ifc/issues/367)): each Body as
-Axiolid's neutral geometry graph in its wire format 1.0, for your own
+Axiolid's neutral geometry graph in its wire format, for your own
 kernel. It is the cargo feature `graph` (`--features graph`, or
 `-DOPENBIM_IFC_CARGO_FEATURES=graph`), which the release archives leave
 out:
@@ -453,7 +453,7 @@ out:
 ```c
 /* A library built with the `graph` feature lowers and encodes every Body
  * once into a set; the release archives refuse with FEATURE_DISABLED.
- * Each payload is Axiolid's wire format 1.0, JSON here (or CBOR). */
+ * Each payload is Axiolid's wire format, JSON here (or CBOR). */
 OpenbimIfcGraphs graphs = 0;
 OpenbimIfcStatus status =
     openbim_ifc_v0_1_model_product_geometry(model, NULL, 0, OPENBIM_IFC_GEOMETRY_JSON, &graphs);
@@ -479,7 +479,7 @@ if (status == OPENBIM_IFC_STATUS_OK) {
 
 `openbim_ifc_v0_1_graphs_records` gives each graph's record (id, global
 id, type name, transform, encoding, payload size, refusal). The payload is
-the envelope `{"format":"axiolid-geometry-graph","version":"1.0",
+the envelope `{"format":"axiolid-geometry-graph","version":"1.1",
 "graph":{...}}`, exact, in world coordinates, metres; the
 [binding page](/bindings/c#geometry) describes it.
 

@@ -268,7 +268,7 @@ test("read exact geometry graphs through the mesh entry", { skip: !existsSync(me
   const kinds = new Map();
   for (const product of model.productGeometry(undefined, "object")) {
     if (product.refusal || !product.payload) continue; // refused, or no Body
-    const { graph } = product.payload; // with format "axiolid-geometry-graph", version "1.0"
+    const { graph } = product.payload; // with format "axiolid-geometry-graph", version "1.0" or "1.1"
     // Each node is tagged by its kind; a reference is an earlier node's index.
     kinds.set(product.id, graph.nodes.map((node) => Object.keys(node)[0]));
   }

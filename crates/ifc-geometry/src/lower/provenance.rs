@@ -17,6 +17,8 @@ pub struct ProvenanceMap {
     sources: BTreeMap<NodeId, EntityId>,
     /// Faces left out under `DegenerateFacePolicy::DropAndReport` (#46).
     dropped_faces: BTreeSet<EntityId>,
+    /// Stations stored with the kernel's seam-snapping window (#423).
+    seam_windows: BTreeSet<EntityId>,
 }
 
 impl ProvenanceMap {
@@ -49,6 +51,21 @@ impl ProvenanceMap {
     /// using it as evidence decides whether that is acceptable.
     pub fn dropped_faces(&self) -> impl Iterator<Item = EntityId> + '_ {
         self.dropped_faces.iter().copied()
+    }
+
+    /// The stations lowered with the kernel's seam-snapping window (#423),
+    /// in ascending id: each `IfcPointByDistanceExpression` or
+    /// `IfcAxis2PlacementLinear` on a basis whose seams lie at arc-length
+    /// integrals, which the kernel snaps onto a seam within the model's
+    /// precision when it resolves the station. A kernel refusal of such a
+    /// window names these stations
+    /// (`GeometryError::StationSeamWindowRefused`, with `compile`).
+    pub fn seam_windows(&self) -> impl Iterator<Item = EntityId> + '_ {
+        self.seam_windows.iter().copied()
+    }
+
+    pub(crate) fn record_seam_window(&mut self, station: EntityId) {
+        self.seam_windows.insert(station);
     }
 
     pub(crate) fn record_dropped_face(&mut self, face: EntityId) {

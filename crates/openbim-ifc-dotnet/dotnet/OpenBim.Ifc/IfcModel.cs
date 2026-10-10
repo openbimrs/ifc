@@ -241,7 +241,7 @@ public sealed unsafe class IfcModel : IDisposable
         }).One());
     }
 
-    /// <summary>Each product's Body as Axiolid's neutral geometry graph (#367), for <paramref name="ids"/> or, when null, every product with a shape, in id order, encoded as <paramref name="encoding"/> in Axiolid's wire format 1.0.</summary>
+    /// <summary>Each product's Body as Axiolid's neutral geometry graph (#367), for <paramref name="ids"/> or, when null, every product with a shape, in id order, encoded as <paramref name="encoding"/> in Axiolid's wire format (1.0, or 1.1 when a station carries a seam-snapping window).</summary>
     /// <remarks>Exact (extrusions, sweeps, B-splines, unevaluated booleans), in world coordinates, metres, for a host's own kernel. A product that cannot be lowered has a typed <see cref="OpenBim.Ifc.ProductGeometry.Refusal"/>. Needs a native library built with the <c>graph</c> feature; the packaged one throws <see cref="IfcException"/> with code <c>feature-disabled</c>.</remarks>
     public IReadOnlyList<ProductGraph> ProductGeometry(IReadOnlyList<ulong>? ids = null, GeometryEncoding encoding = GeometryEncoding.Json)
     {

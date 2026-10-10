@@ -17,7 +17,7 @@ use std::f64::consts::PI;
 use axiolid_model::{CurveRelation, GeometryNode, OrientedCurveStation, SeamSide};
 use ifc_model::Model;
 
-use super::common::{lower, refused, root, step};
+use super::common::{assert_windowed, lower, refused, root, step};
 use super::seams::item;
 
 /// The offset lane's length: 10 m beside the line, a quarter turn of
@@ -122,9 +122,10 @@ fn an_offset_arc_has_its_exact_length() {
 }
 
 /// What an offset basis cannot carry is refused by name, before any
-/// station is resolved: an offset of an offset, a trim of an offset, an
-/// offset through a circle's centre, and an offset whose length is a
-/// quadrature (beside an ellipse).
+/// station is resolved: an offset of an offset, a trim of an offset and an
+/// offset through a circle's centre. A station on an offset whose length is
+/// a quadrature (beside an ellipse), refused before #423, carries the
+/// kernel's window; a run along it stays refused.
 #[test]
 fn offset_bases_the_kernel_refuses_are_refused_by_name() {
     let model = step(
@@ -144,13 +145,17 @@ fn offset_bases_the_kernel_refuses_are_refused_by_name() {
 #40=IFCELLIPSE(#30,4.,2.);
 #41=IFCTRIMMEDCURVE(#40,(IFCPARAMETERVALUE(0.)),(IFCPARAMETERVALUE(1.)),.T.,.PARAMETER.);
 #42=IFCOFFSETCURVE2D(#41,0.5,.F.);
-#43=IFCPOINTBYDISTANCEEXPRESSION(IFCLENGTHMEASURE(1.),$,$,$,#42);",
+#43=IFCPOINTBYDISTANCEEXPRESSION(IFCLENGTHMEASURE(1.),$,$,$,#42);
+#44=IFCPOINTBYDISTANCEEXPRESSION(IFCLENGTHMEASURE(1.),0.5,$,$,#42);
+#45=IFCOFFSETCURVEBYDISTANCES(#42,(#44),$);",
         false,
     );
     refused(lower(&model, 15), true, "offset of an offset curve");
     refused(lower(&model, 17), true, "trim of an offset curve");
     refused(lower(&model, 34), true, "collapses");
-    refused(lower(&model, 43), true, "not stated by its data");
+    assert_windowed(&lower(&model, 43).expect("lowers"), 1.0, 1e-5);
+    // A run's stations carry no window: a run along it is refused.
+    refused(lower(&model, 45), true, "carry no seam-snapping window");
 }
 
 #[cfg(feature = "compile-reference-backend")]

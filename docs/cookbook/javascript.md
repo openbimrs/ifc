@@ -308,7 +308,7 @@ kilometres from the origin keeps its millimetres. The WebGL viewer in
 
 The exact representation instead of triangles
 ([#367](https://github.com/openbimrs/ifc/issues/367)): each Body as
-Axiolid's neutral geometry graph in its wire format 1.0, for your own
+Axiolid's neutral geometry graph in its wire format, for your own
 kernel. The mesh entry carries it:
 
 <!-- SNIPPET:cookbook-js-graphs -->
@@ -319,7 +319,7 @@ kernel. The mesh entry carries it:
 const kinds = new Map();
 for (const product of model.productGeometry(undefined, "object")) {
   if (product.refusal || !product.payload) continue; // refused, or no Body
-  const { graph } = product.payload; // with format "axiolid-geometry-graph", version "1.0"
+  const { graph } = product.payload; // with format "axiolid-geometry-graph", version "1.0" or "1.1"
   // Each node is tagged by its kind; a reference is an earlier node's index.
   kinds.set(product.id, graph.nodes.map((node) => Object.keys(node)[0]));
 }
