@@ -11,8 +11,8 @@ Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP file
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.1.6 (2026-10-10) |
-| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.6) |
+| Latest release | 0.1.7 (2026-10-10) |
+| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.7) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_capi/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-capi/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-capi) |
 
@@ -67,24 +67,21 @@ than altering a `v0_1_` one.
 
 ## Changes
 
-Latest release, 0.1.6 (2026-10-10):
+Latest release, 0.1.7 (2026-10-10):
 
-### Added (#367, geometry Level 2, ADR 0021)
+### Changed (#423, wire format 1.1)
 
-- Cargo feature `graph` (opt-in; the release archives return
-  `FeatureDisabled`): `openbim_ifc_v0_1_model_product_geometry(model, ids,
-  id_count, encoding, &graphs)` lowers and encodes each product's Body
-  once into an `OpenbimIfcGraphs` handle, read with
-  `openbim_ifc_v0_1_graphs_records` (a tape of `ProductGeometry` records:
-  id, global id, type name, transform, encoding, payload size, refusal) and
-  `openbim_ifc_v0_1_graphs_payload` (the wire payload into a caller byte
-  buffer), freed with `openbim_ifc_v0_1_graphs_destroy`; it outlives the
-  model. `encoding` is `OPENBIM_IFC_GEOMETRY_JSON` (0) or
-  `OPENBIM_IFC_GEOMETRY_CBOR` (1); another value is `InvalidArgument`.
-  The payload is Axiolid's wire format 1.0.
-- ABI version 0.1.9; no `v0_1` symbol changed. A major version of the wire
-  format would be new `v0_2_` exports, not a changed `v0_1_` one.
+- The geometry graph payload (#367) is Axiolid's wire format 1.1
+  (`axiolid-model` 0.3.9), a minor version of the format (ADR 0021,
+  amended): a station on an offset whose length is a quadrature now lowers
+  with a seam-snapping window. An envelope carries the lowest wire version
+  its content needs: 1.0, or 1.1 when a station carries a seam-snapping
+  window; `axiolid-model` 0.3.9 labels every payload 1.1
+  (axiolid/kernel#297), and a reader on `axiolid-model` 0.3.8 or older
+  refuses 1.1. No `v0_1` symbol changed; the ABI version is unchanged.
 
-Semver: additive, a patch release.
+Semver: a minor change in ADR 0021's terms, released as 0.1.7. The C
+package keeps its 0.1 line while the `v0_1` ABI is unchanged, because
+CMake's `find_package(openbim_ifc 0.1)` does not accept 0.2 (see 0.1.1).
 
 Full history: [`crates/openbim-ifc-capi/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-capi/CHANGELOG.md)

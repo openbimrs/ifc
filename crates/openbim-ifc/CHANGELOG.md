@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-10-10
+
 ### Changed
 
 - Requires `ifc-geometry` 0.22: stations on offsets whose length is a
@@ -624,7 +626,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.27.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.28.0...HEAD
+[0.28.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.28.0
 [0.27.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.27.0
 [0.26.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.26.0
 [0.25.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.25.0

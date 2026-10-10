@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-10-10
+
 ### Changed (#423, wire format 1.1)
 
 - The geometry graph payload (#367) is Axiolid's wire format 1.1
@@ -19,7 +21,9 @@ a release here does not imply a release of any other crate in the family.
   (axiolid/kernel#297), and a reader on `axiolid-model` 0.3.8 or older
   refuses 1.1. No `v0_1` symbol changed; the ABI version is unchanged.
 
-Semver: minor, as ADR 0021 states for a minor version of the wire format.
+Semver: a minor change in ADR 0021's terms, released as 0.1.7. The C
+package keeps its 0.1 line while the `v0_1` ABI is unchanged, because
+CMake's `find_package(openbim_ifc 0.1)` does not accept 0.2 (see 0.1.1).
 
 ## [0.1.6] - 2026-10-10
 

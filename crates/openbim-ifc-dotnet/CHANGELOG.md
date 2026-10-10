@@ -9,6 +9,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-10
+
 ### Changed (#423, wire format 1.1)
 
 - The geometry graph payload (#367) is Axiolid's wire format 1.1

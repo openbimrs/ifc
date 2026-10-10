@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.21.0 (2026-10-10) |
+| Latest release | 0.22.0 (2026-10-10) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -43,27 +43,53 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.21.0 (2026-10-10):
+Latest release, 0.22.0 (2026-10-10):
 
-### Added (#367, the neutral graph as a value)
+### Changed (#423, stations on offsets whose length is a quadrature)
 
-- Feature `wire` (off by default): `ifc_geometry::wire`, a re-export of
-  `axiolid_model::wire` (Axiolid's versioned wire format of a
-  `GeometryGraph`, Axiolid ADR 0085: `FORMAT_NAME`, `FORMAT_VERSION` 1.0,
-  `FormatVersion`, `WireError`), and with it `GeometryGraph::to_json`,
-  `from_json`, `to_cbor` and `from_cbor`, through `axiolid-model`'s
-  `serde` feature. It encodes the graph lowering produces and computes
-  nothing (ADR 0004).
+- A station (`IfcPointByDistanceExpression`, `IfcAxis2PlacementLinear`,
+  and an `IfcCurveSegment` placed at one) on a basis whose seams lie at
+  arc-length integrals now lowers instead of being refused: an offset
+  beside a gradient curve (a kerb beside an alignment), a spiral, a
+  B-spline or an ellipse, a variable offset of a circle, a relation with
+  an ellipse or a B-spline piece, and a B-spline with a corner knot. It is
+  an `OrientedCurveStation` at its own distance, reading
+  `SeamSide::Incoming`, with the model's precision (capped at 1 mm) as its
+  seam-snapping window (`axiolid-model` 0.3.9, axiolid/kernel#294): the
+  kernel reads it on a seam within the window from the previous segment
+  (IFC4.3 ADD2 8.9.3.48.3), at the seam's certified distance. A station on
+  a basis whose seams are stored data keeps this crate's own exact
+  snapping, so its graph is unchanged (no window, 1.0 content): a run's
+  stations carry no window and need that snapping anyway.
+- A run of sections or offsets (`IfcSectionedSolidHorizontal`,
+  `IfcSectionedSurface`, `IfcOffsetCurveByDistances`) along a basis whose
+  seams are quadratures is refused by name (it was refused before by the
+  basis's reason).
+- `axiolid-model` floor 0.3.9, `axiolid-curve-evaluate-contract` 0.3.5,
+  `axiolid-mesh-compile` 0.3.20 (feature `compile-reference-backend`); all
+  additive. With feature `wire`, `wire::FORMAT_VERSION` is 1.1. An
+  envelope carries the lowest wire version its content needs: 1.0, or 1.1
+  when a station carries a seam-snapping window; `axiolid-model` 0.3.9
+  labels every payload 1.1 (axiolid/kernel#297), and a reader on
+  `axiolid-model` 0.3.8 or older refuses 1.1.
 
-### Changed
+### Added
 
-- `axiolid-model` floor 0.3.8 (axiolid/kernel#267), which brings
-  `axiolid-core` 0.3.2, `axiolid-curve` 0.3.7, `axiolid-mesh` 0.3.3,
-  `axiolid-primitive` 0.3.3, `axiolid-profile` 0.3.2, `axiolid-surface`
-  0.3.3, `axiolid-topology` 0.3.2 and `axiolid-linear` 0.3.2; all
-  additive.
+- `ProvenanceMap::seam_windows`: the stations lowered with a window.
+- With `compile`: `GeometryError::StationSeamWindowRefused { product,
+  stations, refusal }` and `compile::SeamWindowRefusal` (`Ambiguous`,
+  `Straddled`, `UncertifiedLength`): the kernel's refusal of a window (two
+  seams in it, a seam whose certified position straddles its edge, a seam
+  it cannot certify) names the stations, where it was `CompilationRefused`
+  naming the product.
+- With `compile`: `GeometryError::PathPieceLengthUnstated { placement,
+  basis }`: a derived `IfcLinearPlacement` on such a basis is refused by
+  name, since the evaluator's `CurvePath` states each offset piece's span
+  in its own length, which only an execution provider computes (#427,
+  axiolid/kernel#298); it was `Unsupported` with the station lowering's
+  reason.
 
-Semver: additive (a new opt-in feature), a minor release while 0.x, since
-the dependency floors rise.
+Semver: minor while 0.x: stations that were refused now lower, a refusal
+changes variant, and the dependency floors rise.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
