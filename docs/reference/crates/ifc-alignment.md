@@ -11,7 +11,7 @@ IFC4x3 linear positioning: alignments, referents, linear placement, spirals.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.8.0 (2026-10-09) |
+| Latest release | 0.8.1 (2026-10-10) |
 | Registries | [crates.io `ifc-alignment`](https://crates.io/crates/ifc-alignment) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `alignment` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_alignment/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-alignment) |
@@ -33,44 +33,16 @@ consumers should never compile spiral curve laws.
 
 ## Changes
 
-Latest release, 0.8.0 (2026-10-09):
+Latest release, 0.8.1 (2026-10-10):
 
-Semver: a minor release (0.8.0). No public item changes, but
-`lower_segmented_reference_curve` and `segmented_reference_curve3` now
-return a curve for input they refused, and its pivot law can hold a
-held-rail piece (`CantForm::AboutRail`), which only `axiolid-curve` 0.3.5
-and `axiolid-evaluate` 0.3.9 or later read. Dependency floors rise to
-those releases.
-
-### Added
-
-- `lower_segmented_reference_curve` / `segmented_reference_curve3` lower a
-  `VIENNESEBEND` that rotates about a held rail (#364): when one rail has
-  the same height at both ends (at the model's declared precision, as
-  `CantLayout` compares it), the pivot law is Axiolid's held-rail piece,
-  `CantPiece::about_rail`, on that rail at its authored height, and the
-  rotation point `held -+ b sin(psi) / 2` follows the bend's angle law
-  (axiolid/kernel#279, Axiolid ADR 0081 amendment). The banked curve and
-  `CantLayout::frame_at_distance` now agree inside such a bend: cant, bank
-  angle and rotation point to rounding; the rail heads within the
-  `BankConvention::TangentRotation` drift `(D / 2)(1 - cos theta)`, the
-  banked section's rails standing square to the tangent while the cant
-  layout states them vertically (under 0.02 mm for 150 mm cant on a 2%
-  grade, nothing on the level).
+Semver: a patch release. No public item or behaviour changes; the
+dependency floors rise with the workspace (ifc-geometry #418, #414).
 
 ### Changed
 
-- The rotation stays `BankConvention::TangentRotation`: IFC4.3 ADD2 states
-  cant as the angle `psi = arcsin(D / b)` (`IfcAlignmentCantSegmentTypeEnum`,
-  8.7.2.1) and `IfcSegmentedReferenceCurve` (8.9.3.62) carries it by
-  interpolating the placement axes, a rotation of the section frame. A
-  held rail therefore drifts by `(D / 2)(1 - cos theta)` from its authored
-  height on a grade, `theta` the climb of the rotation point's path; this
-  is documented in `curve/reference.rs` and `cant/frame.rs`.
-- The `Unsupported` reason naming the missing angle-form pivot is gone. A
-  Viennese bend whose pivot moves with neither rail held is still refused
-  by both the lowering and `CantLayout`, with the same typed error.
-- Requires `axiolid-curve` 0.3.5 (the held-rail pivot), and for the tests
-  `axiolid-evaluate` 0.3.9, which evaluates it.
+- Requires `axiolid-curve` 0.3.6 (and `axiolid-evaluate` 0.3.10 for the
+  tests), the releases that add the neutral `CurvePath` (axiolid/kernel#290)
+  and measure stations along offsets (axiolid/kernel#289). Nothing here
+  builds either; every test passes unchanged against them.
 
 Full history: [`crates/ifc-alignment/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-alignment/CHANGELOG.md)

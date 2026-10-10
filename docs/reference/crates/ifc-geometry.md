@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.19.0 (2026-10-09) |
+| Latest release | 0.20.0 (2026-10-10) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -42,51 +42,103 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.19.0 (2026-10-09):
+Latest release, 0.20.0 (2026-10-10):
 
-Semver: a minor release. Behaviour changes on seams: a linear placement
-derived through a `CurveEvaluator` on a tangent discontinuity takes the
-incoming tangent, and an evaluator that cannot read that side is now
-refused there. `GeometryError` gains a variant (the enum is
-`#[non_exhaustive]`). The dependency floors rise with the workspace
-(#364, below); the seam sides are axiolid/kernel#286 in the same releases.
-
-### Changed
-
-- Requires `axiolid-curve` 0.3.5, `axiolid-curve-evaluate-contract` 0.3.3
-  and, behind `compile`, `axiolid-mesh-compile` 0.3.17 (and
-  `axiolid-evaluate` 0.3.9 for the tests): the releases that rotate a
-  banked curve about a held rail (axiolid/kernel#279), which
-  `ifc-alignment` now lowers a Viennese bend onto. Nothing here builds a
-  banked curve; every test passes unchanged against them.
-- A derived `IfcLinearPlacement` on a tangent discontinuity takes the
-  incoming tangent (#409), as IFC4.3 ADD2 8.9.3.48.3 asks ("the tangent of
-  the previous segment governs") and as the lowered station has since
-  #346. `derive_placement_transform` locates the seams as `lower::station`
-  does, from the basis curve's stored data, snaps a `DistanceAlong` within
-  the model's precision (capped at 1 mm) to the seam's distance, and asks
-  the evaluator for `CurveEvaluator::frame_at_on(.., SeamSide::Incoming)`
-  there (axiolid/kernel#286). A polyline parameter on a vertex is read at
-  the vertex's distance. Off a seam nothing changes. Before, the derived
-  frame on a grade break or a polyline corner was the outgoing one, so it
-  disagreed with the same station lowered as geometry, and
-  `CachedPositionPolicy::Verify` refused a cache an exporter computed with
-  the incoming tangent while accepting one computed with the outgoing
-  tangent; now the reverse holds.
+Semver: a minor release. Behaviour changes: a linear placement whose basis
+curve is a curve relation, refused by name until now, derives through a
+`CurveEvaluator`, and an evaluator without curve paths is refused there by
+a new `GeometryError` variant (the enum is `#[non_exhaustive]`); stations
+and derived placements along offset curves, refused until now, lower and
+derive; an `IfcOffsetCurve2D` lowers with a reference direction where it
+carried none, a change in the lowered graph. A public function is added.
+The dependency floors rise with the workspace.
 
 ### Added
 
-- `GeometryError::SeamSideUnsupported` (`compile` feature) names the
-  placement, its basis curve and the seam's distance when a caller's
-  evaluator does not implement seam sides and refuses `Incoming` with
-  `SEAM_SIDE_UNSUPPORTED`. The outgoing frame is never used in its place.
-  `is_unsupported()` is true for it.
+- A derived `IfcLinearPlacement` on a curve-relation basis (#418): a plain
+  `IfcCompositeCurve`, an `IfcTrimmedCurve`, or a composite of
+  `IfcCurveSegment`s placed by `IfcAxis2PlacementLinear`s. The basis is
+  read as Axiolid's neutral `CurvePath` (axiolid/kernel#290), built from
+  the stored relation the station lowering reads (#346), each segment's
+  station framed through the caller's evaluator; the frame comes from
+  `CurveEvaluator::path_frame_at` off a joint and
+  `path_frame_at_on(.., SeamSide::Incoming)` within precision of one, as
+  #409 reads a seam. It equals the lowered station's frame on and off
+  joints, and `CachedPositionPolicy::Verify` accepts a cache computed with
+  the incoming segment and refuses one computed with the outgoing segment.
+  An `IfcParameterValue` along such a basis and a composite whose pieces
+  do not meet are refused by name.
+- `constraint::placement::derive::basis_curve_path` (`compile` feature):
+  the `CurvePath` a derivation reads along a curve-relation basis. A test
+  pins it equal to the path `axiolid-mesh-compile`'s
+  `station::curve_path` builds from the lowered graph.
+- `GeometryError::CurvePathUnsupported` (`compile` feature) names the
+  placement and its basis curve when a caller's evaluator does not
+  implement curve paths and refuses them with `CURVE_PATH_UNSUPPORTED`. A
+  frame read on one piece is never used in its place. `is_unsupported()` is
+  true for it.
+- Stations on offset-curve bases (#414): an `IfcPointByDistanceExpression`,
+  an `IfcAxis2PlacementLinear`, and runs of sections and offsets whose
+  basis curve is an `IfcOffsetCurve2D`, an `IfcOffsetCurve3D` or an
+  `IfcOffsetCurveByDistances`, nested in composites and placements too,
+  lower onto Axiolid's offset station basis (axiolid/kernel#289, Axiolid
+  ADR 0082 amendment 2026-10-10). A distance runs along the offset's OWN
+  length, not its basis's. The offset's joints, one per seam of its basis
+  (every polyline vertex, every joint of a composite) and per station of an
+  offset by distances, are read from the stored relation as the compiler
+  flattens it (`lower::station::relation::offset`): beside a line or a
+  polyline edge a line, constant or linear between stations, of length
+  `sqrt((L + dg)^2 + dl^2 + dv^2)`; beside a circle, constantly in its
+  plane, a circle of radius `r - a`, `(r - a) / r` times the arc's length.
+  A station within the model's precision of a joint stands on it reading
+  `SeamSide::Incoming`, the previous segment (IFC4.3 ADD2 8.9.3.48.3). The
+  joints and lengths are pinned to the kernel's own within
+  `ARC_LENGTH_TOLERANCE`: `station::seams` where the kernel states them
+  exactly, the composite's seams along `station::curve_path` where it
+  measures a polyline offset by quadrature. A derived `IfcLinearPlacement`
+  on an offset basis reads it as a `CurvePath` of `PathCurve::Offset`
+  pieces (#418's path builder), equal to `station::curve_path`'s and to the
+  lowered station's frame on the kerb's corner.
+- `synthetic-lowering/station_offsets_ifc4x3.ifc`: an `IfcOffsetCurve2D` of
+  a line and a tangent quarter circle (a joint whose sides meet, an arc of
+  radius 9), of a quarter circle (radius 11, 5.5 pi m), an
+  `IfcOffsetCurveByDistances` of an L polyline vanishing at its corner, a
+  section run and an offset run along offsets, and an `IfcOffsetCurve2D`
+  across the L's corner; tests through the reference kernel on and 4 um
+  past each joint.
 
-### Documentation
+### Changed
 
-- The derived frame's documentation states the evaluator's axes as
-  kernel#242 documents them (x tangent, y up, z right); the derivation
-  reads only the tangent, and a test pins the IFC frame
-  `(tangent, left, up)` to `(x, -z, y)` on and off a seam.
+- Requires `axiolid-curve` 0.3.6, `axiolid-curve-evaluate-contract` 0.3.4
+  and, behind `compile`, `axiolid-mesh-compile` 0.3.19 (and
+  `axiolid-evaluate` 0.3.10 for the tests): the releases that add curve
+  paths (axiolid/kernel#290) and measure a station along an offset
+  (axiolid/kernel#289). The lock also moves `axiolid-nurbs` 0.3.6,
+  `axiolid-brep-boolean` 0.1.9 and `axiolid-overlay` 0.3.12. Every other
+  test passes unchanged against them.
+- A closed conic trimmed across its parameter seam inside a relation basis
+  is located from its start parameter taken modulo one turn, as Axiolid
+  locates it, so its span starts within the curve's measure.
+- The refusal of a basis curve the derivation does not read names the
+  composite and trimmed curves among those it does.
+- An `IfcOffsetCurve2D` lowers to `CurveRelation::Offset` with its frame's
+  `+Z` as `reference_direction`, where it carried `None` (#414). Every curve
+  lowers to a 3D curve, a 2D one in `z = 0` of its frame, and IFC's
+  positive `Distance` "in the sense of an anti-clockwise rotation through
+  90 degrees from the tangent vector T" (8.9.3.40) is `Z x T` there, the
+  3D offset's `V x T` (8.9.3.41) and Axiolid's left lateral: the same
+  curve. Axiolid refuses a planar offset law on a 3D curve as a station
+  basis, so `None` left nothing measurable along it. Nothing meshed an
+  offset relation outside stations, so no compiled result changes.
+- The refusals of offset bases now name what the kernel refuses: an
+  offset of an offset, a trim of an offset curve (it takes its basis's
+  parameterisation, not its own length), an offset through a circle's
+  centre, and an offset whose length is a quadrature (beside an ellipse, a
+  B-spline, a spiral or a gradient curve, or a variable offset of a
+  circle). An offset across a corner of its basis, whose sides do not meet
+  (IFC: the basis "shall have a well-defined tangent direction at every
+  point"), and a 3D offset whose tangent runs along its reference
+  direction lower, and the kernel refuses them by name, typed. The
+  dispatch ledger's `IfcPointByDistanceExpression` rows say so.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
