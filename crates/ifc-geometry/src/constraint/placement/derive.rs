@@ -83,6 +83,30 @@
 //! naming the placement, its basis curve and the seam, never the outgoing
 //! frame in its place.
 //!
+//! # Curve-relation bases (#418)
+//!
+//! A plain `IfcCompositeCurve`, an `IfcTrimmedCurve` (and the other
+//! composites and surface curves the curve lowering reads as relations), and
+//! a composite of `IfcCurveSegment`s placed by `IfcAxis2PlacementLinear`s
+//! lower to a curve relation, which the station lowering measures end to
+//! end through its pieces (#346). The derivation reads the same basis as
+//! Axiolid's neutral `CurvePath` (axiolid/kernel#290), built from the stored
+//! relation in the `path` submodule, through the evaluator's `path_*`
+//! queries: [`CurveEvaluator::path_frame_at`] off a seam, and
+//! [`CurveEvaluator::path_frame_at_on`] with [`SeamSide::Incoming`] on one.
+//! Every joint of the relation is a seam, as for the station, so a
+//! `DistanceAlong` within precision of a joint reads the segment that ends
+//! there, IFC's previous segment. The distance is the relation's: arc
+//! length, or plan distance where every piece is a gradient curve. A native
+//! parameter is refused by name: a relation's pieces have no parameter that
+//! runs through them, and the station lowering refuses one too.
+//!
+//! An evaluator that does not implement curve paths refuses them with
+//! `CURVE_PATH_UNSUPPORTED`; that is [`GeometryError::CurvePathUnsupported`]
+//! naming the placement and its basis curve, never a frame read on one
+//! piece in its place. An offset curve is refused by name, as the station
+//! lowering refuses it (#414).
+//!
 //! # Which distance
 //!
 //! `DistanceAlong` on an alignment centreline is plan distance (an
@@ -116,12 +140,15 @@ use crate::constraint::tolerance;
 use crate::error::{GeometryError, GeometryResult};
 use crate::lower::curve::lower_curve_node;
 use crate::lower::session::LoweringSession;
-use crate::lower::station::seams::{nearest, seams3};
+use crate::lower::station::seams::{nearest, seams3, Seam};
 use crate::resource::direction::resolve_unit;
 use crate::transform::Transform;
 use crate::units::UnitScale;
 
+mod path;
 mod polyline;
+
+pub use path::basis_curve_path;
 
 /// What lowering does with an `IfcLinearPlacement`'s cached
 /// `CartesianPosition` when the caller supplies a [`CurveEvaluator`] (#354).
@@ -374,6 +401,9 @@ fn explicit_axes(model: &Model, placement: EntityId) -> GeometryResult<([f64; 3]
 /// - `DistanceAlong` lies on a tangent discontinuity and the evaluator
 ///   cannot read its incoming side ([`GeometryError::SeamSideUnsupported`],
 ///   module documentation)
+/// - the basis curve is a curve relation and the evaluator reads single
+///   curves only ([`GeometryError::CurvePathUnsupported`]), or the
+///   authored value is an `IfcParameterValue` along one
 pub fn derive_placement_transform(
     model: &Model,
     units: &UnitScale,
@@ -382,13 +412,19 @@ pub fn derive_placement_transform(
     evaluator: &dyn CurveEvaluator,
 ) -> GeometryResult<Transform> {
     let parameter_requested = matches!(expression.distance_along, CurveMeasure::Parameter(_));
-    let (curve, convention) = basis_curve3(
+    let (curve, convention) = match basis_curve(
         model,
         units,
         placement,
         expression.basis_curve,
         parameter_requested,
-    )?;
+        evaluator,
+    )? {
+        Basis::Curve(curve, convention) => (curve, convention),
+        Basis::Path(basis) => {
+            return path::derive_on_path(model, units, placement, expression, &basis, evaluator)
+        }
+    };
 
     // `IfcCurveMeasureSelect` says which method of measurement the file
     // means. Carry that across rather than collapsing it to a number: a
@@ -447,8 +483,7 @@ pub fn derive_placement_transform(
     offset_frame(&frame, expression, units).ok_or(GeometryError::Unsupported {
         entity: placement,
         type_name: "IFCLINEARPLACEMENT".into(),
-        detail: "the basis curve is vertical there, so OffsetLateral has no horizontal \
-                 direction and the placement no roll",
+        detail: path::VERTICAL_BASIS,
     })
 }
 
@@ -481,7 +516,19 @@ fn seam_at(
         type_name: "IFCLINEARPLACEMENT".into(),
         detail: reason,
     })?;
-    if seams.is_empty() {
+    snap(model, units, placement, &seams, distance)
+}
+
+/// The distance of the seam of `seams` that `distance` lies on within the
+/// model's precision, if any.
+fn snap(
+    model: &Model,
+    units: &UnitScale,
+    placement: EntityId,
+    seams: &[Seam],
+    distance: f64,
+) -> GeometryResult<Option<f64>> {
+    if seams.is_empty() || !distance.is_finite() {
         return Ok(None);
     }
     let precision = SeamTolerance::for_model(
@@ -497,7 +544,7 @@ fn seam_at(
         detail: "the model's declared Precision is not a usable seam tolerance".into(),
     })?
     .length();
-    Ok(nearest(&seams, distance, precision).map(|seam| seam.distance))
+    Ok(nearest(seams, distance, precision).map(|seam| seam.distance))
 }
 
 /// The distance along a neutral polyline at its native `parameter` (one
@@ -528,23 +575,53 @@ const SEAM_PARAMETER_CONVENTION: &str =
      read at the seam's distance from the incoming side (IFC4.3 ADD2 8.9.3.48.3), and the \
      evaluator measures a different distance along this curve";
 
-/// The basis curve as a neutral `Curve3`.
+/// A basis curve as the evaluator reads it.
+// Large only by the path, which lives for one derivation.
+#[allow(clippy::large_enum_variant)]
+enum Basis {
+    /// One neutral curve and the distance IFC states along it.
+    Curve(Curve3, DistanceConvention),
+    /// A curve relation, as a path (#418).
+    Path(path::PathBasis),
+}
+
+/// The IFC curve types that lower to a curve relation, read as a path
+/// (#418): composites, trims, and surface curves whose 3D curve governs.
+/// Offset curves lower to a relation the station lowering refuses by name
+/// (#414), and are refused alike.
+const RELATION_BASES: &[&str] = &[
+    "IFCCOMPOSITECURVE",
+    "IFCCOMPOSITECURVEONSURFACE",
+    "IFCBOUNDARYCURVE",
+    "IFCOUTERBOUNDARYCURVE",
+    "IFCTRIMMEDCURVE",
+    "IFCSURFACECURVE",
+    "IFCINTERSECTIONCURVE",
+    "IFCSEAMCURVE",
+    "IFCOFFSETCURVE2D",
+    "IFCOFFSETCURVE3D",
+    "IFCOFFSETCURVEBYDISTANCES",
+];
+
+/// The basis curve as a neutral `Curve3`, or as a curve path.
 ///
 /// An alignment centreline is the case that matters: `IfcGradientCurve`
 /// pairs a plan with a vertical profile, which `ifc-alignment` already
 /// composes exactly. Straight-segment curves (`IfcPolyline`, a line-only
 /// `IfcIndexedPolyCurve`) lower to the neutral polyline, whose arc length is
-/// an exact finite sum. Other curve families -- an ellipse, a B-spline -- are
-/// refused by name here rather than lowered approximately, because a
-/// placement derived from a curve we guessed at is worse than one we
-/// declined to derive.
-fn basis_curve3(
+/// an exact finite sum. A composite or trimmed curve is read as the curve
+/// path the station lowering measures (module documentation). Other curve
+/// families -- an ellipse, a B-spline -- are refused by name here rather
+/// than lowered approximately, because a placement derived from a curve we
+/// guessed at is worse than one we declined to derive.
+fn basis_curve(
     model: &Model,
     units: &UnitScale,
     placement: EntityId,
     basis: EntityId,
     parameter_requested: bool,
-) -> GeometryResult<(Curve3, DistanceConvention)> {
+    evaluator: &dyn CurveEvaluator,
+) -> GeometryResult<Basis> {
     let entity = model.get(basis).ok_or(GeometryError::MissingEntity {
         referrer: placement,
         missing: basis,
@@ -568,30 +645,41 @@ fn basis_curve3(
                 detail: UNDEFINED_ALIGNMENT_PARAMETER,
             })
         }
-        "IFCGRADIENTCURVE" => Ok((
+        "IFCGRADIENTCURVE" => Ok(Basis::Curve(
             gradient_curve(model, units, basis)?,
             DistanceConvention::PlanDistance,
         )),
         "IFCALIGNMENT" => ifc_alignment::gradient_curve3(model, basis, alignment_units)
-            .map(|curve| (curve, DistanceConvention::PlanDistance))
+            .map(|curve| Basis::Curve(curve, DistanceConvention::PlanDistance))
             .map_err(|_error| GeometryError::Unsupported {
                 entity: placement,
                 type_name: entity.type_name.to_string(),
                 detail: "basis curve does not compose an exact centreline",
             }),
-        "IFCPOLYLINE" => Ok((
+        "IFCPOLYLINE" => Ok(Basis::Curve(
             polyline::polyline(model, units, basis, entity)?,
             DistanceConvention::ArcLength3d,
         )),
-        "IFCINDEXEDPOLYCURVE" => Ok((
+        "IFCINDEXEDPOLYCURVE" => Ok(Basis::Curve(
             polyline::indexed_polycurve(model, units, basis, entity, parameter_requested)?,
             DistanceConvention::ArcLength3d,
         )),
+        // Refused before lowering: the answer does not depend on the curve.
+        kind if RELATION_BASES.contains(&kind) && parameter_requested => {
+            Err(GeometryError::Unsupported {
+                entity: basis,
+                type_name: kind.to_owned(),
+                detail: path::RELATION_PARAMETER,
+            })
+        }
+        kind if RELATION_BASES.contains(&kind) => {
+            path::path_basis(model, units, placement, basis, kind, evaluator).map(Basis::Path)
+        }
         other => Err(GeometryError::Unsupported {
             entity: placement,
             type_name: other.to_owned(),
-            detail: "deriving a placement frame needs an alignment centreline or a \
-                     straight-segment polyline as basis curve",
+            detail: "deriving a placement frame needs an alignment centreline, a \
+                     straight-segment polyline or a composite or trimmed curve as basis curve",
         }),
     }
 }

@@ -222,6 +222,28 @@ pub enum GeometryError {
         distance: f64,
     },
 
+    /// An `IfcLinearPlacement`'s basis curve lowers to a curve relation (a
+    /// plain `IfcCompositeCurve`, an `IfcTrimmedCurve`, a composite of
+    /// segments placed at stations), and the caller's curve evaluator reads
+    /// single curves only (#418).
+    ///
+    /// The placement is derived through `CurveEvaluator::path_frame_at_on`
+    /// on the basis as a `CurvePath`; an evaluator that does not implement
+    /// curve paths refuses that with `CURVE_PATH_UNSUPPORTED`, and the
+    /// placement is refused rather than derived from one piece of the
+    /// basis.
+    #[cfg(feature = "compile")]
+    #[error(
+        "{placement} (IFCLINEARPLACEMENT): basis curve {basis} is a curve relation (pieces of \
+         curves laid end to end), and the curve evaluator evaluates single curves only"
+    )]
+    CurvePathUnsupported {
+        /// The `IfcLinearPlacement`.
+        placement: EntityId,
+        /// Its basis curve.
+        basis: EntityId,
+    },
+
     /// The two straight axes of an `IfcVirtualGridIntersection` are parallel,
     /// so they have no intersection to place anything at (#362).
     ///
@@ -391,6 +413,8 @@ impl GeometryError {
             Self::CachedPlacementMismatch { placement, .. } => Some(*placement),
             #[cfg(feature = "compile")]
             Self::SeamSideUnsupported { placement, .. } => Some(*placement),
+            #[cfg(feature = "compile")]
+            Self::CurvePathUnsupported { placement, .. } => Some(*placement),
             // The opening is what failed; `host` stays readable on the variant.
             Self::OpeningNotSubtracted { opening, .. } => Some(*opening),
             Self::Units(_)
@@ -410,6 +434,9 @@ impl GeometryError {
             // Valid IFC this evaluator cannot read; one with seam sides can.
             #[cfg(feature = "compile")]
             Self::SeamSideUnsupported { .. } => true,
+            // Valid IFC this evaluator cannot read; one with curve paths can.
+            #[cfg(feature = "compile")]
+            Self::CurvePathUnsupported { .. } => true,
             // A net refusal is as supported as the reason behind it.
             Self::OpeningNotSubtracted { cause, .. } => cause.is_unsupported(),
             _ => false,
