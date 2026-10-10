@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.26.0 (2026-10-10) |
+| Latest release | 0.27.0 (2026-10-10) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -96,13 +96,20 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.26.0 (2026-10-10):
+Latest release, 0.27.0 (2026-10-10):
 
-### Changed
+### Added (#367, geometry Level 2, ADR 0021)
 
-- Requires `ifc-geometry` 0.20: linear placements on curve-relation bases
-  derive through curve paths (#418), and stations lower on offset-curve
-  bases (#414), on Axiolid's wave-3 line. Semver: minor, following the
-  dependency.
+- Feature `geometry-wire` (`geometry` plus `ifc-geometry/wire`, in `full`):
+  `product_graphs(model, ids)` -> `(EntityId, GeometryResult<ProductGraph>)`
+  per product, `ProductGraph { world, graph }`: each product's Body lowered
+  into Axiolid's neutral `GeometryGraph` exactly as `product_meshes` lowers
+  it, in world coordinates (metres), with its world placement alongside
+  and `None` for a product with no Body. Encode a graph in Axiolid's wire
+  format 1.0 with `GeometryGraph::to_json` / `to_cbor`
+  (`ifc::geometry::wire`). `compiled_features()` reports `geometry-wire`.
+
+Semver: additive (a new opt-in feature), a minor release while 0.x, since
+the `ifc-geometry` floor rises.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

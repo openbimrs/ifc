@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-10
+
 ### Added (#367, geometry Level 2, ADR 0021)
 
 - `IfcModel.product_geometry(ids=None, encoding="json")` ->

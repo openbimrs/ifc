@@ -11,7 +11,7 @@ Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.0 (2026-10-08) |
+| Latest release | 0.5.0 (2026-10-10) |
 | Registries | [PyPI `openbim-ifc`](https://pypi.org/project/openbim-ifc/) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_py/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-py/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-py) |
@@ -42,31 +42,18 @@ This crate adds calling-convention glue only. IFC behaviour belongs in
 
 ## Changes
 
-Latest release, 0.4.0 (2026-10-08):
+Latest release, 0.5.0 (2026-10-10):
 
-### Added (#358, property sets of many objects)
+### Added (#367, geometry Level 2, ADR 0021)
 
-- `IfcModel.property_sets_many(ids=None)`: one `ObjectPropertySets`
-  (object, sets, `PropertyRefusal`) per id, or per object definition, in
-  one pass (the GIL released), each exactly what `property_sets` answers.
-  `to_dataframe` resolves its rows through it, so it is linear in the
-  model.
+- `IfcModel.product_geometry(ids=None, encoding="json")` ->
+  `ProductGeometry` (transform, encoding, payload size, refusal, payload),
+  each product's Body as Axiolid's geometry graph in its wire format 1.0,
+  a `str` (JSON) or `bytes` (`encoding="cbor"`), lowered with the GIL
+  released; `GEOMETRY_FORMAT` and `GEOMETRY_FORMAT_VERSION`. Cargo feature
+  `graph`, opt-in: the published wheel raises `feature-disabled`; build
+  with `maturin build --release --features graph`.
 
-### Changed (#342, plain values coerced against the declared type)
-
-- `wall.Name = "x"` works: `Entity` writes and the new
-  `IfcModel.set_attribute_by_name_plain` coerce a plain `str`, `int`,
-  `float`, `bool`, list or tuple against the attribute's declared type
-  (a label written bare, an enumeration item in any case, a typed SELECT
-  member when exactly one takes it). Bare values no longer raise
-  `TypeError`; a value that does not fit raises `type-mismatch`, one
-  several SELECT members take `ambiguous-value`. Tagged values are still
-  written exactly.
-- An `Entity` written as a reference is now checked to be of a type the
-  attribute accepts (`type-mismatch`); write `Ref(id)` to bypass the
-  check.
-
-Semver: a behaviour change for writes that were refused (bare values) or
-unchecked (an `Entity` of the wrong type): a minor release under 0.x.
+Semver: additive, a minor release while 0.x.
 
 Full history: [`crates/openbim-ifc-py/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-py/CHANGELOG.md)

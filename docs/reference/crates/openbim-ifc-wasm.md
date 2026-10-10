@@ -11,7 +11,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.3 (2026-10-08) |
+| Latest release | 0.5.0 (2026-10-10) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_wasm/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-wasm) |
@@ -67,19 +67,24 @@ suites here cover only the JS conversion itself.
 
 ## Changes
 
-Latest release, 0.4.3 (2026-10-08):
+Latest release, 0.5.0 (2026-10-10):
 
-### Added (#358, #342)
+### Added (#367, geometry Level 2, ADR 0021)
 
-- `IfcModel.propertySetsMany(ids?)`: one `ObjectPropertySets` (object,
-  sets, refusal) per id, or per object definition, in one pass; each
-  exactly what `propertySets` answers.
-- `setAttributeByName` also takes a plain value (`IfcPlainValue`: a
-  string, number, bigint, boolean, `null` or array), coerced against the
-  attribute's declared type; an `IfcValue` is written exactly as before.
-  `IfcErrorCode` gains `type-mismatch` and `ambiguous-value`.
+- `IfcModel.productGeometry(ids?, encoding?)` -> `ProductGeometry[]`, each
+  product's Body as Axiolid's geometry graph in its wire format 1.0:
+  `payload` the JSON text (`"json"`, the default), the parsed
+  `GeometryGraphEnvelope` (`"object"`) or the CBOR bytes as a `Uint8Array`
+  (`"cbor"`); a typed `refusal` per product. TypeScript types
+  `ProductGeometry`, `GeometryGraphEnvelope`, `GeometryGraphNode`,
+  `GeometryPayloadEncoding`. Cargo feature `graph`, opt-in: +1.06 MB
+  (+341 KB gzip) on the default module, +286 KB (+88 KB gzip) beside
+  `mesh`.
+- The npm package's mesh entry (`@openbim/ifc/mesh`) is built with
+  `mesh,graph` and carries `productGeometry`; the default entry throws
+  `feature-disabled` for it.
 
-Semver: additive (a plain value used to be refused with `invalid-value`),
-a patch release.
+Semver: additive, a minor release while 0.x (the npm package gains an
+API).
 
 Full history: [`crates/openbim-ifc-wasm/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-wasm/CHANGELOG.md)
