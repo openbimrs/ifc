@@ -42,6 +42,7 @@ suites here cover only the JS conversion itself.
 | `classification` | yes | `openbim-ifc-binding-core/classification` |
 | `cost` | yes | `openbim-ifc-binding-core/cost` |
 | `georef` | yes | `openbim-ifc-binding-core/georef` |
+| `graph` |  | `openbim-ifc-binding-core/graph` |
 | `ifc2x3` | yes | `openbim-ifc-binding-core/ifc2x3` |
 | `ifc4` | yes | `openbim-ifc-binding-core/ifc4` |
 | `ifc4x1` | yes | `openbim-ifc-binding-core/ifc4x1` |

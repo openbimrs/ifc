@@ -80,6 +80,16 @@ pub mod units;
 
 // Neutral geometry vocabulary, re-exported so a lowering consumer needs only
 // this crate in scope. Gated with the lowering it exists to serve.
+/// Axiolid's versioned wire format of a [`GeometryGraph`] (#367,
+/// axiolid/kernel#267, Axiolid ADR 0085): the envelope's
+/// [`FORMAT_NAME`](wire::FORMAT_NAME) and
+/// [`FORMAT_VERSION`](wire::FORMAT_VERSION), and the
+/// [`WireError`](wire::WireError) a writer or reader refuses with. The
+/// encoders are `GeometryGraph::to_json` / `from_json` / `to_cbor` /
+/// `from_cbor`. Re-exported so a consumer -- the facade, the bindings --
+/// names no `axiolid-*` crate. Feature `wire`.
+#[cfg(feature = "wire")]
+pub use axiolid_model::wire;
 #[cfg(feature = "lowering")]
 pub use axiolid_model::BooleanOperator as GeometryBooleanOperator;
 #[cfg(feature = "lowering")]

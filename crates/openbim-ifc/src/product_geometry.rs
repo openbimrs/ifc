@@ -1,7 +1,9 @@
 //! Where each product sits and which representation draws it (#328).
 //!
-//! The language bindings carry geometry at two levels (ADR 0021). This is
-//! the first, kernel-free one: for every product with a shape, its world
+//! The language bindings carry geometry at three levels (ADR 0021): this
+//! module, the neutral graph per product (`graph`, feature `geometry-wire`,
+//! #367) and meshes (`mesh`, feature `mesh`). This is the first,
+//! kernel-free one: for every product with a shape, its world
 //! placement in metres and the Body representation a viewer would draw,
 //! with the representation's identifier, type and context. It joins
 //! [`products_world_transforms`](ifc_geometry::products_world_transforms)
@@ -21,7 +23,10 @@ use ifc_geometry::{
 };
 use ifc_model::{EntityId, Model};
 
+mod graph;
 mod mesh;
+#[cfg(feature = "geometry-wire")]
+pub use graph::{product_graphs, ProductGraph};
 #[cfg(feature = "mesh")]
 pub use mesh::{product_meshes, ProductMesh};
 

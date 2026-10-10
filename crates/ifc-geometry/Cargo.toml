@@ -51,6 +51,13 @@ lowering = [
     "dep:axiolid-surface",
 ]
 
+# The neutral graph as a value (#367): Axiolid's versioned wire format of a
+# `GeometryGraph`, JSON and CBOR (axiolid/kernel#267, Axiolid ADR 0085),
+# re-exported as `ifc_geometry::wire`. OFF by default: it links serde,
+# serde_json and ciborium into the representation crates. It encodes the
+# graph lowering produces and computes nothing (ADR 0004).
+wire = ["lowering", "axiolid-model/serde"]
+
 # Mesh compilation. OFF by default: it selects an execution provider and a
 # memory budget, which are application policy, not properties of the file.
 # ADR 0004 admits this narrowly -- opt-in only, never in the default build.

@@ -12,6 +12,27 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#367, the neutral graph as a value)
+
+- Feature `wire` (off by default): `ifc_geometry::wire`, a re-export of
+  `axiolid_model::wire` (Axiolid's versioned wire format of a
+  `GeometryGraph`, Axiolid ADR 0085: `FORMAT_NAME`, `FORMAT_VERSION` 1.0,
+  `FormatVersion`, `WireError`), and with it `GeometryGraph::to_json`,
+  `from_json`, `to_cbor` and `from_cbor`, through `axiolid-model`'s
+  `serde` feature. It encodes the graph lowering produces and computes
+  nothing (ADR 0004).
+
+### Changed
+
+- `axiolid-model` floor 0.3.8 (axiolid/kernel#267), which brings
+  `axiolid-core` 0.3.2, `axiolid-curve` 0.3.7, `axiolid-mesh` 0.3.3,
+  `axiolid-primitive` 0.3.3, `axiolid-profile` 0.3.2, `axiolid-surface`
+  0.3.3, `axiolid-topology` 0.3.2 and `axiolid-linear` 0.3.2; all
+  additive.
+
+Semver: additive (a new opt-in feature), a minor release while 0.x, since
+the dependency floors rise.
+
 ## [0.20.0] - 2026-10-10
 
 Semver: a minor release. Behaviour changes: a linear placement whose basis

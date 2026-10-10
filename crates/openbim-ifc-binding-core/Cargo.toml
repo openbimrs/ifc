@@ -28,6 +28,10 @@ group = "binding"
 # bundled tables (#112).
 openbim-ifc = { workspace = true, default-features = false, features = ["step", "schema-api"] }
 
+[dev-dependencies]
+# Reading the geometry wire envelope's `format` and `version` (#367).
+serde_json = "1.0"
+
 # Property sets of every object through the bindings (#358). `cargo bench`
 # measures; `cargo test --bench property_sets` is the CI smoke run. It
 # compiles in the #352 property bench's generator and the `ifc-step`
@@ -106,6 +110,10 @@ author = ["openbim-ifc/authoring"]
 # selected Body representation, kernel-free (the facade's
 # `geometry-select`).
 placements = ["openbim-ifc/geometry-select"]
+# Geometry, Level 2 (#367): each product's Body as Axiolid's neutral
+# geometry graph, serialised in Axiolid's versioned wire format (JSON or
+# CBOR). Lowers, never computes (ADR 0004); adds the lowering and serde.
+graph = ["placements", "openbim-ifc/geometry-wire"]
 # Geometry, Level 3 (#328): triangle meshes per product through the
 # reference compile backend. Opt-in in every host and never default: it
 # links an execution provider (ADR 0004, ADR 0012): +2.1 MB (+0.76 MB

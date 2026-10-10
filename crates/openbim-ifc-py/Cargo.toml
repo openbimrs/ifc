@@ -49,6 +49,12 @@ default = []
 # 0004), so the published wheel leaves it out and the method raises
 # `feature-disabled`. Build with `maturin build --release --features mesh`.
 mesh = ["openbim-ifc-binding-core/mesh"]
+# Each product's Body as Axiolid's neutral geometry graph in its wire
+# format 1.0 (#367, `IfcModel.product_geometry`). Opt-in like `mesh`: it
+# links the lowering and serde (ADR 0021), so the published wheel leaves it
+# out and the method raises `feature-disabled`. Build with `maturin build
+# --release --features graph`.
+graph = ["openbim-ifc-binding-core/graph"]
 # Route this extension's Rust allocations through rusty_alloc: reading
 # STEP into a model takes 18-35% less CPU time on seven real IFC files, at
 # 1-7% less peak memory (measured in #49). Build the wheel with

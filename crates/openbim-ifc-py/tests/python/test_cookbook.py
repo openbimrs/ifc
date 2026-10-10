@@ -217,6 +217,31 @@ class Cookbook(unittest.TestCase):
             self.assertLess(abs(x - 512002), 3)
             self.assertLess(abs(y - 5403001), 3)
 
+    def test_graphs(self) -> None:
+        model = openbim_ifc.open(GEOMETRY)
+        if not MESH:
+            from openbim_ifc import IfcError
+
+            with self.assertRaises(IfcError) as caught:
+                model.product_geometry()
+            self.assertEqual(caught.exception.code, "feature-disabled")
+            return
+        # docs:snippet cookbook-py-graphs
+        # A wheel built with `maturin build --release --features graph`.
+        import json
+
+        kinds = {}
+        for product in model.product_geometry():  # or encoding="cbor": bytes
+            if product.refusal is not None or product.payload is None:
+                continue  # refused, or no Body
+            envelope = json.loads(product.payload)  # Axiolid's wire format 1.0
+            # Each node is tagged by its kind; a reference is an earlier node's index.
+            kinds[product.id] = [next(iter(node)) for node in envelope["graph"]["nodes"]]
+        # {36: ['Profile', 'SolidOperation', 'Instance'], 46: [...]}
+        # docs:end
+        self.assertEqual(sorted(kinds), [36, 46])
+        self.assertEqual(kinds[36], ["Profile", "SolidOperation", "Instance"])
+
     def test_create(self) -> None:
         # docs:snippet cookbook-py-create
         from openbim_ifc import AuthorOp, Header, Text, handle

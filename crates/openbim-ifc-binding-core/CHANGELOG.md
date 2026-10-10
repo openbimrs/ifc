@@ -8,6 +8,22 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#367, geometry Level 2, ADR 0021)
+
+- Feature `graph` (opt-in; implies `placements`, adds the facade's
+  `geometry-wire`): `IfcModel::product_geometry(ids, encoding)` ->
+  `ProductGeometry` records (id, global id, type name, transform, encoding,
+  payload size, refusal) with the payload, each product's Body as Axiolid's
+  geometry graph in its wire format 1.0, JSON (`GeometryEncoding::Json`) or
+  CBOR (`GeometryEncoding::Cbor`). A product that cannot be lowered is a
+  record with a typed `GeometryRefusal` (`unsupported`, `invalid-model`,
+  `missing-reference`, `budget-exceeded`); without the feature the call
+  refuses with `feature-disabled`. `GEOMETRY_FORMAT` and
+  `GEOMETRY_FORMAT_VERSION` name what a build writes, held to Axiolid's
+  constants by a test. The payload crosses beside the record, never in it.
+
+Semver: additive (internal crate, not published).
+
 ### Added (#358, property sets of many objects)
 
 - `IfcModel::property_sets_many(ids)`: `property_sets` of each id, or with

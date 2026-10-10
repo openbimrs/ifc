@@ -163,6 +163,33 @@ impl IfcModel {
         Ok(records::records_to_js(&to_records(&placements)))
     }
 
+    /// Each product's Body as Axiolid's neutral geometry graph (#367), exact
+    /// (extrusions, sweeps, B-splines, unevaluated booleans), for `ids` or,
+    /// without, every product with a shape, in Axiolid's versioned wire
+    /// format 1.0: `{ format: "axiolid-geometry-graph", version: "1.0",
+    /// graph: { nodes, roots } }`, in world coordinates, metres. `encoding`
+    /// picks the `payload`: `"json"` (the default) the text, `"object"` the
+    /// text parsed, `"cbor"` the CBOR bytes as a `Uint8Array`. A product
+    /// that cannot be lowered has a typed `refusal`; the call itself throws
+    /// only `unsupported-schema`, `feature-disabled` (feature `graph`) or
+    /// `invalid-value` for an unknown encoding.
+    #[wasm_bindgen(js_name = productGeometry, unchecked_return_type = "ProductGeometry[]")]
+    pub fn product_geometry_js(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "bigint[] | BigUint64Array | undefined")]
+        ids: &JsValue,
+        #[wasm_bindgen(unchecked_param_type = "GeometryPayloadEncoding | undefined")]
+        encoding: &JsValue,
+    ) -> Result<Array, JsValue> {
+        let ids = geometry::ids(ids).map_err(js_error)?;
+        let form = geometry::PayloadForm::from_js(encoding).map_err(js_error)?;
+        let graphs = self
+            .0
+            .product_geometry(ids.as_deref(), form.encoding())
+            .map_err(js_error)?;
+        Ok(geometry::graphs_to_js(&graphs, form))
+    }
+
     /// Each product's Body as triangles from the reference backend:
     /// `positions` (`Float32Array`, metres, relative to `transform`) and
     /// `indices` (`Uint32Array`), for `ids` or, without, every product

@@ -1,20 +1,34 @@
-"""Geometry from Python (#328): placements in every wheel, meshes in a wheel
-built with the ``mesh`` feature, each refusal typed per product. Run by
-scripts/check-python.sh, which builds the mesh wheel too and runs this file
-against it with OPENBIM_IFC_MESH=1."""
+"""Geometry from Python (#328, #367): placements in every wheel, graphs and
+meshes in a wheel built with the ``graph`` and ``mesh`` features, each
+refusal typed per product. Run by scripts/check-python.sh, which builds that
+wheel too (``--features mesh,graph``) and runs this file against it with
+OPENBIM_IFC_MESH=1."""
 
+import json
 import os
+import struct
 import unittest
 from array import array
+from typing import Any, Tuple
 
 import openbim_ifc
-from openbim_ifc import IfcError, IfcModel, ProductMesh, ProductPlacement
+from openbim_ifc import (
+    GEOMETRY_FORMAT,
+    GEOMETRY_FORMAT_VERSION,
+    IfcError,
+    IfcModel,
+    ProductGeometry,
+    ProductMesh,
+    ProductPlacement,
+)
 
 FIXTURE = os.path.join(
     os.path.dirname(__file__),
     "..", "..", "..", "..", "test", "fixtures", "synthetic-bindings", "binding_geometry.ifc",
 )
 MESH = os.environ.get("OPENBIM_IFC_MESH") == "1"
+# The mesh wheel is built with `graph` too: one opt-in geometry wheel.
+GRAPH = MESH
 
 
 def model() -> IfcModel:
@@ -63,6 +77,114 @@ class PlacementTests(unittest.TestCase):
         self.assertEqual(text.representation.id, 63)
         assert missing.refusal is not None
         self.assertEqual(missing.refusal.code, "missing-reference")
+
+
+def decode_cbor(data: bytes) -> Any:
+    """Decode one CBOR item (RFC 8949) of the kinds the geometry wire format
+    writes: integers, text, arrays, maps, floats of every width, null and
+    booleans. Test-only, so the CBOR payload can be compared with the JSON."""
+
+    def item(at: int) -> Tuple[Any, int]:
+        head = data[at]
+        major, info = head >> 5, head & 0x1F
+        at += 1
+        if major == 7:
+            simple = {20: False, 21: True, 22: None}
+            if info in simple:
+                return simple[info], at
+            width, fmt = {25: (2, ">e"), 26: (4, ">f"), 27: (8, ">d")}[info]
+            return struct.unpack_from(fmt, data, at)[0], at + width
+        if info < 24:
+            n = info
+        else:
+            width = {24: 1, 25: 2, 26: 4, 27: 8}[info]
+            n = int.from_bytes(data[at : at + width], "big")
+            at += width
+        if major == 0:
+            return n, at
+        if major == 1:
+            return -1 - n, at
+        if major == 3:
+            return data[at : at + n].decode("utf-8"), at + n
+        if major == 4:
+            out = []
+            for _ in range(n):
+                value, at = item(at)
+                out.append(value)
+            return out, at
+        if major == 5:
+            mapping = {}
+            for _ in range(n):
+                key, at = item(at)
+                mapping[key], at = item(at)
+            return mapping, at
+        raise ValueError(f"CBOR major type {major} is not in the wire format")
+
+    value, end = item(0)
+    assert end == len(data), "one item, no trailing bytes"
+    return value
+
+
+class GraphTests(unittest.TestCase):
+    @unittest.skipIf(GRAPH, "this wheel was built with the graph feature")
+    def test_graphs_are_opt_in(self) -> None:
+        with self.assertRaises(IfcError) as raised:
+            model().product_geometry()
+        self.assertEqual(raised.exception.code, "feature-disabled")
+
+    @unittest.skipUnless(GRAPH, "needs a wheel built with --features graph")
+    def test_graphs_come_in_axiolids_wire_format(self) -> None:
+        printed = []
+        print = printed.append  # noqa: A001
+        path = FIXTURE
+        # docs:snippet py-geometry-graphs
+        import json
+
+        model = openbim_ifc.open(path)
+        for product in model.product_geometry():
+            if product.refusal is not None:
+                print((product.id, product.refusal.code))  # (65, 'unsupported')
+                continue
+            if product.payload is None:
+                continue  # no Body: an axis-only product
+            # {"format": "axiolid-geometry-graph", "version": "1.0", "graph":
+            # {"nodes": [...], "roots": [...]}}, exact, in world metres.
+            envelope = json.loads(product.payload)
+            print((product.type_name, envelope["version"], len(envelope["graph"]["nodes"])))
+        # docs:end
+        self.assertEqual(printed[0], ("IFCWALL", "1.0", 3))
+        self.assertEqual(printed[2], (65, "unsupported"))
+
+        wall, _, axis_only, text = model.product_geometry()
+        self.assertIsInstance(wall, ProductGeometry)
+        self.assertEqual((wall.encoding, type(wall.payload)), ("json", str))
+        assert isinstance(wall.payload, str)
+        self.assertEqual(wall.payload_size, len(wall.payload.encode("utf-8")))
+        envelope = json.loads(wall.payload)
+        self.assertEqual(envelope["format"], GEOMETRY_FORMAT)
+        self.assertEqual(envelope["version"], GEOMETRY_FORMAT_VERSION)
+        self.assertEqual((GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION), ("axiolid-geometry-graph", "1.0"))
+        nodes = envelope["graph"]["nodes"]
+        self.assertEqual(envelope["graph"]["roots"], [len(nodes) - 1])
+        self.assertEqual(list(nodes[-1]), ["Instance"])
+        self.assertEqual(nodes[-1]["Instance"]["transform"][9:], [512002.0, 5403001.0, 3.0])
+        self.assertEqual(wall.transform, model.product_placements([36])[0].transform)
+        self.assertIsNone(axis_only.payload)
+        self.assertIsNone(axis_only.refusal)
+        assert text.refusal is not None
+        self.assertEqual((text.refusal.code, text.refusal.entity), ("unsupported", 62))
+
+    @unittest.skipUnless(GRAPH, "needs a wheel built with --features graph")
+    def test_the_cbor_payload_decodes_to_the_json_envelope(self) -> None:
+        m = model()
+        for as_json, as_cbor in zip(m.product_geometry([36, 46]), m.product_geometry([36, 46], "cbor")):
+            self.assertEqual(as_cbor.encoding, "cbor")
+            assert isinstance(as_cbor.payload, bytes) and isinstance(as_json.payload, str)
+            self.assertEqual(as_cbor.payload_size, len(as_cbor.payload))
+            self.assertLess(len(as_cbor.payload), as_json.payload_size)
+            self.assertEqual(decode_cbor(as_cbor.payload), json.loads(as_json.payload))
+        with self.assertRaises(ValueError):
+            m.product_geometry(encoding="xml")
 
 
 class MeshTests(unittest.TestCase):

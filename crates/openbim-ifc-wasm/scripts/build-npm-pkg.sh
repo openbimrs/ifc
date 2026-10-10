@@ -3,7 +3,7 @@
 #
 #   crates/openbim-ifc-wasm/scripts/build-npm-pkg.sh [out-dir]
 #
-Two release builds of the wasm module, each bound three times by
+# Two release builds of the wasm module, each bound three times by
 # wasm-bindgen:
 #
 #   <out>/            --target nodejs   CommonJS for Node (the `node` condition)
@@ -11,8 +11,9 @@ Two release builds of the wasm module, each bound three times by
 #   <out>/web/        --target web      ES module for a browser, no bundler
 #
 # from the default features (`@openbim/ifc`), and the same three under
-# <out>/mesh/ from the default features plus `mesh` (`@openbim/ifc/mesh`,
-# #369), whose `productMeshes` links the reference geometry backend
+# <out>/mesh/ from the default features plus `mesh` and `graph`
+# (`@openbim/ifc/mesh`, #369, #367), whose `productMeshes` links the
+# reference geometry backend and whose `productGeometry` the lowering
 # (ADR 0021). A consumer who never imports the mesh entry never downloads
 # it into a bundle or a page; it costs only package size.
 #
@@ -130,9 +131,11 @@ rm -rf "$out"
 bind "$out" ./catalog.mjs ../catalog.mjs
 
 # The mesh entry (#369): the same features plus `mesh`, which links the
-# reference geometry backend (ADR 0021). Built after the default entry is
-# bound, since both builds write the same module path.
-(cd "$root" && cargo build -p openbim-ifc-wasm --target wasm32-unknown-unknown --release --features mesh)
+# reference geometry backend (ADR 0021), and `graph` (#367), the neutral
+# graph per product, which costs little once `mesh` links the lowering.
+# Built after the default entry is bound, since both builds write the same
+# module path.
+(cd "$root" && cargo build -p openbim-ifc-wasm --target wasm32-unknown-unknown --release --features mesh,graph)
 bind "$out/mesh" ../catalog.mjs ../../catalog.mjs
 
 # The nodejs glue is CommonJS. Without its own package.json, Node resolves
@@ -152,7 +155,7 @@ fi
 
 IFC_WASM_PKG="$out" node --test "$crate_dir/tests/js/smoke.mjs" "$crate_dir/tests/js/corpus.mjs" \
     "$crate_dir/tests/js/geometry.mjs" "$crate_dir/tests/js/cookbook.mjs"
-# The mesh entry's meshes, refusals and the viewer example's scene code; the
+# The mesh entry's graphs, meshes, refusals and the viewer example's scene code; the
 # packaged smoke below covers the rest of its surface and its catalog.
 IFC_WASM_PKG="$out/mesh" IFC_WASM_MESH=1 node --test "$crate_dir/tests/js/geometry.mjs"
 node "$crate_dir/tools/check-package.mjs" "$out"

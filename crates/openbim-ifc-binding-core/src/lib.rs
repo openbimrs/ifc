@@ -77,6 +77,9 @@ pub use attribute::AttributeInfo;
 pub use authoring::{AuthorOp, AuthoringResult};
 pub use coerce::Plain;
 pub use error::BindingError;
+pub use geometry::graph::{
+    GeometryEncoding, ProductGeometry, GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION,
+};
 pub use geometry::{GeometryRefusal, ProductMesh, ProductPlacement, SelectedRepresentation};
 pub use model::IfcModel;
 pub use options::{OnMalformed, ParseOptions};

@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, LazyLock, Mutex, MutexGuard, PoisonError};
 
-use openbim_ifc_binding_core::{BindingError, IfcModel, ProductMesh};
+use openbim_ifc_binding_core::{BindingError, IfcModel, ProductGeometry, ProductMesh};
 
 /// One live model plus the last error raised against it.
 #[derive(Debug, Default)]
@@ -26,6 +26,11 @@ static MODELS: LazyLock<Mutex<HashMap<u64, Shared>>> = LazyLock::new(Default::de
 /// per-set lock. Their handles come from the same counter as models', so
 /// a model handle is never a live mesh-set handle.
 static MESHES: LazyLock<Mutex<HashMap<u64, Arc<Vec<ProductMesh>>>>> =
+    LazyLock::new(Default::default);
+
+/// Encoded graph sets (#367), as the mesh sets: immutable, handles from the
+/// same counter.
+static GRAPHS: LazyLock<Mutex<HashMap<u64, Arc<Vec<ProductGeometry>>>>> =
     LazyLock::new(Default::default);
 
 /// Lock, recovering from poison: a panic is already reported to the caller
@@ -77,4 +82,21 @@ pub(crate) fn meshes(handle: u64) -> Option<Arc<Vec<ProductMesh>>> {
 /// Remove mesh set `handle`; `false` if it was not live.
 pub(crate) fn remove_meshes(handle: u64) -> bool {
     lock(&MESHES).remove(&handle).is_some()
+}
+
+/// Register an encoded graph set, returning its new handle.
+pub(crate) fn insert_graphs(graphs: Vec<ProductGeometry>) -> u64 {
+    let handle = NEXT.fetch_add(1, Ordering::Relaxed);
+    lock(&GRAPHS).insert(handle, Arc::new(graphs));
+    handle
+}
+
+/// The graph set behind `handle`, if it is live.
+pub(crate) fn graphs(handle: u64) -> Option<Arc<Vec<ProductGeometry>>> {
+    lock(&GRAPHS).get(&handle).cloned()
+}
+
+/// Remove graph set `handle`; `false` if it was not live.
+pub(crate) fn remove_graphs(handle: u64) -> bool {
+    lock(&GRAPHS).remove(&handle).is_some()
 }

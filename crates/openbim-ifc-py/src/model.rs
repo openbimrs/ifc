@@ -1,9 +1,10 @@
 //! The native model class, wrapped by `openbim_ifc.IfcModel` in Python.
 
 use openbim_ifc_binding_core::record::to_records;
-use openbim_ifc_binding_core::{IfcModel, ParseOptions, ToRecord};
+use openbim_ifc_binding_core::{GeometryEncoding, IfcModel, ParseOptions, ToRecord};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::{PyBool, PyBytes, PyDict, PyList};
+use pyo3::types::{PyBool, PyBytes, PyDict, PyList, PyString};
 
 use crate::authoring;
 use crate::convert::{from_py, plain_from_py, to_py};
@@ -181,6 +182,39 @@ impl NativeModel {
             .detach(|| inner.product_placements(ids.as_deref()))
             .map_err(py_err)?;
         records::records_to_py(py, &to_records(&placements))
+    }
+
+    /// Body graphs per product (#367) in Axiolid's wire format, releasing
+    /// the GIL while they lower and encode: record dicts with `payload` a
+    /// `str` (`encoding` `"json"`) or `bytes` (`"cbor"`), `None` without
+    /// one.
+    #[pyo3(signature = (ids = None, encoding = "json"))]
+    fn product_geometry<'py>(
+        &self,
+        py: Python<'py>,
+        ids: Option<Vec<u64>>,
+        encoding: &str,
+    ) -> PyResult<Bound<'py, PyList>> {
+        let encoding = GeometryEncoding::parse(encoding).ok_or_else(|| {
+            PyValueError::new_err(format!(
+                "encoding must be \"json\" or \"cbor\", not {encoding:?}"
+            ))
+        })?;
+        let inner = &self.inner;
+        let graphs = py
+            .detach(|| inner.product_geometry(ids.as_deref(), encoding))
+            .map_err(py_err)?;
+        let list = PyList::empty(py);
+        for graph in &graphs {
+            let dict = records::record_to_py(py, &graph.to_record())?;
+            match (graph.json(), graph.payload.as_deref()) {
+                (Some(text), _) => dict.set_item("payload", PyString::new(py, text))?,
+                (None, Some(bytes)) => dict.set_item("payload", PyBytes::new(py, bytes))?,
+                (None, None) => dict.set_item("payload", py.None())?,
+            }
+            list.append(dict)?;
+        }
+        Ok(list)
     }
 
     /// Body meshes per product (#328), releasing the GIL while they

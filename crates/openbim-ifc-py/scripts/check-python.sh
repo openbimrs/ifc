@@ -44,7 +44,7 @@ test -f "$work/pdoc/openbim_ifc.html"
 # build one with `--features mesh`, replace the installed wheel with it and
 # run the geometry suite again, now with its mesh tests.
 maturin build --quiet --release --manifest-path "$crate_dir/Cargo.toml" \
-    --features mesh --out "$work/dist-mesh"
+    --features mesh,graph --out "$work/dist-mesh"
 uv pip install --quiet --python "$work/venv/bin/python" --reinstall "$(ls "$work"/dist-mesh/*.whl)"
 OPENBIM_IFC_MESH=1 "$work/venv/bin/python" -m unittest discover \
     -s "$crate_dir/tests/python" -t "$crate_dir/tests/python" -p "test_geometry.py" -v

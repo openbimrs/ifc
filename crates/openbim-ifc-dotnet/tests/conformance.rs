@@ -72,7 +72,7 @@ fn csharp_type(c_param: &str) -> String {
         .unwrap_or_default()
         .to_owned();
     let mapped = match base.as_str() {
-        "OpenbimIfcModel" | "OpenbimIfcMeshes" | "uint64_t" => "ulong",
+        "OpenbimIfcModel" | "OpenbimIfcMeshes" | "OpenbimIfcGraphs" | "uint64_t" => "ulong",
         "float" => "float",
         "size_t" => "nuint",
         "uint32_t" => "uint",
@@ -240,13 +240,21 @@ fn every_struct_has_the_headers_fields_in_order() {
 /// core: the record's name and its field names, in order. A field is a
 /// string literal opening a tuple directly inside the `vec![...]`.
 fn core_records() -> BTreeMap<String, Vec<String>> {
-    let dir = root().join("../openbim-ifc-binding-core/src");
-    let mut out = BTreeMap::new();
-    for entry in std::fs::read_dir(&dir).expect("binding core sources") {
-        let path = entry.expect("entry").path();
-        if path.extension().is_none_or(|ext| ext != "rs") {
-            continue;
+    // Every source file, submodules too (`geometry/graph.rs`, #367).
+    let mut pending = vec![root().join("../openbim-ifc-binding-core/src")];
+    let mut files = Vec::new();
+    while let Some(dir) = pending.pop() {
+        for entry in std::fs::read_dir(&dir).expect("binding core sources") {
+            let path = entry.expect("entry").path();
+            if path.is_dir() {
+                pending.push(path);
+            } else if path.extension().is_some_and(|ext| ext == "rs") {
+                files.push(path);
+            }
         }
+    }
+    let mut out = BTreeMap::new();
+    for path in files {
         let text = read(&path);
         let mut search = 0;
         while let Some(at) = text[search..].find("Record::new(") {

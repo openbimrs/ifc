@@ -95,6 +95,9 @@ const PARALLEL: Scalar = 1e-12;
 /// placed as the flattening left it) and its law, the two parts of
 /// Axiolid's neutral `PathOffset`.
 #[derive(Debug, Clone)]
+// Read by the derived placement along an offset, which needs `compile`;
+// a lowering-only build (#367) only measures the pieces.
+#[cfg_attr(not(feature = "compile"), allow(dead_code))]
 pub(crate) struct OffsetPiece<'s> {
     /// The base span, holding no seam of its curve inside it.
     pub base: Piece<'s>,

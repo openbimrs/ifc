@@ -34,6 +34,7 @@ codecs = "Both codecs: STEP and ifcXML."
 domains = "Every domain view, plus authoring and spatial traversal."
 full = "Everything: codecs, schema tables, every domain, catalogues, geometry and meshes, georeferencing and alignment."
 geometry = "Representation selection plus lowering into the neutral geometry DAG."
+geometry-wire = "Each product's Body as Axiolid's neutral geometry graph (`product_graphs`), exact and in world metres, encodable in Axiolid's versioned wire format 1.0 as JSON or CBOR (`ifc::geometry::wire`); a typed refusal per product. Computes nothing; adds the lowering and serde."
 mesh = "Triangle meshes per product (`product_meshes`) through `ifc-geometry`'s reference compile backend: positions relative to each product's world placement, a typed refusal per product. Opt-in; links an execution provider (ADR 0004, ADR 0012)."
 geometry-select = "Representation selection only: contexts, plan/body choice, placements and units, with no geometry kernel."
 material-templates = "Material views together with the property template catalogue."
@@ -173,6 +174,11 @@ spatial = ["dep:ifc-spatial"]
 # consumer wants the latter and should not pay for a CSG stack.
 geometry = ["geometry-select", "ifc-geometry?/lowering"]
 geometry-select = ["dep:ifc-geometry"]
+# The neutral representation per product as a value (#367): `geometry`
+# plus Axiolid's versioned wire format of the graph (JSON and CBOR,
+# `ifc-geometry/wire`). Computes nothing; it adds serde, serde_json and
+# ciborium.
+geometry-wire = ["geometry", "ifc-geometry?/wire"]
 # Meshes per product (#328): `geometry` plus `ifc-geometry`'s reference
 # compile backend. Never default (ADR 0004): it links an execution provider.
 mesh = ["geometry", "ifc-geometry?/compile-reference-backend"]
@@ -201,12 +207,14 @@ domains = [
     "author",
     "spatial",
 ]
-full = ["codecs", "schema", "domains", "property-catalog", "material-templates", "geometry", "mesh", "georef", "alignment"]
+full = ["codecs", "schema", "domains", "property-catalog", "material-templates", "geometry", "geometry-wire", "mesh", "georef", "alignment"]
 
 [dev-dependencies]
 # `Schema::from_express` for the documented authoring example; production
 # builds never link the EXPRESS parser.
 ifc-schema = { workspace = true, features = ["default", "express"] }
+# Reading the wire envelope's `format` and `version` entries (#367).
+serde_json = "1.0"
 
 [lints]
 workspace = true

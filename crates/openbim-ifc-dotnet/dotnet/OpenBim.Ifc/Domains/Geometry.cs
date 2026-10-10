@@ -1,10 +1,11 @@
-// Geometry (#328, ADR 0021), mirroring the shared binding core: placements
-// with the selected Body, and the metadata of a mesh, whose arrays cross
-// separately (MeshedProduct).
+// Geometry (#328, #367, ADR 0021), mirroring the shared binding core:
+// placements with the selected Body, the metadata of a graph, whose wire
+// payload crosses separately (ProductGraph), and of a mesh, whose arrays
+// cross separately (MeshedProduct).
 
 namespace OpenBim.Ifc;
 
-/// <summary>Why one product has no placement, representation or mesh.</summary>
+/// <summary>Why one product has no placement, representation, graph or mesh.</summary>
 /// <param name="Code"><c>unsupported</c>, <c>invalid-model</c>, <c>missing-reference</c> or <c>budget-exceeded</c>.</param>
 /// <param name="Entity">The entity at fault, when the refusal names one.</param>
 /// <param name="Message">A one-line explanation.</param>
@@ -43,6 +44,23 @@ public sealed record ProductPlacement(
     string TypeName,
     EquatableList<double>? Transform,
     SelectedRepresentation? Representation,
+    GeometryRefusal? Refusal);
+
+/// <summary>One product's geometry graph, without its payload (<see cref="ProductGraph"/> carries it).</summary>
+/// <param name="Id">The product's entity id.</param>
+/// <param name="GlobalId">Its <c>GlobalId</c>.</param>
+/// <param name="TypeName">Its entity type, upper-case.</param>
+/// <param name="Transform">The world placement, a column-major 4x4 in metres. The graph already has it applied: never apply it again. Null when refused.</param>
+/// <param name="Encoding"><c>json</c> or <c>cbor</c>.</param>
+/// <param name="PayloadSize">Bytes of the wire payload; 0 without one.</param>
+/// <param name="Refusal">Why there is no graph. No payload and no refusal: a product with no Body representation.</param>
+public sealed record ProductGeometry(
+    ulong Id,
+    string? GlobalId,
+    string TypeName,
+    EquatableList<double>? Transform,
+    string Encoding,
+    long PayloadSize,
     GeometryRefusal? Refusal);
 
 /// <summary>One product's mesh, without its arrays (<see cref="MeshedProduct"/> carries them).</summary>

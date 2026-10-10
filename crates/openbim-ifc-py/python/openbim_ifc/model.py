@@ -24,7 +24,7 @@ from .domains import (
     Systems,
 )
 from .entity import Assignable, ModelAccess, _plain_wire
-from .geometry import ProductMesh, ProductPlacement
+from .geometry import ProductGeometry, ProductMesh, ProductPlacement
 from .records import Header, ParseOptions, UnreachableProduct, ValidationReport
 from .values import Value, from_wire, to_wire
 
@@ -243,6 +243,20 @@ class IfcModel(ModelAccess):
         ``feature-disabled``."""
         wire = self._native.product_placements(None if ids is None else list(ids))
         return [geometry._placement(row) for row in wire]
+
+    def product_geometry(
+        self, ids: Optional[Iterable[int]] = None, encoding: str = "json"
+    ) -> List[ProductGeometry]:
+        """Each product's Body as Axiolid's neutral geometry graph, exact,
+        for ``ids`` or every product with a shape, in Axiolid's versioned
+        wire format 1.0: ``{"format": "axiolid-geometry-graph", "version":
+        "1.0", "graph": {"nodes": [...], "roots": [...]}}``, in world
+        coordinates, metres. ``encoding`` ``"json"`` gives the payload as a
+        ``str``, ``"cbor"`` as ``bytes``; any other raises ``ValueError``. A
+        product that cannot be lowered carries a typed ``refusal``; the call
+        raises only ``unsupported-schema`` or ``feature-disabled``."""
+        wire = self._native.product_geometry(None if ids is None else list(ids), encoding)
+        return [geometry._graph(row) for row in wire]
 
     def product_meshes(self, ids: Optional[Iterable[int]] = None) -> List[ProductMesh]:
         """Each product's Body as triangles from the reference backend, for

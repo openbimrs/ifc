@@ -144,7 +144,11 @@ pub(crate) fn relation_seams(
 /// A basis flattened into its pieces, with their seams and length.
 #[derive(Debug, Clone)]
 pub(crate) struct Run<'s> {
-    /// The pieces, in the order the distance runs through them.
+    /// The pieces, in the order the distance runs through them. Read by the
+    /// derived placement along a relation, which needs `compile`; a
+    /// lowering-only build (the facade's `geometry-wire`, #367) reads the
+    /// seams and length alone.
+    #[cfg_attr(not(feature = "compile"), allow(dead_code))]
     pub pieces: Vec<Piece<'s>>,
     /// Every interior joint and every seam of a piece's curve inside it,
     /// ascending.
@@ -152,6 +156,7 @@ pub(crate) struct Run<'s> {
     /// The sum of the pieces' lengths.
     pub length: Scalar,
     /// Whether the pieces are measured in plan distance.
+    #[cfg_attr(not(feature = "compile"), allow(dead_code))]
     pub plan: bool,
 }
 

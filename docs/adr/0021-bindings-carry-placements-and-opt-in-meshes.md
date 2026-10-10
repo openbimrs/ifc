@@ -147,6 +147,63 @@ four host APIs. The follow-up is
   run in `scripts/build-npm-pkg.sh`. Sizes are in
   [Package size](/bindings/javascript#package-size).
 
+- *Amended 2026-10-10 (#367): Level 2 is bound, on Axiolid's wire format
+  1.0.* What Level 2 waited for exists: axiolid/kernel#267 released a
+  versioned encoding of `GeometryGraph` (Axiolid ADR 0085; `axiolid-model`
+  0.3.8, feature `serde`), the envelope `{"format":
+  "axiolid-geometry-graph", "version": "1.0", "graph": {"nodes", "roots"}}`
+  in JSON or CBOR, nodes in insertion order, a reference the index of an
+  earlier node, and a reader that refuses an unknown kind, variant or
+  field, a newer version and a non-finite number by name, and revalidates
+  every graph. The bindings carry Axiolid's payload as it is and define
+  no format of their own.
+  - **Every layer.** `ifc-geometry` re-exports `axiolid_model::wire` behind
+    its feature `wire`, so neither the facade nor the bindings name an
+    `axiolid-*` crate; the facade's `geometry-wire` adds
+    `ifc::product_graphs(model, ids)`, each product's Body lowered as the
+    mesh level lowers it (the same graph the reference backend compiles),
+    with its world placement and a per-product `GeometryResult`.
+    `openbim-ifc-binding-core` adds `product_geometry(ids, encoding)`,
+    records with the payload or a typed refusal with the four codes above
+    (a graph the wire writer refuses, which only a non-finite number can
+    be, is `invalid-model`). The hosts: WASM `productGeometry(ids?,
+    encoding?)` with `"json"` (a string), `"object"` (parsed) or `"cbor"`
+    (a `Uint8Array`) and TypeScript types for the envelope; Python
+    `product_geometry(ids=None, encoding="json")`, a `str` or `bytes`; C
+    `openbim_ifc_v0_1_model_product_geometry` into an `OpenbimIfcGraphs`
+    set read by `graphs_records` (a tape) and `graphs_payload` (a byte
+    buffer), as the mesh set is (ABI 0.1.9); .NET `ProductGeometry(ids,
+    encoding)` returning `ProductGraph` with `byte[] Payload`.
+  - **World coordinates.** The graph carries the product's placement in
+    its `Instance` transforms, as lowering composes it; the record's
+    placement rides along for a host that wants the product's frame and
+    is never applied again. JSON and CBOR carry `f64` bit-exactly, so
+    the `f32` concern of Level 3 does not arise.
+  - **Opt-in, by size.** The feature is `graph` in every crate, off by
+    default. Measured on the browser module (after `wasm-bindgen`, no
+    `wasm-opt`): it adds 1,059,241 bytes to the default (2,962,323 to
+    4,021,564; 995,024 to 1,336,245 under `gzip -9`, 655,098 to 868,377
+    under brotli 11), and 1.64 MB to an IFC4-only build, whose lowering
+    reaches `ifc-alignment` and every release's schema table, against
+    Level 1's 15 KB under `gzip -9`. Beside `mesh`, which links the
+    lowering already, it adds 285,839 bytes (88 KB under `gzip -9`, 46 KB
+    under brotli), so the npm package's mesh entry (`@openbim/ifc/mesh`)
+    carries both; the default entry, the wheel and the C release archives
+    leave it out, and without it the call refuses with `feature-disabled`.
+    The table is in [Module size](/bindings/javascript#module-size).
+  - **The stability rule we inherit.** Axiolid's versioning is ours: a
+    minor version of the wire format (a new node kind, variant or
+    optional field) reaches every binding as a minor release, and a host
+    reader must accept it; a major version of the wire format is a
+    breaking change of every binding (a major release of the npm package,
+    the wheel and the .NET package, and a new `v0_2_` C export rather
+    than a changed `v0_1_` one). `GEOMETRY_FORMAT_VERSION` in the binding
+    core names the version a build writes, and its tests hold it to
+    `axiolid_model::wire::FORMAT_VERSION`.
+  - The deferral above, and its alternative "Level 2 now, with Axiolid's
+    Rust types as the format", are superseded by this amendment: the
+    format is now Axiolid's published one, not its Rust types.
+
 ## Relation to existing code
 
 - `crates/openbim-ifc/src/product_geometry.rs` and its `mesh` submodule; the
@@ -165,3 +222,8 @@ four host APIs. The follow-up is
 - `crates/openbim-ifc-dotnet/dotnet/OpenBim.Ifc/Domains/Geometry.cs`,
   `MeshedProduct.cs`.
 - `test/fixtures/synthetic-bindings/binding_geometry.ifc`.
+- Level 2 (#367): `crates/openbim-ifc/src/product_geometry/graph.rs`, the
+  `wire` re-export in `crates/ifc-geometry/src/lib.rs`,
+  `crates/openbim-ifc-binding-core/src/geometry/graph.rs` and
+  `tests/geometry_graph.rs`, `crates/openbim-ifc-capi/src/graph.rs` and
+  `graph_tests.rs`, `crates/openbim-ifc-dotnet/dotnet/OpenBim.Ifc/ProductGraph.cs`.

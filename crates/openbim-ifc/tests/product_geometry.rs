@@ -90,3 +90,54 @@ fn meshes_are_relative_to_the_placement_and_refused_per_product() {
         .expect_err("a text literal is no solid");
     assert!(refused.is_unsupported(), "{refused}");
 }
+
+#[cfg(feature = "geometry-wire")]
+#[test]
+fn graphs_round_trip_through_the_wire_format_and_are_refused_per_product() {
+    use ifc::geometry::wire::{FORMAT_NAME, FORMAT_VERSION};
+    use ifc::geometry::GeometryGraph;
+
+    let model = fixture();
+    let graphs = ifc::product_graphs(&model, None);
+    let products: Vec<u64> = graphs.iter().map(|(id, _)| id.0).collect();
+    assert_eq!(products, [36, 46, 53, 65]);
+
+    let wall = graphs[0].1.as_ref().expect("the wall lowers");
+    assert_eq!(
+        wall.world,
+        *product_placements(&model, Some(&[EntityId(36)]))[0]
+            .world
+            .as_ref()
+            .unwrap()
+    );
+    let graph = wall.graph.as_ref().expect("a Body");
+    assert_eq!(graph.roots().len(), 1);
+
+    // JSON: the envelope names the format and version, and the payload
+    // reads back into a graph that re-encodes identically.
+    let text = graph.to_json().expect("encodes");
+    let envelope: serde_json::Value = serde_json::from_str(&text).expect("JSON");
+    assert_eq!(envelope["format"], FORMAT_NAME);
+    assert_eq!(envelope["version"], FORMAT_VERSION.to_string());
+    assert_eq!(envelope["version"], "1.0");
+    let back = GeometryGraph::from_json(&text).expect("reads back");
+    assert_eq!(back.len(), graph.len());
+    assert_eq!(back.roots().len(), graph.roots().len());
+    assert_eq!(back.to_json().unwrap(), text);
+
+    // CBOR reads the same graph.
+    let bytes = graph.to_cbor().expect("encodes");
+    let back = GeometryGraph::from_cbor(&bytes).expect("reads back");
+    assert_eq!(back.to_json().unwrap(), text);
+
+    // The site's 5,403 km offset is in the graph, kept bit-exactly.
+    assert!(text.contains("5403001"), "{text}");
+
+    // An Axis is no Body, and no failure; a text literal is refused alone.
+    assert_eq!(graphs[2].1.as_ref().unwrap().graph, None);
+    let refused = graphs[3]
+        .1
+        .as_ref()
+        .expect_err("a text literal is no solid");
+    assert!(refused.is_unsupported(), "{refused}");
+}

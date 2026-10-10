@@ -1,13 +1,14 @@
-// Geometry through the WASM binding (#328): placements in every build,
-// meshes in a build with the `mesh` feature, each refusal typed per
-// product.
+// Geometry through the WASM binding (#328, #367): placements in every
+// build, graphs and meshes in a build with the `graph` and `mesh` features,
+// each refusal typed per product.
 //
 // Usage: IFC_WASM_PKG=<package-dir> node --test geometry.mjs
 //
-// With IFC_WASM_MESH=1 the package must be a `--features mesh` build (the
-// npm package's mesh entry, `<pkg>/mesh`, #369) and the mesh tests run,
-// together with the browser example's scene code; without it,
-// `productMeshes` must throw `feature-disabled`, as the default entry does.
+// With IFC_WASM_MESH=1 the package must be a `--features mesh,graph` build
+// (the npm package's mesh entry, `<pkg>/mesh`, #369, #367) and the graph and
+// mesh tests run, together with the browser example's scene code; without
+// it, `productGeometry` and `productMeshes` must throw `feature-disabled`,
+// as the default entry does.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -114,7 +115,81 @@ END-ISO-10303-21;
   assert.equal(cyclic.refusal.entity, 20n);
 });
 
+/**
+ * Decode one CBOR item (RFC 8949) of the kinds the geometry wire format
+ * writes: integers, text, arrays, maps, floats of every width, null and
+ * booleans. Test-only, so the CBOR payload can be compared with the JSON.
+ */
+function decodeCbor(bytes) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let at = 0;
+  const length = (info) => {
+    if (info < 24) return info;
+    const [width, read] = {
+      24: [1, () => view.getUint8(at)],
+      25: [2, () => view.getUint16(at)],
+      26: [4, () => view.getUint32(at)],
+      27: [8, () => Number(view.getBigUint64(at))],
+    }[info];
+    const value = read();
+    at += width;
+    return value;
+  };
+  const half = (bits) => {
+    const exponent = (bits >> 10) & 0x1f;
+    const fraction = bits & 0x3ff;
+    const sign = bits & 0x8000 ? -1 : 1;
+    if (exponent === 0) return sign * 2 ** -14 * (fraction / 1024);
+    if (exponent === 31) return fraction ? NaN : sign * Infinity;
+    return sign * 2 ** (exponent - 15) * (1 + fraction / 1024);
+  };
+  const item = () => {
+    const head = view.getUint8(at++);
+    const major = head >> 5;
+    const info = head & 0x1f;
+    if (major === 7) {
+      if (info === 20) return false;
+      if (info === 21) return true;
+      if (info === 22) return null;
+      const [width, read] = {
+        25: [2, () => half(view.getUint16(at))],
+        26: [4, () => view.getFloat32(at)],
+        27: [8, () => view.getFloat64(at)],
+      }[info];
+      const value = read();
+      at += width;
+      return value;
+    }
+    const n = length(info);
+    if (major === 0) return n;
+    if (major === 1) return -1 - n;
+    if (major === 3) {
+      const text = new TextDecoder().decode(bytes.subarray(at, at + n));
+      at += n;
+      return text;
+    }
+    if (major === 4) return Array.from({ length: n }, item);
+    if (major === 5) {
+      const map = {};
+      for (let i = 0; i < n; i++) map[item()] = item();
+      return map;
+    }
+    throw new Error(`CBOR major type ${major} is not in the wire format`);
+  };
+  const value = item();
+  assert.equal(at, bytes.length, "one item, no trailing bytes");
+  return value;
+}
+
 if (!mesh) {
+  test("graphs are opt-in: this build refuses them", () => {
+    const model = IfcModel.parse(bytes);
+    assert.throws(
+      () => model.productGeometry(),
+      (error) => error.name === "IfcError" && error.code === "feature-disabled",
+    );
+  });
+
   test("meshes are opt-in: this build refuses them", () => {
     const model = IfcModel.parse(bytes);
     assert.throws(
@@ -123,6 +198,75 @@ if (!mesh) {
     );
   });
 } else {
+  test("graphs come as Axiolid's wire format, per product", () => {
+    const log = [];
+    const console = { log: (...args) => log.push(args) };
+    // docs:snippet js-geometry-graphs
+    const model = IfcModel.parse(bytes);
+    for (const product of model.productGeometry(undefined, "object")) {
+      if (product.refusal) {
+        console.log(product.id, product.refusal.code); // e.g. 65n "unsupported"
+        continue;
+      }
+      if (!product.payload) continue; // no Body: an axis-only product
+      // { format: "axiolid-geometry-graph", version: "1.0", graph }, exact,
+      // in world coordinates (metres): hand it to your own kernel.
+      const { format, version, graph } = product.payload;
+      console.log(product.typeName, format, version, Object.keys(graph.nodes.at(-1))[0]);
+    }
+    // docs:end
+    assert.deepEqual(log, [
+      ["IFCWALL", "axiolid-geometry-graph", "1.0", "Instance"],
+      ["IFCSLAB", "axiolid-geometry-graph", "1.0", "Instance"],
+      [65n, "unsupported"],
+    ]);
+
+    const graphs = model.productGeometry();
+    assert.deepEqual(
+      graphs.map((g) => [g.id, g.encoding, typeof g.payload]),
+      [
+        [36n, "json", "string"],
+        [46n, "json", "string"],
+        [53n, "json", "undefined"],
+        [65n, "json", "undefined"],
+      ],
+    );
+    const [wall, , axisOnly, text] = graphs;
+    assert.equal(wall.payloadSize, new TextEncoder().encode(wall.payload).length);
+    const envelope = JSON.parse(wall.payload);
+    assert.equal(envelope.format, "axiolid-geometry-graph");
+    assert.equal(envelope.version, "1.0");
+    assert.deepEqual(envelope.graph.roots, [envelope.graph.nodes.length - 1]);
+    // The extrusion: 4 m by 0.2 m, 2.8 m deep, placed 5,403 km out in f64.
+    const [, extrusion, instance] = envelope.graph.nodes;
+    assert.equal(extrusion.SolidOperation.Extrusion.profile, 0);
+    assert.ok(Math.abs(extrusion.SolidOperation.Extrusion.depth - 2.8) < 1e-12);
+    assert.deepEqual(instance.Instance.transform.slice(9), [512002, 5403001, 3]);
+    near(wall.transform, model.productPlacements([36n])[0].transform, "one placement");
+    assert.equal(axisOnly.refusal, undefined, "no Body is not a failure");
+    assert.equal(axisOnly.payloadSize, 0);
+    assert.equal(text.refusal.code, "unsupported");
+    assert.equal(text.refusal.entity, 62n);
+    assert.equal(text.transform, undefined);
+  });
+
+  test("the CBOR payload decodes to the JSON payload's envelope", () => {
+    const model = IfcModel.parse(bytes);
+    const json = model.productGeometry([36n, 46n]);
+    const cbor = model.productGeometry(new BigUint64Array([36n, 46n]), "cbor");
+    for (const [i, record] of cbor.entries()) {
+      assert.equal(record.encoding, "cbor");
+      assert.ok(record.payload instanceof Uint8Array);
+      assert.equal(record.payloadSize, record.payload.length);
+      assert.ok(record.payload.length < json[i].payloadSize, "CBOR is smaller");
+      assert.deepEqual(decodeCbor(record.payload), JSON.parse(json[i].payload));
+    }
+    assert.throws(
+      () => model.productGeometry(undefined, "xml"),
+      (error) => error.name === "IfcError" && error.code === "invalid-value",
+    );
+  });
+
   test("meshes come as typed arrays relative to each product", () => {
     const log = [];
     const console = { log: (...args) => log.push(args) };

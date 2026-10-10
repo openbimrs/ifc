@@ -91,7 +91,8 @@ entities as one checked transaction (`author` with `AuthorOp`s: entities
 by type and named attributes, the spatial structure, placed, contained and
 typed products, removal with relationships; #330), and each product's
 world placement and Body (`product_placements`; meshes from a
-`--features mesh` wheel, #328).
+`--features mesh` wheel, #328; the exact Body as Axiolid's geometry graph,
+`product_geometry`, from a `--features graph` wheel, #367).
 
 ## Build from source
 

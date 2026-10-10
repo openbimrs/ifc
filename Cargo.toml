@@ -63,8 +63,13 @@ axiolid-mesh = { version = "0.3.0" }
 # 0.3.6: station seam sides (`SeamSide`, axiolid/kernel#263; #346). 0.3.7: a
 # bounded half-space's boundary may be a `Profile` contour of lines and
 # circular arcs (axiolid/kernel#277, Axiolid ADR 0084; #398), and stations
-# run along curve relations (axiolid/kernel#285; #346).
-axiolid-model = { version = "0.3.7" }
+# run along curve relations (axiolid/kernel#285; #346). 0.3.8: the versioned
+# wire format of a `GeometryGraph` behind its `serde` feature, JSON and CBOR
+# (axiolid/kernel#267, Axiolid ADR 0085; #367); `ifc-geometry`'s `wire`
+# feature turns it on. It requires the 0.3.x releases of the representation
+# crates that carry their own `serde` features (core 0.3.2, curve 0.3.7,
+# mesh 0.3.3, primitive 0.3.3, profile 0.3.2, surface 0.3.3, topology 0.3.2).
+axiolid-model = { version = "0.3.8" }
 axiolid-primitive = { version = "0.3.0" }
 axiolid-profile = { version = "0.3.0" }
 axiolid-surface = { version = "0.3.0" }

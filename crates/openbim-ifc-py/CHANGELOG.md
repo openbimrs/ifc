@@ -8,6 +8,18 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#367, geometry Level 2, ADR 0021)
+
+- `IfcModel.product_geometry(ids=None, encoding="json")` ->
+  `ProductGeometry` (transform, encoding, payload size, refusal, payload),
+  each product's Body as Axiolid's geometry graph in its wire format 1.0,
+  a `str` (JSON) or `bytes` (`encoding="cbor"`), lowered with the GIL
+  released; `GEOMETRY_FORMAT` and `GEOMETRY_FORMAT_VERSION`. Cargo feature
+  `graph`, opt-in: the published wheel raises `feature-disabled`; build
+  with `maturin build --release --features graph`.
+
+Semver: additive, a minor release while 0.x.
+
 ## [0.4.0] - 2026-10-08
 
 ### Added (#358, property sets of many objects)

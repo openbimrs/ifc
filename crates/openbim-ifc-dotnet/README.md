@@ -75,7 +75,8 @@ creating entities as one checked transaction (`Author` with `AuthorOp`s:
 entities by type and named attributes, the spatial structure, placed,
 contained and typed products, removal with relationships), and each
 product's world placement and Body (`ProductPlacements`; meshes from a
-native library built with `mesh`, #328).
+native library built with `mesh`, #328; the exact Body as Axiolid's
+geometry graph, `ProductGeometry`, from one built with `graph`, #367).
 
 ## Build from source
 

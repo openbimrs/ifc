@@ -176,7 +176,7 @@ gate_features() {
 
     # `spatial` and `properties` need a release to read through (#306), so
     # their combinations name one; both crates refuse to compile without.
-    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,ifc4" "--features step,schema-api" "--features step,geometry-select" "--features step,ifc4,validate" "--features step,ifc4,spatial,geometry-select" "--features step,ifc4,properties,geometry-select" "--features step,ifc4,spatial,properties" "--features step,ifc4,georef,properties" "--features step,ifc4,properties,property-catalog-runtime" "--features step,ifc4,authoring" "--all-features"; do
+    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,ifc4" "--features step,schema-api" "--features step,geometry-select" "--features step,ifc4,validate" "--features step,ifc4,spatial,geometry-select" "--features step,ifc4,properties,geometry-select" "--features step,ifc4,spatial,properties" "--features step,ifc4,georef,properties" "--features step,ifc4,properties,property-catalog-runtime" "--features step,ifc4,authoring" "--features step,ifc4,geometry-wire" "--all-features"; do
         # shellcheck disable=SC2086
         cargo build -p openbim-ifc $features
         # shellcheck disable=SC2086
@@ -253,6 +253,14 @@ gate_features() {
     # meshes through the reference backend, which no default build links.
     cargo test -p openbim-ifc-binding-core --no-default-features --features ifc4,mesh --test geometry
     cargo test -p openbim-ifc --features step,ifc4,mesh --test product_geometry
+    # Geometry Level 2 (#367): the neutral graph in Axiolid's wire format,
+    # opt-in like meshes, alone and with the facade's own test; the `ifc4`
+    # run above refuses it with `feature-disabled`. Only its own tests: the
+    # lowering reaches `ifc-alignment`, which links every release's table,
+    # so the IFC4-only release checks of the lib do not hold with it.
+    cargo test -p openbim-ifc-binding-core --no-default-features --features ifc4,graph --test geometry_graph
+    cargo test -p openbim-ifc --features step,ifc4,geometry-wire --test product_geometry
+    cargo clippy -p openbim-ifc-binding-core --no-default-features --features ifc4,graph --lib --test geometry_graph -- -D warnings
 
     # Every crate the bindings reach takes its releases from the build too
     # (#306): each builds and tests with one release; the binding core with

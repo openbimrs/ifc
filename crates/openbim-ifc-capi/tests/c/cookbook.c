@@ -1,7 +1,7 @@
 /* The C cookbook (docs/cookbook/c.md, #331): every recipe on that page is a
  * `docs:snippet` region below, run by scripts/check-c.sh against the real
  * library, as C11 and as C++17, and against a library built with the `mesh`
- * feature, and checked against the fixture it reads.
+ * and `graph` features, and checked against the fixture it reads.
  *
  *   cookbook <test/fixtures directory> <scratch directory>
  *
@@ -447,6 +447,40 @@ static int recipe_meshes(OpenbimIfcModel model) {
   return 0;
 }
 
+static int recipe_graphs(OpenbimIfcModel model) {
+  // docs:snippet cookbook-c-graphs
+  /* A library built with the `graph` feature lowers and encodes every Body
+   * once into a set; the release archives refuse with FEATURE_DISABLED.
+   * Each payload is Axiolid's wire format 1.0, JSON here (or CBOR). */
+  OpenbimIfcGraphs graphs = 0;
+  OpenbimIfcStatus status =
+      openbim_ifc_v0_1_model_product_geometry(model, NULL, 0, OPENBIM_IFC_GEOMETRY_JSON, &graphs);
+  size_t written = 0;
+  if (status == OPENBIM_IFC_STATUS_OK) {
+    size_t count = 0, nodes = 0, strings = 0;
+    openbim_ifc_v0_1_graphs_records(graphs, &count, NULL, 0, &nodes, NULL, 0, &strings);
+    for (size_t i = 0; i < count; i++) {
+      size_t need = 0;
+      openbim_ifc_v0_1_graphs_payload(graphs, i, NULL, 0, &need);
+      if (need == 0) continue; /* no Body, or refused: see the record */
+      uint8_t *json = (uint8_t *)malloc(need);
+      openbim_ifc_v0_1_graphs_payload(graphs, i, json, need, &need);
+      /* hand json[0..need) to your kernel's reader of the wire format */
+      written += 1;
+      free(json);
+    }
+    openbim_ifc_v0_1_graphs_destroy(graphs);
+  }
+  // docs:end
+  if (status == OPENBIM_IFC_STATUS_FEATURE_DISABLED) {
+    CHECK(graphs == 0, "no set without the feature");
+    return 0;
+  }
+  CHECK(status == OPENBIM_IFC_STATUS_OK, "graphs lower");
+  CHECK(written == 2, "the wall and the slab");
+  return 0;
+}
+
 // docs:snippet cookbook-c-builder
 /* A value tape to pass in: pre-order nodes plus one string buffer. */
 typedef struct {
@@ -629,6 +663,7 @@ int main(int argc, char **argv) {
   if (recipe_ifcxml(model) != 0) return 1;
   if (recipe_placements(model) != 0) return 1;
   if (recipe_meshes(model) != 0) return 1;
+  if (recipe_graphs(model) != 0) return 1;
   OK(openbim_ifc_v0_1_model_destroy(model));
 
   if (recipe_create() != 0) return 1;

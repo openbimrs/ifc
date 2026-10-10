@@ -294,7 +294,8 @@ Use the Rust crates for those.
 
 ## Geometry
 
-Geometry crosses at two levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)).
+Geometry crosses at three levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)):
+placements, the exact neutral representation and meshes.
 `ProductPlacements(ids)` returns, for each product with a shape (or for
 the ids given), its world placement and the Body representation a viewer
 draws.
@@ -328,6 +329,41 @@ record with a `GeometryRefusal` (`Code` `unsupported`, `invalid-model`,
 and `uint[] Indices`. It needs a native library built with the C ABI's
 `mesh` feature; the packaged one throws `IfcException` with code
 `feature-disabled`.
+
+`ProductGeometry(ids, encoding)` returns each product's Body as Axiolid's
+neutral geometry graph ([#367](https://github.com/openbimrs/ifc/issues/367)),
+exact, for your own kernel: a `ProductGraph` per product, its
+`ProductGeometry` record (transform, encoding, payload size, refusal) and
+`byte[] Payload`, Axiolid's versioned wire format 1.0 as UTF-8 JSON
+(`GeometryEncoding.Json`, also as `string Json`) or CBOR
+(`GeometryEncoding.Cbor`). It needs a native library built with the C
+ABI's `graph` feature; the packaged one throws `IfcException` with code
+`feature-disabled`.
+
+<!-- SNIPPET:dotnet-geometry-graph -->
+
+```csharp
+using var model = IfcModel.Parse(data);
+foreach (var product in model.ProductGeometry())
+{
+    if (product.Geometry.Refusal is { } refusal)
+    {
+        System.Console.WriteLine($"#{product.Geometry.Id}: {refusal.Code}");
+        continue;
+    }
+    // {"format":"axiolid-geometry-graph","version":"1.0","graph":{...}},
+    // exact, in world metres: hand it to your own kernel's reader.
+    System.Console.WriteLine($"{product.Geometry.TypeName}: {product.Json}");
+}
+```
+
+<!-- /SNIPPET -->
+
+The envelope is `{"format":"axiolid-geometry-graph","version":"1.0",
+"graph":{"nodes":[...],"roots":[...]}}` (`ProductGraph.Format`,
+`ProductGraph.FormatVersion`), in world coordinates, metres, with the
+record's transform already applied. A major version of the wire format
+would be a breaking release of the package (ADR 0021).
 
 ## Creating entities
 
@@ -428,6 +464,7 @@ and `MeshedProduct` included, from its XML documentation comments.
 | `ValidationReport Validate(int? maxFindings = null)` | Validate against the schema the header declares; findings sorted by severity, rule, entity and slot. `maxFindings` caps the report (default 10,000). |
 | `IReadOnlyList<UnreachableProduct> UnreachableProducts()` | Products no viewer will draw, with a stable reason, in id order. |
 | `IReadOnlyList<ProductPlacement> ProductPlacements(IReadOnlyList<ulong>? ids = null)` | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or, when null, every product with a shape, in id order (#328). |
+| `IReadOnlyList<ProductGraph> ProductGeometry(IReadOnlyList<ulong>? ids = null, GeometryEncoding encoding = GeometryEncoding.Json)` | Each product's Body as Axiolid's neutral geometry graph (#367), for `ids` or, when null, every product with a shape, in id order, encoded as `encoding` in Axiolid's wire format 1.0. |
 | `IReadOnlyList<MeshedProduct> ProductMeshes(IReadOnlyList<ulong>? ids = null)` | Each product's Body as triangles from the reference backend, for `ids` or, when null, every product with a shape, in id order (#328). |
 | `IReadOnlyList<PropertySet> PropertySets(ulong id)` | The property sets, quantity sets and predefined property sets of object `id`: its own first, then those its type object holds, an occurrence property overriding an inherited one of the same name. |
 | `IReadOnlyList<ObjectPropertySets> PropertySetsMany(IReadOnlyList<ulong>? ids = null)` | `PropertySets` of each of `ids`, in that order, or, when null, of every object definition (`IfcObjectDefinition` and its subtypes) in file order, in one pass (#358). |
