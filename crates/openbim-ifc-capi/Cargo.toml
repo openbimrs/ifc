@@ -47,6 +47,12 @@ default = []
 # returns `FeatureDisabled`. Build with `cargo build --release --features
 # mesh`, or CMake with `-DOPENBIM_IFC_CARGO_FEATURES=mesh`.
 mesh = ["openbim-ifc-binding-core/mesh"]
+# Each product's Body as Axiolid's neutral geometry graph in its wire
+# format 1.0 (#367, `openbim_ifc_v0_1_model_product_geometry`). Opt-in like
+# `mesh`: it links the lowering and serde (ADR 0021), so the release
+# archives leave it out and the call returns `FeatureDisabled`. Build with
+# `--features graph`, or CMake with `-DOPENBIM_IFC_CARGO_FEATURES=graph`.
+graph = ["openbim-ifc-binding-core/graph"]
 # Route the library's Rust allocations through rusty_alloc: reading STEP
 # into a model takes 18-35% less CPU time on seven real IFC files, at 1-7%
 # less peak memory (measured in #49). The host's own `malloc` is untouched.
@@ -57,6 +63,12 @@ rusty_alloc = ["dep:rusty_alloc-api", "dep:rusty_alloc"]
 [dev-dependencies]
 # Regenerates the header in-memory to prove the committed one is current.
 cbindgen = { version = "=0.29.4", default-features = false }
+# The graph boundary tests (#367) read each payload back with Axiolid's own
+# reader (`GeometryGraph::from_json`, through the facade's re-export) and
+# the envelope with serde_json. Tests only: the library reaches IFC through
+# the binding core alone (ADR 0013).
+openbim-ifc = { workspace = true, default-features = false, features = ["step", "geometry-wire"] }
+serde_json = "1.0"
 
 [lints]
 workspace = true

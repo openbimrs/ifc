@@ -38,6 +38,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `full` |  | Everything: codecs, schema tables, every domain, catalogues, geometry and meshes, georeferencing and alignment. |
 | `geometry` |  | Representation selection plus lowering into the neutral geometry DAG. |
 | `geometry-select` |  | Representation selection only: contexts, plan/body choice, placements and units, with no geometry kernel. |
+| `geometry-wire` |  | Each product's Body as Axiolid's neutral geometry graph (`product_graphs`), exact and in world metres, encodable in Axiolid's versioned wire format 1.0 as JSON or CBOR (`ifc::geometry::wire`); a typed refusal per product. Computes nothing; adds the lowering and serde. |
 | `georef` |  | [`ifc-georef`](./ifc-georef): Georeferencing: map conversion, coordinate reference systems, site placement. |
 | `ifc2x3` |  | The schema API with the bundled IFC2X3 TC1 table. |
 | `ifc4` |  | The schema API with the bundled IFC4 ADD2 TC1 table. |

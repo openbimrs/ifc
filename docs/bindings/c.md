@@ -442,7 +442,8 @@ them. Use the Rust crates for those.
 
 ## Geometry
 
-Geometry crosses at two levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)).
+Geometry crosses at three levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)):
+placements, the exact neutral representation and meshes.
 
 <!-- SNIPPET:c-geometry -->
 
@@ -507,6 +508,59 @@ transform) and `openbim_ifc_v0_1_meshes_indices` its `uint32_t` indices
 set is `OUT_OF_RANGE`. `openbim_ifc_v0_1_meshes_destroy` frees the set. A
 product with no Body has no vertices and no refusal. These exports make
 the ABI version 0.1.7; no `v0_1` symbol changed.
+
+The exact neutral representation
+([#367](https://github.com/openbimrs/ifc/issues/367)) is each product's
+Body as Axiolid's geometry graph, serialised in Axiolid's versioned wire
+format 1.0 (Axiolid ADR 0085) for a host's own kernel. It links the
+lowering, so it is the cargo feature `graph`, which the release archives
+leave out (`FEATURE_DISABLED`); build with `--features graph` (or
+`mesh,graph`), or CMake with `-DOPENBIM_IFC_CARGO_FEATURES=graph`:
+
+<!-- SNIPPET:c-geometry-graph -->
+
+```c
+/* Level 2, in a library built with the `graph` feature: lower and encode
+ * once into a set, then copy each product's wire payload out. */
+OpenbimIfcGraphs graphs = 0;
+size_t products = 0;
+if (openbim_ifc_v0_1_model_product_geometry(model, NULL, 0, OPENBIM_IFC_GEOMETRY_JSON,
+                                            &graphs) == OPENBIM_IFC_STATUS_OK) {
+  OpenbimIfcValueNode nodes[128];
+  uint8_t strings[1024];
+  size_t node_count = 0, string_len = 0, need = 0;
+  /* ProductGeometry records: id, global id, type, transform, encoding,
+   * payload size, refusal. */
+  openbim_ifc_v0_1_graphs_records(graphs, &products, nodes, 128, &node_count, strings,
+                                  sizeof strings, &string_len);
+  openbim_ifc_v0_1_graphs_payload(graphs, 0, NULL, 0, &need);
+  char *json = (char *)malloc(need + 1);
+  openbim_ifc_v0_1_graphs_payload(graphs, 0, (uint8_t *)json, need, &need);
+  json[need] = '\0'; /* {"format":"axiolid-geometry-graph","version":"1.0",...} */
+  printf("%zu graph(s); %.52s...\n", products, json);
+  free(json);
+  openbim_ifc_v0_1_graphs_destroy(graphs);
+}
+```
+
+<!-- /SNIPPET -->
+
+`openbim_ifc_v0_1_model_product_geometry(model, ids, id_count, encoding,
+&graphs)` lowers and encodes once into a graph set, an opaque non-zero
+`OpenbimIfcGraphs` handle that owns its data and outlives the model;
+`encoding` is `OPENBIM_IFC_GEOMETRY_JSON` (0, UTF-8 text without a
+trailing NUL) or `OPENBIM_IFC_GEOMETRY_CBOR` (1, RFC 8949), and any other
+value is `INVALID_ARGUMENT`. `openbim_ifc_v0_1_graphs_records` returns its
+`ProductGeometry` records (id, global id, type name, transform, encoding,
+payload size, refusal); `openbim_ifc_v0_1_graphs_payload` copies graph
+`index`'s payload, `{"format":"axiolid-geometry-graph","version":"1.0",
+"graph":{"nodes":[...],"roots":[...]}}`, after the usual size query; an
+index past the set is `OUT_OF_RANGE`, and a product with no Body or a
+refused one has an empty payload. `openbim_ifc_v0_1_graphs_destroy` frees
+the set. The graph is in world coordinates, metres, with the record's
+transform already applied. These exports make the ABI version 0.1.9; no
+`v0_1` symbol changed. A major version of the wire format would be a
+breaking change of the ABI (ADR 0021).
 
 ## Creating entities
 

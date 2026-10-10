@@ -241,6 +241,67 @@ public sealed unsafe class IfcModel : IDisposable
         }).One());
     }
 
+    /// <summary>Each product's Body as Axiolid's neutral geometry graph (#367), for <paramref name="ids"/> or, when null, every product with a shape, in id order, encoded as <paramref name="encoding"/> in Axiolid's wire format 1.0.</summary>
+    /// <remarks>Exact (extrusions, sweeps, B-splines, unevaluated booleans), in world coordinates, metres, for a host's own kernel. A product that cannot be lowered has a typed <see cref="OpenBim.Ifc.ProductGeometry.Refusal"/>. Needs a native library built with the <c>graph</c> feature; the packaged one throws <see cref="IfcException"/> with code <c>feature-disabled</c>.</remarks>
+    public IReadOnlyList<ProductGraph> ProductGeometry(IReadOnlyList<ulong>? ids = null, GeometryEncoding encoding = GeometryEncoding.Json)
+    {
+        var selection = ids?.ToArray();
+        if (selection is { Length: 0 })
+        {
+            return Array.Empty<ProductGraph>();
+        }
+        ulong graphs;
+        using (var lease = handle.Acquire())
+        {
+            var m = lease.Model;
+            fixed (ulong* p = selection)
+            {
+                Calls.Check(m, NativeMethods.openbim_ifc_v0_1_model_product_geometry(m, p, (nuint)(selection?.Length ?? 0), (uint)encoding, &graphs));
+            }
+        }
+        // A copy for the lambda: a captured local cannot have its address taken.
+        var set = graphs;
+        try
+        {
+            var status = Calls.Tape((n, nc, nr, s, sc, sr) =>
+            {
+                nuint count;
+                return NativeMethods.openbim_ifc_v0_1_graphs_records(set, &count, n, nc, nr, s, sc, sr);
+            }, out var tape);
+            if (status != IfcStatus.Ok)
+            {
+                throw Calls.Error(status, null);
+            }
+            var records = RecordDecoder.DecodeList<ProductGeometry>(tape.One());
+            var result = new ProductGraph[records.Count];
+            for (var i = 0; i < records.Count; i++)
+            {
+                result[i] = new ProductGraph(records[i], GraphPayload(set, i));
+            }
+            return result;
+        }
+        finally
+        {
+            NativeMethods.openbim_ifc_v0_1_graphs_destroy(set);
+        }
+    }
+
+    private static byte[] GraphPayload(ulong graphs, int index)
+    {
+        nuint need;
+        var status = NativeMethods.openbim_ifc_v0_1_graphs_payload(graphs, (nuint)index, null, 0, &need);
+        if (status != IfcStatus.Ok && status != IfcStatus.BufferTooSmall)
+        {
+            throw Calls.Error(status, null);
+        }
+        var buffer = new byte[checked((int)need)];
+        fixed (byte* p = buffer)
+        {
+            status = NativeMethods.openbim_ifc_v0_1_graphs_payload(graphs, (nuint)index, p, (nuint)buffer.Length, &need);
+        }
+        return status == IfcStatus.Ok ? buffer : throw Calls.Error(status, null);
+    }
+
     /// <summary>Each product's Body as triangles from the reference backend, for <paramref name="ids"/> or, when null, every product with a shape, in id order (#328).</summary>
     /// <remarks>A product that cannot be meshed has a typed <see cref="ProductMesh.Refusal"/>. Needs a native library built with the <c>mesh</c> feature; the packaged one throws <see cref="IfcException"/> with code <c>feature-disabled</c>.</remarks>
     public IReadOnlyList<MeshedProduct> ProductMeshes(IReadOnlyList<ulong>? ids = null)

@@ -8,6 +8,24 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#367, geometry Level 2, ADR 0021)
+
+- Cargo feature `graph` (opt-in; the release archives return
+  `FeatureDisabled`): `openbim_ifc_v0_1_model_product_geometry(model, ids,
+  id_count, encoding, &graphs)` lowers and encodes each product's Body
+  once into an `OpenbimIfcGraphs` handle, read with
+  `openbim_ifc_v0_1_graphs_records` (a tape of `ProductGeometry` records:
+  id, global id, type name, transform, encoding, payload size, refusal) and
+  `openbim_ifc_v0_1_graphs_payload` (the wire payload into a caller byte
+  buffer), freed with `openbim_ifc_v0_1_graphs_destroy`; it outlives the
+  model. `encoding` is `OPENBIM_IFC_GEOMETRY_JSON` (0) or
+  `OPENBIM_IFC_GEOMETRY_CBOR` (1); another value is `InvalidArgument`.
+  The payload is Axiolid's wire format 1.0.
+- ABI version 0.1.9; no `v0_1` symbol changed. A major version of the wire
+  format would be new `v0_2_` exports, not a changed `v0_1_` one.
+
+Semver: additive, a patch release.
+
 ## [0.1.5] - 2026-10-08
 
 ### Added (#358, #342)

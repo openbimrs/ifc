@@ -1,16 +1,17 @@
-//! Geometry for the hosts (#328, ADR 0021), at two levels.
+//! Geometry for the hosts (#328, #367, ADR 0021), at three levels.
 //!
 //! - **Placements** (feature `placements`, default): per product, the world
 //!   placement as a 4x4 column-major matrix in metres and the Body
 //!   representation a viewer draws, with its identifier, type and context.
 //!   Kernel-free: the facade's `product_placements`.
+//! - **Graphs** (feature `graph`, #367): per product, the Body lowered
+//!   into Axiolid's neutral geometry graph, exact, serialised in Axiolid's
+//!   versioned wire format 1.0 as JSON or CBOR ([`graph`]). Computes
+//!   nothing; the facade's `product_graphs`.
 //! - **Meshes** (feature `mesh`, opt-in): per product, triangles compiled by
 //!   the reference backend, `f32` positions relative to the product's world
 //!   placement and `u32` indices. The facade's `product_meshes`; it links an
 //!   execution provider, which ADR 0004 keeps out of every default build.
-//!
-//! The serialised neutral representation between the two is deferred until
-//! Axiolid promises its model as a stable format (ADR 0021).
 //!
 //! A product that cannot be placed, selected or meshed is a record with a
 //! typed [`GeometryRefusal`], never an error that aborts the call: one
@@ -22,7 +23,9 @@
 use crate::record::{Field, Record, ToRecord};
 use crate::{BindingError, IfcModel};
 
-/// Why one product has no placement, representation or mesh.
+pub mod graph;
+
+/// Why one product has no placement, representation, graph or mesh.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeometryRefusal {
     /// `unsupported` (valid IFC this build does not interpret, or a mesh

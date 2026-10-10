@@ -8,6 +8,24 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#367, geometry Level 2, ADR 0021)
+
+- `IfcModel.productGeometry(ids?, encoding?)` -> `ProductGeometry[]`, each
+  product's Body as Axiolid's geometry graph in its wire format 1.0:
+  `payload` the JSON text (`"json"`, the default), the parsed
+  `GeometryGraphEnvelope` (`"object"`) or the CBOR bytes as a `Uint8Array`
+  (`"cbor"`); a typed `refusal` per product. TypeScript types
+  `ProductGeometry`, `GeometryGraphEnvelope`, `GeometryGraphNode`,
+  `GeometryPayloadEncoding`. Cargo feature `graph`, opt-in: +1.06 MB
+  (+341 KB gzip) on the default module, +286 KB (+88 KB gzip) beside
+  `mesh`.
+- The npm package's mesh entry (`@openbim/ifc/mesh`) is built with
+  `mesh,graph` and carries `productGeometry`; the default entry throws
+  `feature-disabled` for it.
+
+Semver: additive, a minor release while 0.x (the npm package gains an
+API).
+
 ## [0.4.3] - 2026-10-08
 
 ### Added (#358, #342)

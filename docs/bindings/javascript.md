@@ -30,14 +30,14 @@ The package's `exports` map picks the build:
 | `@openbim/ifc` in Node | CommonJS (`wasm-bindgen --target nodejs`) | on `require`, from disk |
 | `@openbim/ifc` in a bundler | ES module (`--target bundler`) | through the bundler |
 | `@openbim/ifc/web` | ES module (`--target web`) | when `init()` is awaited |
-| `@openbim/ifc/mesh` in Node | the same, with [meshes](#geometry) | on `require`, from disk |
-| `@openbim/ifc/mesh` in a bundler | the same, with meshes | through the bundler |
-| `@openbim/ifc/mesh/web` | the same, with meshes | when `init()` is awaited |
+| `@openbim/ifc/mesh` in Node | the same, with [meshes](#geometry) and [exact graphs](#exact-geometry-graphs) | on `require`, from disk |
+| `@openbim/ifc/mesh` in a bundler | the same, with meshes and graphs | through the bundler |
+| `@openbim/ifc/mesh/web` | the same, with meshes and graphs | when `init()` is awaited |
 
-The `mesh` entries are the same API built with the cargo feature `mesh`,
-which adds `productMeshes` and 2.2 MB to the module; an application that
-does not import them downloads nothing of them
-([Geometry](#geometry), [Package size](#package-size)).
+The `mesh` entries are the same API built with the cargo features `mesh`
+and `graph`, which add `productMeshes`, `productGeometry` and 2.8 MB to
+the module; an application that does not import them downloads nothing of
+them ([Geometry](#geometry), [Package size](#package-size)).
 
 The bundler build imports its `.wasm` file as an ES module, so the API is
 the same as in Node:
@@ -399,7 +399,8 @@ them. Use the Rust crates for those.
 
 ## Geometry
 
-Geometry crosses at two levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)).
+Geometry crosses at three levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)):
+placements, the exact neutral representation and meshes.
 `productPlacements(ids?)` is in every build: for each product with a
 shape (or for the `bigint` ids given), its world placement and the Body
 representation a viewer draws.
@@ -504,9 +505,60 @@ plain WebGL2 and no build step beyond the module. Its `viewer.mjs` imports
   of it) and serve the page, or let a bundler resolve the bare specifier.
 
 Its `scene.mjs` subtracts one scene origin from every transform in `f64`
-before handing `f32` matrices to the GPU. The serialised neutral
-representation between the two levels waits for Axiolid to promise a
-stable format ([#367](https://github.com/openbimrs/ifc/issues/367)).
+before handing `f32` matrices to the GPU.
+
+### Exact geometry graphs
+
+`productGeometry(ids?, encoding?)` hands over each product's Body as
+Axiolid's neutral geometry graph instead of triangles
+([#367](https://github.com/openbimrs/ifc/issues/367)): exact extrusions,
+sweeps, B-splines and unevaluated booleans, for a host that evaluates
+them with its own kernel. It is the graph the mesh level compiles, so it
+links the lowering; it is the cargo feature `graph`, which the default
+entry leaves out (`feature-disabled`) and the mesh entry carries.
+
+<!-- SNIPPET:js-geometry-graphs -->
+
+```js
+const model = IfcModel.parse(bytes);
+for (const product of model.productGeometry(undefined, "object")) {
+  if (product.refusal) {
+    console.log(product.id, product.refusal.code); // e.g. 65n "unsupported"
+    continue;
+  }
+  if (!product.payload) continue; // no Body: an axis-only product
+  // { format: "axiolid-geometry-graph", version: "1.0", graph }, exact,
+  // in world coordinates (metres): hand it to your own kernel.
+  const { format, version, graph } = product.payload;
+  console.log(product.typeName, format, version, Object.keys(graph.nodes.at(-1))[0]);
+}
+```
+
+<!-- /SNIPPET -->
+
+The payload is Axiolid's versioned wire format 1.0 (Axiolid ADR 0085), the
+envelope `{ format: "axiolid-geometry-graph", version: "1.0", graph: {
+nodes, roots } }`, typed as `GeometryGraphEnvelope`. Nodes come in
+insertion order, which is topological; each is tagged by its kind
+(`Profile`, `SolidOperation`, `Instance`, ...) and a reference to another
+node is that node's index. The graph is in world coordinates, metres,
+with the product's placement already applied; the record's `transform`
+is that placement, as `productPlacements` gives it, and is never applied
+to the graph again. `encoding` chooses the `payload`:
+
+| `encoding` | `payload` |
+| --- | --- |
+| `"json"` (default) | the JSON text, a `string` |
+| `"object"` | the text parsed, a `GeometryGraphEnvelope` |
+| `"cbor"` | the CBOR bytes (RFC 8949), a `Uint8Array`, about a quarter smaller |
+
+`payloadSize` is the payload's length in bytes (UTF-8 for JSON). A
+product with no Body has no payload and no refusal; one whose placement
+or lowering is refused carries the `refusal`, typed as above. A reader of
+the format refuses a newer version, another major, and any kind, variant
+or field it does not know; the binding writes 1.0, and a major version
+of the wire format would be a breaking release of this package
+(ADR 0021).
 
 ## Creating entities
 
@@ -661,6 +713,31 @@ and its boolean engine: 2.1 MB to the default (757 KB under `gzip -9`,
 509 KB under brotli), which is why the package's default entry leaves them
 out and a separate entry carries them.
 
+Exact geometry graphs ([#367](https://github.com/openbimrs/ifc/issues/367)),
+measured on 2026-10-10 on the same toolchain (`gzip -9` from the `gzip`
+command, brotli 11 from `node:zlib`):
+
+| Features | Raw | gzip -9 | brotli 11 |
+| --- | ---: | ---: | ---: |
+| default | 2,962,323 | 995,024 | 655,098 |
+| default + `graph` | 4,021,564 | 1,336,245 | 868,377 |
+| default + `mesh` | 5,506,168 | 1,880,291 | 1,253,132 |
+| default + `mesh,graph` (the mesh entry) | 5,792,007 | 1,968,040 | 1,299,307 |
+| `ifc4` | 844,192 | 351,925 | 282,661 |
+| `ifc4,placements` | 933,537 | 383,533 | 305,674 |
+| `ifc4,graph` (brings `placements`) | 2,578,117 | 863,269 | 543,599 |
+| `ifc4,mesh` | 4,077,559 | 1,406,808 | 934,350 |
+| `ifc4,mesh,graph` | 4,360,873 | 1,493,165 | 979,988 |
+
+On its own, `graph` adds 1.06 MB to the default module (341 KB under
+`gzip -9`, 213 KB under brotli), against Level 1's 15 KB: it links the
+lowering into Axiolid's graph, the representation crates, `ifc-alignment`
+(which still links every release's schema table, so an IFC4-only build
+grows by 1.64 MB) and the serde encoders of the wire format. That is why
+it is opt-in. Beside `mesh`, which links the lowering already, it adds
+286 KB (88 KB under `gzip -9`, 46 KB under brotli), so the mesh entry
+carries both.
+
 ### Package size
 
 The npm package carries two entries ([#369](https://github.com/openbimrs/ifc/issues/369)),
@@ -675,6 +752,12 @@ quality 11:
 | --- | ---: | ---: | ---: |
 | default entry (`@openbim/ifc`, `/bundler`, `/web`) | 2,940,278 | 988,129 | 647,986 |
 | mesh entry (`@openbim/ifc/mesh`, `/mesh/bundler`, `/mesh/web`) | 5,101,651 | 1,753,297 | 1,163,026 |
+
+With [#367](https://github.com/openbimrs/ifc/issues/367) the mesh entry
+carries `graph` too: on 2026-10-10 (version 0.4.3 plus #367) its module is
+5,792,007 bytes and the default entry's 2,962,323, and the tarball is
+9,920,911 bytes packed and 29,293,897 unpacked, the mesh entry's three
+targets 17,673,507 of that.
 
 | Package | Tarball | Unpacked | Files |
 | --- | ---: | ---: | ---: |
@@ -746,6 +829,7 @@ class, interface and type the package's `.d.ts` declares.
 | `model.validate(maxFindings: number \| undefined): ValidationReport` | yes | Validate against the schema the header declares; findings are sorted by severity, rule, entity and slot. `maxFindings` caps the report (default 10,000) and sets `truncated` when reached. |
 | `model.unreachableProducts(): UnreachableProduct[]` | yes | Products no viewer will draw (outside the spatial structure, or with geometry only in non-model contexts), with a stable `reason`. |
 | `model.productPlacements(ids: bigint[] \| BigUint64Array \| undefined): ProductPlacement[]` | yes | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or, without, for every product with a shape. A product that cannot be placed is a record with a typed `refusal`; the call itself throws only `unsupported-schema` or `feature-disabled` (feature `placements`). |
+| `model.productGeometry(ids: bigint[] \| BigUint64Array \| undefined, encoding: GeometryPayloadEncoding \| undefined): ProductGeometry[]` | yes | Each product's Body as Axiolid's neutral geometry graph (#367), exact (extrusions, sweeps, B-splines, unevaluated booleans), for `ids` or, without, every product with a shape, in Axiolid's versioned wire format 1.0: `{ format: "axiolid-geometry-graph", version: "1.0", graph: { nodes, roots } }`, in world coordinates, metres. `encoding` picks the `payload`: `"json"` (the default) the text, `"object"` the text parsed, `"cbor"` the CBOR bytes as a `Uint8Array`. A product that cannot be lowered has a typed `refusal`; the call itself throws only `unsupported-schema`, `feature-disabled` (feature `graph`) or `invalid-value` for an unknown encoding. |
 | `model.productMeshes(ids: bigint[] \| BigUint64Array \| undefined): ProductMesh[]` | yes | Each product's Body as triangles from the reference backend: `positions` (`Float32Array`, metres, relative to `transform`) and `indices` (`Uint32Array`), for `ids` or, without, every product with a shape. A product that cannot be meshed has a typed `refusal`. Opt-in: a build without the `mesh` feature (the npm package's default entry) throws `feature-disabled`; import `@openbim/ifc/mesh` for it. |
 | `model.propertySets(id: bigint): PropertySet[]` | yes | The property sets, quantity sets and predefined property sets that apply to object `id`: its own first, then those inherited from its type object, an occurrence property overriding an inherited one. Values keep their declared IFC type (`typed IFCLENGTHMEASURE(...)`). |
 | `model.propertySetsMany(ids: bigint[] \| BigUint64Array \| undefined): ObjectPropertySets[]` | yes | The property sets of each of `ids`, in that order, or, with no ids, of every object definition (`IfcObjectDefinition` and its subtypes) in file order, in one pass (#358): the file's property relationships are validated once for the call, so resolving every object is linear in the model. Each `ObjectPropertySets` holds exactly what `propertySets` returns for its object, or, in `refusal`, the code and message it throws; only a refusal of the whole model throws. No index outlives the call. |

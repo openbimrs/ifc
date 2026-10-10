@@ -39,10 +39,10 @@ build smoke_cxx c++17 "$crate_dir/tests/c/smoke.c"
 build cookbook_cxx c++17 "$crate_dir/tests/c/cookbook.c"
 "$out/cookbook_cxx" "$fixtures" "$out"
 
-# The opt-in mesh build (#328): the same smoke test, now reaching the mesh
-# set instead of the `FeatureDisabled` refusal the default library gives,
-# and the cookbook's mesh recipe.
-cargo build -p openbim-ifc-capi --release --features mesh
+# The opt-in geometry build (#328, #367): the same smoke test, now reaching
+# the mesh and graph sets instead of the `FeatureDisabled` refusals the
+# default library gives, and the cookbook's mesh and graph recipes.
+cargo build -p openbim-ifc-capi --release --features mesh,graph
 build smoke_mesh c11 "$crate_dir/tests/c/smoke.c"
 "$out/smoke_mesh"
 build cookbook_mesh c11 "$crate_dir/tests/c/cookbook.c"

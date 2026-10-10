@@ -115,6 +115,15 @@ internal static unsafe partial class NativeMethods
     internal static extern IfcStatus openbim_ifc_v0_1_entity_type(ulong model, ulong id, byte* buffer, nuint capacity, nuint* out_required);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_graphs_destroy(ulong graphs);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_graphs_payload(ulong graphs, nuint index, byte* buffer, nuint capacity, nuint* out_required);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_graphs_records(ulong graphs, nuint* out_count, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_last_error_code(ulong model, byte* buffer, nuint capacity, nuint* out_required);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
@@ -197,6 +206,9 @@ internal static unsafe partial class NativeMethods
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_model_parse_with_options(byte* data, nuint len, uint flags, ulong* out_model, byte* error_buffer, nuint capacity);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_model_product_geometry(ulong model, ulong* ids, nuint id_count, uint encoding, ulong* out_graphs);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_model_product_meshes(ulong model, ulong* ids, nuint id_count, ulong* out_meshes);

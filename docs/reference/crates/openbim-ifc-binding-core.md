@@ -37,6 +37,7 @@ view of `openbim-ifc`; if a binding needs more, the facade grows first.
 | `classification` | yes | `openbim-ifc/classification` |
 | `cost` | yes | `openbim-ifc/cost` |
 | `georef` | yes | `properties`, `openbim-ifc/georef` |
+| `graph` |  | `placements`, `openbim-ifc/geometry-wire` |
 | `ifc2x3` | yes | `openbim-ifc/ifc2x3` |
 | `ifc4` | yes | `openbim-ifc/ifc4` |
 | `ifc4x1` | yes | `openbim-ifc/ifc4x1` |

@@ -1,5 +1,6 @@
-// Geometry (#328): placements in every build, meshes when the native
-// library carries the `mesh` feature, as smoke.c's `geometry()` checks them.
+// Geometry (#328, #367): placements in every build, graphs and meshes when
+// the native library carries the `graph` and `mesh` features, as smoke.c's
+// `geometry()` checks them.
 
 using System.Linq;
 using Xunit;
@@ -88,6 +89,60 @@ public class GeometryTests
         catch (IfcException error)
         {
             // The packaged library leaves meshes out.
+            Assert.Equal("feature-disabled", error.Code);
+            Assert.Equal(IfcStatus.FeatureDisabled, error.Status);
+        }
+    }
+
+    [Fact]
+    public void GraphsAreOptInAndOtherwiseAxiolidsWireFormat()
+    {
+        var data = Fixtures.Bytes(Wall);
+        try
+        {
+            // docs:snippet dotnet-geometry-graph
+            using var model = IfcModel.Parse(data);
+            foreach (var product in model.ProductGeometry())
+            {
+                if (product.Geometry.Refusal is { } refusal)
+                {
+                    System.Console.WriteLine($"#{product.Geometry.Id}: {refusal.Code}");
+                    continue;
+                }
+                // {"format":"axiolid-geometry-graph","version":"1.0","graph":{...}},
+                // exact, in world metres: hand it to your own kernel.
+                using var envelope = System.Text.Json.JsonDocument.Parse(product.Payload);
+                System.Console.WriteLine($"{product.Geometry.TypeName}: {envelope.RootElement.GetProperty("version")}");
+            }
+            // docs:end
+
+            var wall = Assert.Single(model.ProductGeometry());
+            Assert.Null(wall.Geometry.Refusal);
+            Assert.Equal("json", wall.Geometry.Encoding);
+            Assert.Equal(wall.Geometry.PayloadSize, (long)wall.Payload.Length);
+            using var json = System.Text.Json.JsonDocument.Parse(wall.Json!);
+            Assert.Equal(ProductGraph.Format, json.RootElement.GetProperty("format").GetString());
+            Assert.Equal(ProductGraph.FormatVersion, json.RootElement.GetProperty("version").GetString());
+            Assert.Equal("1.0", ProductGraph.FormatVersion);
+            var nodes = json.RootElement.GetProperty("graph").GetProperty("nodes");
+            Assert.Equal(nodes.GetArrayLength() - 1, json.RootElement.GetProperty("graph").GetProperty("roots")[0].GetInt32());
+            Assert.Equal(model.ProductPlacements()[0].Transform, wall.Geometry.Transform);
+
+            var cbor = Assert.Single(model.ProductGeometry(null, GeometryEncoding.Cbor));
+            Assert.Equal("cbor", cbor.Geometry.Encoding);
+            Assert.Null(cbor.Json);
+            // A CBOR map of three entries, the first the text "format".
+            Assert.Equal(0xa3, cbor.Payload[0]);
+            Assert.Equal("format", System.Text.Encoding.UTF8.GetString(cbor.Payload, 2, 6));
+            Assert.True(cbor.Payload.Length < wall.Payload.Length);
+
+            var missing = Assert.Single(model.ProductGeometry(new ulong[] { 99 }));
+            Assert.Equal("missing-reference", missing.Geometry.Refusal!.Code);
+            Assert.Empty(missing.Payload);
+        }
+        catch (IfcException error)
+        {
+            // The packaged library leaves graphs out.
             Assert.Equal("feature-disabled", error.Code);
             Assert.Equal(IfcStatus.FeatureDisabled, error.Status);
         }

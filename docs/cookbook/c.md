@@ -372,7 +372,7 @@ A plain attribute value is coerced against the declared type; an
 `OPENBIM_IFC_KIND_EXACT` node before a value writes it exactly. A refused
 edit changes nothing.
 
-## Read placements and meshes
+## Read placements, meshes and exact geometry
 
 <!-- SNIPPET:cookbook-c-placements -->
 
@@ -440,6 +440,48 @@ if (status == OPENBIM_IFC_STATUS_OK) {
 type name, transform, vertex and triangle counts, refusal) on a tape.
 Positions are `float`s relative to the record's `double` transform, so a
 site kilometres from the origin keeps its millimetres.
+
+The exact representation instead of triangles
+([#367](https://github.com/openbimrs/ifc/issues/367)): each Body as
+Axiolid's neutral geometry graph in its wire format 1.0, for your own
+kernel. It is the cargo feature `graph` (`--features graph`, or
+`-DOPENBIM_IFC_CARGO_FEATURES=graph`), which the release archives leave
+out:
+
+<!-- SNIPPET:cookbook-c-graphs -->
+
+```c
+/* A library built with the `graph` feature lowers and encodes every Body
+ * once into a set; the release archives refuse with FEATURE_DISABLED.
+ * Each payload is Axiolid's wire format 1.0, JSON here (or CBOR). */
+OpenbimIfcGraphs graphs = 0;
+OpenbimIfcStatus status =
+    openbim_ifc_v0_1_model_product_geometry(model, NULL, 0, OPENBIM_IFC_GEOMETRY_JSON, &graphs);
+size_t written = 0;
+if (status == OPENBIM_IFC_STATUS_OK) {
+  size_t count = 0, nodes = 0, strings = 0;
+  openbim_ifc_v0_1_graphs_records(graphs, &count, NULL, 0, &nodes, NULL, 0, &strings);
+  for (size_t i = 0; i < count; i++) {
+    size_t need = 0;
+    openbim_ifc_v0_1_graphs_payload(graphs, i, NULL, 0, &need);
+    if (need == 0) continue; /* no Body, or refused: see the record */
+    uint8_t *json = (uint8_t *)malloc(need);
+    openbim_ifc_v0_1_graphs_payload(graphs, i, json, need, &need);
+    /* hand json[0..need) to your kernel's reader of the wire format */
+    written += 1;
+    free(json);
+  }
+  openbim_ifc_v0_1_graphs_destroy(graphs);
+}
+```
+
+<!-- /SNIPPET -->
+
+`openbim_ifc_v0_1_graphs_records` gives each graph's record (id, global
+id, type name, transform, encoding, payload size, refusal). The payload is
+the envelope `{"format":"axiolid-geometry-graph","version":"1.0",
+"graph":{...}}`, exact, in world coordinates, metres; the
+[binding page](/bindings/c#geometry) describes it.
 
 ## Create a model
 

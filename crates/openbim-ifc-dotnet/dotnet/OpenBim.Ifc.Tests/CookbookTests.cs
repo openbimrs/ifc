@@ -356,6 +356,31 @@ public class CookbookTests
     }
 
     [Fact]
+    public void ExactGeometryGraphs()
+    {
+        using var model = IfcModel.Parse(Fixtures.Bytes(Geometry));
+        try
+        {
+            // docs:snippet cookbook-dotnet-graphs
+            // A native library built with the C ABI's `graph` feature; the packaged
+            // one throws IfcException with Code "feature-disabled".
+            foreach (var product in model.ProductGeometry()) // or GeometryEncoding.Cbor
+            {
+                if (product.Geometry.Refusal is { } || product.Payload.Length == 0) continue; // refused, or no Body
+                // Axiolid's wire format 1.0, exact, in world metres.
+                using var envelope = System.Text.Json.JsonDocument.Parse(product.Payload);
+                var nodes = envelope.RootElement.GetProperty("graph").GetProperty("nodes");
+                Console.WriteLine($"{product.Geometry.TypeName}: {nodes.GetArrayLength()} nodes, format {envelope.RootElement.GetProperty("version")}");
+            }
+            // docs:end
+        }
+        catch (IfcException error) when (error.Code == "feature-disabled")
+        {
+            Assert.Equal(IfcStatus.FeatureDisabled, error.Status);
+        }
+    }
+
+    [Fact]
     public void CreateAModelFromNothing()
     {
         // docs:snippet cookbook-dotnet-create

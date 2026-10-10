@@ -75,6 +75,8 @@ pub fn compiled_features() -> Vec<&'static str> {
     features.push("geometry-select");
     #[cfg(feature = "geometry")]
     features.push("geometry");
+    #[cfg(feature = "geometry-wire")]
+    features.push("geometry-wire");
     #[cfg(feature = "mesh")]
     features.push("mesh");
     #[cfg(feature = "georef")]

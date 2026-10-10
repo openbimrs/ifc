@@ -9,9 +9,10 @@
 // The full Node suites (../smoke.mjs, ../corpus.mjs) cover the API itself;
 // this proves each build loads its wasm module and calls into it.
 //
-// `meshes(IfcModel, enabled)` checks the geometry of one entry (#369): the
-// mesh entry (`@openbim/ifc/mesh`) returns a wall's triangles as typed
-// arrays; the default entry refuses with `feature-disabled`.
+// `meshes(IfcModel, enabled)` checks the geometry of one entry (#369,
+// #367): the mesh entry (`@openbim/ifc/mesh`) returns a wall's triangles as
+// typed arrays and its graph in Axiolid's wire format; the default entry
+// refuses both with `feature-disabled`.
 
 const FILE = `ISO-10303-21;
 HEADER;
@@ -167,8 +168,22 @@ export function meshes(IfcModel, enabled) {
       code = error.code;
     }
     check(code === "feature-disabled", `productMeshes outside the mesh entry: ${code}`);
-    return { productMeshes: code };
+    let graphCode;
+    try {
+      model.productGeometry();
+    } catch (error) {
+      graphCode = error.code;
+    }
+    check(graphCode === "feature-disabled", `productGeometry outside the mesh entry: ${graphCode}`);
+    return { productMeshes: code, productGeometry: graphCode };
   }
+  // The neutral graph (#367): the mesh entry carries `graph` too.
+  const [graph] = model.productGeometry(undefined, "object");
+  check(graph.refusal === undefined, `graph refused: ${graph.refusal?.code}`);
+  check(graph.payload.format === "axiolid-geometry-graph", "the wire format's name");
+  check(graph.payload.version === "1.0", "wire format 1.0");
+  const [cbor] = model.productGeometry([16n], "cbor");
+  check(cbor.payload instanceof Uint8Array && cbor.payload.length > 0, "a CBOR payload");
   const [wall, ...rest] = model.productMeshes();
   check(rest.length === 0 && wall.id === 16n, "one mesh, the wall's");
   check(wall.refusal === undefined, `wall refused: ${wall.refusal?.code}`);
@@ -185,5 +200,9 @@ export function meshes(IfcModel, enabled) {
       `extent along axis ${axis}`,
     );
   }
-  return { vertices: wall.vertexCount, triangles: wall.triangleCount };
+  return {
+    vertices: wall.vertexCount,
+    triangles: wall.triangleCount,
+    graphNodes: graph.payload.graph.nodes.length,
+  };
 }

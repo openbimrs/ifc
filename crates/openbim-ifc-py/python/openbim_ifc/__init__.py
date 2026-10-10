@@ -22,7 +22,10 @@ from typing import Optional as _Optional, Union as _Union
 
 from ._native import IfcError
 from .geometry import (
+    GEOMETRY_FORMAT,
+    GEOMETRY_FORMAT_VERSION,
     GeometryRefusal,
+    ProductGeometry,
     ProductMesh,
     ProductPlacement,
     SelectedRepresentation,
@@ -160,6 +163,9 @@ __all__ = [
     "ProductPlacement",
     "SelectedRepresentation",
     "GeometryRefusal",
+    "ProductGeometry",
+    "GEOMETRY_FORMAT",
+    "GEOMETRY_FORMAT_VERSION",
     "ProductMesh",
     "Value",
     "Null",

@@ -43,6 +43,7 @@ mod domains;
 mod edits;
 mod errors;
 mod geometry;
+mod graph;
 mod header;
 mod model;
 mod open;
@@ -59,6 +60,7 @@ pub use domains::*;
 pub use edits::*;
 pub use errors::*;
 pub use geometry::*;
+pub use graph::*;
 pub use header::*;
 pub use model::*;
 pub use open::*;
@@ -77,6 +79,8 @@ mod capability_tests;
 mod domain_tests;
 #[cfg(test)]
 mod geometry_tests;
+#[cfg(test)]
+mod graph_tests;
 #[cfg(test)]
 mod plain_tests;
 

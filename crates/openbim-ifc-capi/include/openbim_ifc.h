@@ -14,6 +14,18 @@
 #include <stdlib.h>
 
 /**
+ * `encoding` for `openbim_ifc_v0_1_model_product_geometry`: CBOR bytes
+ * (RFC 8949).
+ */
+#define OPENBIM_IFC_GEOMETRY_CBOR 1
+
+/**
+ * `encoding` for `openbim_ifc_v0_1_model_product_geometry`: JSON text
+ * (RFC 8259), UTF-8, not NUL-terminated.
+ */
+#define OPENBIM_IFC_GEOMETRY_JSON 0
+
+/**
  * The first id of the handle range (2^62): `OPENBIM_IFC_HANDLE_BASE + i`
  * names the entity operation `i` of a batch produced.
  */
@@ -304,6 +316,11 @@ typedef struct {
 } OpenbimIfcValueNode;
 
 /**
+ * Opaque handle to an encoded graph set. Zero is never a valid handle.
+ */
+typedef uint64_t OpenbimIfcGraphs;
+
+/**
  * Opaque handle to a compiled mesh set. Zero is never a valid handle.
  */
 typedef uint64_t OpenbimIfcMeshes;
@@ -576,6 +593,49 @@ OpenbimIfcStatus openbim_ifc_v0_1_entity_type(OpenbimIfcModel model,
                                               uint8_t *buffer,
                                               size_t capacity,
                                               size_t *out_required);
+
+/**
+ * Destroy a graph set. A stale or repeated handle is `InvalidHandle`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_graphs_destroy(OpenbimIfcGraphs graphs);
+
+/**
+ * Copy the wire payload of graph `index` -- JSON text without a trailing
+ * NUL, or CBOR bytes -- into `buffer` (`capacity` bytes), after writing
+ * the size needed (its record's payload size) to `out_required`; 0 for a
+ * product with no graph. `OutOfRange` for an index past the set.
+ *
+ * # Safety
+ * As for the other buffer calls: `buffer` valid for `capacity` writes
+ * when non-null, `out_required` for one.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_graphs_payload(OpenbimIfcGraphs graphs,
+                                                 size_t index,
+                                                 uint8_t *buffer,
+                                                 size_t capacity,
+                                                 size_t *out_required);
+
+/**
+ * The set's `ProductGeometry` records as a tape, in the order lowered;
+ * `out_count` gets their number. `ProductGeometry`: id (`REF`), global
+ * id, type name, transform (`LIST` of 16 `REAL`s, column-major, metres,
+ * already applied to the graph, or `NULL`), encoding (`json` or `cbor`),
+ * payload size (`INTEGER`, bytes), refusal (`GeometryRefusal` or `NULL`).
+ * A payload size of 0 and no refusal is a product with no Body
+ * representation.
+ *
+ * # Safety
+ * `out_count` valid for one write; otherwise as for
+ * `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_graphs_records(OpenbimIfcGraphs graphs,
+                                                 size_t *out_count,
+                                                 OpenbimIfcValueNode *nodes,
+                                                 size_t node_capacity,
+                                                 size_t *out_nodes_required,
+                                                 uint8_t *strings,
+                                                 size_t string_capacity,
+                                                 size_t *out_strings_required);
 
 /**
  * The last error on `model` as its stable code (`parse`, `missing-entity`,
@@ -1041,6 +1101,31 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_parse_with_options(const uint8_t *data,
                                                            OpenbimIfcModel *out_model,
                                                            uint8_t *error_buffer,
                                                            size_t capacity);
+
+/**
+ * Lower the Body of each of `ids` (`id_count` of them) or, with `ids` null
+ * and `id_count` 0, of every product with a shape, encode each graph in
+ * Axiolid's wire format 1.0 as `encoding` (`OPENBIM_IFC_GEOMETRY_JSON` or
+ * `_CBOR`), and write the new set's handle to `out_graphs`. Read it with
+ * `openbim_ifc_v0_1_graphs_records` and `_graphs_payload`; destroy it with
+ * `openbim_ifc_v0_1_graphs_destroy`.
+ *
+ * The payload is the envelope `{"format":"axiolid-geometry-graph",
+ * "version":"1.0","graph":{"nodes":[...],"roots":[...]}}`, in world
+ * coordinates, metres. A product that cannot be lowered is a record with
+ * a refusal, not a failed call. `InvalidArgument` for another `encoding`;
+ * `UnsupportedSchema`; `FeatureDisabled` in a library built without the
+ * `graph` feature.
+ *
+ * # Safety
+ * `ids` valid for `id_count` reads when non-null; `out_graphs` valid for
+ * one write.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_product_geometry(OpenbimIfcModel model,
+                                                         const uint64_t *ids,
+                                                         size_t id_count,
+                                                         uint32_t encoding,
+                                                         OpenbimIfcGraphs *out_graphs);
 
 /**
  * Compile the Body mesh of each of `ids` (`id_count` of them) or, with

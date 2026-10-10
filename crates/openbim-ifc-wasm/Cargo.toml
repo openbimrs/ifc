@@ -94,7 +94,14 @@ author = ["openbim-ifc-binding-core/author"]
 # not in the npm package, since it links an execution provider (ADR 0004);
 # build it with `--features mesh`. Without it `productMeshes` throws
 # `feature-disabled`.
+# `graph` (#367): each product's Body as Axiolid's neutral geometry graph in
+# its wire format 1.0 (`productGeometry`), JSON, parsed or CBOR. Opt-in: it
+# links the lowering and serde, +1.06 MB (+341 KB gzip) to the default
+# module; on top of `mesh`, which already links the lowering, +286 KB
+# (+88 KB gzip). The npm package's mesh entry carries both. Without it
+# `productGeometry` throws `feature-disabled`.
 placements = ["openbim-ifc-binding-core/placements"]
+graph = ["openbim-ifc-binding-core/graph"]
 mesh = ["openbim-ifc-binding-core/mesh"]
 # Implies `properties`: the project length unit scales every operation.
 georef = ["openbim-ifc-binding-core/georef"]

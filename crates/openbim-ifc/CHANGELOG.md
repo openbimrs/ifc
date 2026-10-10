@@ -12,6 +12,20 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#367, geometry Level 2, ADR 0021)
+
+- Feature `geometry-wire` (`geometry` plus `ifc-geometry/wire`, in `full`):
+  `product_graphs(model, ids)` -> `(EntityId, GeometryResult<ProductGraph>)`
+  per product, `ProductGraph { world, graph }`: each product's Body lowered
+  into Axiolid's neutral `GeometryGraph` exactly as `product_meshes` lowers
+  it, in world coordinates (metres), with its world placement alongside
+  and `None` for a product with no Body. Encode a graph in Axiolid's wire
+  format 1.0 with `GeometryGraph::to_json` / `to_cbor`
+  (`ifc::geometry::wire`). `compiled_features()` reports `geometry-wire`.
+
+Semver: additive (a new opt-in feature), a minor release while 0.x, since
+the `ifc-geometry` floor rises.
+
 ## [0.26.0] - 2026-10-10
 
 ### Changed

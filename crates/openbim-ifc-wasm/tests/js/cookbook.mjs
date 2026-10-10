@@ -259,6 +259,25 @@ test("read meshes through the mesh entry", { skip: !existsSync(meshEntry) && "no
   }
 });
 
+test("read exact geometry graphs through the mesh entry", { skip: !existsSync(meshEntry) && "no mesh entry built" }, () => {
+  const { IfcModel } = require(meshEntry);
+  const model = IfcModel.parse(readFileSync(GEOMETRY));
+  // docs:snippet cookbook-js-graphs
+  // From `@openbim/ifc/mesh`: each Body as Axiolid's neutral graph, exact, in
+  // world metres. "object" parses it; "json" keeps the text, "cbor" the bytes.
+  const kinds = new Map();
+  for (const product of model.productGeometry(undefined, "object")) {
+    if (product.refusal || !product.payload) continue; // refused, or no Body
+    const { graph } = product.payload; // with format "axiolid-geometry-graph", version "1.0"
+    // Each node is tagged by its kind; a reference is an earlier node's index.
+    kinds.set(product.id, graph.nodes.map((node) => Object.keys(node)[0]));
+  }
+  // 36n => ["Profile", "SolidOperation", "Instance"], 46n => [...]
+  // docs:end
+  assert.deepEqual([...kinds.keys()], [36n, 46n]);
+  assert.deepEqual(kinds.get(36n), ["Profile", "SolidOperation", "Instance"]);
+});
+
 test("create a model from nothing", () => {
   // docs:snippet cookbook-js-create
   const model = new IfcModel();

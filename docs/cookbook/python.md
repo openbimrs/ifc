@@ -189,7 +189,7 @@ raises `IfcError` and changes nothing: `invalid-value`,
 (a removal of a property the object does not state), `type-mismatch` (a
 plain value that does not fit).
 
-## Read placements and meshes
+## Read placements, meshes and exact geometry
 
 Placements are in every wheel:
 
@@ -235,6 +235,34 @@ for mesh in model.product_meshes():
 Positions are `f32` relative to each product's `f64` transform, so a site
 kilometres from the origin keeps its millimetres;
 `numpy.frombuffer(mesh.positions, numpy.float32)` reads them without a copy.
+
+The exact representation instead of triangles
+([#367](https://github.com/openbimrs/ifc/issues/367)): each Body as
+Axiolid's neutral geometry graph in its wire format 1.0, for your own
+kernel. It needs a wheel built with the `graph` feature:
+
+<!-- SNIPPET:cookbook-py-graphs -->
+
+```python
+# A wheel built with `maturin build --release --features graph`.
+import json
+
+kinds = {}
+for product in model.product_geometry():  # or encoding="cbor": bytes
+    if product.refusal is not None or product.payload is None:
+        continue  # refused, or no Body
+    envelope = json.loads(product.payload)  # Axiolid's wire format 1.0
+    # Each node is tagged by its kind; a reference is an earlier node's index.
+    kinds[product.id] = [next(iter(node)) for node in envelope["graph"]["nodes"]]
+# {36: ['Profile', 'SolidOperation', 'Instance'], 46: [...]}
+```
+
+<!-- /SNIPPET -->
+
+Each `payload` is the envelope `{"format": "axiolid-geometry-graph",
+"version": "1.0", "graph": {...}}`, exact, in world coordinates, metres;
+`encoding="cbor"` gives it as `bytes`. The
+[binding page](/bindings/python#geometry) describes it.
 
 ## Create a model
 

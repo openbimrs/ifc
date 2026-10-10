@@ -13,7 +13,7 @@ const IFC_GEOMETRY_TYPES: &'static str = r#"
  */
 export type Matrix4 = number[];
 
-/** Why one product has no placement, representation or mesh. */
+/** Why one product has no placement, representation, graph or mesh. */
 export interface GeometryRefusal {
   code: "unsupported" | "invalid-model" | "missing-reference" | "budget-exceeded";
   /** The entity at fault, when the refusal names one. */
@@ -48,6 +48,62 @@ export interface ProductPlacement {
   /** `undefined` for a product with no solid representation (an axis only). */
   representation: SelectedRepresentation | undefined;
   refusal: GeometryRefusal | undefined;
+}
+
+/**
+ * How `IfcModel.productGeometry` hands each payload over: `"json"` the wire
+ * text, `"object"` that text parsed, `"cbor"` the CBOR bytes.
+ */
+export type GeometryPayloadEncoding = "json" | "object" | "cbor";
+
+/**
+ * One node of an Axiolid geometry graph, externally tagged by its kind
+ * (`Profile`, `SolidOperation`, `Instance`, `Collection`, ...), with the
+ * kind's variant tagged inside it. A reference to another node is the
+ * index of an earlier node; points and vectors are `[x, y, z]` arrays; a
+ * transform is its linear part's three columns, then the translation.
+ * Axiolid's ADR 0085 defines every kind.
+ */
+export type GeometryGraphNode = { [kind: string]: unknown };
+
+/**
+ * Axiolid's versioned wire format of a geometry graph, 1.0
+ * (Axiolid ADR 0085). A reader refuses another `format`, a major `version`
+ * other than its own, a newer minor, and any kind, variant or field it
+ * does not know.
+ */
+export interface GeometryGraphEnvelope {
+  format: "axiolid-geometry-graph";
+  /** `"MAJOR.MINOR"`; this build writes `"1.0"`. */
+  version: string;
+  graph: {
+    /** In insertion order, which is topological. */
+    nodes: GeometryGraphNode[];
+    /** Indices into `nodes`; a product's graph has one. */
+    roots: number[];
+  };
+}
+
+/** One product's Body as a geometry graph, from `IfcModel.productGeometry`. */
+export interface ProductGeometry {
+  id: bigint;
+  globalId: string | undefined;
+  typeName: string;
+  /**
+   * World placement, as `productPlacements` gives it. The graph is already
+   * in world coordinates: never apply this to it again.
+   */
+  transform: Matrix4 | undefined;
+  encoding: GeometryPayloadEncoding;
+  /** Bytes of the wire payload (UTF-8 for JSON); 0 without one. */
+  payloadSize: number;
+  /** No payload and no refusal: a product with no Body representation. */
+  refusal: GeometryRefusal | undefined;
+  /**
+   * The wire payload: a string for `"json"`, a `GeometryGraphEnvelope`
+   * for `"object"`, a `Uint8Array` for `"cbor"`.
+   */
+  payload: string | GeometryGraphEnvelope | Uint8Array | undefined;
 }
 
 /** One product's Body as triangles, from `IfcModel.productMeshes`. */

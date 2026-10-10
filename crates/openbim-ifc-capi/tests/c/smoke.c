@@ -935,7 +935,36 @@ static int documented_geometry(OpenbimIfcModel model) {
   return products == 1 ? 0 : 1;
 }
 
-/* Geometry (#328): placements in every build, meshes when compiled in. */
+/* The neutral-graph example published on the docs site's C page (#367). */
+static int documented_graph(OpenbimIfcModel model) {
+  // docs:snippet c-geometry-graph
+  /* Level 2, in a library built with the `graph` feature: lower and encode
+   * once into a set, then copy each product's wire payload out. */
+  OpenbimIfcGraphs graphs = 0;
+  size_t products = 0;
+  if (openbim_ifc_v0_1_model_product_geometry(model, NULL, 0, OPENBIM_IFC_GEOMETRY_JSON,
+                                              &graphs) == OPENBIM_IFC_STATUS_OK) {
+    OpenbimIfcValueNode nodes[128];
+    uint8_t strings[1024];
+    size_t node_count = 0, string_len = 0, need = 0;
+    /* ProductGeometry records: id, global id, type, transform, encoding,
+     * payload size, refusal. */
+    openbim_ifc_v0_1_graphs_records(graphs, &products, nodes, 128, &node_count, strings,
+                                    sizeof strings, &string_len);
+    openbim_ifc_v0_1_graphs_payload(graphs, 0, NULL, 0, &need);
+    char *json = (char *)malloc(need + 1);
+    openbim_ifc_v0_1_graphs_payload(graphs, 0, (uint8_t *)json, need, &need);
+    json[need] = '\0'; /* {"format":"axiolid-geometry-graph","version":"1.0",...} */
+    printf("%zu graph(s); %.52s...\n", products, json);
+    free(json);
+    openbim_ifc_v0_1_graphs_destroy(graphs);
+  }
+  // docs:end
+  return products == 1 ? 0 : 1;
+}
+
+/* Geometry (#328, #367): placements in every build, graphs and meshes when
+ * compiled in. */
 static int geometry(void) {
   OpenbimIfcModel model = 0;
   OK(openbim_ifc_v0_1_model_parse((const uint8_t *)GEOMETRY_TEXT, strlen(GEOMETRY_TEXT),
@@ -992,7 +1021,62 @@ static int geometry(void) {
     CHECK(openbim_ifc_v0_1_meshes_destroy(meshes) == OPENBIM_IFC_STATUS_INVALID_HANDLE,
           "destroyed once");
   }
+  OpenbimIfcGraphs graphs = 0;
+  status = openbim_ifc_v0_1_model_product_geometry(model, NULL, 0, 7, &graphs);
+  CHECK(status == OPENBIM_IFC_STATUS_INVALID_ARGUMENT && graphs == 0, "an unknown encoding");
+  status = openbim_ifc_v0_1_model_product_geometry(model, NULL, 0, OPENBIM_IFC_GEOMETRY_JSON,
+                                                   &graphs);
+  int graphs_enabled = status != OPENBIM_IFC_STATUS_FEATURE_DISABLED;
+  if (!graphs_enabled) {
+    char code[32];
+    size_t need = 0;
+    OK(openbim_ifc_v0_1_last_error_code(model, (uint8_t *)code, sizeof code, &need));
+    CHECK(strcmp(code, "feature-disabled") == 0, "graphs are opt-in");
+  } else {
+    static const char ENVELOPE[] = "{\"format\":\"axiolid-geometry-graph\",\"version\":\"1.0\","
+                                   "\"graph\":{\"nodes\":[";
+    CHECK(status == OPENBIM_IFC_STATUS_OK, "graphs lower");
+    OK(openbim_ifc_v0_1_graphs_records(graphs, &count, nodes, 128, &node_count, strings,
+                                       sizeof strings, &string_len));
+    /* Record: id, global id, type, transform (16), encoding, size, refusal. */
+    CHECK(count == 1 && nodes[1].child_count == 7, "one ProductGeometry record");
+    CHECK(nodes[22].kind == OPENBIM_IFC_KIND_TEXT && nodes[22].str_len == 4 &&
+              memcmp(strings + nodes[22].str_offset, "json", 4) == 0,
+          "the encoding");
+    CHECK(nodes[24].kind == OPENBIM_IFC_KIND_NULL, "no refusal");
+    size_t need = 0;
+    CHECK(openbim_ifc_v0_1_graphs_payload(graphs, 0, NULL, 0, &need) ==
+              OPENBIM_IFC_STATUS_BUFFER_TOO_SMALL &&
+              need == (size_t)nodes[23].int_value,
+          "the payload is the size its record states");
+    uint8_t *payload = (uint8_t *)malloc(need);
+    OK(openbim_ifc_v0_1_graphs_payload(graphs, 0, payload, need, &need));
+    CHECK(need > sizeof ENVELOPE && memcmp(payload, ENVELOPE, sizeof ENVELOPE - 1) == 0,
+          "Axiolid's wire envelope, format 1.0");
+    free(payload);
+    CHECK(openbim_ifc_v0_1_graphs_payload(graphs, 1, NULL, 0, &need) ==
+              OPENBIM_IFC_STATUS_OUT_OF_RANGE,
+          "one graph only");
+    OK(openbim_ifc_v0_1_graphs_destroy(graphs));
+    CHECK(openbim_ifc_v0_1_graphs_destroy(graphs) == OPENBIM_IFC_STATUS_INVALID_HANDLE,
+          "destroyed once");
+
+    /* CBOR: a map of three entries, the first the text "format". */
+    OK(openbim_ifc_v0_1_model_product_geometry(model, NULL, 0, OPENBIM_IFC_GEOMETRY_CBOR,
+                                               &graphs));
+    uint8_t head[8];
+    CHECK(openbim_ifc_v0_1_graphs_payload(graphs, 0, head, sizeof head, &need) ==
+              OPENBIM_IFC_STATUS_BUFFER_TOO_SMALL,
+          "a CBOR payload longer than its head");
+    payload = (uint8_t *)malloc(need);
+    OK(openbim_ifc_v0_1_graphs_payload(graphs, 0, payload, need, &need));
+    CHECK(payload[0] == 0xa3 && payload[1] == 0x66 && memcmp(payload + 2, "format", 6) == 0,
+          "a CBOR envelope");
+    free(payload);
+    OK(openbim_ifc_v0_1_graphs_destroy(graphs));
+  }
   int failed = documented_geometry(model);
+  if (graphs_enabled) failed |= documented_graph(model);
   OK(openbim_ifc_v0_1_model_destroy(model));
   return failed;
 }

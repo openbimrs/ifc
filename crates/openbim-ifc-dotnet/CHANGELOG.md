@@ -9,6 +9,19 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#367, geometry Level 2, ADR 0021)
+
+- `IfcModel.ProductGeometry(ids, encoding)` -> `ProductGraph` per product:
+  its `ProductGeometry` record (transform, encoding, payload size,
+  refusal) and `byte[] Payload`, Axiolid's geometry graph in its wire
+  format 1.0 as UTF-8 JSON (`GeometryEncoding.Json`, also `string Json`)
+  or CBOR (`GeometryEncoding.Cbor`); `ProductGraph.Format` and
+  `FormatVersion`. Needs a native library built with the C ABI's `graph`
+  feature (ABI 0.1.9); the packaged one throws `IfcException` with code
+  `feature-disabled`.
+
+Semver: additive, a minor release while 0.x.
+
 ## [0.1.3] - 2026-10-08
 
 ### Added (#358, #342)

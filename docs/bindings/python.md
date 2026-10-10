@@ -448,7 +448,8 @@ them. Use the Rust crates for those.
 
 ## Geometry
 
-Geometry crosses at two levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)).
+Geometry crosses at three levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)):
+placements, the exact neutral representation and meshes.
 `model.product_placements(ids=None)` is in every wheel: for each product
 with a shape (or for the ids given), its world placement and the Body
 representation a viewer draws, as frozen dataclasses.
@@ -507,6 +508,46 @@ copy. Positions are relative to the product's `transform`, which keeps
 the large offsets of a georeferenced site in `f64`. A product with no
 Body has empty arrays and no refusal; one whose lowering or compilation
 is refused carries the typed `refusal`.
+
+`model.product_geometry(ids=None, encoding="json")` hands over each
+product's Body as Axiolid's neutral geometry graph instead
+([#367](https://github.com/openbimrs/ifc/issues/367)): exact extrusions,
+sweeps, B-splines and unevaluated booleans, for your own kernel. It links
+the lowering, so it is the cargo feature `graph`, which the published
+wheel leaves out (it raises `feature-disabled`); build a wheel with
+`maturin build --release --features graph` (or `mesh,graph`):
+
+<!-- SNIPPET:py-geometry-graphs -->
+
+```python
+import json
+
+model = openbim_ifc.open(path)
+for product in model.product_geometry():
+    if product.refusal is not None:
+        print((product.id, product.refusal.code))  # (65, 'unsupported')
+        continue
+    if product.payload is None:
+        continue  # no Body: an axis-only product
+    # {"format": "axiolid-geometry-graph", "version": "1.0", "graph":
+    # {"nodes": [...], "roots": [...]}}, exact, in world metres.
+    envelope = json.loads(product.payload)
+    print((product.type_name, envelope["version"], len(envelope["graph"]["nodes"])))
+```
+
+<!-- /SNIPPET -->
+
+`ProductGeometry.payload` is Axiolid's versioned wire format 1.0 (Axiolid
+ADR 0085), `{"format": "axiolid-geometry-graph", "version": "1.0",
+"graph": {"nodes": [...], "roots": [...]}}`: a `str` for `encoding="json"`,
+`bytes` (CBOR, RFC 8949) for `encoding="cbor"`; any other encoding raises
+`ValueError`. `GEOMETRY_FORMAT` and `GEOMETRY_FORMAT_VERSION` name what
+the wheel writes. Nodes come in insertion order; each is tagged by its
+kind, and a reference to another node is its index. The graph is in world
+coordinates, metres, with the product's `transform` already applied. A
+product with no Body has no payload and no refusal; a refused one carries
+the typed `refusal`. A major version of the wire format would be a
+breaking release of the wheel (ADR 0021).
 
 ## Creating entities
 
@@ -610,6 +651,7 @@ class, record and function of the package with its docstring and types.
 | `model.classifications(id: int) -> List[Classification]` | The classifications of object `id`: its own, then its type's. |
 | `model.material(id: int) -> Optional[MaterialAssignment]` | The material association of object `id`, its own or its type's, or `None`. |
 | `model.product_placements(ids: Optional[Iterable[int]] = None) -> List[ProductPlacement]` | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or every product with a shape. A product that cannot be placed carries a typed `refusal`; the call raises only `unsupported-schema` or `feature-disabled`. |
+| `model.product_geometry(ids: Optional[Iterable[int]] = None, encoding: str = 'json') -> List[ProductGeometry]` | Each product's Body as Axiolid's neutral geometry graph, exact, for `ids` or every product with a shape, in Axiolid's versioned wire format 1.0: `{"format": "axiolid-geometry-graph", "version": "1.0", "graph": {"nodes": [...], "roots": [...]}}`, in world coordinates, metres. `encoding` `"json"` gives the payload as a `str`, `"cbor"` as `bytes`; any other raises `ValueError`. A product that cannot be lowered carries a typed `refusal`; the call raises only `unsupported-schema` or `feature-disabled`. |
 | `model.product_meshes(ids: Optional[Iterable[int]] = None) -> List[ProductMesh]` | Each product's Body as triangles from the reference backend, for `ids` or every product with a shape; a product that cannot be meshed carries a typed `refusal`. Needs a wheel built with the `mesh` feature; the published wheel raises `feature-disabled`. |
 | `model.systems() -> Systems` | Every system with its members and served structures, and the memberships the reader could not honour. |
 | `model.cost() -> Cost` | Every cost schedule and cost item; values as authored, typed. |

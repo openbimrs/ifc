@@ -33,6 +33,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | `ifc4x2` | yes | `ifc-schema/ifc4x2` |
 | `ifc4x3` | yes | `ifc-schema/ifc4x3` |
 | `lowering` | yes | `dep:ifc-alignment`, `dep:axiolid-core`, `dep:axiolid-curve`, `dep:axiolid-mesh`, `dep:axiolid-model`, `dep:axiolid-topology`, `dep:axiolid-primitive`, `dep:axiolid-profile`, `dep:axiolid-surface` |
+| `wire` |  | `lowering`, `axiolid-model/serde` |
 
 ## Depends on
 
