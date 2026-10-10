@@ -12,6 +12,68 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+Semver: a minor release. Stations along offset curves, refused until
+now, lower; an `IfcOffsetCurve2D` lowers with a reference direction where
+it carried none, a change in the lowered graph. No public item changes.
+The dependency floors rise with the workspace.
+
+### Added
+
+- Stations on offset-curve bases (#414): an `IfcPointByDistanceExpression`,
+  an `IfcAxis2PlacementLinear`, and runs of sections and offsets whose
+  basis curve is an `IfcOffsetCurve2D`, an `IfcOffsetCurve3D` or an
+  `IfcOffsetCurveByDistances`, nested in composites and placements too,
+  lower onto Axiolid's offset station basis (axiolid/kernel#289, Axiolid
+  ADR 0082 amendment 2026-10-10). A distance runs along the offset's OWN
+  length, not its basis's. The offset's joints, one per seam of its basis
+  (every polyline vertex, every joint of a composite) and per station of an
+  offset by distances, are read from the stored relation as the compiler
+  flattens it (`lower::station::relation::offset`): beside a line or a
+  polyline edge a line, constant or linear between stations, of length
+  `sqrt((L + dg)^2 + dl^2 + dv^2)`; beside a circle, constantly in its
+  plane, a circle of radius `r - a`, `(r - a) / r` times the arc's length.
+  A station within the model's precision of a joint stands on it reading
+  `SeamSide::Incoming`, the previous segment (IFC4.3 ADD2 8.9.3.48.3). The
+  joints and lengths are pinned to the kernel's own within
+  `ARC_LENGTH_TOLERANCE`: `station::seams` where the kernel states them
+  exactly, the composite's seams along `station::curve_path` where it
+  measures a polyline offset by quadrature.
+- `synthetic-lowering/station_offsets_ifc4x3.ifc`: an `IfcOffsetCurve2D` of
+  a line and a tangent quarter circle (a joint whose sides meet, an arc of
+  radius 9), of a quarter circle (radius 11, 5.5 pi m), an
+  `IfcOffsetCurveByDistances` of an L polyline vanishing at its corner, a
+  section run and an offset run along offsets, and an `IfcOffsetCurve2D`
+  across the L's corner; tests through the reference kernel on and 4 um
+  past each joint.
+
+### Changed
+
+- An `IfcOffsetCurve2D` lowers to `CurveRelation::Offset` with its frame's
+  `+Z` as `reference_direction`, where it carried `None` (#414). Every curve
+  lowers to a 3D curve, a 2D one in `z = 0` of its frame, and IFC's
+  positive `Distance` "in the sense of an anti-clockwise rotation through
+  90 degrees from the tangent vector T" (8.9.3.40) is `Z x T` there, the
+  3D offset's `V x T` (8.9.3.41) and Axiolid's left lateral: the same
+  curve. Axiolid refuses a planar offset law on a 3D curve as a station
+  basis, so `None` left nothing measurable along it. Nothing meshed an
+  offset relation outside stations, so no compiled result changes.
+- The refusals of offset bases now name what the kernel refuses: an
+  offset of an offset, a trim of an offset curve (it takes its basis's
+  parameterisation, not its own length), an offset through a circle's
+  centre, and an offset whose length is a quadrature (beside an ellipse, a
+  B-spline, a spiral or a gradient curve, or a variable offset of a
+  circle). An offset across a corner of its basis, whose sides do not meet
+  (IFC: the basis "shall have a well-defined tangent direction at every
+  point"), and a 3D offset whose tangent runs along its reference
+  direction lower, and the kernel refuses them by name, typed. The
+  dispatch ledger's `IfcPointByDistanceExpression` rows say so.
+- Requires `axiolid-curve` 0.3.6, `axiolid-curve-evaluate-contract` 0.3.4
+  and, behind `compile`, `axiolid-mesh-compile` 0.3.19 (and
+  `axiolid-evaluate` 0.3.10 for the tests): the releases that measure a
+  station along an offset (axiolid/kernel#289). The lock also moves
+  `axiolid-nurbs` 0.3.6, `axiolid-brep-boolean` 0.1.9 and
+  `axiolid-overlay` 0.3.12. Every other test passes unchanged against them.
+
 ## [0.19.0] - 2026-10-09
 
 Semver: a minor release. Behaviour changes on seams: a linear placement

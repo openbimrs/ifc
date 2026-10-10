@@ -294,9 +294,12 @@ fn offset_intersection_and_seam_curve_semantics_survive_corpus_lowering() {
             ..
         }) => {
             assert!((*distance - 0.25).abs() < 1e-9);
-            assert!(
-                reference_direction.is_none(),
-                "2D offsets have no reference direction"
+            // The curve's plane is z = 0 of its frame: its normal +Z is the
+            // reference direction (#414).
+            assert_eq!(
+                reference_direction.map(|v| v.to_array()),
+                Some([0.0, 0.0, 1.0]),
+                "a 2D offset runs along its plane's Z x T"
             );
         }
         other => panic!("expected exact offset relation, got {other:?}"),

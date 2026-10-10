@@ -498,12 +498,36 @@ pub const PARTIAL: &[Variant] = &[
     },
     Variant {
         family: "IFCPOINTBYDISTANCEEXPRESSION",
-        variant: "DistanceAlong on an IfcOffsetCurve2D/3D, or on a relation \
-                  joining gradient curves with other pieces",
+        variant: "DistanceAlong on an IfcOffsetCurve2D/3D or an \
+                  IfcOffsetCurveByDistances of lines, polylines or circles (a \
+                  constant offset of a circle in its plane)",
+        support: Support::Admitted,
+        rationale: "a station along the offset relation, in the offset's own \
+                    length (axiolid/kernel#289); every seam of the basis and \
+                    every OffsetValues station is a joint, and within precision \
+                    of one the station stands on it reading \
+                    SeamSide::Incoming, the previous segment (8.9.3.48.3); IFC's \
+                    positive Distance (anticlockwise normal) is Axiolid's left",
+    },
+    Variant {
+        family: "IFCPOINTBYDISTANCEEXPRESSION",
+        variant: "DistanceAlong on an offset of an offset, a trim of an offset, \
+                  an offset through a circle's centre, an offset whose length \
+                  is a quadrature, or an offset across a corner of its basis",
         support: Support::Refused,
-        rationale: "kernel: Axiolid measures a station along no offset curve \
-                    relation, and no one distance runs through pieces measured \
-                    in plan distance and in arc length",
+        rationale: "kernel: Axiolid measures a station along an offset of atomic \
+                    pieces whose sides meet, in its own length; an offset of an \
+                    ellipse, a B-spline, a spiral or a gradient curve, or a \
+                    variable offset of a circle, has joints only a quadrature \
+                    finds",
+    },
+    Variant {
+        family: "IFCPOINTBYDISTANCEEXPRESSION",
+        variant: "DistanceAlong on a relation joining gradient curves with other \
+                  pieces",
+        support: Support::Refused,
+        rationale: "kernel: no one distance runs through pieces measured in plan \
+                    distance and in arc length",
     },
     Variant {
         family: "IFCAXIS2PLACEMENTLINEAR",

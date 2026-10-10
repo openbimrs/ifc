@@ -12,6 +12,15 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+Semver: a patch release. No public item or behaviour changes; the
+dependency floors rise with the workspace.
+
+### Changed
+
+- Requires `axiolid-curve` 0.3.6 (and `axiolid-evaluate` 0.3.10 for the
+  tests), the releases `ifc-geometry` measures stations along offsets
+  with (axiolid/kernel#289, #414). Every test passes unchanged.
+
 ## [0.8.0] - 2026-10-09
 
 Semver: a minor release (0.8.0). No public item changes, but

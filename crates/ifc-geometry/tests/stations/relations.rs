@@ -107,8 +107,7 @@ fn segments_placed_at_stations_lower_to_instances_at_stations() {
 
 /// What a relation basis cannot carry is refused by name: an ellipse
 /// piece, whose length is a quadrature, puts the joints where no
-/// precision can find them; Axiolid measures no station along an offset
-/// curve.
+/// precision can find them. (Offset bases are `stations/offsets.rs`.)
 #[test]
 fn relation_bases_without_stated_joints_are_refused_by_name() {
     let model = step(
@@ -122,15 +121,10 @@ fn relation_bases_without_stated_joints_are_refused_by_name() {
 #17=IFCCOMPOSITECURVESEGMENT(.CONTINUOUS.,.T.,#13);
 #18=IFCCOMPOSITECURVESEGMENT(.DISCONTINUOUS.,.T.,#16);
 #19=IFCCOMPOSITECURVE((#17,#18),.F.);
-#20=IFCPOINTBYDISTANCEEXPRESSION(IFCLENGTHMEASURE(1.),$,$,$,#19);
-#21=IFCCARTESIANPOINT((10.,0.));
-#22=IFCPOLYLINE((#10,#21));
-#23=IFCOFFSETCURVE2D(#22,1.,.F.);
-#24=IFCPOINTBYDISTANCEEXPRESSION(IFCLENGTHMEASURE(1.),$,$,$,#23);",
+#20=IFCPOINTBYDISTANCEEXPRESSION(IFCLENGTHMEASURE(1.),$,$,$,#19);",
         false,
     );
     refused(lower(&model, 20), true, "not stated by its data");
-    refused(lower(&model, 24), true, "offset curve");
 }
 
 #[cfg(feature = "compile-reference-backend")]

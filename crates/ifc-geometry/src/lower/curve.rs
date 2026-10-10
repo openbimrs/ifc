@@ -299,6 +299,15 @@ fn ellipse(
 }
 
 /// IFC offset curves remain graph relations over the exact basis curve.
+///
+/// Every curve lowers to a 3D curve under its frame, a 2D one in the plane
+/// `z = 0` of that frame. An `IfcOffsetCurve2D` therefore carries the
+/// frame's `+Z` as its reference direction (#414): IFC4.3 ADD2 8.9.3.40
+/// offsets "in the direction which is normal to the curve in the sense of
+/// an anti-clockwise rotation through 90 degrees from the tangent vector
+/// T", which for a tangent in the plane is exactly `Z x T`, the 3D offset's
+/// "V x T" (8.9.3.41). Axiolid refuses a planar (2D) offset law on a 3D
+/// curve, so `None` would leave no station measurable along it.
 fn offset(
     session: &mut LoweringSession<'_>,
     id: EntityId,
@@ -309,7 +318,11 @@ fn offset(
     let (basis_ref, raw_distance, reference_direction) = match type_name.as_str() {
         "IFCOFFSETCURVE2D" => {
             let view = OffsetCurve2D::new(id, entity);
-            (view.basis_curve_ref()?, view.distance()?, None)
+            (
+                view.basis_curve_ref()?,
+                view.distance()?,
+                Some(Vec3::from_array(frame.apply_direction([0.0, 0.0, 1.0]))),
+            )
         }
         "IFCOFFSETCURVE3D" => {
             let view = OffsetCurve3D::new(id, entity);

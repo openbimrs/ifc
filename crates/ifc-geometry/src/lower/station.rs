@@ -82,10 +82,25 @@
 //! `SeamSide::Incoming` reads the piece that ends there, IFC's previous
 //! segment. The joints' distances are read from the stored relation
 //! (`relation`), and a station within precision of one is snapped onto it
-//! and reads that side, as on an atomic basis. An offset curve, which
-//! Axiolid measures no station along, and a relation joining a gradient
-//! curve with arc-length pieces are refused by name; a gap or an
+//! and reads that side, as on an atomic basis. A relation joining a
+//! gradient curve with arc-length pieces is refused by name; a gap or an
 //! undeclared reversed piece is refused by the kernel.
+//!
+//! **Offset bases** (#414). `IfcOffsetCurve2D`, `IfcOffsetCurve3D` and
+//! `IfcOffsetCurveByDistances` lower to `CurveRelation::Offset` and
+//! `OffsetByStations`, which Axiolid measures a station along since
+//! `axiolid-mesh-compile` 0.3.19 (axiolid/kernel#289, ADR 0082 amendment
+//! 2026-10-10): in the offset's OWN length from its start, not its basis's
+//! (the station names a place along the curve it references), one offset
+//! piece per span of the basis between its seams and, by distances, between
+//! its stations, every piece boundary a joint read by the same seam rule.
+//! IFC states an offset curve's parameterisation, "from the basis curve"
+//! (IFC4.3 ADD2 8.9.3.40.1), but not a distance along it other than its
+//! length. The joints' distances are the closed forms `relation::offset`
+//! states; an offset whose length is a quadrature, an offset of an offset,
+//! a trim of an offset and a collapsed circle are refused by name, and an offset across a corner of its basis,
+//! whose sides do not meet (IFC: the basis "shall have a well-defined
+//! tangent direction at every point"), is refused by the kernel.
 //!
 //! **Bases whose seams are unknown.** The seams are read from stored data,
 //! never by evaluation. A B-spline with a corner knot (whose distance is an
@@ -169,7 +184,17 @@ impl Basis {
         if let Err(reason) = seams {
             // Refused whatever the station: no station along such a basis
             // resolves, or the kernel reads its frame unlike IFC.
-            if [seams::BANKED, relation::UNSUPPORTED, relation::MIXED].contains(&reason) {
+            if [
+                seams::BANKED,
+                relation::UNSUPPORTED,
+                relation::MIXED,
+                relation::TRIM_OF_OFFSET,
+                relation::OFFSET_OF_OFFSET,
+                relation::PLANAR_3D,
+                relation::COLLAPSE,
+            ]
+            .contains(&reason)
+            {
                 return Err(session.unsupported(owner, owner_type, reason));
             }
         }
