@@ -12,6 +12,15 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-10-10
+
+### Changed
+
+- Requires `ifc-geometry` 0.20: linear placements on curve-relation bases
+  derive through curve paths (#418), and stations lower on offset-curve
+  bases (#414), on Axiolid's wave-3 line. Semver: minor, following the
+  dependency.
+
 ## [0.25.0] - 2026-10-09
 
 ### Changed
@@ -586,7 +595,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.25.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.26.0...HEAD
+[0.26.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.26.0
 [0.25.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.25.0
 [0.24.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.24.0
 [0.23.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.23.0

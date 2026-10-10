@@ -788,7 +788,7 @@ checksum = "4804bdc1dc124eb7e1aa9e144ecc04096bcf787a10a15fa44af682b51f0f6cce"
 
 [[package]]
 name = "ifc-alignment"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
@@ -869,7 +869,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-geometry"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "axiolid-construct",
  "axiolid-contracts",
@@ -1167,7 +1167,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "openbim-ifc"
-version = "0.25.0"
+version = "0.26.0"
 dependencies = [
  "ifc-alignment",
  "ifc-approval",

@@ -10,10 +10,10 @@
           "url": "https://crates.io/crates/ifc-alignment"
         }
       ],
-      "released": "0.8.0",
-      "released_date": "2026-10-09",
+      "released": "0.8.1",
+      "released_date": "2026-10-10",
       "status": "implemented",
-      "version": "0.8.0"
+      "version": "0.8.1"
     },
     "ifc-approval": {
       "description": "Bounded IFC4 approval resource semantics.",
@@ -130,10 +130,10 @@
           "url": "https://crates.io/crates/ifc-geometry"
         }
       ],
-      "released": "0.19.0",
-      "released_date": "2026-10-09",
+      "released": "0.20.0",
+      "released_date": "2026-10-10",
       "status": "partial",
-      "version": "0.19.0"
+      "version": "0.20.0"
     },
     "ifc-georef": {
       "description": "Georeferencing: map conversion, coordinate reference systems, site placement.",
@@ -400,10 +400,10 @@
           "url": "https://crates.io/crates/openbim-ifc"
         }
       ],
-      "released": "0.25.0",
-      "released_date": "2026-10-09",
+      "released": "0.26.0",
+      "released_date": "2026-10-10",
       "status": "implemented",
-      "version": "0.25.0"
+      "version": "0.26.0"
     },
     "openbim-ifc-binding-core": {
       "description": "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python).",
