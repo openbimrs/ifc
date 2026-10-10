@@ -23,6 +23,15 @@
 //! where the frame it is read in is (a line, or a path the evaluator calls
 //! exact there).
 //!
+//! A piece's span is stated in its own measure, an offset piece's in its
+//! own length. Where that is a quadrature (an offset beside a gradient
+//! curve, a spiral or a B-spline, an ellipse or a B-spline piece) only an
+//! execution provider computes it, and a provider checks the span against
+//! its own estimate, so the path cannot be built here and the placement is
+//! refused by [`GeometryError::PathPieceLengthUnstated`] (#427, blocked by
+//! axiolid/kernel#298). The same basis lowers as a station with the
+//! kernel's seam-snapping window (#423), which the kernel resolves itself.
+//!
 //! The tests build the same relation's path with `axiolid-mesh-compile`'s
 //! `station::curve_path` and compare the two.
 
@@ -42,7 +51,7 @@ use super::{basis_curve, offset_frame, refusal_detail, snap, Basis};
 use crate::error::{GeometryError, GeometryResult};
 use crate::lower::curve::lower_curve_node;
 use crate::lower::session::{AtomicCurve, LoweringSession};
-use crate::lower::station::relation::{relation_run, Piece};
+use crate::lower::station::relation::{relation_run, Piece, INEXACT};
 use crate::lower::station::seams::Seam;
 use crate::transform::Transform;
 use crate::units::UnitScale;
@@ -248,10 +257,17 @@ pub(super) fn path_basis(
         placement,
         basis,
     };
-    let run = relation_run(&session, node).map_err(|reason| GeometryError::Unsupported {
-        entity: placement,
-        type_name: type_name.to_owned(),
-        detail: reason,
+    let run = relation_run(&session, node).map_err(|reason| {
+        if reason == INEXACT {
+            // TODO(#427): a path whose pieces' lengths are quadratures.
+            GeometryError::PathPieceLengthUnstated { placement, basis }
+        } else {
+            GeometryError::Unsupported {
+                entity: placement,
+                type_name: type_name.to_owned(),
+                detail: reason,
+            }
+        }
     })?;
     let path = reader.path(&run.pieces, 0)?;
     Ok(PathBasis {
@@ -395,7 +411,16 @@ impl Reader<'_, '_> {
     fn run(&self, node: NodeId) -> GeometryResult<Vec<Piece<'_>>> {
         relation_run(self.session, node)
             .map(|run| run.pieces)
-            .map_err(|reason| self.unsupported(reason))
+            .map_err(|reason| {
+                if reason == INEXACT {
+                    GeometryError::PathPieceLengthUnstated {
+                        placement: self.placement,
+                        basis: self.basis,
+                    }
+                } else {
+                    self.unsupported(reason)
+                }
+            })
     }
 
     fn unsupported(&self, detail: &'static str) -> GeometryError {

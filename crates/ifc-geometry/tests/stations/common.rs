@@ -122,3 +122,16 @@ pub fn close_vec(actual: Vec3, expected: [f64; 3], what: &str) {
         "{what}: {actual:?} != {expected:?}"
     );
 }
+
+/// Assert `lowered` is a station at `distance` carrying the kernel's
+/// seam-snapping window `window`, reading the incoming side (#423): its
+/// basis's seams lie at arc-length integrals, so the kernel snaps it.
+pub fn assert_windowed(lowered: &LoweredGeometry, distance: f64, window: f64) {
+    let GeometryNode::OrientedCurveStation(station) = root(lowered) else {
+        panic!("an OrientedCurveStation: {:?}", root(lowered));
+    };
+    assert_eq!(station.seam, axiolid_model::SeamSide::Incoming);
+    assert_eq!(station.seam_window, window);
+    assert_eq!(station.station.station.distance, distance);
+    assert!(station.orientation.is_base());
+}

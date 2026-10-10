@@ -536,7 +536,7 @@ if (openbim_ifc_v0_1_model_product_geometry(model, NULL, 0, OPENBIM_IFC_GEOMETRY
   openbim_ifc_v0_1_graphs_payload(graphs, 0, NULL, 0, &need);
   char *json = (char *)malloc(need + 1);
   openbim_ifc_v0_1_graphs_payload(graphs, 0, (uint8_t *)json, need, &need);
-  json[need] = '\0'; /* {"format":"axiolid-geometry-graph","version":"1.0",...} */
+  json[need] = '\0'; /* {"format":"axiolid-geometry-graph","version":"1.1",...} */
   printf("%zu graph(s); %.52s...\n", products, json);
   free(json);
   openbim_ifc_v0_1_graphs_destroy(graphs);
@@ -553,14 +553,18 @@ trailing NUL) or `OPENBIM_IFC_GEOMETRY_CBOR` (1, RFC 8949), and any other
 value is `INVALID_ARGUMENT`. `openbim_ifc_v0_1_graphs_records` returns its
 `ProductGeometry` records (id, global id, type name, transform, encoding,
 payload size, refusal); `openbim_ifc_v0_1_graphs_payload` copies graph
-`index`'s payload, `{"format":"axiolid-geometry-graph","version":"1.0",
+`index`'s payload, `{"format":"axiolid-geometry-graph","version":"1.1",
 "graph":{"nodes":[...],"roots":[...]}}`, after the usual size query; an
 index past the set is `OUT_OF_RANGE`, and a product with no Body or a
 refused one has an empty payload. `openbim_ifc_v0_1_graphs_destroy` frees
 the set. The graph is in world coordinates, metres, with the record's
 transform already applied. These exports make the ABI version 0.1.9; no
-`v0_1` symbol changed. A major version of the wire format would be a
-breaking change of the ABI (ADR 0021).
+`v0_1` symbol changed. Its `version` is the lowest the content needs: `1.0`, or `1.1` when a
+station carries a seam-snapping window
+([#423](https://github.com/openbimrs/ifc/issues/423)); `axiolid-model`
+0.3.9 labels every payload `1.1` (axiolid/kernel#297), and a reader on
+`axiolid-model` 0.3.8 or older refuses `1.1`. A major version of the wire format would
+be a breaking change of the ABI (ADR 0021).
 
 ## Creating entities
 

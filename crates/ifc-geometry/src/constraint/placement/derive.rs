@@ -106,7 +106,12 @@
 //! naming the placement and its basis curve, never a frame read on one
 //! piece in its place. An offset curve is read the same way (#414): its
 //! pieces are `PathCurve::Offset`s of its basis's spans, measured in the
-//! offset's own length, as the station lowering measures it.
+//! offset's own length, as the station lowering measures it. Where that
+//! length is a quadrature (an offset beside a gradient curve, a spiral or a
+//! B-spline, and a relation with an ellipse or a B-spline piece), the path
+//! cannot be stated without an execution provider and the placement is
+//! refused by [`GeometryError::PathPieceLengthUnstated`] (#427), never
+//! derived from an estimate.
 //!
 //! # Which distance
 //!

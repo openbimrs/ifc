@@ -94,7 +94,7 @@ fn meshes_are_relative_to_the_placement_and_refused_per_product() {
 #[cfg(feature = "geometry-wire")]
 #[test]
 fn graphs_round_trip_through_the_wire_format_and_are_refused_per_product() {
-    use ifc::geometry::wire::{FORMAT_NAME, FORMAT_VERSION};
+    use ifc::geometry::wire::{FormatVersion, FORMAT_NAME, FORMAT_VERSION};
     use ifc::geometry::GeometryGraph;
 
     let model = fixture();
@@ -118,8 +118,11 @@ fn graphs_round_trip_through_the_wire_format_and_are_refused_per_product() {
     let text = graph.to_json().expect("encodes");
     let envelope: serde_json::Value = serde_json::from_str(&text).expect("JSON");
     assert_eq!(envelope["format"], FORMAT_NAME);
-    assert_eq!(envelope["version"], FORMAT_VERSION.to_string());
-    assert_eq!(envelope["version"], "1.0");
+    // The lowest version the content needs, 1.0 or 1.1; `axiolid-model`
+    // 0.3.9 labels every payload 1.1 (axiolid/kernel#297).
+    let version = envelope["version"].as_str().expect("a version");
+    assert!(["1.0", "1.1"].contains(&version), "{version}");
+    assert!(FORMAT_VERSION.reads(FormatVersion::parse(version).unwrap()));
     let back = GeometryGraph::from_json(&text).expect("reads back");
     assert_eq!(back.len(), graph.len());
     assert_eq!(back.roots().len(), graph.roots().len());

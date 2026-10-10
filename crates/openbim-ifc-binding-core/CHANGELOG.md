@@ -8,6 +8,16 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#423, wire format 1.1)
+
+- `GEOMETRY_FORMAT_VERSION` is `"1.1"`, the newest version a build writes
+  (`axiolid-model` 0.3.9: a station's seam-snapping window). An envelope
+  carries the lowest wire version its content needs: 1.0, or 1.1 when a
+  station carries a seam-snapping window; `axiolid-model` 0.3.9 labels
+  every payload 1.1 (axiolid/kernel#297), and a reader on `axiolid-model`
+  0.3.8 or older refuses 1.1. Tests read the envelope's version and accept
+  either.
+
 ### Added (#367, geometry Level 2, ADR 0021)
 
 - Feature `graph` (opt-in; implies `placements`, adds the facade's

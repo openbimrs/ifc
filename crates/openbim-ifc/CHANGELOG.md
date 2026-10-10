@@ -12,6 +12,19 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- Requires `ifc-geometry` 0.22: stations on offsets whose length is a
+  quadrature lower with Axiolid's seam-snapping window (#423), and
+  `product_graphs` encodes with `axiolid-model` 0.3.9, wire format 1.1
+  (`ifc::geometry::wire::FORMAT_VERSION`). An envelope carries the lowest
+  wire version its content needs: 1.0, or 1.1 when a station carries a
+  seam-snapping window; `axiolid-model` 0.3.9 labels every payload 1.1
+  (axiolid/kernel#297), and a reader on `axiolid-model` 0.3.8 or older
+  refuses 1.1.
+
+Semver: minor, following the dependency.
+
 ## [0.27.0] - 2026-10-10
 
 ### Added (#367, geometry Level 2, ADR 0021)

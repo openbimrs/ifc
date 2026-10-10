@@ -238,7 +238,7 @@ kilometres from the origin keeps its millimetres;
 
 The exact representation instead of triangles
 ([#367](https://github.com/openbimrs/ifc/issues/367)): each Body as
-Axiolid's neutral geometry graph in its wire format 1.0, for your own
+Axiolid's neutral geometry graph in its wire format, for your own
 kernel. It needs a wheel built with the `graph` feature:
 
 <!-- SNIPPET:cookbook-py-graphs -->
@@ -251,7 +251,7 @@ kinds = {}
 for product in model.product_geometry():  # or encoding="cbor": bytes
     if product.refusal is not None or product.payload is None:
         continue  # refused, or no Body
-    envelope = json.loads(product.payload)  # Axiolid's wire format 1.0
+    envelope = json.loads(product.payload)  # Axiolid's wire format
     # Each node is tagged by its kind; a reference is an earlier node's index.
     kinds[product.id] = [next(iter(node)) for node in envelope["graph"]["nodes"]]
 # {36: ['Profile', 'SolidOperation', 'Instance'], 46: [...]}
@@ -260,7 +260,7 @@ for product in model.product_geometry():  # or encoding="cbor": bytes
 <!-- /SNIPPET -->
 
 Each `payload` is the envelope `{"format": "axiolid-geometry-graph",
-"version": "1.0", "graph": {...}}`, exact, in world coordinates, metres;
+"version": "1.1", "graph": {...}}`, exact, in world coordinates, metres;
 `encoding="cbor"` gives it as `bytes`. The
 [binding page](/bindings/python#geometry) describes it.
 

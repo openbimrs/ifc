@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate the product-lowering fixtures for #335, #336, #346, #351, #353,
-#354, #357, #362, #363, #388, #393, #396, #398 and #414.
+#354, #357, #362, #363, #388, #393, #396, #398, #414 and #423.
 
-Fifteen small files, each one edge case of `crates/ifc-geometry`'s product
+Sixteen small files, each one edge case of `crates/ifc-geometry`'s product
 lowering. No licence-clean public corpus isolates these cases, so they are
 generated; the output is our own data. Metres and radians, fixed GUIDs and
 time stamp: regeneration is byte-stable.
@@ -288,6 +288,54 @@ offset's own length (axiolid/kernel#289), every joint of its pieces a seam:
   name. The offset bases refused while lowering (an offset of an offset,
   a trim of an offset, an `IfcOffsetCurve2D` of a 3D curve, a collapsed
   circle) are inline in the tests.
+
+`station_offset_bases_ifc4x3.ifc` (IFC4X3_ADD2, #423, declared `Precision`
+1e-5 m). Stations along offsets whose length is a quadrature, which the
+lowering stores with the kernel's seam-snapping window (axiolid/kernel#294)
+for the kernel to snap onto a joint within precision:
+
+- `ALIGNMENT`: an `IfcGradientCurve` over a plan of a 30 m line along +X
+  and a 30 m circular arc of radius 50 turning left (a horizontal joint
+  at 30 m), its profile a grade of 0.02 from height 10 for 20 m, then
+  -0.01 for 40 m (a grade break at 20 m, height 10.4).
+- `KERB`: an `IfcOffsetCurveByDistances` beside it, the kerb of the
+  carriageway: lateral 2 m at 0, 3 m at 40 and at 60 m, so 2 + v/40 for
+  the first 40 m. In its own plan length the kerb's joint at the grade
+  break lies `sqrt(400.25)` along, (20, 2.5, 10.4), and at the horizontal
+  joint `sqrt(400.25) + sqrt(100.0625)` along, (30, 2.75, 10.3); beyond it
+  the kerb beside the arc is a quadrature. `KERB_GRADE_AT` on the first,
+  1 m `OffsetVertical`, and `KERB_GRADE_NEAR` 4 um past it; `KERB_BEND_AT`
+  on the second and `KERB_BEND_NEAR` 4 um before it; `KERB_MID` halfway to
+  the first, near no joint. Each reads the incoming piece: the kerb rises
+  at 0.02 into the grade break (tangent (1, 0.025, 0.02)) and leaves at
+  -0.01; it runs along (1, 0.025, -0.01) into the bend and (0.945, 0.025,
+  -0.01) out of it. An `IfcLinearPlacement` at `KERB_GRADE_NEAR`'s
+  station stands in no representation; deriving it is refused (#427).
+- `KERB_EDGE`: a point 1e-5 m (the precision) past the kerb's joint at
+  40 m along the alignment, beside the arc, whose distance the kernel
+  certifies to an interval: the joint straddles the window's edge.
+- `TWIN`: an `IfcOffsetCurveByDistances` beside the alignment with the
+  same law 2 + v/40, stated at 0, 10, 10.000015 and 60 m: two joints 15 um
+  apart. `TWIN_POINT` midway between them: both lie within its window.
+- `TILTED`: an `IfcOffsetCurve3D` 1 m along `V x T` with `V` = (0, 1, 0)
+  of a second `IfcGradientCurve` over the same plan at a constant grade of
+  0.02: a 3D offset direction that is not vertical beside a plan-measured
+  curve, whose length the kernel does not certify.
+- `RAIL_NEAR`, `RAIL_EDGE`, `RAIL_TWIN`, `RAIL_TILTED`: a 0.1 m
+  `IfcSweptDiskSolid` along a 2 m `IfcLine` `IfcCurveSegment` placed by an
+  `IfcAxis2PlacementLinear` at `KERB_GRADE_NEAR`'s station, at
+  `KERB_EDGE`'s, at `TWIN_POINT`'s and 5 m along `TILTED` (its joint at
+  the plan's horizontal joint within the window's reach): the kernel
+  resolves the first on the joint and refuses the others by name.
+- `LANE`: an `IfcOffsetCurveByDistances` 1 m left of a level
+  `IfcGradientCurve` (height 10) whose plan is an `IfcClothoid` segment
+  (A^2 = 200, 20 m from curvature 0, turning left by 1 rad) and a 20 m
+  line on along its end tangent. Its joint lies 20 - 1 = 19 m along its
+  own length (a constant offset is as long as its base less the offset
+  times the turn), which the kernel measures by quadrature and certifies.
+  `LANE_JOINT_AT` on the joint and `LANE_JOINT_NEAR` 4 um past it resolve
+  to the joint's own point, 1 m left of the clothoid's end; `LANE_MID` is
+  9.5 m along.
 
 Run:  python3 tools/gen_lowering_fixtures.py test/fixtures/synthetic-lowering
 """
@@ -1384,6 +1432,188 @@ def station_offsets():
     return f
 
 
+# #423: the stations of `station_offset_bases_ifc4x3.ifc`.
+BASES_LINE = 30.0
+BASES_RADIUS = 50.0
+BASES_ARC = 30.0
+BASES_GRADES = [(20.0, 0.02), (40.0, -0.01)]
+BASES_HEIGHT = 10.0
+CLOTHOID_A2 = 200.0
+CLOTHOID_RUN = 20.0
+
+
+def simpson(fn, a, b, panels=200000):
+    """Composite Simpson's rule; on these smooth integrands far below the
+    1e-5 m precision (error ~1e-15)."""
+    h = (b - a) / panels
+    total = fn(a) + fn(b)
+    for i in range(1, panels):
+        total += (4.0 if i % 2 else 2.0) * fn(a + i * h)
+    return total * h / 3.0
+
+
+def bases_kerb_lateral(v):
+    """The kerb's (and the twin's) lateral offset, 2 + v/40 up to 40 m."""
+    return 2.0 + min(v, 40.0) / 40.0
+
+
+def bases_kerb_joints():
+    """The kerb's own plan length at its joints at 20, 30 and 40 m: closed
+    form beside the line, Simpson beside the arc."""
+    grade = math.hypot(20.0, 0.5)
+    bend = grade + math.hypot(10.0, 0.25)
+    kappa = 1.0 / BASES_RADIUS
+
+    def speed(v):
+        return math.hypot(1.0 - kappa * bases_kerb_lateral(v), 1.0 / 40.0)
+    return grade, bend, bend + simpson(speed, 30.0, 40.0)
+
+
+def station_offset_bases():
+    """#423: stations along offsets whose length is a quadrature."""
+    label = "station-offset-bases"
+    f = ifcopenshell.file(schema="IFC4X3_ADD2")
+    body_ctx, site = spatial_root(f, label)
+    ctx = f.by_type("IfcGeometricRepresentationContext", include_subtypes=False)[0]
+
+    def place2(origin, heading):
+        return f.create_entity(
+            "IfcAxis2Placement2D", Location=point2(f, origin),
+            RefDirection=direction(f, heading))
+
+    def curve_segment(placement, run, parent, transition="CONTSAMEGRADIENT"):
+        return f.create_entity(
+            "IfcCurveSegment", Transition=transition, Placement=placement,
+            SegmentStart=length(f, 0.0), SegmentLength=length(f, run), ParentCurve=parent)
+
+    line = line2(f)
+
+    def gradient_curve(plan_parts, grades):
+        """An `IfcGradientCurve`: a plan of (placement, run, parent) segments
+        closed at `plan_end` and a profile of (plan run, grade) lines."""
+        parts, plan_end = plan_parts
+        plan = f.create_entity("IfcCompositeCurve", Segments=[
+            curve_segment(placement, run, parent) for placement, run, parent in parts
+        ] + [curve_segment(plan_end, 0.0, line, "DISCONTINUOUS")], SelfIntersect=False)
+        profile = []
+        at, height = 0.0, BASES_HEIGHT
+        for run, grade in grades:
+            norm = math.hypot(1.0, grade)
+            profile.append(curve_segment(place2((at, height), (1.0 / norm, grade / norm)),
+                                         run * norm, line))
+            at, height = at + run, height + grade * run
+        last = grades[-1][1]
+        norm = math.hypot(1.0, last)
+        profile.append(curve_segment(place2((at, height), (1.0 / norm, last / norm)), 0.0,
+                                     line, "DISCONTINUOUS"))
+        return plan, f.create_entity("IfcGradientCurve", Segments=profile,
+                                     SelfIntersect=False, BaseCurve=plan)
+
+    # The plan: a line, then an arc turning left; the profile: two grades.
+    circle = f.create_entity("IfcCircle", Position=place2((0.0, 0.0), (1.0, 0.0)),
+                             Radius=BASES_RADIUS)
+    turn = BASES_ARC / BASES_RADIUS
+    arc_end = (BASES_LINE + BASES_RADIUS * math.sin(turn),
+               BASES_RADIUS * (1.0 - math.cos(turn)))
+    bend = ([(place2((0.0, 0.0), (1.0, 0.0)), BASES_LINE, line),
+             (place2((BASES_LINE, 0.0), (1.0, 0.0)), BASES_ARC, circle)],
+            place2(arc_end, (math.cos(turn), math.sin(turn))))
+    plan, gradient = gradient_curve(bend, BASES_GRADES)
+    _, ramp = gradient_curve(bend, [(BASES_LINE + BASES_ARC, 0.02)])
+
+    # A clothoid turning left by 1 rad, then a line on along its end
+    # tangent from its end point (Fresnel integrals, by Simpson).
+    spiral = f.create_entity("IfcClothoid", Position=place2((0.0, 0.0), (1.0, 0.0)),
+                             ClothoidConstant=math.sqrt(CLOTHOID_A2))
+    spiral_turn = CLOTHOID_RUN ** 2 / (2.0 * CLOTHOID_A2)
+    spiral_end = (simpson(lambda s: math.cos(s * s / (2.0 * CLOTHOID_A2)), 0.0, CLOTHOID_RUN),
+                  simpson(lambda s: math.sin(s * s / (2.0 * CLOTHOID_A2)), 0.0, CLOTHOID_RUN))
+    heading = (math.cos(spiral_turn), math.sin(spiral_turn))
+    spiral_plan = ([(place2((0.0, 0.0), (1.0, 0.0)), CLOTHOID_RUN, spiral),
+                    (place2(spiral_end, heading), 20.0, line)],
+                   place2((spiral_end[0] + 20.0 * heading[0],
+                           spiral_end[1] + 20.0 * heading[1]), heading))
+    _, spiral_road = gradient_curve(spiral_plan, [(CLOTHOID_RUN + 20.0, 0.0)])
+    lane_joint = CLOTHOID_RUN - 1.0 * spiral_turn
+
+    def along(basis, distance, lateral=None, vertical=None):
+        return f.create_entity(
+            "IfcPointByDistanceExpression", DistanceAlong=length(f, distance),
+            OffsetLateral=lateral, OffsetVertical=vertical, BasisCurve=basis)
+
+    def by_distances(stations, tag):
+        return f.create_entity(
+            "IfcOffsetCurveByDistances", BasisCurve=gradient,
+            OffsetValues=[along(gradient, v, lateral=bases_kerb_lateral(v))
+                          for v in stations], Tag=tag)
+
+    kerb = by_distances([0.0, 40.0, 60.0], "kerb")
+    grade_joint, bend_joint, arc_joint = bases_kerb_joints()
+    twin = by_distances([0.0, 10.0, 10.000015, 60.0], "twin")
+    twin_point = math.hypot(10.0, 0.25) + 0.0000075 * math.hypot(1.0, 1.0 / 40.0)
+    tilted = f.create_entity("IfcOffsetCurve3D", BasisCurve=ramp, Distance=1.0,
+                             SelfIntersect=False, RefDirection=direction(f, (0.0, 1.0, 0.0)))
+    lane = f.create_entity(
+        "IfcOffsetCurveByDistances", BasisCurve=spiral_road,
+        OffsetValues=[along(spiral_road, 0.0, lateral=1.0)], Tag="lane")
+
+    line3 = f.create_entity(
+        "IfcLine", Pnt=point(f, (0.0, 0.0, 0.0)),
+        Dir=f.create_entity("IfcVector", Orientation=direction(f, (1.0, 0.0, 0.0)),
+                            Magnitude=1.0))
+
+    def rail(basis, distance):
+        segment = f.create_entity(
+            "IfcCurveSegment", Transition="DISCONTINUOUS",
+            Placement=f.create_entity("IfcAxis2PlacementLinear",
+                                      Location=along(basis, distance)),
+            SegmentStart=length(f, 0.0), SegmentLength=length(f, 2.0), ParentCurve=line3)
+        directrix = f.create_entity("IfcCompositeCurve", Segments=[segment],
+                                    SelfIntersect=False)
+        return f.create_entity("IfcSweptDiskSolid", Directrix=directrix, Radius=0.1)
+
+    def product(name, representations):
+        return f.create_entity(
+            "IfcBuildingElementProxy", GlobalId=guid(label + "/" + name), Name=name,
+            ObjectPlacement=local(f), Representation=shape(f, representations))
+
+    def points(name, item):
+        return product(name, [rep(f, ctx, "Reference", "Point", [item])])
+
+    def body(name, item):
+        return product(name, [rep(f, body_ctx, "Body", "AdvancedSweptSolid", [item])])
+
+    near = grade_joint + 4e-6
+    edge = arc_joint + 1e-5
+    products = [
+        product("ALIGNMENT", [rep(f, ctx, "FootPrint", "Curve2D", [plan]),
+                              rep(f, ctx, "Axis", "Curve3D", [gradient])]),
+        product("KERB", [rep(f, ctx, "Axis", "Curve3D", [kerb])]),
+        points("KERB_GRADE_AT", along(kerb, grade_joint, vertical=1.0)),
+        points("KERB_GRADE_NEAR", along(kerb, near, vertical=1.0)),
+        points("KERB_BEND_AT", along(kerb, bend_joint)),
+        points("KERB_BEND_NEAR", along(kerb, bend_joint - 4e-6)),
+        points("KERB_MID", along(kerb, grade_joint / 2.0)),
+        points("KERB_EDGE", along(kerb, edge)),
+        product("TWIN", [rep(f, ctx, "Axis", "Curve3D", [twin])]),
+        points("TWIN_POINT", along(twin, twin_point)),
+        product("TILTED", [rep(f, ctx, "Axis", "Curve3D", [tilted])]),
+        body("RAIL_NEAR", rail(kerb, near)),
+        body("RAIL_EDGE", rail(kerb, edge)),
+        body("RAIL_TWIN", rail(twin, twin_point)),
+        body("RAIL_TILTED", rail(tilted, 5.0)),
+        product("LANE", [rep(f, ctx, "Axis", "Curve3D", [lane])]),
+        points("LANE_JOINT_AT", along(lane, lane_joint)),
+        points("LANE_JOINT_NEAR", along(lane, lane_joint + 4e-6)),
+        points("LANE_MID", along(lane, lane_joint / 2.0)),
+    ]
+    contain(f, label, site, products)
+    # A linear placement near the kerb's grade break, in no representation.
+    frame = f.create_entity("IfcAxis2PlacementLinear", Location=along(kerb, near))
+    f.create_entity("IfcLinearPlacement", RelativePlacement=frame)
+    return f
+
+
 # #388: the site placements the flush-opening wall is put under. A survey
 # origin of (600 000, 5 600 000, 200) and a turn of about 2.3 degrees to
 # grid north are what a georeferenced export writes.
@@ -1518,6 +1748,7 @@ FIXTURES = {
     "station_seams_ifc4x3.ifc": station_seams,
     "station_relations_ifc4x3.ifc": station_relations,
     "station_offsets_ifc4x3.ifc": station_offsets,
+    "station_offset_bases_ifc4x3.ifc": station_offset_bases,
 }
 
 

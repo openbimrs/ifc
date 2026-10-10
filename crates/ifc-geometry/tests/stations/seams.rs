@@ -15,7 +15,7 @@ use axiolid_model::{
 };
 use axiolid_reference::station::station_section3_on;
 
-use super::common::{close_point, close_vec, lower, refused, root, step, EPS};
+use super::common::{assert_windowed, close_point, close_vec, lower, refused, root, step, EPS};
 
 /// The committed station-seam fixture (#346).
 pub fn seams() -> ifc_model::Model {
@@ -239,10 +239,11 @@ fn a_section_within_precision_of_a_corner_is_stored_at_it() {
 }
 
 /// What stays refused, by name: a run across a seam where the curve turns
-/// back on itself (no mitre plane), and a station on a basis whose seams
-/// cannot be read from stored data (a B-spline with a corner knot). A
-/// composite's joint, refused until Axiolid measured stations along curve
-/// relations (axiolid/kernel#285), is a seam like a corner.
+/// back on itself (no mitre plane). A composite's joint, refused until
+/// Axiolid measured stations along curve relations (axiolid/kernel#285),
+/// is a seam like a corner. A station on a B-spline with a corner knot,
+/// whose distance is a quadrature, carries the kernel's seam-snapping
+/// window (#423; refused by name before).
 #[test]
 fn reversals_and_unreadable_seams_are_refused_by_name_and_joints_lower() {
     let records = format!(
@@ -274,5 +275,5 @@ fn reversals_and_unreadable_seams_are_refused_by_name_and_joints_lower() {
     };
     assert_eq!(station.seam, SeamSide::Incoming);
     assert_eq!(station.station.station.distance, 10.0);
-    refused(lower(&model, 61), true, "multiplicity at least its degree");
+    assert_windowed(&lower(&model, 61).expect("lowers"), 4.0, 1e-5);
 }

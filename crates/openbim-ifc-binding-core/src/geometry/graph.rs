@@ -5,15 +5,22 @@
 //! ADR 0085), JSON text or CBOR bytes:
 //!
 //! ```json
-//! {"format":"axiolid-geometry-graph","version":"1.0","graph":{"nodes":[...],"roots":[...]}}
+//! {"format":"axiolid-geometry-graph","version":"1.1","graph":{"nodes":[...],"roots":[...]}}
 //! ```
 //!
 //! Nodes are in insertion order and a reference is the index of an earlier
 //! node; the graph is in world coordinates, metres, with the product's
 //! placement already applied. A host evaluates it with its own kernel, or
 //! reads it back with `GeometryGraph::from_json` / `from_cbor` in Rust.
-//! The binding writes [`GEOMETRY_FORMAT_VERSION`]; a major version bump of
-//! the wire format is a breaking change of every binding (ADR 0021).
+//! The envelope's `version` is the lowest wire format version its content
+//! needs: `1.0`, or `1.1` when a station in it carries a seam-snapping
+//! window (#423; a station on an offset whose length is a quadrature).
+//! `axiolid-model` 0.3.9 still labels every payload `1.1`
+//! (axiolid/kernel#297), so a host reads either; a reader on
+//! `axiolid-model` 0.3.8 or older refuses a `1.1` payload.
+//! [`GEOMETRY_FORMAT_VERSION`] is the newest version this build writes. A
+//! minor version of the wire format reaches every binding as a minor
+//! release, a major one is a breaking change of every binding (ADR 0021).
 
 use crate::record::{Field, Record, ToRecord};
 
@@ -25,9 +32,11 @@ use crate::{BindingError, IfcModel};
 /// The wire format's name, the envelope's `format` entry.
 pub const GEOMETRY_FORMAT: &str = "axiolid-geometry-graph";
 
-/// The wire format version this build writes, the envelope's `version`
-/// entry.
-pub const GEOMETRY_FORMAT_VERSION: &str = "1.0";
+/// The newest wire format version this build writes, `MAJOR.MINOR`. A
+/// payload's envelope carries the lowest version its content needs, so its
+/// `version` entry is this or an older minor of the same major (module
+/// documentation).
+pub const GEOMETRY_FORMAT_VERSION: &str = "1.1";
 
 /// How [`IfcModel::product_geometry`](crate::IfcModel::product_geometry)
 /// encodes each graph.

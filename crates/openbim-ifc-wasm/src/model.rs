@@ -166,8 +166,9 @@ impl IfcModel {
     /// Each product's Body as Axiolid's neutral geometry graph (#367), exact
     /// (extrusions, sweeps, B-splines, unevaluated booleans), for `ids` or,
     /// without, every product with a shape, in Axiolid's versioned wire
-    /// format 1.0: `{ format: "axiolid-geometry-graph", version: "1.0",
-    /// graph: { nodes, roots } }`, in world coordinates, metres. `encoding`
+    /// format: `{ format: "axiolid-geometry-graph", version: "1.1",
+    /// graph: { nodes, roots } }` (the lowest version the content needs,
+    /// `"1.0"` or `"1.1"`), in world coordinates, metres. `encoding`
     /// picks the `payload`: `"json"` (the default) the text, `"object"` the
     /// text parsed, `"cbor"` the CBOR bytes as a `Uint8Array`. A product
     /// that cannot be lowered has a typed `refusal`; the call itself throws

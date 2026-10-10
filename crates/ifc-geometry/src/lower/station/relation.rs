@@ -48,9 +48,10 @@
 //! parameterised by its measure (an intrinsic curve, a chain, an elevated
 //! curve's plan distance), and an offset's closed forms ([`offset`]). An
 //! ellipse or a B-spline is measured by quadrature, which `axiolid-evaluate`
-//! also reports inexact (`CompositeBasis::exact_seams`), so a composite
-//! holding one is refused by name, as an atomic B-spline with a corner knot
-//! is.
+//! also reports inexact (`CompositeBasis::exact_seams`): for a composite
+//! holding one the joints are unknown here ([`INEXACT`]), as an atomic
+//! B-spline's corner knot is, and a station along it carries the kernel's
+//! seam-snapping window instead (#423, `super`'s module documentation).
 //!
 //! The joints' points are not compared here: whether pieces meet is
 //! evaluation. A gap, an undeclared reversed piece, or an offset across a
@@ -85,7 +86,10 @@ mod offset;
 
 pub(crate) use offset::{OffsetPiece, COLLAPSE, OFFSET_OF_OFFSET, PLANAR_3D};
 
-/// Why a relation basis holding a curve measured by quadrature is refused.
+/// Why a relation basis's joints are unknown here: a piece's length is a
+/// quadrature. A station along it carries the kernel's seam-snapping window
+/// (#423); a run along it, and a derived placement on it (#427), are
+/// refused.
 pub(crate) const INEXACT: &str =
     "the basis curve relation holds a piece whose length is not stated by its data (an \
      ellipse, a B-spline, a trim whose ends are not a parameter, an arc length on a curve \

@@ -45,12 +45,16 @@
 //! The kernel reads an offset of a polyline edge numerically (its quadrature
 //! of a constant speed, to rounding), where this module states the closed
 //! form; the tests pin the two equal within Axiolid's `ARC_LENGTH_TOLERANCE`.
-//! Everything else is a quadrature and refused by name ([`super::INEXACT`]):
-//! an offset of an ellipse, a B-spline, a clothoid or a chain; a variable
-//! offset of a circle; an offset of a circle placed at a station or tilted
-//! out of the offset's plane; and an offset of a plan-measured (gradient)
-//! curve, whose own plan length depends on the grade wherever the offset
-//! has a vertical part. The kernel's own named refusals are repeated where
+//! Everything else is a quadrature ([`super::INEXACT`]): an offset of an
+//! ellipse, a B-spline, a clothoid or a chain; a variable offset of a
+//! circle; an offset of a circle placed at a station or tilted out of the
+//! offset's plane; and an offset of a plan-measured (gradient) curve, whose
+//! own plan length depends on the grade wherever the offset has a vertical
+//! part. Its joints are unknown here, so a station along it carries the
+//! kernel's seam-snapping window, which the kernel resolves against its own
+//! certified joint distances (#423, axiolid/kernel#294); a run along it and
+//! a derived placement on it are refused by name. The kernel's own named
+//! refusals are repeated where
 //! the stored data shows them: an offset of an offset ([`OFFSET_OF_OFFSET`]),
 //! a planar (2D) offset law on a 3D curve ([`PLANAR_3D`]; IFC lowering
 //! never stores one) and a circle whose offset radius collapses

@@ -16,7 +16,7 @@
 use axiolid_model::{CurveRelation, GeometryNode, OrientedCurveStation, SeamSide};
 use ifc_model::Model;
 
-use super::common::{lower, refused, root, step};
+use super::common::{assert_windowed, lower, root, step};
 use super::seams::item;
 
 /// `sqrt(1 + 0.02^2)`: the kerb's 3D length per metre of plan.
@@ -105,11 +105,12 @@ fn segments_placed_at_stations_lower_to_instances_at_stations() {
     on_joint(&model, "KERB_JOINT", 20.0 * norm());
 }
 
-/// What a relation basis cannot carry is refused by name: an ellipse
-/// piece, whose length is a quadrature, puts the joints where no
-/// precision can find them. (Offset bases are `stations/offsets.rs`.)
+/// An ellipse piece, whose length is a quadrature, puts the joints where
+/// the lowering cannot find them: the station carries the precision as the
+/// kernel's seam-snapping window instead (#423; refused by name before).
+/// (Offset bases are `stations/offsets.rs` and `stations/offset_bases.rs`.)
 #[test]
-fn relation_bases_without_stated_joints_are_refused_by_name() {
+fn relation_bases_without_stated_joints_carry_the_kernels_window() {
     let model = step(
         "#10=IFCCARTESIANPOINT((0.,0.));
 #11=IFCAXIS2PLACEMENT2D(#10,$);
@@ -124,7 +125,7 @@ fn relation_bases_without_stated_joints_are_refused_by_name() {
 #20=IFCPOINTBYDISTANCEEXPRESSION(IFCLENGTHMEASURE(1.),$,$,$,#19);",
         false,
     );
-    refused(lower(&model, 20), true, "not stated by its data");
+    assert_windowed(&lower(&model, 20).expect("lowers"), 1.0, 1e-5);
 }
 
 #[cfg(feature = "compile-reference-backend")]

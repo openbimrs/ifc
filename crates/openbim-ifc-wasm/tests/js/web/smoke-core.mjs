@@ -181,7 +181,7 @@ export function meshes(IfcModel, enabled) {
   const [graph] = model.productGeometry(undefined, "object");
   check(graph.refusal === undefined, `graph refused: ${graph.refusal?.code}`);
   check(graph.payload.format === "axiolid-geometry-graph", "the wire format's name");
-  check(graph.payload.version === "1.0", "wire format 1.0");
+  check(["1.0", "1.1"].includes(graph.payload.version), "wire format 1.0 or 1.1");
   const [cbor] = model.productGeometry([16n], "cbor");
   check(cbor.payload instanceof Uint8Array && cbor.payload.length > 0, "a CBOR payload");
   const [wall, ...rest] = model.productMeshes();

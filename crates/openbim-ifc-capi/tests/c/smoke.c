@@ -954,7 +954,7 @@ static int documented_graph(OpenbimIfcModel model) {
     openbim_ifc_v0_1_graphs_payload(graphs, 0, NULL, 0, &need);
     char *json = (char *)malloc(need + 1);
     openbim_ifc_v0_1_graphs_payload(graphs, 0, (uint8_t *)json, need, &need);
-    json[need] = '\0'; /* {"format":"axiolid-geometry-graph","version":"1.0",...} */
+    json[need] = '\0'; /* {"format":"axiolid-geometry-graph","version":"1.1",...} */
     printf("%zu graph(s); %.52s...\n", products, json);
     free(json);
     openbim_ifc_v0_1_graphs_destroy(graphs);
@@ -1033,8 +1033,9 @@ static int geometry(void) {
     OK(openbim_ifc_v0_1_last_error_code(model, (uint8_t *)code, sizeof code, &need));
     CHECK(strcmp(code, "feature-disabled") == 0, "graphs are opt-in");
   } else {
-    static const char ENVELOPE[] = "{\"format\":\"axiolid-geometry-graph\",\"version\":\"1.0\","
-                                   "\"graph\":{\"nodes\":[";
+    /* The version is the lowest the content needs, "1.0" or "1.1". */
+    static const char ENVELOPE[] = "{\"format\":\"axiolid-geometry-graph\",\"version\":\"1.";
+    static const char GRAPH[] = "\",\"graph\":{\"nodes\":[";
     CHECK(status == OPENBIM_IFC_STATUS_OK, "graphs lower");
     OK(openbim_ifc_v0_1_graphs_records(graphs, &count, nodes, 128, &node_count, strings,
                                        sizeof strings, &string_len));
@@ -1051,8 +1052,11 @@ static int geometry(void) {
           "the payload is the size its record states");
     uint8_t *payload = (uint8_t *)malloc(need);
     OK(openbim_ifc_v0_1_graphs_payload(graphs, 0, payload, need, &need));
-    CHECK(need > sizeof ENVELOPE && memcmp(payload, ENVELOPE, sizeof ENVELOPE - 1) == 0,
-          "Axiolid's wire envelope, format 1.0");
+    const size_t at = sizeof ENVELOPE - 1;
+    CHECK(need > at + sizeof GRAPH && memcmp(payload, ENVELOPE, at) == 0 &&
+              (payload[at] == '0' || payload[at] == '1') &&
+              memcmp(payload + at + 1, GRAPH, sizeof GRAPH - 1) == 0,
+          "Axiolid's wire envelope, format 1.0 or 1.1");
     free(payload);
     CHECK(openbim_ifc_v0_1_graphs_payload(graphs, 1, NULL, 0, &need) ==
               OPENBIM_IFC_STATUS_OUT_OF_RANGE,

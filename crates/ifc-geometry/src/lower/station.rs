@@ -97,16 +97,37 @@
 //! IFC states an offset curve's parameterisation, "from the basis curve"
 //! (IFC4.3 ADD2 8.9.3.40.1), but not a distance along it other than its
 //! length. The joints' distances are the closed forms `relation::offset`
-//! states; an offset whose length is a quadrature, an offset of an offset,
-//! a trim of an offset and a collapsed circle are refused by name, and an offset across a corner of its basis,
+//! states, and where it states none (an offset whose length is a
+//! quadrature) the kernel snaps the station (below); an offset of an
+//! offset, a trim of an offset and a collapsed circle are refused by name,
+//! and an offset across a corner of its basis,
 //! whose sides do not meet (IFC: the basis "shall have a well-defined
 //! tangent direction at every point"), is refused by the kernel.
 //!
-//! **Bases whose seams are unknown.** The seams are read from stored data,
-//! never by evaluation. A B-spline with a corner knot (whose distance is an
-//! arc-length integral; Axiolid's `exact_station_seams` refuses it too), and
-//! a relation with an ellipse or a B-spline piece, whose joints lie at such
-//! integrals, are refused by name.
+//! **Bases whose seams are quadratures** (#423). The seams are read from
+//! stored data, never by evaluation. Where they lie at an arc-length
+//! integral -- an offset beside a gradient curve, a spiral, a B-spline or
+//! an ellipse, a relation with an ellipse or a B-spline piece, a B-spline's
+//! corner knot -- this crate cannot place a station within precision of
+//! one, and hands the snapping to the kernel instead: the station is
+//! stored at its own distance as an `OrientedCurveStation` reading
+//! `SeamSide::Incoming`, with the window this crate snaps within (the
+//! declared precision, `Basis::tolerance`) as its seam-snapping window
+//! (`OrientedCurveStation::with_seam_window`, `axiolid-model` 0.3.9,
+//! axiolid/kernel#294, ADR 0082 amendment). Resolving it, the kernel reads
+//! a station within that window of exactly one seam whose frame may jump
+//! ON that seam, from the incoming side, at its own certified distance, and
+//! refuses by name a window holding two seams (`SEAM_WINDOW_AMBIGUOUS`), a
+//! seam whose certified position straddles its edge
+//! (`SEAM_WINDOW_STRADDLED`) and a seam it cannot certify
+//! (`UNCERTIFIED_LENGTH`); `crate::compile` names the station in a
+//! [`GeometryError::StationSeamWindowRefused`](crate::GeometryError).
+//! A station on a basis whose seams are stored data keeps the snapping
+//! above, so its graph is unchanged (no window, wire format 1.0 content):
+//! a run of sections or offsets needs that snapping anyway, since a run's
+//! `Station`s carry no window, and the two agree on every seam the data
+//! states. A run along a basis whose seams are quadratures is refused by
+//! name (`RUN_UNLOCATED`).
 //!
 //! # Frames
 //!
@@ -251,19 +272,43 @@ impl Basis {
             .map_err(|why| session.unsupported(owner, owner_type, why))
     }
 
-    /// The seam `distance` lies on within [`Self::tolerance`], if any.
-    pub(crate) fn seam_at(
+    /// How a station at `distance` is read (module documentation): on a
+    /// seam stated by the data, snapped to it; clear of every such seam,
+    /// as it is; on a basis whose seams are quadratures, with the kernel's
+    /// seam-snapping window.
+    fn reading(
         &self,
         session: &LoweringSession<'_>,
         owner: EntityId,
         owner_type: &str,
         distance: f64,
-    ) -> GeometryResult<Option<seams::Seam>> {
-        Ok(seams::nearest(
-            self.known_seams(session, owner, owner_type)?,
-            distance,
-            self.precision,
-        ))
+    ) -> GeometryResult<Reading> {
+        match &self.seams {
+            Ok(seams) => Ok(match seams::nearest(seams, distance, self.precision) {
+                Some(seam) => Reading::OnSeam(seam.distance),
+                None => Reading::Clear,
+            }),
+            Err(reason) if WINDOWED.contains(reason) => {
+                Ok(Reading::Window(self.tolerance(distance)))
+            }
+            Err(reason) => Err(session.unsupported(owner, owner_type, reason)),
+        }
+    }
+
+    /// The seams a run needs, refusing a basis whose seams are quadratures
+    /// by [`RUN_UNLOCATED`] rather than by the station's reason.
+    fn run_seams(
+        &self,
+        session: &LoweringSession<'_>,
+        owner: EntityId,
+        owner_type: &str,
+    ) -> GeometryResult<&[seams::Seam]> {
+        match &self.seams {
+            Err(reason) if WINDOWED.contains(reason) => {
+                Err(session.unsupported(owner, owner_type, RUN_UNLOCATED))
+            }
+            _ => self.known_seams(session, owner, owner_type),
+        }
     }
 
     /// The distance a station of a run is stored at: the seam's own
@@ -276,9 +321,12 @@ impl Basis {
         owner_type: &str,
         distance: f64,
     ) -> GeometryResult<f64> {
-        Ok(self
-            .seam_at(session, owner, owner_type, distance)?
-            .map_or(distance, |seam| seam.distance))
+        Ok(seams::nearest(
+            self.run_seams(session, owner, owner_type)?,
+            distance,
+            self.precision,
+        )
+        .map_or(distance, |seam| seam.distance))
     }
 
     /// Refuse a run over `[from, to]`, both ends included, across a seam
@@ -293,7 +341,7 @@ impl Basis {
         to: f64,
     ) -> GeometryResult<()> {
         let reversal = self
-            .known_seams(session, owner, owner_type)?
+            .run_seams(session, owner, owner_type)?
             .iter()
             .any(|seam| {
                 seam.reverses
@@ -307,6 +355,32 @@ impl Basis {
         }
     }
 }
+
+/// The reasons a basis's seams are unknown for which a station carries
+/// the kernel's seam-snapping window instead (module documentation): its
+/// seams lie at arc-length integrals.
+const WINDOWED: [&str; 2] = [relation::INEXACT, seams::SPLINE];
+
+/// How a station is read against its basis's seams.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Reading {
+    /// Clear of every seam: stored as it is.
+    Clear,
+    /// Within precision of the seam at this distance: stored there,
+    /// reading the incoming side.
+    OnSeam(f64),
+    /// On a basis whose seams are quadratures: stored as it is, reading
+    /// the incoming side of any seam within this window, which the kernel
+    /// snaps to.
+    Window(f64),
+}
+
+/// Why a run along a basis whose seams are quadratures is refused.
+pub(crate) const RUN_UNLOCATED: &str =
+    "a run of sections or offsets along a basis whose seams lie at arc-length integrals (an \
+     offset whose length is a quadrature, a spiral, a B-spline or an ellipse piece): a station \
+     of a run within precision of a seam stands in IFC's half-angle mitre plane (8.8.3.35.1), \
+     and a run's stations carry no seam-snapping window for the kernel to snap them with";
 
 /// Why a run across a reversal is refused.
 pub(crate) const REVERSAL: &str =
@@ -324,11 +398,11 @@ pub fn lower_point_by_distance_node(
     frame: Transform,
 ) -> GeometryResult<NodeId> {
     memoized(session, id, frame, |session| {
-        let (basis, station, side) = located(session, id, POINT, id, frame)?;
+        let (basis, station, reading) = located(session, id, POINT, id, frame)?;
         let station = CurveStation::new(basis.node, station);
-        let node = match side {
-            Some(side) => GeometryNode::OrientedCurveStation(station.with_seam_side(side)),
-            None => GeometryNode::CurveStation(station),
+        let node = match reading {
+            Reading::Clear => GeometryNode::CurveStation(station),
+            _ => GeometryNode::OrientedCurveStation(read_at(station.into(), reading)),
         };
         session.node_for(id, node)
     })
@@ -358,38 +432,46 @@ pub(crate) fn linear_placement_station(
     frame: Transform,
 ) -> GeometryResult<OrientedCurveStation> {
     let placement = axes::read_placement(session, id)?;
-    let (basis, station, side) = located(session, id, PLACEMENT, placement.location, frame)?;
+    let (basis, station, reading) = located(session, id, PLACEMENT, placement.location, frame)?;
     let orientation = axes::placement_orientation(session, id, &placement)?;
-    let mut oriented =
-        OrientedCurveStation::new(CurveStation::new(basis.node, station), orientation);
-    if let Some(side) = side {
-        oriented = oriented.with_seam_side(side);
+    let oriented = OrientedCurveStation::new(CurveStation::new(basis.node, station), orientation);
+    Ok(read_at(oriented, reading))
+}
+
+/// `station` reading the incoming side on a seam, with the kernel's
+/// seam-snapping window where the seams are quadratures.
+fn read_at(station: OrientedCurveStation, reading: Reading) -> OrientedCurveStation {
+    match reading {
+        Reading::Clear => station,
+        Reading::OnSeam(_) => station.with_seam_side(SeamSide::Incoming),
+        Reading::Window(window) => station
+            .with_seam_side(SeamSide::Incoming)
+            .with_seam_window(window),
     }
-    Ok(oriented)
 }
 
 /// Read the point `point`, lower its basis and place the station on it: at
 /// a seam's own distance, reading the incoming side, when it lies on one
-/// (8.9.3.48.3, module documentation).
+/// the data states; with the kernel's window where the seams are
+/// quadratures (8.9.3.48.3, module documentation).
 fn located(
     session: &mut LoweringSession<'_>,
     owner: EntityId,
     owner_type: &str,
     point: EntityId,
     frame: Transform,
-) -> GeometryResult<(Basis, Station, Option<SeamSide>)> {
+) -> GeometryResult<(Basis, Station, Reading)> {
     let expression = read::distance_expression(session, owner, owner_type, point)?;
     let basis = Basis::lower(session, owner, owner_type, expression.basis, frame)?;
     basis.check_on_curve(session, owner, owner_type, expression.distance)?;
     let mut station = expression.station();
-    let side = match basis.seam_at(session, owner, owner_type, expression.distance)? {
-        Some(seam) => {
-            station.distance = seam.distance;
-            Some(SeamSide::Incoming)
-        }
-        None => None,
-    };
-    Ok((basis, station, side))
+    let reading = basis.reading(session, owner, owner_type, expression.distance)?;
+    match reading {
+        Reading::OnSeam(seam) => station.distance = seam,
+        Reading::Window(_) => session.record_seam_window(owner),
+        Reading::Clear => {}
+    }
+    Ok((basis, station, reading))
 }
 
 fn memoized(

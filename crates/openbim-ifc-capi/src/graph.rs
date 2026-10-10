@@ -1,5 +1,5 @@
 //! Geometry, Level 2 (#367, ADR 0021): each product's Body as Axiolid's
-//! neutral geometry graph, in Axiolid's versioned wire format 1.0.
+//! neutral geometry graph, in Axiolid's versioned wire format (1.0 or 1.1).
 //!
 //! As for meshes, lowering and encoding are the expensive step and the C
 //! protocol sizes every buffer with a first call, so the graphs are
@@ -31,14 +31,15 @@ pub const OPENBIM_IFC_GEOMETRY_CBOR: u32 = 1;
 
 /// Lower the Body of each of `ids` (`id_count` of them) or, with `ids` null
 /// and `id_count` 0, of every product with a shape, encode each graph in
-/// Axiolid's wire format 1.0 as `encoding` (`OPENBIM_IFC_GEOMETRY_JSON` or
+/// Axiolid's wire format as `encoding` (`OPENBIM_IFC_GEOMETRY_JSON` or
 /// `_CBOR`), and write the new set's handle to `out_graphs`. Read it with
 /// `openbim_ifc_v0_1_graphs_records` and `_graphs_payload`; destroy it with
 /// `openbim_ifc_v0_1_graphs_destroy`.
 ///
 /// The payload is the envelope `{"format":"axiolid-geometry-graph",
-/// "version":"1.0","graph":{"nodes":[...],"roots":[...]}}`, in world
-/// coordinates, metres. A product that cannot be lowered is a record with
+/// "version":"1.1","graph":{"nodes":[...],"roots":[...]}}`, in world
+/// coordinates, metres; its version is the lowest the content needs,
+/// "1.0", or "1.1" when a station carries a seam-snapping window. A product that cannot be lowered is a record with
 /// a refusal, not a failed call. `InvalidArgument` for another `encoding`;
 /// `UnsupportedSchema`; `FeatureDisabled` in a library built without the
 /// `graph` feature.

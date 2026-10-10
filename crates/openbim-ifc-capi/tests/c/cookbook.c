@@ -451,7 +451,7 @@ static int recipe_graphs(OpenbimIfcModel model) {
   // docs:snippet cookbook-c-graphs
   /* A library built with the `graph` feature lowers and encodes every Body
    * once into a set; the release archives refuse with FEATURE_DISABLED.
-   * Each payload is Axiolid's wire format 1.0, JSON here (or CBOR). */
+   * Each payload is Axiolid's wire format, JSON here (or CBOR). */
   OpenbimIfcGraphs graphs = 0;
   OpenbimIfcStatus status =
       openbim_ifc_v0_1_model_product_geometry(model, NULL, 0, OPENBIM_IFC_GEOMETRY_JSON, &graphs);

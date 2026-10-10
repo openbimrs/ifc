@@ -244,6 +244,57 @@ pub enum GeometryError {
         basis: EntityId,
     },
 
+    /// A curve evaluator cannot be handed an `IfcLinearPlacement`'s basis
+    /// curve: it lowers to a curve relation holding a piece whose length is
+    /// a quadrature (an offset beside a gradient curve, a spiral or a
+    /// B-spline, an ellipse or a B-spline piece; #423).
+    ///
+    /// Axiolid's neutral `CurvePath` states each piece's span in its own
+    /// measure, an offset piece's in its own length, which only an
+    /// execution provider computes and which a provider checks against its
+    /// own estimate to `1e-12`; this crate links none (ADR 0004). The
+    /// placement is refused rather than derived from an estimated path
+    /// (#427, blocked by axiolid/kernel#298). The same basis lowers as a
+    /// station, which the kernel resolves itself.
+    #[cfg(feature = "compile")]
+    #[error(
+        "{placement} (IFCLINEARPLACEMENT): basis curve {basis} holds a piece whose length is a \
+         quadrature (an offset beside a gradient curve, a spiral or a B-spline, an ellipse or a \
+         B-spline piece); a curve path for the evaluator needs that length, which only an \
+         execution provider computes (#427)"
+    )]
+    PathPieceLengthUnstated {
+        /// The `IfcLinearPlacement`.
+        placement: EntityId,
+        /// Its basis curve.
+        basis: EntityId,
+    },
+
+    /// The kernel refused the seam-snapping window of a station lowered
+    /// on a basis whose seams lie at arc-length integrals (#423).
+    ///
+    /// Such a station carries the model's precision as a window, and the
+    /// kernel reads it on a seam within that window, from the incoming
+    /// side (IFC4.3 ADD2 8.9.3.48.3), when it resolves it
+    /// (axiolid/kernel#294). `stations` are the stations of the product's
+    /// graph lowered with a window (`ProvenanceMap::seam_windows`), each
+    /// an `IfcPointByDistanceExpression` or `IfcAxis2PlacementLinear`; the
+    /// kernel does not say which one it refused, so with several, each is
+    /// a candidate.
+    #[cfg(feature = "compile")]
+    #[error(
+        "{product}: the kernel refused the seam-snapping window of station {}: {refusal}",
+        stations.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ")
+    )]
+    StationSeamWindowRefused {
+        /// The product whose graph was compiled.
+        product: EntityId,
+        /// The stations lowered with a window, ascending.
+        stations: Vec<EntityId>,
+        /// What the kernel refused.
+        refusal: crate::compile::SeamWindowRefusal,
+    },
+
     /// The two straight axes of an `IfcVirtualGridIntersection` are parallel,
     /// so they have no intersection to place anything at (#362).
     ///
@@ -415,6 +466,12 @@ impl GeometryError {
             Self::SeamSideUnsupported { placement, .. } => Some(*placement),
             #[cfg(feature = "compile")]
             Self::CurvePathUnsupported { placement, .. } => Some(*placement),
+            #[cfg(feature = "compile")]
+            Self::PathPieceLengthUnstated { placement, .. } => Some(*placement),
+            #[cfg(feature = "compile")]
+            Self::StationSeamWindowRefused {
+                product, stations, ..
+            } => Some(stations.first().copied().unwrap_or(*product)),
             // The opening is what failed; `host` stays readable on the variant.
             Self::OpeningNotSubtracted { opening, .. } => Some(*opening),
             Self::Units(_)
@@ -437,6 +494,17 @@ impl GeometryError {
             // Valid IFC this evaluator cannot read; one with curve paths can.
             #[cfg(feature = "compile")]
             Self::CurvePathUnsupported { .. } => true,
+            // Valid IFC whose path needs an execution provider (#427).
+            #[cfg(feature = "compile")]
+            Self::PathPieceLengthUnstated { .. } => true,
+            // A seam the kernel cannot certify is valid IFC it cannot read;
+            // two seams within precision, or a seam on its edge, is the
+            // file's precision failing to name one place.
+            #[cfg(feature = "compile")]
+            Self::StationSeamWindowRefused { refusal, .. } => matches!(
+                refusal,
+                crate::compile::SeamWindowRefusal::UncertifiedLength
+            ),
             // A net refusal is as supported as the reason behind it.
             Self::OpeningNotSubtracted { cause, .. } => cause.is_unsupported(),
             _ => false,

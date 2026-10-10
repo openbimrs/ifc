@@ -488,13 +488,19 @@ pub const PARTIAL: &[Variant] = &[
     },
     Variant {
         family: "IFCPOINTBYDISTANCEEXPRESSION",
-        variant: "DistanceAlong on a basis whose tangent discontinuities cannot \
-                  be located from stored data: a relation with an ellipse or a \
-                  B-spline piece, a B-spline with a corner knot",
-        support: Support::Refused,
-        rationale: "their distances are arc-length integrals, so a station cannot \
-                    be snapped to the seam where the previous segment's side \
-                    (8.9.3.48.3) is read",
+        variant: "DistanceAlong on a basis whose tangent discontinuities lie at \
+                  arc-length integrals: an offset whose length is a quadrature \
+                  (beside a gradient curve, a spiral, a B-spline or an ellipse, \
+                  or a variable offset of a circle), a relation with an ellipse \
+                  or a B-spline piece, a B-spline with a corner knot",
+        support: Support::Admitted,
+        rationale: "an OrientedCurveStation at its own distance reading \
+                    SeamSide::Incoming, with the model's precision as its \
+                    seam-snapping window (axiolid/kernel#294, #423): the kernel \
+                    reads it on a seam within the window, from the previous \
+                    segment (8.9.3.48.3), at its own certified distance, and \
+                    refuses two seams in the window, a seam on its edge and a \
+                    length it cannot certify by name",
     },
     Variant {
         family: "IFCPOINTBYDISTANCEEXPRESSION",
@@ -512,14 +518,11 @@ pub const PARTIAL: &[Variant] = &[
     Variant {
         family: "IFCPOINTBYDISTANCEEXPRESSION",
         variant: "DistanceAlong on an offset of an offset, a trim of an offset, \
-                  an offset through a circle's centre, an offset whose length \
-                  is a quadrature, or an offset across a corner of its basis",
+                  an offset through a circle's centre, or an offset across a \
+                  corner of its basis",
         support: Support::Refused,
         rationale: "kernel: Axiolid measures a station along an offset of atomic \
-                    pieces whose sides meet, in its own length; an offset of an \
-                    ellipse, a B-spline, a spiral or a gradient curve, or a \
-                    variable offset of a circle, has joints only a quadrature \
-                    finds",
+                    pieces whose sides meet, in its own length",
     },
     Variant {
         family: "IFCPOINTBYDISTANCEEXPRESSION",
@@ -556,12 +559,15 @@ pub const PARTIAL: &[Variant] = &[
     Variant {
         family: "IFCOFFSETCURVEBYDISTANCES",
         variant: "offsets short of an unbounded or unstated end, a non-zero \
-                  OffsetLongitudinal, a member on another basis, or a run across \
-                  a seam where the basis turns back on itself",
+                  OffsetLongitudinal, a member on another basis, a run across \
+                  a seam where the basis turns back on itself, or a run along a \
+                  basis whose seams lie at arc-length integrals",
         support: Support::Refused,
         rationale: "the neutral offset curve stops at its last station, IFC states \
-                    no law for a longitudinal offset along a curve, and a mitre \
-                    has no plane at a reversal",
+                    no law for a longitudinal offset along a curve, a mitre has \
+                    no plane at a reversal, and a run's stations carry no \
+                    seam-snapping window to stand one on a seam within \
+                    precision (#423)",
     },
     Variant {
         family: "IFCSECTIONEDSOLIDHORIZONTAL",
@@ -575,11 +581,14 @@ pub const PARTIAL: &[Variant] = &[
     },
     Variant {
         family: "IFCSECTIONEDSOLIDHORIZONTAL",
-        variant: "positions off the Directrix, or spanning a seam where it turns \
-                  back on itself",
+        variant: "positions off the Directrix, spanning a seam where it turns \
+                  back on itself, or along a Directrix whose seams lie at \
+                  arc-length integrals",
         support: Support::Refused,
-        rationale: "a station measures along its own basis, and \"very sharp edges \
-                    may result in nearly impossible miter\" (8.8.3.35.1)",
+        rationale: "a station measures along its own basis, \"very sharp edges \
+                    may result in nearly impossible miter\" (8.8.3.35.1), and a \
+                    run's stations carry no seam-snapping window to stand one on \
+                    a seam within precision (#423)",
     },
     Variant {
         family: "IFCSECTIONEDSURFACE",

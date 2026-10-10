@@ -147,12 +147,15 @@ class GraphTests(unittest.TestCase):
                 continue
             if product.payload is None:
                 continue  # no Body: an axis-only product
-            # {"format": "axiolid-geometry-graph", "version": "1.0", "graph":
+            # {"format": "axiolid-geometry-graph", "version": "1.1", "graph":
             # {"nodes": [...], "roots": [...]}}, exact, in world metres.
             envelope = json.loads(product.payload)
             print((product.type_name, envelope["version"], len(envelope["graph"]["nodes"])))
         # docs:end
-        self.assertEqual(printed[0], ("IFCWALL", "1.0", 3))
+        # The lowest version the content needs; axiolid-model 0.3.9 labels
+        # every payload 1.1 (axiolid/kernel#297).
+        self.assertEqual((printed[0][0], printed[0][2]), ("IFCWALL", 3))
+        self.assertIn(printed[0][1], ("1.0", "1.1"))
         self.assertEqual(printed[2], (65, "unsupported"))
 
         wall, _, axis_only, text = model.product_geometry()
@@ -162,8 +165,8 @@ class GraphTests(unittest.TestCase):
         self.assertEqual(wall.payload_size, len(wall.payload.encode("utf-8")))
         envelope = json.loads(wall.payload)
         self.assertEqual(envelope["format"], GEOMETRY_FORMAT)
-        self.assertEqual(envelope["version"], GEOMETRY_FORMAT_VERSION)
-        self.assertEqual((GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION), ("axiolid-geometry-graph", "1.0"))
+        self.assertIn(envelope["version"], ("1.0", GEOMETRY_FORMAT_VERSION))
+        self.assertEqual((GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION), ("axiolid-geometry-graph", "1.1"))
         nodes = envelope["graph"]["nodes"]
         self.assertEqual(envelope["graph"]["roots"], [len(nodes) - 1])
         self.assertEqual(list(nodes[-1]), ["Instance"])

@@ -6,8 +6,9 @@
 //! grades at a break are the closed forms `ElevationLaw::grade_at` states.
 //! Where only an evaluator could tell (a B-spline's arc length to a multiple
 //! knot, the end grade of a vertical clothoid), the seam is not shown
-//! continuous and counts as one, or the curve's seams are unknown and a
-//! station on it is refused by name.
+//! continuous and counts as one, or the curve's seams are unknown: a
+//! station on it then carries the kernel's seam-snapping window (#423), and
+//! a run along it is refused by name.
 //!
 //! The distances are the ones Axiolid's `exact_station_seams2` /
 //! `exact_station_seams3` (`axiolid-evaluate` 0.3.7, ADR 0082 amendment)
@@ -31,8 +32,8 @@ use ifc_model::EntityId;
 use crate::error::GeometryResult;
 use crate::lower::session::{AtomicCurve, LoweringSession};
 
-/// Why a B-spline with a possible kink is refused.
-const SPLINE: &str =
+/// Why the seams of a B-spline with a possible kink are unknown here.
+pub(crate) const SPLINE: &str =
     "the basis B-spline has an interior knot of multiplicity at least its degree, where its \
      tangent may jump; the knot's distance along it is an arc-length integral, so a station \
      cannot be shown clear of it or snapped to it within the model's precision";

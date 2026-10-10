@@ -6,8 +6,8 @@
 //!   Kernel-free: the facade's `product_placements`.
 //! - **Graphs** (feature `graph`, #367): per product, the Body lowered
 //!   into Axiolid's neutral geometry graph, exact, serialised in Axiolid's
-//!   versioned wire format 1.0 as JSON or CBOR ([`graph`]). Computes
-//!   nothing; the facade's `product_graphs`.
+//!   versioned wire format (1.0 or 1.1) as JSON or CBOR ([`graph`]).
+//!   Computes nothing; the facade's `product_graphs`.
 //! - **Meshes** (feature `mesh`, opt-in): per product, triangles compiled by
 //!   the reference backend, `f32` positions relative to the product's world
 //!   placement and `u32` indices. The facade's `product_meshes`; it links an

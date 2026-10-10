@@ -6,8 +6,12 @@
 //! booleans), for a host to evaluate with its own kernel. It computes
 //! nothing: the graph is the one [`product_meshes`](crate::product_meshes)
 //! hands the reference backend, and the encodings are Axiolid's versioned
-//! wire format 1.0 (axiolid/kernel#267, Axiolid ADR 0085), reached as
-//! [`ifc_geometry::wire`] and `GeometryGraph::to_json` / `to_cbor`.
+//! wire format (axiolid/kernel#267, Axiolid ADR 0085), reached as
+//! [`ifc_geometry::wire`] and `GeometryGraph::to_json` / `to_cbor`. A
+//! payload's envelope carries the lowest version its content needs: 1.0,
+//! or 1.1 when a station carries a seam-snapping window (#423); readers on
+//! `axiolid-model` 0.3.8 or older refuse 1.1. `axiolid-model` 0.3.9 labels
+//! every payload 1.1 (axiolid/kernel#297).
 //!
 //! - **The graph is in world coordinates, metres.** Lowering composes the
 //!   product's placement chain into the graph (its `Instance` transforms),
