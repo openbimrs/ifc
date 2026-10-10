@@ -77,10 +77,13 @@ axiolid-spatial = { version = "0.3.0" }
 # seam a measure lies on, and the reference provider answers both sides
 # (axiolid/kernel#286); a derived linear placement on a seam reads the
 # incoming side (#409). kernel#242 documents `frame_at` as x tangent, y up,
-# z right.
-axiolid-curve = { version = "0.3.5" }
-axiolid-evaluate = { version = "0.3.9" }
-axiolid-curve-evaluate-contract = { version = "0.3.3" }
+# z right. 0.3.4 (with axiolid-curve 0.3.6 and axiolid-evaluate 0.3.10)
+# reads a curve relation as a neutral `CurvePath` through the `path_*`
+# queries (axiolid/kernel#290); a derived linear placement on a composite or
+# trimmed basis reads it (#418).
+axiolid-curve = { version = "0.3.6" }
+axiolid-evaluate = { version = "0.3.10" }
+axiolid-curve-evaluate-contract = { version = "0.3.4" }
 # Dev-only: the exact volume of a compiled body, to check an arc-bounded
 # half-space clip against its closed form (#398).
 axiolid-measure = { version = "0.3.10" }
@@ -100,8 +103,10 @@ axiolid-contracts = { version = "0.3.1" }
 # contour, with a certified deviation (axiolid/kernel#277; #398), and
 # resolves stations along curve relations (axiolid/kernel#285; #346).
 # 0.3.17 is the release built with the wave-2 curve and evaluate crates
-# (axiolid/kernel#286).
-axiolid-mesh-compile = { version = "0.3.17" }
+# (axiolid/kernel#286). 0.3.19 is the release built with the wave-3 curve
+# and evaluate crates, and flattens a relation into a `CurvePath`
+# (`station::curve_path`, axiolid/kernel#290; the #418 tests compare it).
+axiolid-mesh-compile = { version = "0.3.19" }
 axiolid-mesh-compile-contract = { version = "0.3.3" }
 axiolid-mesh-boolean-boolmesh = { version = "0.3.0" }
 # Not used directly: `axiolid-mesh-compile` reaches it. Pinned here only to

@@ -12,6 +12,50 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+Semver: a minor release. Behaviour changes: a linear placement whose basis
+curve is a curve relation, refused by name until now, derives through a
+`CurveEvaluator`, and an evaluator without curve paths is refused there by
+a new `GeometryError` variant (the enum is `#[non_exhaustive]`). A public
+function is added. The dependency floors rise with the workspace.
+
+### Added
+
+- A derived `IfcLinearPlacement` on a curve-relation basis (#418): a plain
+  `IfcCompositeCurve`, an `IfcTrimmedCurve`, or a composite of
+  `IfcCurveSegment`s placed by `IfcAxis2PlacementLinear`s. The basis is
+  read as Axiolid's neutral `CurvePath` (axiolid/kernel#290), built from
+  the stored relation the station lowering reads (#346), each segment's
+  station framed through the caller's evaluator; the frame comes from
+  `CurveEvaluator::path_frame_at` off a joint and
+  `path_frame_at_on(.., SeamSide::Incoming)` within precision of one, as
+  #409 reads a seam. It equals the lowered station's frame on and off
+  joints, and `CachedPositionPolicy::Verify` accepts a cache computed with
+  the incoming segment and refuses one computed with the outgoing segment.
+  An `IfcParameterValue` along such a basis, an offset curve (#414) and a
+  composite whose pieces do not meet are refused by name.
+- `constraint::placement::derive::basis_curve_path` (`compile` feature):
+  the `CurvePath` a derivation reads along a curve-relation basis. A test
+  pins it equal to the path `axiolid-mesh-compile`'s
+  `station::curve_path` builds from the lowered graph.
+- `GeometryError::CurvePathUnsupported` (`compile` feature) names the
+  placement and its basis curve when a caller's evaluator does not
+  implement curve paths and refuses them with `CURVE_PATH_UNSUPPORTED`. A
+  frame read on one piece is never used in its place. `is_unsupported()` is
+  true for it.
+
+### Changed
+
+- Requires `axiolid-curve` 0.3.6, `axiolid-curve-evaluate-contract` 0.3.4
+  and, behind `compile`, `axiolid-mesh-compile` 0.3.19 (and
+  `axiolid-evaluate` 0.3.10 for the tests): the releases that add curve
+  paths (axiolid/kernel#290). Every other test passes unchanged against
+  them.
+- A closed conic trimmed across its parameter seam inside a relation basis
+  is located from its start parameter taken modulo one turn, as Axiolid
+  locates it, so its span starts within the curve's measure.
+- The refusal of a basis curve the derivation does not read names the
+  composite and trimmed curves among those it does.
+
 ## [0.19.0] - 2026-10-09
 
 Semver: a minor release. Behaviour changes on seams: a linear placement

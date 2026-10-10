@@ -45,11 +45,24 @@
 //! The joints' points are not compared here: whether pieces meet is
 //! evaluation. A gap, or an undeclared reversed piece, is refused by name
 //! when the kernel resolves the station.
+//!
+//! # The pieces themselves (#418)
+//!
+//! [`relation_run`] hands out the flattening: each piece's curve as stored,
+//! its span in the curve's station measure, whether it runs backwards, and
+//! the stations it is placed at, innermost first. A derived linear
+//! placement (`constraint::placement::derive`) builds Axiolid's neutral
+//! `CurvePath` from it, resolving those stations through the caller's
+//! curve evaluator, which is the one step here that is evaluation. A closed
+//! conic's trim is located as `axiolid-evaluate`'s
+//! `StationPiece::between_parameters` locates it: from its start parameter
+//! taken modulo one turn, so the span starts within the curve's measure.
 
 use axiolid_core::{Point3, Scalar};
 use axiolid_curve::{Curve2, Curve3};
 use axiolid_model::{
-    CurveRelation, GeometryNode, MasterRepresentation, NodeId, TrimSelector, TrimmingPreference,
+    CurveRelation, GeometryNode, MasterRepresentation, NodeId, OrientedCurveStation, TrimSelector,
+    TrimmingPreference,
 };
 
 use super::seams::{tangent_seams, Seam, BANKED};
@@ -101,11 +114,36 @@ pub(crate) fn relation_seams(
     session: &LoweringSession<'_>,
     node: NodeId,
 ) -> Result<(Vec<Seam>, Scalar), &'static str> {
+    relation_run(session, node).map(|run| (run.seams, run.length))
+}
+
+/// A basis flattened into its pieces, with their seams and length.
+#[derive(Debug, Clone)]
+pub(crate) struct Run<'s> {
+    /// The pieces, in the order the distance runs through them.
+    pub pieces: Vec<Piece<'s>>,
+    /// Every interior joint and every seam of a piece's curve inside it,
+    /// ascending.
+    pub seams: Vec<Seam>,
+    /// The sum of the pieces' lengths.
+    pub length: Scalar,
+    /// Whether the pieces are measured in plan distance.
+    pub plan: bool,
+}
+
+/// The basis `node` flattened (module documentation): a curve relation into
+/// its pieces, an atomic curve into one piece, whole (a line its parameter
+/// domain `[0, 1]`), or why it cannot be.
+pub(crate) fn relation_run<'s>(
+    session: &'s LoweringSession<'_>,
+    node: NodeId,
+) -> Result<Run<'s>, &'static str> {
     let pieces = flatten(session, node, 0)?.into_pieces()?;
     let Some(first) = pieces.first() else {
         return Err(INEXACT);
     };
-    if pieces.iter().any(|piece| piece.plan != first.plan) {
+    let plan = first.plan;
+    if pieces.iter().any(|piece| piece.plan != plan) {
         return Err(MIXED);
     }
     let mut seams = Vec::new();
@@ -125,22 +163,34 @@ pub(crate) fn relation_seams(
         at += piece.length();
     }
     seams.sort_by(|a, b| a.distance.total_cmp(&b.distance));
-    Ok((seams, at))
+    Ok(Run {
+        pieces,
+        seams,
+        length: at,
+        plan,
+    })
 }
 
 /// A span `[start, end]` of an atomic curve in its station measure.
 #[derive(Debug, Clone)]
-struct Piece {
-    start: Scalar,
-    end: Scalar,
-    reversed: bool,
+pub(crate) struct Piece<'s> {
+    /// The curve, as stored.
+    pub curve: &'s AtomicCurve,
+    /// Where the span starts, in the curve's station measure.
+    pub start: Scalar,
+    /// Where it ends.
+    pub end: Scalar,
+    /// Whether the distance runs from `end` to `start`.
+    pub reversed: bool,
     /// Measured in plan distance (an elevated or banked curve).
     plan: bool,
     /// The curve's own seams, in its measure.
     seams: Vec<Seam>,
+    /// The stations the curve is placed at, innermost first.
+    pub placements: Vec<&'s OrientedCurveStation>,
 }
 
-impl Piece {
+impl Piece<'_> {
     fn length(&self) -> Scalar {
         self.end - self.start
     }
@@ -170,34 +220,40 @@ impl Piece {
     }
 }
 
-/// A node flattened: one atomic curve, or spans end to end.
+/// A node flattened: one atomic curve, placed at the stations listed
+/// (innermost first), or spans end to end.
 enum Flat<'s> {
-    Atomic(&'s AtomicCurve),
-    Pieces(Vec<Piece>),
+    Atomic(&'s AtomicCurve, Vec<&'s OrientedCurveStation>),
+    Pieces(Vec<Piece<'s>>),
 }
 
-impl Flat<'_> {
+impl<'s> Flat<'s> {
     /// As pieces: an atomic curve whole (a line its domain `[0, 1]`).
-    fn into_pieces(self) -> Result<Vec<Piece>, &'static str> {
+    fn into_pieces(self) -> Result<Vec<Piece<'s>>, &'static str> {
         match self {
-            Self::Atomic(curve) => {
+            Self::Atomic(curve, placements) => {
                 let end = match curve {
                     AtomicCurve::Two(Curve2::Line(line)) => line.direction.length(),
                     AtomicCurve::Three(Curve3::Line(line)) => line.direction.length(),
                     _ => whole_length(curve).ok_or(INEXACT)?,
                 };
-                Ok(vec![piece(curve, 0.0, end)?])
+                Ok(vec![piece(curve, 0.0, end, placements)?])
             }
             Self::Pieces(pieces) => Ok(pieces),
         }
     }
 }
 
-fn reversed(pieces: Vec<Piece>) -> Vec<Piece> {
+fn reversed(pieces: Vec<Piece<'_>>) -> Vec<Piece<'_>> {
     pieces.into_iter().rev().map(Piece::reversed).collect()
 }
 
-fn piece(curve: &AtomicCurve, start: Scalar, end: Scalar) -> Result<Piece, &'static str> {
+fn piece<'s>(
+    curve: &'s AtomicCurve,
+    start: Scalar,
+    end: Scalar,
+    placements: Vec<&'s OrientedCurveStation>,
+) -> Result<Piece<'s>, &'static str> {
     let seams = tangent_seams(curve)?;
     let plan = matches!(
         curve,
@@ -207,11 +263,13 @@ fn piece(curve: &AtomicCurve, start: Scalar, end: Scalar) -> Result<Piece, &'sta
         return Err(BANKED);
     }
     Ok(Piece {
+        curve,
         start,
         end,
         reversed: false,
         plan,
         seams,
+        placements,
     })
 }
 
@@ -224,10 +282,24 @@ fn flatten<'s>(
         return Err(UNSUPPORTED);
     }
     if let Some(curve) = session.atomic_curve(node) {
-        return Ok(Flat::Atomic(curve));
+        return Ok(Flat::Atomic(curve, Vec::new()));
     }
     match session.relation(node) {
-        Some(GeometryNode::InstanceAtStation(placed)) => flatten(session, placed.source, depth + 1),
+        // The source carried by the placement, applied after any it has.
+        Some(GeometryNode::InstanceAtStation(placed)) => {
+            Ok(match flatten(session, placed.source, depth + 1)? {
+                Flat::Atomic(curve, mut placements) => {
+                    placements.push(&placed.station);
+                    Flat::Atomic(curve, placements)
+                }
+                Flat::Pieces(mut pieces) => {
+                    for piece in &mut pieces {
+                        piece.placements.push(&placed.station);
+                    }
+                    Flat::Pieces(pieces)
+                }
+            })
+        }
         Some(GeometryNode::CurveRelation(CurveRelation::Composite { segments })) => {
             let mut out = Vec::new();
             for segment in segments {
@@ -248,11 +320,11 @@ fn flatten<'s>(
             preference,
         })) => {
             let pieces = match flatten(session, *basis, depth + 1)? {
-                Flat::Atomic(curve) => {
+                Flat::Atomic(curve, placements) => {
                     let (lo, hi) =
                         trim_parameters(curve, start, end, *sense_agreement, *preference)?;
-                    let (from, to) = (measure_at(curve, lo)?, measure_at(curve, hi)?);
-                    vec![piece(curve, from, to)?]
+                    let (from, to) = measures_between(curve, lo, hi)?;
+                    vec![piece(curve, from, to, placements)?]
                 }
                 Flat::Pieces(pieces) => {
                     if pieces.iter().any(|piece| piece.plan) {
@@ -278,13 +350,37 @@ fn flatten<'s>(
     }
 }
 
+/// The span of native parameters `lo < hi` of `curve` in its station
+/// measure, as `StationPiece::between_parameters` locates it: a closed
+/// conic's from `lo` taken modulo one turn, past its measure's end where
+/// the span crosses the parameter seam.
+fn measures_between(
+    curve: &AtomicCurve,
+    lo: Scalar,
+    hi: Scalar,
+) -> Result<(Scalar, Scalar), &'static str> {
+    if !closed_conic(curve) {
+        return Ok((measure_at(curve, lo)?, measure_at(curve, hi)?));
+    }
+    let turn = std::f64::consts::TAU;
+    let from = lo.rem_euclid(turn);
+    let to = from + (hi - lo);
+    let start = measure_at(curve, from)?;
+    let end = if to <= turn {
+        measure_at(curve, to)?
+    } else {
+        whole_length(curve).ok_or(INEXACT)? + measure_at(curve, to - turn)?
+    };
+    Ok((start, end))
+}
+
 /// The pieces between `start < end` along them, clipped, as
 /// `CompositeBasis::pieces_between` keeps them.
-fn pieces_between(
-    pieces: &[Piece],
+fn pieces_between<'s>(
+    pieces: &[Piece<'s>],
     start: Scalar,
     end: Scalar,
-) -> Result<Vec<Piece>, &'static str> {
+) -> Result<Vec<Piece<'s>>, &'static str> {
     let length: Scalar = pieces.iter().map(Piece::length).sum();
     if !(start.is_finite() && end.is_finite()) || end <= start {
         return Err(INEXACT);
@@ -548,12 +644,18 @@ mod tests {
 
     #[test]
     fn clipping_keeps_the_kernels_spans() {
+        let line = AtomicCurve::Three(Curve3::Line(axiolid_curve::Line3 {
+            origin: Point3::ZERO,
+            direction: axiolid_core::Vec3::X,
+        }));
         let piece = |start: Scalar, end: Scalar, reversed: bool| Piece {
+            curve: &line,
             start,
             end,
             reversed,
             plan: false,
             seams: Vec::new(),
+            placements: Vec::new(),
         };
         let kept = pieces_between(&[piece(0.0, 4.0, false), piece(1.0, 7.0, true)], 2.0, 6.0)
             .expect("inside");
