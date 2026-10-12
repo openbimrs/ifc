@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-10-12
+
 ### Fixed (axiolid/kernel#297)
 
 - Window-free payloads are labelled 1.0 again, readable by `axiolid-model`

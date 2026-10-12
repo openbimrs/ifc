@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.28.1] - 2026-10-12
+
 ### Fixed (axiolid/kernel#297)
 
 - Requires `axiolid-model` 0.3.10 (through `ifc-geometry`'s `wire`
@@ -636,7 +638,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.28.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.28.1...HEAD
+[0.28.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.28.1
 [0.28.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.28.0
 [0.27.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.27.0
 [0.26.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.26.0

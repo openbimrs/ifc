@@ -11,8 +11,8 @@ Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP file
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.1.7 (2026-10-10) |
-| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.7) |
+| Latest release | 0.1.8 (2026-10-12) |
+| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.8) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_capi/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-capi/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-capi) |
 
@@ -67,21 +67,15 @@ than altering a `v0_1_` one.
 
 ## Changes
 
-Latest release, 0.1.7 (2026-10-10):
+Latest release, 0.1.8 (2026-10-12):
 
-### Changed (#423, wire format 1.1)
+### Fixed (axiolid/kernel#297)
 
-- The geometry graph payload (#367) is Axiolid's wire format 1.1
-  (`axiolid-model` 0.3.9), a minor version of the format (ADR 0021,
-  amended): a station on an offset whose length is a quadrature now lowers
-  with a seam-snapping window. An envelope carries the lowest wire version
-  its content needs: 1.0, or 1.1 when a station carries a seam-snapping
-  window; `axiolid-model` 0.3.9 labels every payload 1.1
-  (axiolid/kernel#297), and a reader on `axiolid-model` 0.3.8 or older
-  refuses 1.1. No `v0_1` symbol changed; the ABI version is unchanged.
+- Window-free payloads are labelled 1.0 again, readable by `axiolid-model`
+  0.3.8: built with `axiolid-model` 0.3.10, the geometry graph payload's
+  envelope carries the lowest wire format version its content needs, 1.0
+  unless a station carries a seam-snapping window, then 1.1. No `v0_1` symbol changed; the ABI version is unchanged.
 
-Semver: a minor change in ADR 0021's terms, released as 0.1.7. The C
-package keeps its 0.1 line while the `v0_1` ABI is unchanged, because
-CMake's `find_package(openbim_ifc 0.1)` does not accept 0.2 (see 0.1.1).
+Semver: patch.
 
 Full history: [`crates/openbim-ifc-capi/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-capi/CHANGELOG.md)
