@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-10-12
+
 ### Changed (#429, runs of sections along bases with quadrature joints)
 
 - An `IfcSectionedSolidHorizontal` or `IfcSectionedSurface` along a
@@ -1830,7 +1832,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.22.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.23.0...HEAD
+[0.23.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.23.0
 [0.22.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.22.1
 [0.22.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.22.0
 [0.21.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.21.0

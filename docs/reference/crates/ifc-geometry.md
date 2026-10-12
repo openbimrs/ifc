@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.22.1 (2026-10-12) |
+| Latest release | 0.23.0 (2026-10-12) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -43,17 +43,92 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.22.1 (2026-10-12):
+Latest release, 0.23.0 (2026-10-12):
 
-### Fixed (axiolid/kernel#297)
+### Changed (#429, runs of sections along bases with quadrature joints)
 
-- The `wire` feature requires `axiolid-model` 0.3.10, whose writer labels
-  each payload with the lowest wire format version its content needs:
-  1.0 unless a station carries a seam-snapping window, then 1.1.
-  Window-free payloads are labelled 1.0 again, byte-identical to what
-  `axiolid-model` 0.3.8 writes and readable by it; 0.3.9 labelled every
-  payload 1.1.
+- An `IfcSectionedSolidHorizontal` or `IfcSectionedSurface` along a
+  directrix whose seams lie at arc-length integrals (an offset beside a
+  gradient curve, a spiral, a B-spline or an ellipse, a relation with an
+  ellipse or a B-spline piece, a B-spline corner knot) now lowers instead
+  of being refused with the former `RUN_UNLOCATED` reason. Each section
+  stays at its own distance and carries the model's precision as Axiolid's
+  seam-snapping window, reading `SeamSide::Incoming`
+  (`SectionAtStation::with_seam_window` / `with_seam_side`, `axiolid-model`
+  0.3.11, axiolid/kernel#301). The kernel snaps it onto the seam and mitres
+  there at half angle (8.8.3.35.1); such a graph is wire format 1.2. Runs
+  along bases whose seams are stored data keep their exact snapping and
+  emit the identical graph (wire 1.0), as checked on the committed and
+  reference corpora.
+- `GeometryError::RunSeamWindowRefused { product, runs, stations,
+  refusal }` (feature `compile`) names the run when the kernel refuses its
+  windows: two seams in a window, a seam on its edge, a length it cannot
+  certify, or the new `SeamWindowRefusal::NotIncreasing` (positions that no
+  longer increase strictly once snapped).
+  `ProvenanceMap::seam_window_runs` lists the windowed runs.
+- An `IfcOffsetCurveByDistances` along such a basis is still refused, now
+  by a reason naming #433: IFC continues its offsets to the basis's end,
+  whose distance is a quadrature this crate does not compute. Its stations
+  are built as `RunStation`s; with a window they would lower to
+  `CurveRelation::OffsetsAtStations`, and without one they still lower to
+  `OffsetByStations`, unchanged.
+- A reversal at a quadrature seam within a run is refused by the kernel's
+  mitre, which this crate cannot see.
+- Requires `axiolid-model` 0.3.11, `axiolid-curve` 0.3.8,
+  `axiolid-evaluate` 0.3.12, `axiolid-curve-evaluate-contract` 0.3.6,
+  `axiolid-reference` 0.3.8 and `axiolid-mesh-compile` 0.3.22.
 
-Semver: patch.
+Semver: minor. Refused runs now lower, an error variant and a refusal kind
+are added, and the dependency floors rise.
+
+### Changed (#427, derived placements on offsets whose length is a quadrature)
+
+- With `compile`, a derived `IfcLinearPlacement` on an offset whose length
+  is a quadrature now derives instead of being refused: an
+  `IfcOffsetCurveByDistances` beside an `IfcGradientCurve` (a kerb beside
+  an alignment), an offset beside a clothoid or another spiral, offsets of
+  B-splines and ellipses, a variable offset of a circle, and a relation
+  with a whole ellipse or B-spline piece. Such a piece reaches the
+  evaluator as an open-ended `PathPiece` (`PathPiece::whole`,
+  axiolid/kernel#298), its end resolved to the evaluator's own length, so
+  the path reads bit for bit as the stated path the kernel flattens the
+  same relation into. The offset's base is split at every seam of its curve
+  the kernel splits it at (chain joins, curvature seams, every profile
+  break), so the pieces are the kernel's. `basis_curve_path` returns such
+  a path.
+- The joints after an open piece are located by the evaluator's
+  `path_joint_distances`, certified to a thousandth of the window the
+  station lowering hands the kernel (the model's precision, capped at
+  1 mm, or rounding). A `DistanceAlong` whose window holds exactly one
+  joint (or a stated piece's seam after one) reads it from the incoming
+  piece (IFC4.3 ADD2 8.9.3.48.3, #409), at the evaluator's own point of
+  the joint; the result equals the lowered station's frame resolved by the
+  reference kernel, and `CachedPositionPolicy::Verify` compares a cache
+  against it. A segment of a basis placed at a windowed station along such
+  a basis is read the same way, within the station's own window.
+- `GeometryError::PathPieceLengthUnstated` now names only spans that start
+  inside a curve whose measure is a quadrature (a trim of an ellipse or a
+  B-spline at an interior parameter, by an arc length or a point, a span
+  between stations along a relation with such a piece), which no open
+  piece expresses. Its message no longer cites #427.
+- The same `axiolid` floors as #429 above; with feature `wire`,
+  `wire::FORMAT_VERSION` is 1.2. A derived placement writes no graph.
+
+### Added (#427)
+
+- With `compile`: `GeometryError::CurvePathOpenEndUnsupported { placement,
+  basis }`, an evaluator that reads stated spans only refusing an open
+  piece (`OPEN_PATH_END_UNSUPPORTED`); `GeometryError::PathJointDistancesUnsupported
+  { placement, basis }`, an evaluator that does not certify joints
+  (`PATH_JOINT_DISTANCES_UNSUPPORTED`); and
+  `GeometryError::PlacementSeamWindowRefused { placement, basis, distance,
+  refusal }`, the placement's window holding two seams, a seam straddling
+  its edge, or a joint the evaluator cannot certify
+  (`SeamWindowRefusal::Ambiguous`, `Straddled`, `UncertifiedLength`), as
+  the kernel refuses the same station. Each is typed; nothing falls back to
+  an estimate.
+
+Semver: minor while 0.x: placements that were refused now derive, a
+refusal narrows and error variants are added.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
