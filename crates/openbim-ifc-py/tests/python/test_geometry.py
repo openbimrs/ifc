@@ -171,7 +171,7 @@ class GraphTests(unittest.TestCase):
         envelope = json.loads(wall.payload)
         self.assertEqual(envelope["format"], GEOMETRY_FORMAT)
         self.assertEqual(envelope["version"], "1.0")
-        self.assertEqual((GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION), ("axiolid-geometry-graph", "1.1"))
+        self.assertEqual((GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION), ("axiolid-geometry-graph", "1.2"))
         nodes = envelope["graph"]["nodes"]
         self.assertEqual(envelope["graph"]["roots"], [len(nodes) - 1])
         self.assertEqual(list(nodes[-1]), ["Instance"])
@@ -193,7 +193,7 @@ class GraphTests(unittest.TestCase):
             self.assertIsNone(product.refusal)
             assert isinstance(product.payload, str)
             envelope = json.loads(product.payload)
-            self.assertEqual(envelope["version"], GEOMETRY_FORMAT_VERSION)
+            self.assertEqual(envelope["version"], "1.1")
             self.assertIn('"seam_window"', product.payload)
 
     @unittest.skipUnless(GRAPH, "needs a wheel built with --features graph")

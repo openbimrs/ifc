@@ -8,6 +8,16 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (axiolid/kernel#298 bump, wire format 1.2)
+
+- `GEOMETRY_FORMAT_VERSION` is `"1.2"`: built with `axiolid-model` 0.3.11,
+  whose wire format 1.2 lets a run station name a seam side
+  (axiolid/kernel#301). No lowering here writes one yet, so payloads stay
+  1.0, or 1.1 with a seam-snapping window; the constant follows Axiolid's
+  `FORMAT_VERSION`, as a test holds it.
+
+Semver: additive (internal crate, not published).
+
 ### Changed (#423, wire format 1.1)
 
 - `GEOMETRY_FORMAT_VERSION` is `"1.1"`, the newest version a build writes

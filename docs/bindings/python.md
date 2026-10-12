@@ -546,7 +546,8 @@ station carries a seam-snapping window
 ([#423](https://github.com/openbimrs/ifc/issues/423)), then `1.1`
 (axiolid/kernel#297). A reader on `axiolid-model` 0.3.8 or older reads a
 `1.0` payload and refuses `1.1`. `GEOMETRY_FORMAT` and `GEOMETRY_FORMAT_VERSION`
-name the format and the newest version the wheel writes, `"1.1"`. Nodes come in insertion order; each is tagged by its
+name the format and the newest version the wheel writes, `"1.2"` (run stations
+naming a seam side, axiolid/kernel#301, which no lowering writes yet). Nodes come in insertion order; each is tagged by its
 kind, and a reference to another node is its index. The graph is in world
 coordinates, metres, with the product's `transform` already applied. A
 product with no Body has no payload and no refusal; a refused one carries

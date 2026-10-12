@@ -17,7 +17,9 @@
 //! (#423; a station on an offset whose length is a quadrature), then `1.1`
 //! (axiolid/kernel#297). A reader on `axiolid-model` 0.3.8 or older reads
 //! a `1.0` payload and refuses a `1.1` one.
-//! [`GEOMETRY_FORMAT_VERSION`] is the newest version this build writes. A
+//! [`GEOMETRY_FORMAT_VERSION`] is the newest version this build writes:
+//! `1.2` since `axiolid-model` 0.3.11, whose run stations may name a seam
+//! side (axiolid/kernel#301); this crate's lowering writes none yet. A
 //! minor version of the wire format reaches every binding as a minor
 //! release, a major one is a breaking change of every binding (ADR 0021).
 
@@ -35,7 +37,7 @@ pub const GEOMETRY_FORMAT: &str = "axiolid-geometry-graph";
 /// payload's envelope carries the lowest version its content needs, so its
 /// `version` entry is this or an older minor of the same major (module
 /// documentation).
-pub const GEOMETRY_FORMAT_VERSION: &str = "1.1";
+pub const GEOMETRY_FORMAT_VERSION: &str = "1.2";
 
 /// How [`IfcModel::product_geometry`](crate::IfcModel::product_geometry)
 /// encodes each graph.
