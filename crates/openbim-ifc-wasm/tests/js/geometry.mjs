@@ -212,8 +212,8 @@ if (!mesh) {
       // { format: "axiolid-geometry-graph", version: "1.0", graph }, exact,
       // in world coordinates (metres): hand it to your own kernel.
       const { format, version, graph } = product.payload;
-      // The lowest wire version the content needs: "1.0", or "1.1" when a
-      // station carries a seam-snapping window.
+      // The lowest wire version the content needs: "1.0"; "1.1" when a
+      // station carries a seam-snapping window, "1.2" when a run's sections do.
       console.log(product.typeName, format, version, Object.keys(graph.nodes.at(-1))[0]);
     }
     // docs:end
@@ -271,11 +271,12 @@ if (!mesh) {
     );
   });
 
-  test("a payload with a seam window is wire format 1.1", () => {
-    // Stations along offsets whose length is a quadrature (#423): the two
-    // Bodies, RAIL_NEAR (#188) and RAIL_EDGE (#199), carry a seam window,
-    // so their payloads are 1.1, the lowest version that holds one
-    // (axiolid/kernel#297).
+  test("a payload with a seam window is wire format 1.1, a windowed run 1.2", () => {
+    // Stations along offsets whose length is a quadrature (#423): RAIL_NEAR
+    // (#188) and RAIL_EDGE (#199) carry a seam window on a station, so
+    // their payloads are 1.1, the lowest version that holds one
+    // (axiolid/kernel#297); DECK (#264) and SURFACE (#296) carry windows on
+    // the sections of a run (#429), so theirs are 1.2.
     const model = IfcModel.parse(
       readFileSync(
         path.resolve(
@@ -284,14 +285,14 @@ if (!mesh) {
         ),
       ),
     );
-    const products = model.productGeometry([188n, 199n]);
+    const products = model.productGeometry([188n, 199n, 264n, 296n]);
     assert.deepEqual(
       products.map((p) => p.id),
-      [188n, 199n],
+      [188n, 199n, 264n, 296n],
     );
-    for (const product of products) {
+    for (const [i, product] of products.entries()) {
       assert.equal(product.refusal, undefined);
-      assert.equal(JSON.parse(product.payload).version, "1.1");
+      assert.equal(JSON.parse(product.payload).version, i < 2 ? "1.1" : "1.2");
       assert.ok(product.payload.includes('"seam_window"'), product.payload);
     }
   });

@@ -13,12 +13,21 @@
 //! refusals of a window surface as `GeometryError::StationSeamWindowRefused`
 //! naming the station.
 //!
+//! Runs of sections along the kerb (#429) carry the same window on every
+//! section (`SectionAtStation::with_seam_window`, axiolid/kernel#301),
+//! reading the incoming side: the kernel snaps them onto the joints and
+//! mitres there. Its refusals of a run surface as
+//! `GeometryError::RunSeamWindowRefused` naming the run.
+//!
 //! An offset of a banked curve, the first case whose length the kernel
 //! refuses to certify, cannot be lowered from IFC: `IfcSegmentedReferenceCurve`
 //! is refused while lowering (#311), and a banked basis by name. The
 //! `TILTED` offset is the uncertified case IFC reaches.
 
-use axiolid_model::{CurveRelation, GeometryNode, OrientedCurveStation, SeamSide};
+use axiolid_model::{
+    CurveRelation, GeometryNode, OrientedCurveStation, SeamSide, SectionAtStation, SolidOperation,
+    SurfaceRelation,
+};
 use ifc_geometry::lower::LoweredGeometry;
 use ifc_model::{EntityId, Model};
 
@@ -133,19 +142,123 @@ fn a_windowed_station_writes_wire_format_1_1() {
     assert_eq!(read.to_json().expect("writes"), json);
 }
 
+/// The run `name`'s lowered sections (#429): its body is a sectioned
+/// solid or surface along an offset, each section at its own distance with
+/// the precision as its window, reading the incoming side, and the run
+/// recorded.
+fn windowed_run(model: &Model, name: &str) -> (LoweredGeometry, Vec<SectionAtStation>) {
+    let body = item(model, name, "Body");
+    let lowered = lower(model, body).expect(name);
+    let (directrix, sections) = match root(&lowered) {
+        GeometryNode::SolidOperation(SolidOperation::SectionsAtStations {
+            directrix,
+            sections,
+            ..
+        })
+        | GeometryNode::SurfaceRelation(SurfaceRelation::OpenSectionsAtStations {
+            directrix,
+            sections,
+            ..
+        }) => (*directrix, sections.clone()),
+        other => panic!("{name}: a run of sections: {other:?}"),
+    };
+    assert!(
+        matches!(
+            lowered.graph.get(directrix),
+            Some(GeometryNode::CurveRelation(
+                CurveRelation::OffsetByStations { .. } | CurveRelation::Offset { .. }
+            ))
+        ),
+        "{name}: an offset directrix"
+    );
+    for section in &sections {
+        assert_eq!(section.seam, SeamSide::Incoming, "{name}");
+        assert_eq!(section.seam_window, PRECISION, "{name}: the precision");
+    }
+    assert_eq!(
+        lowered.provenance.seam_window_runs().collect::<Vec<_>>(),
+        [EntityId(body)],
+        "{name}: the run recorded"
+    );
+    assert_eq!(lowered.provenance.seam_windows().count(), 0, "{name}");
+    (lowered, sections)
+}
+
+/// Every section of a run along the kerb is stored at its own distance,
+/// which the lowering cannot compare with joints it cannot locate: the
+/// kernel snaps it (#429).
+#[test]
+fn runs_along_quadrature_offsets_carry_the_precision_as_window() {
+    let model = bases();
+    let at = |sections: &[SectionAtStation]| {
+        sections
+            .iter()
+            .map(|section| section.station.distance)
+            .collect::<Vec<_>>()
+    };
+    let close = |got: &[f64], want: &[f64], name: &str| {
+        assert!(got.len() >= want.len(), "{name}: {got:?}");
+        for (got, want) in got.iter().zip(want) {
+            assert!(
+                (got - want).abs() <= 1e-12 * want.max(1.0_f64),
+                "{name}: {got} != {want}"
+            );
+        }
+    };
+    let deck = [0.0, grade_joint() + 4e-6, bend_joint() - 4e-6];
+    for name in ["DECK", "SURFACE"] {
+        let (_, sections) = windowed_run(&model, name);
+        close(&at(&sections), &deck, name);
+    }
+    let (_, sections) = windowed_run(&model, "DECK_ARC");
+    assert_eq!(sections.len(), 3);
+    // The third stands on the joint beside the arc, a quadrature.
+    close(
+        &at(&sections),
+        &[grade_joint() / 2.0, bend_joint() + 4e-6],
+        "DECK_ARC",
+    );
+    for name in ["DECK_TWIN", "DECK_TILTED"] {
+        windowed_run(&model, name);
+    }
+}
+
+/// A graph holding a windowed run is wire format 1.2 (Axiolid ADR 0085),
+/// and reads back to itself.
+#[cfg(feature = "wire")]
+#[test]
+fn a_windowed_run_writes_wire_format_1_2() {
+    use axiolid_model::GeometryGraph;
+
+    let model = bases();
+    for name in ["DECK", "SURFACE"] {
+        let (lowered, _) = windowed_run(&model, name);
+        let json = lowered.graph.to_json().expect("writes");
+        assert!(json.contains("\"version\":\"1.2\""), "{name}: {json}");
+        assert!(json.contains("\"seam_window\":0.00001"), "{name}: {json}");
+        let read = GeometryGraph::from_json(&json).expect("reads back");
+        assert_eq!(read.to_json().expect("writes"), json);
+    }
+}
+
 #[cfg(feature = "compile-reference-backend")]
 mod kernel {
+    use axiolid_contracts::ExecutionOptions;
     use axiolid_curve_evaluate_contract::CurveEvaluator;
     use axiolid_evaluate::ReferenceCurveEvaluator;
+    use axiolid_mesh::TriMesh;
     use axiolid_mesh_compile::station::{curve_path, resolve, ResolvedStation};
+    use axiolid_mesh_compile_contract::{MeshClosure, MeshCompiler};
     use axiolid_model::{CurveRelation, GeometryNode};
     use axiolid_reference::station::station_section3;
-    use ifc_geometry::compile::{compile_product_mesh, SeamWindowRefusal, Tolerance};
+    use ifc_geometry::compile::{
+        compile_product_mesh, default_backend, SeamWindowRefusal, Tolerance,
+    };
     use ifc_geometry::constraint::placement::derive::derive_linear_placement_transform;
     use ifc_geometry::{units, GeometryError};
 
     use super::super::common::{close_point, close_vec};
-    use super::{bases, bend_joint, grade_joint, product, windowed, PRECISION};
+    use super::{bases, bend_joint, grade_joint, product, windowed, windowed_run, PRECISION};
 
     fn resolved(name: &str) -> ResolvedStation {
         let model = bases();
@@ -326,5 +439,153 @@ mod kernel {
         );
         assert!(error.is_unsupported());
         assert!(error.to_string().contains("#427"), "{error}");
+    }
+
+    /// The kerb's two straight pieces in 3D: beside the alignment's line it
+    /// runs (0, 2, 10) -> (20, 2.5, 10.4) -> (30, 2.75, 10.3).
+    fn straight_pieces() -> (f64, f64) {
+        (
+            (400.0f64 + 0.25 + 0.16).sqrt(),
+            (100.0f64 + 0.0625 + 0.01).sqrt(),
+        )
+    }
+
+    /// The kerb beside the arc in 3D, from the horizontal joint (30 m
+    /// along the alignment) to its joint at 40 m: its plan speed per metre
+    /// of alignment is |(1 - d / 50, d')| with d = 2 + v / 40, and it falls
+    /// at 0.01. Composite Simpson, far below the precision.
+    fn arc_piece() -> f64 {
+        let speed = |v: f64| {
+            let d = 2.0 + v / 40.0;
+            ((1.0 - d / 50.0).powi(2) + (1.0f64 / 40.0).powi(2) + 0.01f64.powi(2)).sqrt()
+        };
+        let panels = 20_000;
+        let h = 10.0 / f64::from(panels);
+        let mut total = speed(30.0) + speed(40.0);
+        for i in 1..panels {
+            total += if i % 2 == 1 { 4.0 } else { 2.0 } * speed(30.0 + f64::from(i) * h);
+        }
+        total * h / 3.0
+    }
+
+    fn compiled(name: &str) -> (MeshClosure, TriMesh) {
+        let model = bases();
+        let (lowered, _) = windowed_run(&model, name);
+        let options = ExecutionOptions::new(Tolerance::MILLIMETRE);
+        let outcome = default_backend()
+            .compile_mesh_reported(&lowered.graph, lowered.root, &options)
+            .unwrap_or_else(|e| panic!("{name} compiles: {e:?}"));
+        (outcome.closure, outcome.mesh)
+    }
+
+    fn signed_volume(mesh: &TriMesh) -> f64 {
+        let base = mesh.positions[0];
+        mesh.indices
+            .chunks_exact(3)
+            .map(|t| {
+                let [a, b, c] = [t[0], t[1], t[2]].map(|i| mesh.positions[i as usize] - base);
+                a.dot(b.cross(c)) / 6.0
+            })
+            .sum()
+    }
+
+    fn area(mesh: &TriMesh) -> f64 {
+        mesh.indices
+            .chunks_exact(3)
+            .map(|t| {
+                let [a, b, c] = [t[0], t[1], t[2]].map(|i| mesh.positions[i as usize]);
+                (b - a).cross(c - a).length() / 2.0
+            })
+            .sum()
+    }
+
+    /// The deck along the kerb (#429): its sections 4 um past the grade
+    /// break and 4 um before the horizontal joint snap onto them. It is
+    /// two straight prisms of the centred 2 x 1 m rectangle, mitred at the
+    /// grade break at half angle (8.8.3.35.1) and ending on the horizontal
+    /// joint, so it holds 2 m2 times the kerb's 3D length over both
+    /// pieces. Unsnapped, it would end 4 um short (8e-6 m3 less), and the
+    /// section 4 um past the grade break would reach past the mitre plane.
+    #[test]
+    fn a_deck_along_the_kerb_is_mitred_at_the_snapped_joint() {
+        let (closure, mesh) = compiled("DECK");
+        assert_eq!(closure, MeshClosure::Solid);
+        let (first, second) = straight_pieces();
+        let expected = 2.0 * (first + second);
+        let volume = signed_volume(&mesh);
+        assert!(
+            (volume - expected).abs() < 1e-9,
+            "volume {volume} != {expected}"
+        );
+    }
+
+    /// The deck on beside the arc (#429): from halfway to the grade break,
+    /// across it (mitred between sections), snapped onto the horizontal
+    /// joint (mitred there) and onto the joint 40 m along beside the arc.
+    /// Exactly it holds 2 m2 times the kerb's 3D length over that span; the
+    /// mesh follows the arc piece by chords within the 1 mm tolerance, so
+    /// its volume lies within the deck's surface area times 1 mm of that.
+    #[test]
+    fn a_deck_along_the_kerb_is_mitred_at_both_joints() {
+        let (closure, mesh) = compiled("DECK_ARC");
+        assert_eq!(closure, MeshClosure::Solid);
+        let (first, second) = straight_pieces();
+        let length = first / 2.0 + second + arc_piece();
+        let expected = 2.0 * length;
+        let bound = (2.0 * (2.0 + 1.0) * length + 2.0 * 2.0) * 1e-3;
+        let volume = signed_volume(&mesh);
+        assert!(
+            (volume - expected).abs() <= bound,
+            "volume {volume} != {expected} within {bound}"
+        );
+    }
+
+    /// The surface along the kerb (#429), a flat open section 1 m each
+    /// side at the deck's positions: two planar strips 2 m wide mitred at
+    /// the grade break, ending on the horizontal joint.
+    #[test]
+    fn a_sectioned_surface_along_the_kerb_is_mitred_at_the_snapped_joint() {
+        let (closure, mesh) = compiled("SURFACE");
+        assert_eq!(closure, MeshClosure::Surface);
+        let (first, second) = straight_pieces();
+        let expected = 2.0 * (first + second);
+        let got = area(&mesh);
+        assert!((got - expected).abs() < 1e-9, "area {got} != {expected}");
+    }
+
+    /// A run whose positions both snap onto the twin's first joint, and a
+    /// run along an offset whose length the kernel does not certify, are
+    /// refused as typed errors naming the run (#429).
+    #[test]
+    fn run_refusals_name_the_run() {
+        let model = bases();
+        for (name, refusal, unsupported) in [
+            ("DECK_TWIN", SeamWindowRefusal::NotIncreasing, false),
+            ("DECK_TILTED", SeamWindowRefusal::UncertifiedLength, true),
+        ] {
+            let id = product(&model, name);
+            let error = compile_product_mesh(&model, id, Tolerance::MILLIMETRE).expect_err(name);
+            let GeometryError::RunSeamWindowRefused {
+                product: refused_product,
+                ref runs,
+                ref stations,
+                refusal: got,
+            } = error
+            else {
+                panic!("{name}: {error:?}");
+            };
+            assert_eq!((refused_product, got), (id, refusal), "{name}");
+            assert!(stations.is_empty(), "{name}: {stations:?}");
+            assert_eq!(runs.len(), 1, "{name}: {runs:?}");
+            let run = model.get(runs[0]).expect("the run");
+            assert_eq!(
+                run.type_name.as_ref(),
+                "IFCSECTIONEDSOLIDHORIZONTAL",
+                "{name}"
+            );
+            assert_eq!(error.entity(), Some(runs[0]), "{name}");
+            assert_eq!(error.is_unsupported(), unsupported, "{name}");
+            assert!(error.to_string().contains(&runs[0].to_string()), "{error}");
+        }
     }
 }

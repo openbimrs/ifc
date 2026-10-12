@@ -88,8 +88,8 @@ pub(crate) use offset::{OffsetPiece, COLLAPSE, OFFSET_OF_OFFSET, PLANAR_3D};
 
 /// Why a relation basis's joints are unknown here: a piece's length is a
 /// quadrature. A station along it carries the kernel's seam-snapping window
-/// (#423); a run along it, and a derived placement on it (#427), are
-/// refused.
+/// (#423), and so does each section of a run along it (#429); an offset
+/// run along it (#433) and a derived placement on it (#427) are refused.
 pub(crate) const INEXACT: &str =
     "the basis curve relation holds a piece whose length is not stated by its data (an \
      ellipse, a B-spline, a trim whose ends are not a parameter, an arc length on a curve \

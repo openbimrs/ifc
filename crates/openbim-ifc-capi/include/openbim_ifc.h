@@ -1113,7 +1113,7 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_parse_with_options(const uint8_t *data,
  * The payload is the envelope `{"format":"axiolid-geometry-graph",
  * "version":"1.0","graph":{"nodes":[...],"roots":[...]}}`, in world
  * coordinates, metres; its version is the lowest the content needs,
- * "1.0", or "1.1" when a station carries a seam-snapping window. A product that cannot be lowered is a record with
+ * "1.0"; "1.1" when a station carries a seam-snapping window, "1.2" when a run's sections do. A product that cannot be lowered is a record with
  * a refusal, not a failed call. `InvalidArgument` for another `encoding`;
  * `UnsupportedSchema`; `FeatureDisabled` in a library built without the
  * `graph` feature.

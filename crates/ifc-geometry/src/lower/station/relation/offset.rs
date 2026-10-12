@@ -52,8 +52,9 @@
 //! own plan length depends on the grade wherever the offset has a vertical
 //! part. Its joints are unknown here, so a station along it carries the
 //! kernel's seam-snapping window, which the kernel resolves against its own
-//! certified joint distances (#423, axiolid/kernel#294); a run along it and
-//! a derived placement on it are refused by name. The kernel's own named
+//! certified joint distances (#423, axiolid/kernel#294), as do the sections
+//! of a run along it (#429); an offset run along it (#433) and a derived
+//! placement on it (#427) are refused by name. The kernel's own named
 //! refusals are repeated where
 //! the stored data shows them: an offset of an offset ([`OFFSET_OF_OFFSET`]),
 //! a planar (2D) offset law on a 3D curve ([`PLANAR_3D`]; IFC lowering

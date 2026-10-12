@@ -19,6 +19,8 @@ pub struct ProvenanceMap {
     dropped_faces: BTreeSet<EntityId>,
     /// Stations stored with the kernel's seam-snapping window (#423).
     seam_windows: BTreeSet<EntityId>,
+    /// Runs whose stations carry the kernel's seam-snapping window (#429).
+    seam_window_runs: BTreeSet<EntityId>,
 }
 
 impl ProvenanceMap {
@@ -66,6 +68,22 @@ impl ProvenanceMap {
 
     pub(crate) fn record_seam_window(&mut self, station: EntityId) {
         self.seam_windows.insert(station);
+    }
+
+    /// The runs whose stations carry the kernel's seam-snapping window
+    /// (#429), in ascending id: each `IfcSectionedSolidHorizontal`,
+    /// `IfcSectionedSurface` or `IfcOffsetCurveByDistances` along a basis
+    /// whose seams lie at arc-length integrals, whose stations the kernel
+    /// snaps onto a seam
+    /// within the model's precision. A kernel refusal of such a window, or
+    /// of the snapped stations' order, names these runs
+    /// (`GeometryError::RunSeamWindowRefused`, with `compile`).
+    pub fn seam_window_runs(&self) -> impl Iterator<Item = EntityId> + '_ {
+        self.seam_window_runs.iter().copied()
+    }
+
+    pub(crate) fn record_seam_window_run(&mut self, run: EntityId) {
+        self.seam_window_runs.insert(run);
     }
 
     pub(crate) fn record_dropped_face(&mut self, face: EntityId) {

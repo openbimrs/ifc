@@ -12,6 +12,16 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#429)
+
+- Requires `ifc-geometry` with #429: sectioned solids and surfaces along
+  offsets whose length is a quadrature lower with seam-snapping windows on
+  their sections, and `product_graphs` labels those payloads wire format
+  1.2 (`axiolid-model` 0.3.11, axiolid/kernel#301). Every other payload
+  keeps its version and bytes: 1.0, or 1.1 when a station carries a window.
+
+Semver: minor, following the dependency.
+
 ## [0.28.1] - 2026-10-12
 
 ### Fixed (axiolid/kernel#297)

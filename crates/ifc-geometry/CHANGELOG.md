@@ -12,6 +12,42 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#429, runs of sections along bases with quadrature joints)
+
+- An `IfcSectionedSolidHorizontal` or `IfcSectionedSurface` along a
+  directrix whose seams lie at arc-length integrals (an offset beside a
+  gradient curve, a spiral, a B-spline or an ellipse, a relation with an
+  ellipse or a B-spline piece, a B-spline corner knot) now lowers instead
+  of being refused with the former `RUN_UNLOCATED` reason. Each section
+  stays at its own distance and carries the model's precision as Axiolid's
+  seam-snapping window, reading `SeamSide::Incoming`
+  (`SectionAtStation::with_seam_window` / `with_seam_side`, `axiolid-model`
+  0.3.11, axiolid/kernel#301). The kernel snaps it onto the seam and mitres
+  there at half angle (8.8.3.35.1); such a graph is wire format 1.2. Runs
+  along bases whose seams are stored data keep their exact snapping and
+  emit the identical graph (wire 1.0), as checked on the committed and
+  reference corpora.
+- `GeometryError::RunSeamWindowRefused { product, runs, stations,
+  refusal }` (feature `compile`) names the run when the kernel refuses its
+  windows: two seams in a window, a seam on its edge, a length it cannot
+  certify, or the new `SeamWindowRefusal::NotIncreasing` (positions that no
+  longer increase strictly once snapped).
+  `ProvenanceMap::seam_window_runs` lists the windowed runs.
+- An `IfcOffsetCurveByDistances` along such a basis is still refused, now
+  by a reason naming #433: IFC continues its offsets to the basis's end,
+  whose distance is a quadrature this crate does not compute. Its stations
+  are built as `RunStation`s; with a window they would lower to
+  `CurveRelation::OffsetsAtStations`, and without one they still lower to
+  `OffsetByStations`, unchanged.
+- A reversal at a quadrature seam within a run is refused by the kernel's
+  mitre, which this crate cannot see.
+- Requires `axiolid-model` 0.3.11, `axiolid-curve` 0.3.8,
+  `axiolid-evaluate` 0.3.12, `axiolid-curve-evaluate-contract` 0.3.6,
+  `axiolid-reference` 0.3.8 and `axiolid-mesh-compile` 0.3.22.
+
+Semver: minor. Refused runs now lower, an error variant and a refusal kind
+are added, and the dependency floors rise.
+
 ## [0.22.1] - 2026-10-12
 
 ### Fixed (axiolid/kernel#297)

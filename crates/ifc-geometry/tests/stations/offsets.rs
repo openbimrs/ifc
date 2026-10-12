@@ -125,7 +125,9 @@ fn an_offset_arc_has_its_exact_length() {
 /// station is resolved: an offset of an offset, a trim of an offset and an
 /// offset through a circle's centre. A station on an offset whose length is
 /// a quadrature (beside an ellipse), refused before #423, carries the
-/// kernel's window; a run along it stays refused.
+/// kernel's window. An offset run along it is refused by name: its length
+/// is a quadrature too, so its continuation to the end cannot be placed
+/// (#433).
 #[test]
 fn offset_bases_the_kernel_refuses_are_refused_by_name() {
     let model = step(
@@ -154,8 +156,8 @@ fn offset_bases_the_kernel_refuses_are_refused_by_name() {
     refused(lower(&model, 17), true, "trim of an offset curve");
     refused(lower(&model, 34), true, "collapses");
     assert_windowed(&lower(&model, 43).expect("lowers"), 1.0, 1e-5);
-    // A run's stations carry no window: a run along it is refused.
-    refused(lower(&model, 45), true, "carry no seam-snapping window");
+    // The run stops short of an end whose distance is a quadrature (#433).
+    refused(lower(&model, 45), true, "(#433)");
 }
 
 #[cfg(feature = "compile-reference-backend")]

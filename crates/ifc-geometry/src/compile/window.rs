@@ -9,6 +9,12 @@
 //! inputs are `axiolid-evaluate`'s constants, an execution provider this
 //! crate does not link (ADR 0004), so they are repeated here and a test
 //! pins them equal.
+//!
+//! A run's stations carry the same window (#429, axiolid/kernel#301), and
+//! a run adds one refusal of its own: its stations, snapped, no longer
+//! increase strictly in distance, a `GeomError::InvalidInput` whose text
+//! `axiolid-mesh-compile` keeps private; it is repeated here, and a test
+//! that compiles such a run pins it.
 
 use axiolid_contracts::GeomError;
 
@@ -30,7 +36,14 @@ pub(crate) const UNCERTIFIED: &str =
      offset direction that is not vertical beside a plan-measured or intrinsic base; a base \
      placed in a frame that tilts +Z; a skewed frame; or a tolerance below the points' rounding";
 
-/// Why the kernel refused a station's seam-snapping window (#423).
+/// `axiolid-mesh-compile`'s refusal of a run whose snapped stations no
+/// longer increase (`station::SNAPPED_NOT_INCREASING`, private there).
+pub(crate) const NOT_INCREASING: &str =
+    "station: the run's stations, snapped onto seams within their windows, no longer increase \
+     strictly in distance: two snapped onto one seam, or one snapped past its neighbour";
+
+/// Why the kernel refused a station's seam-snapping window (#423), or a
+/// run's (#429).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SeamWindowRefusal {
@@ -45,11 +58,19 @@ pub enum SeamWindowRefusal {
     /// intrinsic curve, an offset by distances along an ellipse or a
     /// B-spline, and the other cases the kernel names).
     UncertifiedLength,
+    /// A run's stations, snapped onto seams within their windows, no
+    /// longer increase strictly in distance: two snapped onto one seam, or
+    /// one past its neighbour (#429). The model's precision is coarser
+    /// than the distance between them.
+    NotIncreasing,
 }
 
 impl SeamWindowRefusal {
     /// The refusal `error` is, if it is one of a window's.
     pub(crate) fn of(error: &GeomError) -> Option<Self> {
+        if let GeomError::InvalidInput(detail) = error {
+            return (detail == NOT_INCREASING).then_some(Self::NotIncreasing);
+        }
         let GeomError::UnsupportedInput { input, .. } = error else {
             return None;
         };
@@ -78,6 +99,10 @@ impl std::fmt::Display for SeamWindowRefusal {
             }
             Self::UncertifiedLength => {
                 "the distance of a seam of the basis curve cannot be certified to the window"
+            }
+            Self::NotIncreasing => {
+                "the run's stations, snapped onto seams within the window, no longer increase \
+                 strictly in distance"
             }
         })
     }
