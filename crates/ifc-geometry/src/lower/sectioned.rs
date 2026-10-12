@@ -43,6 +43,14 @@
 //!   which is that half-angle mitre (ADR 0082 amendment). A position within
 //!   the model's precision of a seam is stored at the seam, where the
 //!   kernel stands its section in the mitre plane (`lower::station`).
+//!   Along a directrix whose seams are arc-length integrals (an offset
+//!   beside a gradient curve, a spiral, a B-spline or an ellipse; #429),
+//!   which this crate cannot locate, each section carries the model's
+//!   precision as the kernel's seam-snapping window and reads
+//!   `SeamSide::Incoming` (`SectionAtStation::with_seam_window`,
+//!   axiolid/kernel#301): the kernel snaps it onto the seam and mitres
+//!   there. A window-free run's graph is unchanged (wire format 1.0); a
+//!   windowed one is format 1.2.
 //!
 //! # Refused by name
 //!
@@ -50,12 +58,13 @@
 //! rules (`NoLongitudinalOffsets`, `NoOffsets`, `CorrespondingSectionPositions`,
 //! `SectionsSameType`), positions out of order or off the directrix, a
 //! directrix that turns back on itself within the run ("very sharp edges
-//! may result in nearly impossible miter", 8.8.3.35.1), a surface mixing
+//! may result in nearly impossible miter", 8.8.3.35.1; by the kernel where
+//! the seams are quadratures), a surface mixing
 //! tagged and untagged sections or branching breaklines (sections with
 //! different tags). `IfcSectionedSolid`, the parent, is ABSTRACT.
 
 use axiolid_model::{
-    GeometryNode, NodeId, SectionAtStation, SolidOperation, StationFrame, SurfaceRelation,
+    GeometryNode, NodeId, SeamSide, SectionAtStation, SolidOperation, StationFrame, SurfaceRelation,
 };
 use ifc_model::EntityId;
 
@@ -191,9 +200,9 @@ fn sectioned(
             _ => {}
         }
         basis.check_on_curve(session, id, owner_type, expression.distance)?;
-        let distance = basis.run_distance(session, id, owner_type, expression.distance)?;
+        let place = basis.run_place(session, id, owner_type, expression.distance)?;
         if let Some(previous) = sections.last() {
-            if distance <= previous.station.distance {
+            if place.distance <= previous.station.distance {
                 return Err(session.degenerate(
                     id,
                     owner_type,
@@ -211,12 +220,19 @@ fn sectioned(
             ),
         };
         let mut station = expression.station();
-        station.distance = distance;
-        sections.push(
-            SectionAtStation::new(node, station)
-                .with_tags(tags)
-                .with_orientation(orientation),
-        );
+        station.distance = place.distance;
+        let section = SectionAtStation::new(node, station)
+            .with_tags(tags)
+            .with_orientation(orientation);
+        sections.push(match place.window {
+            Some(window) => section
+                .with_seam_side(SeamSide::Incoming)
+                .with_seam_window(window),
+            None => section,
+        });
+    }
+    if sections.iter().any(|section| section.seam_window > 0.0) {
+        session.record_seam_window_run(id);
     }
     check_tags(session, id, owner_type, &sections)?;
     let from = sections[0].station.distance;

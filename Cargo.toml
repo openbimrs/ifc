@@ -74,11 +74,14 @@ axiolid-mesh = { version = "0.3.0" }
 # wire format 1.1 carries it. 0.3.10: the writer labels each payload with
 # the lowest version its content needs, 1.0 unless a station carries a
 # seam window (axiolid/kernel#297); 0.3.9 labelled every payload 1.1.
-axiolid-model = { version = "0.3.10" }
+# 0.3.11: a seam side and window on run stations (`SectionAtStation`,
+# `RunStation`) and `CurveRelation::OffsetsAtStations` (axiolid/kernel#301;
+# #429); wire format 1.2 carries them.
+axiolid-model = { version = "0.3.11" }
 axiolid-primitive = { version = "0.3.0" }
 axiolid-profile = { version = "0.3.0" }
 axiolid-surface = { version = "0.3.0" }
-axiolid-reference = { version = "0.3.6" }
+axiolid-reference = { version = "0.3.8" }
 # Dev-only: the worked example indexing product bounds (#36). The index is
 # Axiolid's; this repository only produces the boxes it consumes.
 axiolid-spatial = { version = "0.3.0" }
@@ -95,10 +98,11 @@ axiolid-spatial = { version = "0.3.0" }
 # #414). 0.3.5 of the contract (with axiolid-evaluate 0.3.11):
 # `CurveEvaluator::path_joint_distances`, a path's joints certified to a
 # stated tolerance, for offsets whose length is a quadrature
-# (axiolid/kernel#294; #423).
-axiolid-curve = { version = "0.3.6" }
-axiolid-evaluate = { version = "0.3.11" }
-axiolid-curve-evaluate-contract = { version = "0.3.5" }
+# (axiolid/kernel#294; #423). 0.3.6 of the contract (with axiolid-curve 0.3.8
+# and axiolid-evaluate 0.3.12) is the release built with axiolid/kernel#301.
+axiolid-curve = { version = "0.3.8" }
+axiolid-evaluate = { version = "0.3.12" }
+axiolid-curve-evaluate-contract = { version = "0.3.6" }
 # Dev-only: the exact volume of a compiled body, to check an arc-bounded
 # half-space clip against its closed form (#398).
 axiolid-measure = { version = "0.3.10" }
@@ -123,8 +127,9 @@ axiolid-contracts = { version = "0.3.1" }
 # (`station::curve_path`, axiolid/kernel#290; the #418 tests compare it); it
 # resolves stations along offset curves, measured in the offset's own length
 # (axiolid/kernel#289; #414). 0.3.20 resolves a station's seam window
-# (axiolid/kernel#294; #423).
-axiolid-mesh-compile = { version = "0.3.20" }
+# (axiolid/kernel#294; #423). 0.3.22 snaps run stations within their seam
+# windows (axiolid/kernel#301; #429).
+axiolid-mesh-compile = { version = "0.3.22" }
 axiolid-mesh-compile-contract = { version = "0.3.3" }
 axiolid-mesh-boolean-boolmesh = { version = "0.3.0" }
 # Not used directly: `axiolid-mesh-compile` reaches it. Pinned here only to

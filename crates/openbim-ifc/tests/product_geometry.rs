@@ -147,7 +147,9 @@ fn graphs_round_trip_through_the_wire_format_and_are_refused_per_product() {
 
 /// A Body swept along a segment placed by a station near an offset's joint
 /// carries a seam-snapping window (#423), so its payload is wire format
-/// 1.1, the lowest version that holds it (axiolid/kernel#297).
+/// 1.1, the lowest version that holds it (axiolid/kernel#297). A run of
+/// sections along the offset carries windows on its sections (#429), so
+/// its payload is 1.2.
 #[cfg(feature = "geometry-wire")]
 #[test]
 fn a_body_with_a_seam_window_is_labelled_wire_format_1_1() {
@@ -160,16 +162,20 @@ fn a_body_with_a_seam_window_is_labelled_wire_format_1_1() {
     let model = StepCodec
         .read_bytes(&std::fs::read(path).expect("fixture"))
         .expect("parses");
-    // RAIL_NEAR and RAIL_EDGE, the two proxies with a Body.
-    let graphs = ifc::product_graphs(&model, Some(&[EntityId(188), EntityId(199)]));
-    for (product, graph) in graphs {
+    // RAIL_NEAR and RAIL_EDGE, swept at a station; DECK and SURFACE, runs.
+    let graphs = ifc::product_graphs(
+        &model,
+        Some(&[EntityId(188), EntityId(199), EntityId(264), EntityId(296)]),
+    );
+    assert_eq!(graphs.len(), 4);
+    for ((product, graph), version) in graphs.into_iter().zip(["1.1", "1.1", "1.2", "1.2"]) {
         let graph = graph
             .unwrap_or_else(|e| panic!("#{}: {e:?}", product.0))
             .graph
             .expect("a Body");
         let text = graph.to_json().expect("encodes");
         let envelope: serde_json::Value = serde_json::from_str(&text).expect("JSON");
-        assert_eq!(envelope["version"], "1.1", "#{}: {text}", product.0);
+        assert_eq!(envelope["version"], version, "#{}: {text}", product.0);
         assert!(text.contains("\"seam_window\""), "#{}: {text}", product.0);
         let back = GeometryGraph::from_json(&text).expect("reads back");
         assert_eq!(back.to_json().unwrap(), text);

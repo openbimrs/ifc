@@ -558,16 +558,15 @@ pub const PARTIAL: &[Variant] = &[
     },
     Variant {
         family: "IFCOFFSETCURVEBYDISTANCES",
-        variant: "offsets short of an unbounded or unstated end, a non-zero \
-                  OffsetLongitudinal, a member on another basis, a run across \
-                  a seam where the basis turns back on itself, or a run along a \
-                  basis whose seams lie at arc-length integrals",
+        variant: "offsets short of an unbounded or unstated end (along a basis \
+                  whose seams and length lie at arc-length integrals too), a \
+                  non-zero OffsetLongitudinal, a member on another basis, or a \
+                  run across a seam where the basis turns back on itself",
         support: Support::Refused,
-        rationale: "the neutral offset curve stops at its last station, IFC states \
-                    no law for a longitudinal offset along a curve, a mitre has \
-                    no plane at a reversal, and a run's stations carry no \
-                    seam-snapping window to stand one on a seam within \
-                    precision (#423)",
+        rationale: "the neutral offset curve stops at its last station and the \
+                    basis's end is a quadrature this crate does not compute \
+                    (#433), IFC states no law for a longitudinal offset along a \
+                    curve, and a mitre has no plane at a reversal",
     },
     Variant {
         family: "IFCSECTIONEDSOLIDHORIZONTAL",
@@ -581,14 +580,25 @@ pub const PARTIAL: &[Variant] = &[
     },
     Variant {
         family: "IFCSECTIONEDSOLIDHORIZONTAL",
-        variant: "positions off the Directrix, spanning a seam where it turns \
-                  back on itself, or along a Directrix whose seams lie at \
-                  arc-length integrals",
+        variant: "area sections along a Directrix whose seams lie at arc-length \
+                  integrals (an offset beside a gradient curve, a spiral, a \
+                  B-spline or an ellipse, or a B-spline corner knot)",
+        support: Support::Admitted,
+        rationale: "each section carries the model's precision as the kernel's \
+                    seam-snapping window, reading SeamSide::Incoming \
+                    (axiolid/kernel#301, #429): the kernel snaps it onto a seam \
+                    within the window and mitres there at half angle \
+                    (8.8.3.35.1), and refuses two seams in a window, a seam on \
+                    its edge, a length it cannot certify and positions no longer \
+                    increasing once snapped by name",
+    },
+    Variant {
+        family: "IFCSECTIONEDSOLIDHORIZONTAL",
+        variant: "positions off the Directrix, or spanning a seam where it turns \
+                  back on itself",
         support: Support::Refused,
-        rationale: "a station measures along its own basis, \"very sharp edges \
-                    may result in nearly impossible miter\" (8.8.3.35.1), and a \
-                    run's stations carry no seam-snapping window to stand one on \
-                    a seam within precision (#423)",
+        rationale: "a station measures along its own basis, and \"very sharp \
+                    edges may result in nearly impossible miter\" (8.8.3.35.1)",
     },
     Variant {
         family: "IFCSECTIONEDSURFACE",
@@ -597,6 +607,16 @@ pub const PARTIAL: &[Variant] = &[
         rationale: "OpenSectionsAtStations joined by tag, forwards or reversed; \
                     profile X to the left as IfcOpenCrossProfileDef states \
                     (8.15.3.15.1, #344)",
+    },
+    Variant {
+        family: "IFCSECTIONEDSURFACE",
+        variant: "open sections along a Directrix whose seams lie at arc-length \
+                  integrals",
+        support: Support::Admitted,
+        rationale: "as IFCSECTIONEDSOLIDHORIZONTAL: each section carries the \
+                    kernel's seam-snapping window and the incoming side \
+                    (axiolid/kernel#301, #429), mitred at half angle where it \
+                    snaps (8.8.3.37.1)",
     },
     Variant {
         family: "IFCSECTIONEDSURFACE",

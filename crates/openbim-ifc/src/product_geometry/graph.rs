@@ -9,9 +9,10 @@
 //! wire format (axiolid/kernel#267, Axiolid ADR 0085), reached as
 //! [`ifc_geometry::wire`] and `GeometryGraph::to_json` / `to_cbor`. A
 //! payload's envelope carries the lowest version its content needs: 1.0
-//! unless a station carries a seam-snapping window (#423), then 1.1
-//! (axiolid/kernel#297). A window-free payload is readable by
-//! `axiolid-model` 0.3.8; readers on 0.3.8 or older refuse 1.1.
+//! unless a station carries a seam-snapping window (#423), then 1.1, or a
+//! run's sections do (#429), then 1.2 (axiolid/kernel#297, #301). A
+//! window-free payload is readable by `axiolid-model` 0.3.8; readers on
+//! 0.3.8 or older refuse 1.1, readers on 0.3.10 or older refuse 1.2.
 //!
 //! - **The graph is in world coordinates, metres.** Lowering composes the
 //!   product's placement chain into the graph (its `Instance` transforms),

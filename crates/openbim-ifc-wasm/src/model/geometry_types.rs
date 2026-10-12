@@ -67,7 +67,7 @@ export type GeometryPayloadEncoding = "json" | "object" | "cbor";
 export type GeometryGraphNode = { [kind: string]: unknown };
 
 /**
- * Axiolid's versioned wire format of a geometry graph, 1.0 or 1.1
+ * Axiolid's versioned wire format of a geometry graph, 1.0 to 1.2
  * (Axiolid ADR 0085). A reader refuses another `format`, a major `version`
  * other than its own, a newer minor, and any kind, variant or field it
  * does not know.
@@ -76,8 +76,9 @@ export interface GeometryGraphEnvelope {
   format: "axiolid-geometry-graph";
   /**
    * `"MAJOR.MINOR"`: the lowest version the content needs, `"1.0"` unless
-   * a station carries a seam-snapping window (#423), then `"1.1"`
-   * (axiolid/kernel#297). This build writes at most `"1.1"`.
+   * a station carries a seam-snapping window (#423), then `"1.1"`, or a
+   * run's sections do (#429), then `"1.2"` (axiolid/kernel#297, #301).
+   * This build writes at most `"1.2"`.
    */
   version: string;
   graph: {

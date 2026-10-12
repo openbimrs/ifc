@@ -8,6 +8,19 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#429, wire format 1.2)
+
+- `GEOMETRY_FORMAT_VERSION` is `"1.2"`, the newest version a build writes
+  (`axiolid-model` 0.3.11: seam windows on the sections of a run,
+  axiolid/kernel#301). An envelope still carries the lowest version its
+  content needs: 1.0 when window-free, 1.1 when only stations carry a
+  window, 1.2 when a run's sections do. A reader on `axiolid-model` 0.3.10
+  or older refuses 1.2. Tests hold a windowed run's payload to 1.2 and
+  the others to their old versions.
+
+Semver: additive (internal crate, not published); a minor change of every
+binding (ADR 0021).
+
 ### Changed (#423, wire format 1.1)
 
 - `GEOMETRY_FORMAT_VERSION` is `"1.1"`, the newest version a build writes
