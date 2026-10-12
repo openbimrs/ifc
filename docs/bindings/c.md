@@ -561,9 +561,12 @@ the set. The graph is in world coordinates, metres, with the record's
 transform already applied. These exports make the ABI version 0.1.9; no
 `v0_1` symbol changed. Its `version` is the lowest the content needs: `1.0` unless a
 station carries a seam-snapping window
-([#423](https://github.com/openbimrs/ifc/issues/423)), then `1.1`
-(axiolid/kernel#297). A reader on `axiolid-model` 0.3.8 or older reads a
-`1.0` payload and refuses `1.1`. A major version of the wire format would
+([#423](https://github.com/openbimrs/ifc/issues/423)), then `1.1`, or a
+run's sections do ([#429](https://github.com/openbimrs/ifc/issues/429),
+a sectioned solid or surface along such an offset), then `1.2`
+(axiolid/kernel#297, #301). A reader on `axiolid-model` 0.3.8 or older
+reads a `1.0` payload and refuses `1.1`; one on 0.3.10 or older refuses
+`1.2`. A major version of the wire format would
 be a breaking change of the ABI (ADR 0021).
 
 ## Creating entities

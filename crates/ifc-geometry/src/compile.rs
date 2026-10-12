@@ -473,8 +473,9 @@ pub fn product_bounds_with<B: MeshCompiler>(
 }
 
 /// The backend's refusal of `entity`'s graph, in IFC terms: a refusal of a
-/// station's seam-snapping window (#423) names the stations lowered with
-/// one (`provenance`), anything else is [`GeometryError::CompilationRefused`].
+/// seam-snapping window names the runs (#429) or else the stations (#423)
+/// lowered with one (`provenance`), anything else is
+/// [`GeometryError::CompilationRefused`].
 fn refused(
     entity: EntityId,
     error: axiolid_contracts::GeomError,
@@ -482,7 +483,16 @@ fn refused(
 ) -> GeometryError {
     if let Some(refusal) = SeamWindowRefusal::of(&error) {
         let stations: Vec<EntityId> = provenance.seam_windows().collect();
-        if !stations.is_empty() {
+        let runs: Vec<EntityId> = provenance.seam_window_runs().collect();
+        if !runs.is_empty() {
+            return GeometryError::RunSeamWindowRefused {
+                product: entity,
+                runs,
+                stations,
+                refusal,
+            };
+        }
+        if !stations.is_empty() && refusal != SeamWindowRefusal::NotIncreasing {
             return GeometryError::StationSeamWindowRefused {
                 product: entity,
                 stations,

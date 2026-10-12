@@ -74,8 +74,11 @@ axiolid-mesh = { version = "0.3.0" }
 # wire format 1.1 carries it. 0.3.10: the writer labels each payload with
 # the lowest version its content needs, 1.0 unless a station carries a
 # seam window (axiolid/kernel#297); 0.3.9 labelled every payload 1.1.
-# 0.3.11 is the release built with the open-ended path pieces of
-# axiolid-curve 0.3.8 (axiolid/kernel#298; #427).
+# 0.3.11: a seam side and window on run stations (`SectionAtStation`,
+# `RunStation`) and `CurveRelation::OffsetsAtStations` (axiolid/kernel#301;
+# #429); wire format 1.2 carries them.
+# It also carries the open-ended path pieces of axiolid-curve 0.3.8
+# (axiolid/kernel#298; #427).
 axiolid-model = { version = "0.3.11" }
 axiolid-primitive = { version = "0.3.0" }
 axiolid-profile = { version = "0.3.0" }
@@ -132,8 +135,10 @@ axiolid-contracts = { version = "0.3.1" }
 # (`station::curve_path`, axiolid/kernel#290; the #418 tests compare it); it
 # resolves stations along offset curves, measured in the offset's own length
 # (axiolid/kernel#289; #414). 0.3.20 resolves a station's seam window
-# (axiolid/kernel#294; #423). 0.3.22 is the release built with the open-end
-# curve and evaluate crates (axiolid/kernel#298; #427).
+# (axiolid/kernel#294; #423). 0.3.22 snaps run stations within their seam
+# windows (axiolid/kernel#301; #429).
+# It is also built with the open-end curve and evaluate crates
+# (axiolid/kernel#298; #427).
 axiolid-mesh-compile = { version = "0.3.22" }
 axiolid-mesh-compile-contract = { version = "0.3.3" }
 axiolid-mesh-boolean-boolmesh = { version = "0.3.0" }

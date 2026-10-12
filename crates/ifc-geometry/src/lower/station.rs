@@ -123,11 +123,29 @@
 //! (`UNCERTIFIED_LENGTH`); `crate::compile` names the station in a
 //! [`GeometryError::StationSeamWindowRefused`](crate::GeometryError).
 //! A station on a basis whose seams are stored data keeps the snapping
-//! above, so its graph is unchanged (no window, wire format 1.0 content):
-//! a run of sections or offsets needs that snapping anyway, since a run's
-//! `Station`s carry no window, and the two agree on every seam the data
-//! states. A run along a basis whose seams are quadratures is refused by
-//! name (`RUN_UNLOCATED`).
+//! above, so its graph is unchanged (no window, wire format 1.0 content).
+//!
+//! **Runs along such a basis** (#429). A run's stations carry the same
+//! window and side since `axiolid-model` 0.3.11 (axiolid/kernel#301, ADR
+//! 0082 amendment): a section of `IfcSectionedSolidHorizontal` or
+//! `IfcSectionedSurface` as `SectionAtStation::with_seam_window(w)` and
+//! `with_seam_side(SeamSide::Incoming)` (`Basis::run_place`), `w` the
+//! same `Basis::tolerance`. The kernel snaps each onto the one seam
+//! within its window, at the seam's certified distance, and reads the run
+//! at the snapped distances: an interior station snapped onto a seam
+//! where the tangent turns stands in the mitre plane (its side is not
+//! read), the first and last keep the run's own reading, and a side is
+//! read only on a seam where the tangents agree and the frame may jump.
+//! Snapped distances that no longer increase strictly are refused by the
+//! kernel by name, as are the window's own refusals; `crate::compile`
+//! names the run (`GeometryError::RunSeamWindowRefused`), which
+//! `ProvenanceMap::seam_window_runs` lists. A reversal at such a seam,
+//! which this crate cannot see, is refused by the kernel's mitre. A run
+//! along a basis whose seams are stored data keeps the snapping above and
+//! carries no window, so its graph is unchanged (wire format 1.0 content);
+//! only the runs that used to be refused carry windows (format 1.2). An
+//! `IfcOffsetCurveByDistances` along such a basis stays refused by name:
+//! its offsets continue to the basis's end, a quadrature (`offset`, #433).
 //!
 //! # Frames
 //!
@@ -295,38 +313,32 @@ impl Basis {
         }
     }
 
-    /// The seams a run needs, refusing a basis whose seams are quadratures
-    /// by [`RUN_UNLOCATED`] rather than by the station's reason.
-    fn run_seams(
-        &self,
-        session: &LoweringSession<'_>,
-        owner: EntityId,
-        owner_type: &str,
-    ) -> GeometryResult<&[seams::Seam]> {
-        match &self.seams {
-            Err(reason) if WINDOWED.contains(reason) => {
-                Err(session.unsupported(owner, owner_type, RUN_UNLOCATED))
-            }
-            _ => self.known_seams(session, owner, owner_type),
-        }
-    }
-
-    /// The distance a station of a run is stored at: the seam's own
-    /// distance when it lies on one, so the kernel stands its section in
-    /// the mitre plane (module documentation).
-    pub(crate) fn run_distance(
+    /// Where a station of a run is stored (module documentation): at the
+    /// seam's own distance when it lies on one the data states, so the
+    /// kernel stands its section in the mitre plane; at its own distance,
+    /// with the kernel's seam-snapping window, where the seams are
+    /// quadratures.
+    pub(crate) fn run_place(
         &self,
         session: &LoweringSession<'_>,
         owner: EntityId,
         owner_type: &str,
         distance: f64,
-    ) -> GeometryResult<f64> {
-        Ok(seams::nearest(
-            self.run_seams(session, owner, owner_type)?,
-            distance,
-            self.precision,
-        )
-        .map_or(distance, |seam| seam.distance))
+    ) -> GeometryResult<RunPlace> {
+        Ok(match self.reading(session, owner, owner_type, distance)? {
+            Reading::Clear => RunPlace {
+                distance,
+                window: None,
+            },
+            Reading::OnSeam(seam) => RunPlace {
+                distance: seam,
+                window: None,
+            },
+            Reading::Window(window) => RunPlace {
+                distance,
+                window: Some(window),
+            },
+        })
     }
 
     /// Refuse a run over `[from, to]`, both ends included, across a seam
@@ -340,14 +352,17 @@ impl Basis {
         from: f64,
         to: f64,
     ) -> GeometryResult<()> {
-        let reversal = self
-            .run_seams(session, owner, owner_type)?
-            .iter()
-            .any(|seam| {
-                seam.reverses
-                    && seam.distance >= from - self.tolerance(from)
-                    && seam.distance <= to + self.tolerance(to)
-            });
+        let seams = match &self.seams {
+            // The seams are quadratures: the kernel's mitre refuses a
+            // reversal by name when it reads the run.
+            Err(reason) if WINDOWED.contains(reason) => return Ok(()),
+            _ => self.known_seams(session, owner, owner_type)?,
+        };
+        let reversal = seams.iter().any(|seam| {
+            seam.reverses
+                && seam.distance >= from - self.tolerance(from)
+                && seam.distance <= to + self.tolerance(to)
+        });
         if reversal {
             Err(session.unsupported(owner, owner_type, REVERSAL))
         } else {
@@ -375,12 +390,16 @@ enum Reading {
     Window(f64),
 }
 
-/// Why a run along a basis whose seams are quadratures is refused.
-pub(crate) const RUN_UNLOCATED: &str =
-    "a run of sections or offsets along a basis whose seams lie at arc-length integrals (an \
-     offset whose length is a quadrature, a spiral, a B-spline or an ellipse piece): a station \
-     of a run within precision of a seam stands in IFC's half-angle mitre plane (8.8.3.35.1), \
-     and a run's stations carry no seam-snapping window for the kernel to snap them with";
+/// Where a station of a run is stored: [`Basis::run_place`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct RunPlace {
+    /// The distance stored: a seam's own when the station lies on one the
+    /// data states, else the station's.
+    pub distance: f64,
+    /// The kernel's seam-snapping window, on a basis whose seams are
+    /// quadratures (#429).
+    pub window: Option<f64>,
+}
 
 /// Why a run across a reversal is refused.
 pub(crate) const REVERSAL: &str =

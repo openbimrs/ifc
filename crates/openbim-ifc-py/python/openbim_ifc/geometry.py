@@ -3,7 +3,7 @@
 :meth:`IfcModel.product_placements` gives each product's world placement
 and the Body representation a viewer draws;
 :meth:`IfcModel.product_geometry` its Body as Axiolid's exact geometry
-graph, serialised in Axiolid's wire format 1.0 or 1.1 (JSON ``str`` or CBOR
+graph, serialised in Axiolid's wire format 1.0 to 1.2 (JSON ``str`` or CBOR
 ``bytes``) for a host's own kernel; :meth:`IfcModel.product_meshes`
 gives its triangles, from a wheel built with the ``mesh`` feature. A
 product that cannot be placed or meshed carries a :class:`GeometryRefusal`
@@ -71,9 +71,9 @@ class ProductPlacement:
 #: The envelope's ``format`` entry.
 GEOMETRY_FORMAT = "axiolid-geometry-graph"
 #: The newest wire format version this build writes. An envelope's
-#: ``version`` is the lowest its content needs: ``"1.0"``, or ``"1.1"`` when
-#: a station carries a seam-snapping window (#423). ``"1.2"`` (run stations
-#: naming a seam side, axiolid/kernel#301) is written by no lowering yet.
+#: ``version`` is the lowest its content needs: ``"1.0"``; ``"1.1"`` when
+#: a station carries a seam-snapping window (#423), ``"1.2"`` when a run's
+#: sections do (#429).
 GEOMETRY_FORMAT_VERSION = "1.2"
 
 

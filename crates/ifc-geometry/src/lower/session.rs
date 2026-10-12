@@ -363,6 +363,12 @@ impl<'a> LoweringSession<'a> {
         self.provenance.record_seam_window(station);
     }
 
+    /// Record that the run `run`'s stations carry the kernel's
+    /// seam-snapping window (#429).
+    pub(crate) fn record_seam_window_run(&mut self, run: EntityId) {
+        self.provenance.record_seam_window_run(run);
+    }
+
     /// The `IfcIndexedTriangleTextureMap`s whose `MappedTo` is `face_set`, in
     /// file order. Empty for an untextured face set.
     pub(crate) fn triangle_texture_maps(&mut self, face_set: EntityId) -> &[EntityId] {

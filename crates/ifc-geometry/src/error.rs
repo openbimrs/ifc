@@ -373,6 +373,37 @@ pub enum GeometryError {
         refusal: crate::compile::SeamWindowRefusal,
     },
 
+    /// The kernel refused a run whose stations carry its seam-snapping
+    /// window, lowered along a basis whose seams lie at arc-length
+    /// integrals (#429).
+    ///
+    /// Each section of such an `IfcSectionedSolidHorizontal` or
+    /// `IfcSectionedSurface` carries the model's precision as a window,
+    /// and the kernel snaps it onto a seam within it when it reads the run
+    /// (axiolid/kernel#301). `runs` are the runs of the product's graph
+    /// lowered with windows (`ProvenanceMap::seam_window_runs`), and
+    /// `stations` any single stations of the same graph lowered with one
+    /// (`ProvenanceMap::seam_windows`); the kernel does not say which it
+    /// refused, so with several, each is a candidate. Besides the window's
+    /// own refusals, `refusal` may be
+    /// [`SeamWindowRefusal::NotIncreasing`](crate::compile::SeamWindowRefusal):
+    /// two positions snapped onto one seam, or one past its neighbour.
+    #[cfg(feature = "compile")]
+    #[error(
+        "{product}: the kernel refused the seam-snapping windows of run {}: {refusal}",
+        runs.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ")
+    )]
+    RunSeamWindowRefused {
+        /// The product whose graph was compiled.
+        product: EntityId,
+        /// The runs lowered with windows, ascending.
+        runs: Vec<EntityId>,
+        /// The single stations lowered with a window, ascending.
+        stations: Vec<EntityId>,
+        /// What the kernel refused.
+        refusal: crate::compile::SeamWindowRefusal,
+    },
+
     /// The two straight axes of an `IfcVirtualGridIntersection` are parallel,
     /// so they have no intersection to place anything at (#362).
     ///
@@ -553,6 +584,10 @@ impl GeometryError {
             Self::StationSeamWindowRefused {
                 product, stations, ..
             } => Some(stations.first().copied().unwrap_or(*product)),
+            #[cfg(feature = "compile")]
+            Self::RunSeamWindowRefused { product, runs, .. } => {
+                Some(runs.first().copied().unwrap_or(*product))
+            }
             // The opening is what failed; `host` stays readable on the variant.
             Self::OpeningNotSubtracted { opening, .. } => Some(*opening),
             Self::Units(_)
@@ -586,7 +621,8 @@ impl GeometryError {
             // file's precision failing to name one place.
             #[cfg(feature = "compile")]
             Self::StationSeamWindowRefused { refusal, .. }
-            | Self::PlacementSeamWindowRefused { refusal, .. } => matches!(
+            | Self::PlacementSeamWindowRefused { refusal, .. }
+            | Self::RunSeamWindowRefused { refusal, .. } => matches!(
                 refusal,
                 crate::compile::SeamWindowRefusal::UncertifiedLength
             ),

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate the product-lowering fixtures for #335, #336, #346, #351, #353,
-#354, #357, #362, #363, #388, #393, #396, #398, #414 and #423.
+#354, #357, #362, #363, #388, #393, #396, #398, #414, #423 and #429.
 
 Sixteen small files, each one edge case of `crates/ifc-geometry`'s product
 lowering. No licence-clean public corpus isolates these cases, so they are
@@ -336,6 +336,21 @@ for the kernel to snap onto a joint within precision:
   `LANE_JOINT_AT` on the joint and `LANE_JOINT_NEAR` 4 um past it resolve
   to the joint's own point, 1 m left of the clothoid's end; `LANE_MID` is
   9.5 m along.
+- Runs along the kerb (#429), whose sections carry the kernel's window:
+  `DECK`, an `IfcSectionedSolidHorizontal` of a centred 2 x 1 m rectangle
+  at 0, 4 um past the grade-break joint and 4 um before the horizontal
+  joint. Snapped, it is two straight prisms mitred at the grade break,
+  ending on the horizontal joint: 2 x (|(20, 0.5, 0.4)| + |(10, 0.25,
+  -0.1)|) m3. `DECK_ARC`, the same rectangle at half the grade-break
+  joint, 4 um past the horizontal joint and on the joint at 40 m beside
+  the arc: mitred at both joints, across the grade break between
+  sections. `SURFACE`, an `IfcSectionedSurface` of a flat open section
+  1 m each side at `DECK`'s three positions: two planar strips mitred at
+  the grade break, 2 x (|(20, 0.5, 0.4)| + |(10, 0.25, -0.1)|) m2.
+  `DECK_TWIN`, the rectangle along `TWIN` at 0, 6 um before its first
+  joint and 2 um past it: both snap onto that joint, so the kernel
+  refuses the run's order. `DECK_TILTED`, the rectangle along `TILTED`
+  at 0 and 5 m, whose length the kernel does not certify.
 
 Run:  python3 tools/gen_lowering_fixtures.py test/fixtures/synthetic-lowering
 """
@@ -1585,6 +1600,39 @@ def station_offset_bases():
 
     near = grade_joint + 4e-6
     edge = arc_joint + 1e-5
+    twin_joint = math.hypot(10.0, 0.25)
+
+    # #429: runs of sections along those bases, created after the #423
+    # products so that their ids stay as they were.
+    deck_profiles = []
+
+    def deck_profile():
+        if not deck_profiles:
+            deck_profiles.append(f.create_entity(
+                "IfcRectangleProfileDef", ProfileType="AREA", ProfileName="deck",
+                Position=f.create_entity("IfcAxis2Placement2D",
+                                         Location=point2(f, (0.0, 0.0))),
+                XDim=2.0, YDim=1.0))
+        return deck_profiles[0]
+
+    def position(basis, distance):
+        return f.create_entity("IfcAxis2PlacementLinear", Location=along(basis, distance))
+
+    def sectioned(basis, stations):
+        return f.create_entity(
+            "IfcSectionedSolidHorizontal", Directrix=basis,
+            CrossSections=[deck_profile()] * len(stations),
+            CrossSectionPositions=[position(basis, v) for v in stations])
+
+    def sectioned_surface(basis, stations):
+        flat = [f.create_entity(
+            "IfcOpenCrossProfileDef", ProfileType="CURVE", HorizontalWidths=True,
+            Widths=[1.0, 1.0], Slopes=[0.0, 0.0], Tags=["l", "c", "r"],
+            OffsetPoint=point2(f, (-1.0, 0.0))) for _ in stations]
+        return f.create_entity(
+            "IfcSectionedSurface", Directrix=basis,
+            CrossSectionPositions=[position(basis, v) for v in stations],
+            CrossSections=flat)
     products = [
         product("ALIGNMENT", [rep(f, ctx, "FootPrint", "Curve2D", [plan]),
                               rep(f, ctx, "Axis", "Curve3D", [gradient])]),
@@ -1606,6 +1654,12 @@ def station_offset_bases():
         points("LANE_JOINT_AT", along(lane, lane_joint)),
         points("LANE_JOINT_NEAR", along(lane, lane_joint + 4e-6)),
         points("LANE_MID", along(lane, lane_joint / 2.0)),
+        body("DECK", sectioned(kerb, [0.0, near, bend_joint - 4e-6])),
+        body("DECK_ARC", sectioned(kerb, [grade_joint / 2.0, bend_joint + 4e-6, arc_joint])),
+        product("SURFACE", [rep(f, body_ctx, "Body", "SectionedSurface",
+                                [sectioned_surface(kerb, [0.0, near, bend_joint - 4e-6])])]),
+        body("DECK_TWIN", sectioned(twin, [0.0, twin_joint - 6e-6, twin_joint + 2e-6])),
+        body("DECK_TILTED", sectioned(tilted, [0.0, 5.0])),
     ]
     contain(f, label, site, products)
     # A linear placement near the kerb's grade break, in no representation.

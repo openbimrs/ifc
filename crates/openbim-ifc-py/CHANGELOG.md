@@ -8,14 +8,17 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
-### Changed (axiolid/kernel#298 bump, wire format 1.2)
+### Changed (#429, wire format 1.2)
 
-- `GEOMETRY_FORMAT_VERSION` is `"1.2"`, the newest wire format version the
-  wheel's `axiolid-model` (0.3.11) writes: run stations may name a seam
-  side (axiolid/kernel#301). No lowering writes one yet: payloads stay
-  `"1.0"`, or `"1.1"` with a seam-snapping window.
+- The geometry graph payload (#367) may be Axiolid's wire format 1.2
+  (`axiolid-model` 0.3.11), a minor version of the format (ADR 0021,
+  amended): a sectioned solid or surface along an offset whose length is a
+  quadrature now lowers, its sections carrying seam-snapping windows.
+  An envelope carries the lowest version its content needs, so every other
+  payload is unchanged: 1.0, or 1.1 when a station carries a window. A
+  reader on `axiolid-model` 0.3.10 or older refuses 1.2. `GEOMETRY_FORMAT_VERSION` is `"1.2"`, the newest version the wheel writes.
 
-Semver: minor (a public constant's value changes).
+Semver: minor, as ADR 0021 states for a minor version of the wire format.
 
 ## [0.6.1] - 2026-10-12
 

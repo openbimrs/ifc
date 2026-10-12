@@ -145,7 +145,9 @@ mod graph {
 
     /// A Body swept along a segment placed by a station near an offset's
     /// joint carries a seam-snapping window (#423): its payload is 1.1, the
-    /// lowest version that holds it (axiolid/kernel#297).
+    /// lowest version that holds it (axiolid/kernel#297), though this build
+    /// writes up to 1.2. A run of sections along the offset (#429) carries
+    /// windows on its sections: its payload is 1.2.
     #[test]
     fn a_payload_with_a_seam_window_is_wire_format_1_1() {
         let path = format!(
@@ -163,6 +165,24 @@ mod graph {
             let text = record.json().expect("JSON text");
             let envelope: serde_json::Value = serde_json::from_str(text).unwrap();
             assert_eq!(envelope["version"], "1.1", "#{}", record.id);
+            assert!(text.contains("\"seam_window\""), "#{}: {text}", record.id);
+            GeometryGraph::from_json(text).expect("reads back");
+        }
+        // DECK and SURFACE, the runs of sections along the kerb.
+        let runs = model
+            .product_geometry(Some(&[264, 296]), GeometryEncoding::Json)
+            .unwrap();
+        assert_eq!(runs.len(), 2);
+        for record in &runs {
+            assert_eq!(record.refusal, None, "#{}", record.id);
+            let text = record.json().expect("JSON text");
+            let envelope: serde_json::Value = serde_json::from_str(text).unwrap();
+            assert_eq!(
+                envelope["version"], GEOMETRY_FORMAT_VERSION,
+                "#{}",
+                record.id
+            );
+            assert_eq!(GEOMETRY_FORMAT_VERSION, "1.2");
             assert!(text.contains("\"seam_window\""), "#{}: {text}", record.id);
             GeometryGraph::from_json(text).expect("reads back");
         }

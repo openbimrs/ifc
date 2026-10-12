@@ -530,8 +530,8 @@ for (const product of model.productGeometry(undefined, "object")) {
   // { format: "axiolid-geometry-graph", version: "1.0", graph }, exact,
   // in world coordinates (metres): hand it to your own kernel.
   const { format, version, graph } = product.payload;
-  // The lowest wire version the content needs: "1.0", or "1.1" when a
-  // station carries a seam-snapping window.
+  // The lowest wire version the content needs: "1.0"; "1.1" when a
+  // station carries a seam-snapping window, "1.2" when a run's sections do.
   console.log(product.typeName, format, version, Object.keys(graph.nodes.at(-1))[0]);
 }
 ```
@@ -542,9 +542,12 @@ The payload is Axiolid's versioned wire format (Axiolid ADR 0085), the
 envelope `{ format: "axiolid-geometry-graph", version: "1.0", graph: {
 nodes, roots } }`, typed as `GeometryGraphEnvelope`. Its `version` is the lowest the content needs: `1.0` unless a
 station carries a seam-snapping window
-([#423](https://github.com/openbimrs/ifc/issues/423)), then `1.1`
-(axiolid/kernel#297). A reader on `axiolid-model` 0.3.8 or older reads a
-`1.0` payload and refuses `1.1`. Nodes come in
+([#423](https://github.com/openbimrs/ifc/issues/423)), then `1.1`, or a
+run's sections do ([#429](https://github.com/openbimrs/ifc/issues/429),
+a sectioned solid or surface along such an offset), then `1.2`
+(axiolid/kernel#297, #301). A reader on `axiolid-model` 0.3.8 or older
+reads a `1.0` payload and refuses `1.1`; one on 0.3.10 or older refuses
+`1.2`. Nodes come in
 insertion order, which is topological; each is tagged by its kind
 (`Profile`, `SolidOperation`, `Instance`, ...) and a reference to another
 node is that node's index. The graph is in world coordinates, metres,
@@ -835,7 +838,7 @@ class, interface and type the package's `.d.ts` declares.
 | `model.validate(maxFindings: number \| undefined): ValidationReport` | yes | Validate against the schema the header declares; findings are sorted by severity, rule, entity and slot. `maxFindings` caps the report (default 10,000) and sets `truncated` when reached. |
 | `model.unreachableProducts(): UnreachableProduct[]` | yes | Products no viewer will draw (outside the spatial structure, or with geometry only in non-model contexts), with a stable `reason`. |
 | `model.productPlacements(ids: bigint[] \| BigUint64Array \| undefined): ProductPlacement[]` | yes | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or, without, for every product with a shape. A product that cannot be placed is a record with a typed `refusal`; the call itself throws only `unsupported-schema` or `feature-disabled` (feature `placements`). |
-| `model.productGeometry(ids: bigint[] \| BigUint64Array \| undefined, encoding: GeometryPayloadEncoding \| undefined): ProductGeometry[]` | yes | Each product's Body as Axiolid's neutral geometry graph (#367), exact (extrusions, sweeps, B-splines, unevaluated booleans), for `ids` or, without, every product with a shape, in Axiolid's versioned wire format: `{ format: "axiolid-geometry-graph", version: "1.0", graph: { nodes, roots } }` (the lowest version the content needs, `"1.0"` or `"1.1"`), in world coordinates, metres. `encoding` picks the `payload`: `"json"` (the default) the text, `"object"` the text parsed, `"cbor"` the CBOR bytes as a `Uint8Array`. A product that cannot be lowered has a typed `refusal`; the call itself throws only `unsupported-schema`, `feature-disabled` (feature `graph`) or `invalid-value` for an unknown encoding. |
+| `model.productGeometry(ids: bigint[] \| BigUint64Array \| undefined, encoding: GeometryPayloadEncoding \| undefined): ProductGeometry[]` | yes | Each product's Body as Axiolid's neutral geometry graph (#367), exact (extrusions, sweeps, B-splines, unevaluated booleans), for `ids` or, without, every product with a shape, in Axiolid's versioned wire format: `{ format: "axiolid-geometry-graph", version: "1.0", graph: { nodes, roots } }` (the lowest version the content needs, `"1.0"`, `"1.1"` or `"1.2"`), in world coordinates, metres. `encoding` picks the `payload`: `"json"` (the default) the text, `"object"` the text parsed, `"cbor"` the CBOR bytes as a `Uint8Array`. A product that cannot be lowered has a typed `refusal`; the call itself throws only `unsupported-schema`, `feature-disabled` (feature `graph`) or `invalid-value` for an unknown encoding. |
 | `model.productMeshes(ids: bigint[] \| BigUint64Array \| undefined): ProductMesh[]` | yes | Each product's Body as triangles from the reference backend: `positions` (`Float32Array`, metres, relative to `transform`) and `indices` (`Uint32Array`), for `ids` or, without, every product with a shape. A product that cannot be meshed has a typed `refusal`. Opt-in: a build without the `mesh` feature (the npm package's default entry) throws `feature-disabled`; import `@openbim/ifc/mesh` for it. |
 | `model.propertySets(id: bigint): PropertySet[]` | yes | The property sets, quantity sets and predefined property sets that apply to object `id`: its own first, then those inherited from its type object, an occurrence property overriding an inherited one. Values keep their declared IFC type (`typed IFCLENGTHMEASURE(...)`). |
 | `model.propertySetsMany(ids: bigint[] \| BigUint64Array \| undefined): ObjectPropertySets[]` | yes | The property sets of each of `ids`, in that order, or, with no ids, of every object definition (`IfcObjectDefinition` and its subtypes) in file order, in one pass (#358): the file's property relationships are validated once for the call, so resolving every object is linear in the model. Each `ObjectPropertySets` holds exactly what `propertySets` returns for its object, or, in `refusal`, the code and message it throws; only a refusal of the whole model throws. No index outlives the call. |

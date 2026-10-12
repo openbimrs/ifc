@@ -14,12 +14,12 @@
 //! reads it back with `GeometryGraph::from_json` / `from_cbor` in Rust.
 //! The envelope's `version` is the lowest wire format version its content
 //! needs: `1.0` unless a station in it carries a seam-snapping window
-//! (#423; a station on an offset whose length is a quadrature), then `1.1`
-//! (axiolid/kernel#297). A reader on `axiolid-model` 0.3.8 or older reads
-//! a `1.0` payload and refuses a `1.1` one.
-//! [`GEOMETRY_FORMAT_VERSION`] is the newest version this build writes:
-//! `1.2` since `axiolid-model` 0.3.11, whose run stations may name a seam
-//! side (axiolid/kernel#301); this crate's lowering writes none yet. A
+//! (#423; a station on an offset whose length is a quadrature), then `1.1`,
+//! or a run's sections do (#429; a sectioned solid or surface along such
+//! an offset), then `1.2` (axiolid/kernel#297, #301). A reader on
+//! `axiolid-model` 0.3.8 or older reads a `1.0` payload and refuses a
+//! `1.1` one; a reader on 0.3.10 or older refuses a `1.2` one.
+//! [`GEOMETRY_FORMAT_VERSION`] is the newest version this build writes. A
 //! minor version of the wire format reaches every binding as a minor
 //! release, a major one is a breaking change of every binding (ADR 0021).
 

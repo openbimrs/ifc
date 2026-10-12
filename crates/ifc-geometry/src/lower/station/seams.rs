@@ -7,8 +7,8 @@
 //! Where only an evaluator could tell (a B-spline's arc length to a multiple
 //! knot, the end grade of a vertical clothoid), the seam is not shown
 //! continuous and counts as one, or the curve's seams are unknown: a
-//! station on it then carries the kernel's seam-snapping window (#423), and
-//! a run along it is refused by name.
+//! station on it then carries the kernel's seam-snapping window (#423), as
+//! does each section of a run along it (#429).
 //!
 //! The distances are the ones Axiolid's `exact_station_seams2` /
 //! `exact_station_seams3` (`axiolid-evaluate` 0.3.7, ADR 0082 amendment)
