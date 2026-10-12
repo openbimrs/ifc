@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-10-12
+
 ### Changed (#429)
 
 - Requires `ifc-geometry` with #429: sectioned solids and surfaces along
@@ -655,7 +657,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.28.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.29.0...HEAD
+[0.29.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.29.0
 [0.28.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.28.1
 [0.28.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.28.0
 [0.27.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.27.0
