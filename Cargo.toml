@@ -74,11 +74,15 @@ axiolid-mesh = { version = "0.3.0" }
 # wire format 1.1 carries it. 0.3.10: the writer labels each payload with
 # the lowest version its content needs, 1.0 unless a station carries a
 # seam window (axiolid/kernel#297); 0.3.9 labelled every payload 1.1.
-axiolid-model = { version = "0.3.10" }
+# 0.3.11 is the release built with the open-ended path pieces of
+# axiolid-curve 0.3.8 (axiolid/kernel#298; #427).
+axiolid-model = { version = "0.3.11" }
 axiolid-primitive = { version = "0.3.0" }
 axiolid-profile = { version = "0.3.0" }
 axiolid-surface = { version = "0.3.0" }
-axiolid-reference = { version = "0.3.6" }
+# 0.3.8: the release built with the open-end curve and evaluate crates
+# (axiolid/kernel#298; #427).
+axiolid-reference = { version = "0.3.8" }
 # Dev-only: the worked example indexing product bounds (#36). The index is
 # Axiolid's; this repository only produces the boxes it consumes.
 axiolid-spatial = { version = "0.3.0" }
@@ -95,10 +99,15 @@ axiolid-spatial = { version = "0.3.0" }
 # #414). 0.3.5 of the contract (with axiolid-evaluate 0.3.11):
 # `CurveEvaluator::path_joint_distances`, a path's joints certified to a
 # stated tolerance, for offsets whose length is a quadrature
-# (axiolid/kernel#294; #423).
-axiolid-curve = { version = "0.3.6" }
-axiolid-evaluate = { version = "0.3.11" }
-axiolid-curve-evaluate-contract = { version = "0.3.5" }
+# (axiolid/kernel#294; #423). 0.3.6 of the contract (with axiolid-curve
+# 0.3.8 and axiolid-evaluate 0.3.12): a path piece may leave its end open
+# (`PathPiece::to_end`, `whole`), resolved to the provider's own length of
+# its curve, or refused as `OPEN_PATH_END_UNSUPPORTED` (axiolid/kernel#298);
+# a derived linear placement on an offset whose length is a quadrature
+# reads it (#427).
+axiolid-curve = { version = "0.3.8" }
+axiolid-evaluate = { version = "0.3.12" }
+axiolid-curve-evaluate-contract = { version = "0.3.6" }
 # Dev-only: the exact volume of a compiled body, to check an arc-bounded
 # half-space clip against its closed form (#398).
 axiolid-measure = { version = "0.3.10" }
@@ -123,8 +132,9 @@ axiolid-contracts = { version = "0.3.1" }
 # (`station::curve_path`, axiolid/kernel#290; the #418 tests compare it); it
 # resolves stations along offset curves, measured in the offset's own length
 # (axiolid/kernel#289; #414). 0.3.20 resolves a station's seam window
-# (axiolid/kernel#294; #423).
-axiolid-mesh-compile = { version = "0.3.20" }
+# (axiolid/kernel#294; #423). 0.3.22 is the release built with the open-end
+# curve and evaluate crates (axiolid/kernel#298; #427).
+axiolid-mesh-compile = { version = "0.3.22" }
 axiolid-mesh-compile-contract = { version = "0.3.3" }
 axiolid-mesh-boolean-boolmesh = { version = "0.3.0" }
 # Not used directly: `axiolid-mesh-compile` reaches it. Pinned here only to
