@@ -12,6 +12,17 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- Requires the `ifc-geometry` release with #427: with an evaluator, a
+  linear placement on an offset whose length is a quadrature (a kerb beside
+  an alignment, an offset beside a clothoid) derives, reading a joint
+  within the model's precision from the incoming piece. With
+  `geometry-wire`, `ifc::geometry::wire::FORMAT_VERSION` is 1.2
+  (`axiolid-model` 0.3.11); payloads keep their 1.0 or 1.1 labels.
+
+Semver: minor, following the dependency.
+
 ## [0.28.1] - 2026-10-12
 
 ### Fixed (axiolid/kernel#297)

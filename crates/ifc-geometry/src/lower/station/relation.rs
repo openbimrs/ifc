@@ -88,8 +88,11 @@ pub(crate) use offset::{OffsetPiece, COLLAPSE, OFFSET_OF_OFFSET, PLANAR_3D};
 
 /// Why a relation basis's joints are unknown here: a piece's length is a
 /// quadrature. A station along it carries the kernel's seam-snapping window
-/// (#423); a run along it, and a derived placement on it (#427), are
-/// refused.
+/// (#423) and a run along it is refused. A derived placement on it reads
+/// such a piece as an open-ended path piece (#427, [`relation_pieces`]),
+/// unless the piece's span does not start at its curve's start (a trim at
+/// an interior parameter of an ellipse or a B-spline, a span between
+/// stations along a relation with such a piece).
 pub(crate) const INEXACT: &str =
     "the basis curve relation holds a piece whose length is not stated by its data (an \
      ellipse, a B-spline, a trim whose ends are not a parameter, an arc length on a curve \
@@ -166,18 +169,14 @@ pub(crate) struct Run<'s> {
 
 /// The basis `node` flattened (module documentation): a curve relation into
 /// its pieces, an atomic curve into one piece, whole (a line its parameter
-/// domain `[0, 1]`), or why it cannot be.
+/// domain `[0, 1]`), every length stated, or why it cannot be.
 pub(crate) fn relation_run<'s>(
     session: &'s LoweringSession<'_>,
     node: NodeId,
 ) -> Result<Run<'s>, &'static str> {
-    let pieces = flatten(session, node, 0)?.into_pieces()?;
-    let Some(first) = pieces.first() else {
+    let (pieces, plan) = relation_pieces(session, node)?;
+    if pieces.iter().any(|piece| piece.open) {
         return Err(INEXACT);
-    };
-    let plan = first.plan;
-    if pieces.iter().any(|piece| piece.plan != plan) {
-        return Err(MIXED);
     }
     let mut seams = Vec::new();
     let mut at = 0.0;
@@ -204,6 +203,29 @@ pub(crate) fn relation_run<'s>(
     })
 }
 
+/// The basis `node` flattened as [`relation_run`] flattens it, and whether
+/// its pieces are measured in plan distance, a piece whose length is a
+/// quadrature left open ([`Piece::open`], #427): an ellipse or a B-spline
+/// whole, and an offset other than the closed forms [`offset`] states (an
+/// offset beside a gradient curve, a spiral or a B-spline, a variable
+/// offset of a circle). Only a derived placement reads such a piece, as
+/// Axiolid's open-ended `PathPiece` (axiolid/kernel#298), whose end the
+/// evaluator resolves to its own length of the curve.
+pub(crate) fn relation_pieces<'s>(
+    session: &'s LoweringSession<'_>,
+    node: NodeId,
+) -> Result<(Vec<Piece<'s>>, bool), &'static str> {
+    let pieces = flatten(session, node, 0)?.into_pieces()?;
+    let Some(first) = pieces.first() else {
+        return Err(INEXACT);
+    };
+    let plan = first.plan;
+    if pieces.iter().any(|piece| piece.plan != plan) {
+        return Err(MIXED);
+    }
+    Ok((pieces, plan))
+}
+
 /// A span `[start, end]` of an atomic curve in its station measure.
 #[derive(Debug, Clone)]
 pub(crate) struct Piece<'s> {
@@ -211,8 +233,12 @@ pub(crate) struct Piece<'s> {
     pub curve: &'s AtomicCurve,
     /// Where the span starts, in the curve's station measure.
     pub start: Scalar,
-    /// Where it ends.
+    /// Where it ends; [`Scalar::INFINITY`], never read, where the end is
+    /// open.
     pub end: Scalar,
+    /// Whether the span runs to its curve's end, a length its data does
+    /// not state (#427): only an evaluator resolves it.
+    pub open: bool,
     /// Whether the distance runs from `end` to `start`.
     pub reversed: bool,
     /// Measured in plan distance (an elevated or banked curve).
@@ -228,7 +254,8 @@ pub(crate) struct Piece<'s> {
 }
 
 impl Piece<'_> {
-    fn length(&self) -> Scalar {
+    /// The span's length; infinite where the end is open.
+    pub(crate) fn length(&self) -> Scalar {
         self.end - self.start
     }
 
@@ -238,10 +265,13 @@ impl Piece<'_> {
     }
 
     /// The curve's seams strictly inside the piece, at their distance
-    /// into it in the composite's direction.
-    fn inner_seams(&self) -> impl Iterator<Item = Seam> + '_ {
+    /// into it in the composite's direction; none on an open piece, whose
+    /// curves (an ellipse, a B-spline without a corner knot, an offset of
+    /// a span between its basis's seams) have none.
+    pub(crate) fn inner_seams(&self) -> impl Iterator<Item = Seam> + '_ {
         self.seams
             .iter()
+            .filter(|_| !self.open)
             .filter(|seam| {
                 seam.distance > self.start + slack(self.start)
                     && seam.distance < self.end - slack(self.end)
@@ -270,11 +300,15 @@ impl<'s> Flat<'s> {
         match self {
             Self::Atomic(curve, placements) => {
                 let end = match curve {
-                    AtomicCurve::Two(Curve2::Line(line)) => line.direction.length(),
-                    AtomicCurve::Three(Curve3::Line(line)) => line.direction.length(),
-                    _ => whole_length(curve).ok_or(INEXACT)?,
+                    AtomicCurve::Two(Curve2::Line(line)) => Some(line.direction.length()),
+                    AtomicCurve::Three(Curve3::Line(line)) => Some(line.direction.length()),
+                    _ => whole_length(curve),
                 };
-                Ok(vec![piece(curve, 0.0, end, placements)?])
+                // A whole curve whose length is a quadrature runs to its
+                // end, which only an evaluator resolves (#427).
+                let mut whole = piece(curve, 0.0, end.unwrap_or(Scalar::INFINITY), placements)?;
+                whole.open = end.is_none();
+                Ok(vec![whole])
             }
             Self::Pieces(pieces) => Ok(pieces),
         }
@@ -303,6 +337,7 @@ fn piece<'s>(
         curve,
         start,
         end,
+        open: false,
         reversed: false,
         plan,
         seams,
@@ -453,6 +488,10 @@ fn pieces_between<'s>(
     end: Scalar,
 ) -> Result<Vec<Piece<'s>>, &'static str> {
     let length: Scalar = pieces.iter().map(Piece::length).sum();
+    // Where an open piece ends is the evaluator's to say.
+    if pieces.iter().any(|piece| piece.open) {
+        return Err(INEXACT);
+    }
     if !(start.is_finite() && end.is_finite()) || end <= start {
         return Err(INEXACT);
     }
@@ -723,6 +762,7 @@ mod tests {
             curve: &line,
             start,
             end,
+            open: false,
             reversed,
             plan: false,
             seams: Vec::new(),

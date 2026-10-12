@@ -245,29 +245,107 @@ pub enum GeometryError {
     },
 
     /// A curve evaluator cannot be handed an `IfcLinearPlacement`'s basis
-    /// curve: it lowers to a curve relation holding a piece whose length is
-    /// a quadrature (an offset beside a gradient curve, a spiral or a
-    /// B-spline, an ellipse or a B-spline piece; #423).
+    /// curve: it lowers to a curve relation holding a span that starts
+    /// inside a curve whose measure is a quadrature (a trim of an ellipse
+    /// or a B-spline at an interior parameter, by an arc length or by a
+    /// point, a span between stations of an offset along a relation with
+    /// such a piece), or that its data does not state otherwise (a trim of
+    /// a relation by a Cartesian point).
     ///
     /// Axiolid's neutral `CurvePath` states each piece's span in its own
-    /// measure, an offset piece's in its own length, which only an
-    /// execution provider computes and which a provider checks against its
-    /// own estimate to `1e-12`; this crate links none (ADR 0004). The
-    /// placement is refused rather than derived from an estimated path
-    /// (#427, blocked by axiolid/kernel#298). The same basis lowers as a
-    /// station, which the kernel resolves itself.
+    /// measure. A piece whose length is a quadrature but which runs from
+    /// its curve's start to its end is handed over open (#427,
+    /// axiolid/kernel#298), the evaluator resolving its end; a span that
+    /// starts inside such a curve has no open form, and only an execution
+    /// provider computes where it starts, which this crate links none of
+    /// (ADR 0004). The placement is refused rather than derived from an
+    /// estimated path. The same basis lowers as a station, which the
+    /// kernel resolves itself.
     #[cfg(feature = "compile")]
     #[error(
-        "{placement} (IFCLINEARPLACEMENT): basis curve {basis} holds a piece whose length is a \
-         quadrature (an offset beside a gradient curve, a spiral or a B-spline, an ellipse or a \
-         B-spline piece); a curve path for the evaluator needs that length, which only an \
-         execution provider computes (#427)"
+        "{placement} (IFCLINEARPLACEMENT): basis curve {basis} holds a span that starts inside a \
+         curve whose measure is a quadrature (a trim of an ellipse or a B-spline, or a span \
+         between stations along one); a curve path for the evaluator needs where it starts, \
+         which only an execution provider computes"
     )]
     PathPieceLengthUnstated {
         /// The `IfcLinearPlacement`.
         placement: EntityId,
         /// Its basis curve.
         basis: EntityId,
+    },
+
+    /// An `IfcLinearPlacement`'s basis curve lowers to a curve relation
+    /// holding a piece whose length is a quadrature (an offset beside a
+    /// gradient curve, a spiral, an ellipse or a B-spline, an ellipse or a
+    /// B-spline piece), handed to the evaluator as an open-ended path piece
+    /// (#427), and the caller's curve evaluator reads stated spans only.
+    ///
+    /// Such an evaluator refuses the path with `OPEN_PATH_END_UNSUPPORTED`
+    /// (axiolid/kernel#298); the placement is refused rather than derived
+    /// from a length this crate would have to estimate.
+    #[cfg(feature = "compile")]
+    #[error(
+        "{placement} (IFCLINEARPLACEMENT): basis curve {basis} holds a piece whose length is a \
+         quadrature, which the curve evaluator would have to measure itself, and it reads curve \
+         paths of stated spans only"
+    )]
+    CurvePathOpenEndUnsupported {
+        /// The `IfcLinearPlacement`.
+        placement: EntityId,
+        /// Its basis curve.
+        basis: EntityId,
+    },
+
+    /// An `IfcLinearPlacement`'s basis curve has joints after a piece whose
+    /// length is a quadrature (#427), and the caller's curve evaluator
+    /// does not certify where they lie.
+    ///
+    /// Whether `DistanceAlong` lies on such a joint within the model's
+    /// precision, where IFC4.3 ADD2 (8.9.3.48.3) takes the previous
+    /// segment, is told from `CurveEvaluator::path_joint_distances`
+    /// (axiolid/kernel#294); an evaluator that refuses it with
+    /// `PATH_JOINT_DISTANCES_UNSUPPORTED` cannot tell, and the placement is
+    /// refused rather than read on an estimate.
+    #[cfg(feature = "compile")]
+    #[error(
+        "{placement} (IFCLINEARPLACEMENT): basis curve {basis} has joints after a piece whose \
+         length is a quadrature, and the curve evaluator does not certify where they lie"
+    )]
+    PathJointDistancesUnsupported {
+        /// The `IfcLinearPlacement`.
+        placement: EntityId,
+        /// Its basis curve.
+        basis: EntityId,
+    },
+
+    /// A derived `IfcLinearPlacement` on a basis with joints after a piece
+    /// whose length is a quadrature (#427): the model's precision does not
+    /// name one place along it, or the evaluator cannot certify a joint.
+    ///
+    /// The placement (or a segment of its basis placed at a station) is
+    /// read as the kernel reads the same basis's station (#423,
+    /// axiolid/kernel#294): ON the one seam whose certified distance lies
+    /// within the model's precision of `DistanceAlong`. `refusal` is
+    /// [`Ambiguous`](crate::compile::SeamWindowRefusal::Ambiguous) for two
+    /// seams within it, [`Straddled`](crate::compile::SeamWindowRefusal::Straddled)
+    /// for a seam whose certified position straddles its edge, and
+    /// [`UncertifiedLength`](crate::compile::SeamWindowRefusal::UncertifiedLength)
+    /// for a joint the evaluator cannot certify to a thousandth of it.
+    #[cfg(feature = "compile")]
+    #[error(
+        "{placement} (IFCLINEARPLACEMENT): along basis curve {basis} at {distance} m, {refusal}"
+    )]
+    PlacementSeamWindowRefused {
+        /// The `IfcLinearPlacement`.
+        placement: EntityId,
+        /// Its basis curve.
+        basis: EntityId,
+        /// The distance read, in metres: the placement's, or the station a
+        /// segment of its basis is placed at.
+        distance: f64,
+        /// What failed.
+        refusal: crate::compile::SeamWindowRefusal,
     },
 
     /// The kernel refused the seam-snapping window of a station lowered
@@ -467,7 +545,10 @@ impl GeometryError {
             #[cfg(feature = "compile")]
             Self::CurvePathUnsupported { placement, .. } => Some(*placement),
             #[cfg(feature = "compile")]
-            Self::PathPieceLengthUnstated { placement, .. } => Some(*placement),
+            Self::PathPieceLengthUnstated { placement, .. }
+            | Self::CurvePathOpenEndUnsupported { placement, .. }
+            | Self::PathJointDistancesUnsupported { placement, .. }
+            | Self::PlacementSeamWindowRefused { placement, .. } => Some(*placement),
             #[cfg(feature = "compile")]
             Self::StationSeamWindowRefused {
                 product, stations, ..
@@ -494,14 +575,18 @@ impl GeometryError {
             // Valid IFC this evaluator cannot read; one with curve paths can.
             #[cfg(feature = "compile")]
             Self::CurvePathUnsupported { .. } => true,
-            // Valid IFC whose path needs an execution provider (#427).
+            // Valid IFC whose path needs an execution provider, or an
+            // evaluator with open ends or certified joints (#427).
             #[cfg(feature = "compile")]
-            Self::PathPieceLengthUnstated { .. } => true,
+            Self::PathPieceLengthUnstated { .. }
+            | Self::CurvePathOpenEndUnsupported { .. }
+            | Self::PathJointDistancesUnsupported { .. } => true,
             // A seam the kernel cannot certify is valid IFC it cannot read;
             // two seams within precision, or a seam on its edge, is the
             // file's precision failing to name one place.
             #[cfg(feature = "compile")]
-            Self::StationSeamWindowRefused { refusal, .. } => matches!(
+            Self::StationSeamWindowRefused { refusal, .. }
+            | Self::PlacementSeamWindowRefused { refusal, .. } => matches!(
                 refusal,
                 crate::compile::SeamWindowRefusal::UncertifiedLength
             ),

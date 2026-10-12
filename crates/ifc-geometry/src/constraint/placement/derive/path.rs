@@ -25,12 +25,41 @@
 //!
 //! A piece's span is stated in its own measure, an offset piece's in its
 //! own length. Where that is a quadrature (an offset beside a gradient
-//! curve, a spiral or a B-spline, an ellipse or a B-spline piece) only an
-//! execution provider computes it, and a provider checks the span against
-//! its own estimate, so the path cannot be built here and the placement is
-//! refused by [`GeometryError::PathPieceLengthUnstated`] (#427, blocked by
-//! axiolid/kernel#298). The same basis lowers as a station with the
-//! kernel's seam-snapping window (#423), which the kernel resolves itself.
+//! curve, a spiral, an ellipse or a B-spline, a variable offset of a
+//! circle, an ellipse or a B-spline piece whole) only an execution provider
+//! computes it, so the piece is left open (#427): `PathPiece::whole`, which
+//! runs to its curve's end, resolved by the evaluator to its own length of
+//! the curve (`axiolid-curve-evaluate-contract` 0.3.6, axiolid/kernel#298),
+//! so the distance runs through the path as through the stated path the
+//! kernel flattens the same relation into. A span that starts inside such
+//! a curve (a trim at an interior parameter of an ellipse or a B-spline, a
+//! span between stations along a relation with an open piece) has no open
+//! form and is refused by [`GeometryError::PathPieceLengthUnstated`].
+//!
+//! # Joints of an open path (#427)
+//!
+//! Where a joint follows an open piece, its distance is the evaluator's,
+//! not stored data, so it is not snapped to here as a stated path's joints
+//! are. As the kernel does for the same basis's station (#423,
+//! axiolid/kernel#294), the joints are certified instead: each joint's
+//! [`CurveEvaluator::path_joint_distances`] interval, to a thousandth
+//! (`open::WINDOW_CERTIFICATION`) of the window this crate snaps within (the
+//! model's precision, capped at 1 mm, or rounding: `seams::window`), and a
+//! stated piece's own seams after it, offset by the same interval. A
+//! `DistanceAlong` whose window holds exactly one of them wholly is read ON
+//! it, from the incoming side (IFC4.3 ADD2 8.9.3.48.3; [`SeamSide::Incoming`]):
+//! the end of the path cut there, read backwards from its end, so the point
+//! is the joint's own wherever the evaluator measures it. Two seams in the
+//! window, a seam whose interval straddles its edge, and a joint the
+//! evaluator cannot certify are refused by
+//! [`GeometryError::PlacementSeamWindowRefused`], as the kernel refuses the
+//! station. Every joint is certified, so a path holding a piece the
+//! evaluator cannot certify is refused wherever the placement lies. An
+//! evaluator that reads stated paths but not open ends, or does not
+//! certify joints, is refused by
+//! [`GeometryError::CurvePathOpenEndUnsupported`] or
+//! [`GeometryError::PathJointDistancesUnsupported`], never read on an
+//! estimate.
 //!
 //! The tests build the same relation's path with `axiolid-mesh-compile`'s
 //! `station::curve_path` and compare the two.
@@ -40,19 +69,27 @@ use axiolid_core::{Scalar, Transform3, Vec3};
 use axiolid_curve::{Curve2, Curve3, CurvePath, PathCurve, PathOffset, PathPiece};
 use axiolid_curve_evaluate_contract::{
     CurveEvaluator, CurveMeasure, CurveMeasure as KernelMeasure, DistanceConvention, SeamSide,
-    CURVE_PATH_UNSUPPORTED, SEAM_SIDE_UNSUPPORTED,
+    CURVE_PATH_UNSUPPORTED, OPEN_PATH_END_UNSUPPORTED, PATH_JOINT_DISTANCES_UNSUPPORTED,
+    SEAM_SIDE_UNSUPPORTED,
 };
 use axiolid_model::{NodeId, OrientedCurveStation, StationFrame};
 use ifc_alignment::{CurveMeasure as IfcMeasure, PointByDistance};
 use ifc_model::{EntityId, Model};
 
-use super::{basis_curve, offset_frame, refusal_detail, snap, Basis};
+use super::{basis_curve, model_precision, offset_frame, refusal_detail, snap, Basis};
 
 use crate::error::{GeometryError, GeometryResult};
 use crate::lower::curve::lower_curve_node;
 use crate::lower::session::{AtomicCurve, LoweringSession};
-use crate::lower::station::relation::{relation_run, Piece, INEXACT};
-use crate::lower::station::seams::Seam;
+use crate::lower::station::relation::{relation_pieces, relation_run, Piece, INEXACT};
+use crate::lower::station::seams::{window, Seam};
+
+mod open;
+
+#[cfg(test)]
+pub(crate) use open::WINDOW_CERTIFICATION;
+use open::{read_open, OpenRefusal};
+
 use crate::transform::Transform;
 use crate::units::UnitScale;
 
@@ -65,12 +102,22 @@ const MAX_DEPTH: usize = 64;
 pub(super) struct PathBasis {
     /// The path, its placements resolved.
     pub path: CurvePath,
-    /// Every interior joint and every seam of a piece inside it, ascending,
-    /// in the path's distance.
-    pub seams: Vec<Seam>,
+    /// Where its tangent may jump.
+    pub seams: PathSeams,
     /// The distance IFC states along it: plan distance when every piece is
     /// a gradient curve, arc length when none is.
     pub convention: DistanceConvention,
+}
+
+/// Where a path's tangent may jump.
+#[derive(Debug, Clone)]
+pub(super) enum PathSeams {
+    /// Every length stated: every interior joint and every seam of a piece
+    /// inside it, ascending, in the path's distance.
+    Stated(Vec<Seam>),
+    /// A piece left open (#427): each stated piece's own seams, at their
+    /// distance into it, with its index. The joints are the evaluator's.
+    Open(Vec<(usize, Seam)>),
 }
 
 /// Derive the placement along a basis read as a curve path (#418, module
@@ -88,11 +135,8 @@ pub(super) fn derive_on_path(
         type_name: "IFCLINEARPLACEMENT".into(),
         detail,
     };
-    let path_unsupported = GeometryError::CurvePathUnsupported {
-        placement,
-        basis: expression.basis_curve,
-    };
-    let is_path_unsupported = |error: &GeomError| matches!(error, GeomError::UnsupportedInput { input, .. } if *input == CURVE_PATH_UNSUPPORTED);
+    let basis_id = expression.basis_curve;
+    let typed = |error: &GeomError| path_refusal(error, placement, basis_id);
     // A parameter is refused with the basis (`basis_curve`).
     let IfcMeasure::Length(value) = expression.distance_along else {
         return Err(unsupported(RELATION_PARAMETER));
@@ -109,12 +153,38 @@ pub(super) fn derive_on_path(
         // meet, a piece it does not know). Its answer tells which.
         return Err(
             match evaluator.path_frame_at(path, KernelMeasure::Distance(distance)) {
-                Err(error) if is_path_unsupported(&error) => path_unsupported,
-                _ => unsupported(UNMEASURED_PATH),
+                Err(error) => typed(&error).unwrap_or(unsupported(UNMEASURED_PATH)),
+                Ok(_) => unsupported(UNMEASURED_PATH),
             },
         );
     }
-    let frame = match snap(model, units, placement, &basis.seams, distance)? {
+    let seams = match &basis.seams {
+        PathSeams::Stated(seams) => seams,
+        PathSeams::Open(inner) => {
+            let precision = model_precision(model, units, placement)?;
+            let frame = read_open(
+                evaluator,
+                path,
+                inner,
+                distance,
+                window(precision, distance),
+                SeamSide::Incoming,
+            )
+            .map_err(|refusal| match refusal {
+                OpenRefusal::Window(refusal) => GeometryError::PlacementSeamWindowRefused {
+                    placement,
+                    basis: basis_id,
+                    distance,
+                    refusal,
+                },
+                OpenRefusal::Evaluator(error) => {
+                    typed(&error).unwrap_or_else(|| unsupported(refusal_detail(&error)))
+                }
+            })?;
+            return offset_frame(&frame, expression, units).ok_or(unsupported(VERTICAL_BASIS));
+        }
+    };
+    let frame = match snap(model, units, placement, seams, distance)? {
         // On a joint or a seam the previous segment governs (8.9.3.48.3).
         Some(seam) => evaluator
             .path_frame_at_on(path, KernelMeasure::Distance(seam), SeamSide::Incoming)
@@ -126,17 +196,12 @@ pub(super) fn derive_on_path(
                         distance: seam,
                     }
                 }
-                other if is_path_unsupported(&other) => path_unsupported.clone(),
-                other => unsupported(refusal_detail(&other)),
+                other => typed(&other).unwrap_or_else(|| unsupported(refusal_detail(&other))),
             })?,
         None => evaluator
             .path_frame_at(path, KernelMeasure::Distance(distance))
             .map_err(|error| {
-                if is_path_unsupported(&error) {
-                    path_unsupported.clone()
-                } else {
-                    unsupported(refusal_detail(&error))
-                }
+                typed(&error).unwrap_or_else(|| unsupported(refusal_detail(&error)))
             })?,
     };
     offset_frame(&frame, expression, units).ok_or(unsupported(VERTICAL_BASIS))
@@ -257,9 +322,8 @@ pub(super) fn path_basis(
         placement,
         basis,
     };
-    let run = relation_run(&session, node).map_err(|reason| {
+    let refused = |reason: &'static str| {
         if reason == INEXACT {
-            // TODO(#427): a path whose pieces' lengths are quadratures.
             GeometryError::PathPieceLengthUnstated { placement, basis }
         } else {
             GeometryError::Unsupported {
@@ -268,17 +332,57 @@ pub(super) fn path_basis(
                 detail: reason,
             }
         }
-    })?;
-    let path = reader.path(&run.pieces, 0)?;
-    Ok(PathBasis {
-        path,
-        seams: run.seams,
-        convention: if run.plan {
+    };
+    let convention = |plan: bool| {
+        if plan {
             DistanceConvention::PlanDistance
         } else {
             DistanceConvention::ArcLength3d
-        },
-    })
+        }
+    };
+    match relation_run(&session, node) {
+        Ok(run) => Ok(PathBasis {
+            path: reader.path(&run.pieces, 0)?,
+            seams: PathSeams::Stated(run.seams),
+            convention: convention(run.plan),
+        }),
+        // A piece whose length is a quadrature: read open (#427).
+        Err(reason) if reason == INEXACT => {
+            let (pieces, plan) = relation_pieces(&session, node).map_err(refused)?;
+            Ok(PathBasis {
+                path: reader.path(&pieces, 0)?,
+                seams: PathSeams::Open(inner_seams(&pieces)),
+                convention: convention(plan),
+            })
+        }
+        Err(reason) => Err(refused(reason)),
+    }
+}
+
+/// Each piece's own seams strictly inside it, with its index.
+fn inner_seams(pieces: &[Piece<'_>]) -> Vec<(usize, Seam)> {
+    pieces
+        .iter()
+        .enumerate()
+        .flat_map(|(index, piece)| piece.inner_seams().map(move |seam| (index, seam)))
+        .collect()
+}
+
+/// The typed refusal an evaluator's answer names, if it is one of a
+/// capability it lacks: curve paths, open ends, certified joints.
+fn path_refusal(error: &GeomError, placement: EntityId, basis: EntityId) -> Option<GeometryError> {
+    let GeomError::UnsupportedInput { input, .. } = error else {
+        return None;
+    };
+    if *input == CURVE_PATH_UNSUPPORTED {
+        Some(GeometryError::CurvePathUnsupported { placement, basis })
+    } else if *input == OPEN_PATH_END_UNSUPPORTED {
+        Some(GeometryError::CurvePathOpenEndUnsupported { placement, basis })
+    } else if *input == PATH_JOINT_DISTANCES_UNSUPPORTED {
+        Some(GeometryError::PathJointDistancesUnsupported { placement, basis })
+    } else {
+        None
+    }
 }
 
 /// The lowered basis and what is needed to read it.
@@ -311,7 +415,14 @@ impl Reader<'_, '_> {
             ))),
             None => path_curve(piece.curve),
         };
-        let mut out = PathPiece::new(curve, piece.start, piece.end);
+        // A piece whose length is a quadrature runs to its curve's end,
+        // which the evaluator resolves (#427); it starts at the curve's
+        // start.
+        let mut out = if piece.open {
+            PathPiece::whole(curve)
+        } else {
+            PathPiece::new(curve, piece.start, piece.end)
+        };
         if piece.reversed {
             out = out.reversed();
         }
@@ -359,10 +470,12 @@ impl Reader<'_, '_> {
                         let Some(piece) = run.first() else {
                             return Err(self.unsupported(PLACED_SEGMENT));
                         };
-                        (
-                            PathPiece::new(path_curve2(curve), piece.start, piece.end),
-                            at,
-                        )
+                        let whole = if piece.open {
+                            PathPiece::whole(path_curve2(curve))
+                        } else {
+                            PathPiece::new(path_curve2(curve), piece.start, piece.end)
+                        };
+                        (whole, at)
                     }
                 };
                 let path = CurvePath::from(piece);
@@ -373,11 +486,36 @@ impl Reader<'_, '_> {
                 )
             }
             None => {
-                let path = self.path(&self.run(basis)?, depth)?;
-                (
-                    self.evaluator.path_frame_at_on(&path, measure, side),
-                    self.evaluator.path_frame_is_exact_at(&path, measure, side),
-                )
+                let pieces = self.run(basis)?;
+                let path = self.path(&pieces, depth)?;
+                if pieces.iter().any(|piece| piece.open) {
+                    // Along a path with an open piece the station is read
+                    // within its own seam-snapping window, as the kernel
+                    // reads it (#427, module documentation); never exact.
+                    let frame = read_open(
+                        self.evaluator,
+                        &path,
+                        &inner_seams(&pieces),
+                        at,
+                        station.seam_window,
+                        side,
+                    )
+                    .map_err(|refusal| match refusal {
+                        OpenRefusal::Window(refusal) => GeometryError::PlacementSeamWindowRefused {
+                            placement: self.placement,
+                            basis: self.basis,
+                            distance: at,
+                            refusal,
+                        },
+                        OpenRefusal::Evaluator(error) => self.placement_refused(&error),
+                    })?;
+                    (Ok(frame), false)
+                } else {
+                    (
+                        self.evaluator.path_frame_at_on(&path, measure, side),
+                        self.evaluator.path_frame_is_exact_at(&path, measure, side),
+                    )
+                }
             }
         };
         let frame = frame.map_err(|error| self.placement_refused(&error))?;
@@ -407,10 +545,11 @@ impl Reader<'_, '_> {
         ))
     }
 
-    /// The pieces of the curve a segment is placed along.
+    /// The pieces of the curve a segment is placed along, any whose length
+    /// is a quadrature left open (#427).
     fn run(&self, node: NodeId) -> GeometryResult<Vec<Piece<'_>>> {
-        relation_run(self.session, node)
-            .map(|run| run.pieces)
+        relation_pieces(self.session, node)
+            .map(|(pieces, _)| pieces)
             .map_err(|reason| {
                 if reason == INEXACT {
                     GeometryError::PathPieceLengthUnstated {
@@ -433,13 +572,10 @@ impl Reader<'_, '_> {
 
     /// The evaluator's refusal to frame a placement's station, by name.
     fn placement_refused(&self, error: &GeomError) -> GeometryError {
+        if let Some(typed) = path_refusal(error, self.placement, self.basis) {
+            return typed;
+        }
         match error {
-            GeomError::UnsupportedInput { input, .. } if *input == CURVE_PATH_UNSUPPORTED => {
-                GeometryError::CurvePathUnsupported {
-                    placement: self.placement,
-                    basis: self.basis,
-                }
-            }
             GeomError::UnsupportedInput { input, .. } if *input == SEAM_SIDE_UNSUPPORTED => {
                 self.unsupported(PLACED_ON_SEAM)
             }

@@ -162,11 +162,7 @@ mod graph {
             assert_eq!(record.refusal, None, "#{}", record.id);
             let text = record.json().expect("JSON text");
             let envelope: serde_json::Value = serde_json::from_str(text).unwrap();
-            assert_eq!(
-                envelope["version"], "1.1",
-                "#{}",
-                record.id
-            );
+            assert_eq!(envelope["version"], "1.1", "#{}", record.id);
             assert!(text.contains("\"seam_window\""), "#{}: {text}", record.id);
             GeometryGraph::from_json(text).expect("reads back");
         }

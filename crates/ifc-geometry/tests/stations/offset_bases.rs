@@ -302,29 +302,38 @@ mod kernel {
         }
     }
 
-    /// A linear placement on the kerb cannot be derived: the evaluator's
-    /// `CurvePath` states an offset piece's span in its own length, which
-    /// only a provider computes (#427). Refused by name, never derived from
-    /// an estimate.
+    /// A linear placement on the kerb derives (#427): the fixture's
+    /// placement 4 um past the grade break reads the joint from the
+    /// incoming piece, as the station does. `tests/derive_open_paths.rs`
+    /// covers the rest.
     #[test]
-    fn a_linear_placement_on_a_quadrature_offset_is_refused_by_name() {
+    fn a_linear_placement_on_a_quadrature_offset_derives() {
         let model = bases();
         let placement = model.ids_of_type("IFCLINEARPLACEMENT")[0];
-        let error = derive_linear_placement_transform(
+        let transform = derive_linear_placement_transform(
             &model,
             &units::resolve(&model),
             placement,
             &ReferenceCurveEvaluator::default(),
         )
-        .expect_err("refused");
-        assert!(
-            matches!(
-                error,
-                GeometryError::PathPieceLengthUnstated { placement: p, .. } if p == placement
+        .expect("derived");
+        close_point(
+            axiolid_core::Point3::new(
+                transform.origin[0],
+                transform.origin[1],
+                transform.origin[2],
             ),
-            "{error:?}"
+            [20.0, 2.5, 10.4],
+            "the joint's own point",
         );
-        assert!(error.is_unsupported());
-        assert!(error.to_string().contains("#427"), "{error}");
+        close_vec(
+            axiolid_core::Vec3::new(
+                transform.basis[0][0],
+                transform.basis[0][1],
+                transform.basis[0][2],
+            ),
+            unit([1.0, 0.025, 0.02]),
+            "the incoming grade",
+        );
     }
 }
