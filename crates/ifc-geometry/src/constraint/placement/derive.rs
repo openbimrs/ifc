@@ -108,10 +108,14 @@
 //! pieces are `PathCurve::Offset`s of its basis's spans, measured in the
 //! offset's own length, as the station lowering measures it. Where that
 //! length is a quadrature (an offset beside a gradient curve, a spiral or a
-//! B-spline, and a relation with an ellipse or a B-spline piece), the path
-//! cannot be stated without an execution provider and the placement is
-//! refused by [`GeometryError::PathPieceLengthUnstated`] (#427), never
-//! derived from an estimate.
+//! B-spline, and a relation with an ellipse or a B-spline piece), the piece
+//! is handed over open-ended and the evaluator resolves its end with its
+//! own length (#427, axiolid/kernel#298); a placement within the model's
+//! precision of a joint after it is located by the evaluator's certified
+//! joint distances and read from the incoming piece, as the kernel reads
+//! the same basis's station (#423). The `path` submodule states the rule
+//! and its typed refusals; nothing is derived from an estimate this crate
+//! makes.
 //!
 //! # Which distance
 //!
@@ -155,6 +159,8 @@ mod path;
 mod polyline;
 
 pub use path::basis_curve_path;
+#[cfg(test)]
+pub(crate) use path::WINDOW_CERTIFICATION;
 
 /// What lowering does with an `IfcLinearPlacement`'s cached
 /// `CartesianPosition` when the caller supplies a [`CurveEvaluator`] (#354).
@@ -537,7 +543,14 @@ fn snap(
     if seams.is_empty() || !distance.is_finite() {
         return Ok(None);
     }
-    let precision = SeamTolerance::for_model(
+    let precision = model_precision(model, units, placement)?;
+    Ok(nearest(seams, distance, precision).map(|seam| seam.distance))
+}
+
+/// The model's declared precision as a seam tolerance, in metres (capped at
+/// 1 mm), as the station lowering reads it.
+fn model_precision(model: &Model, units: &UnitScale, placement: EntityId) -> GeometryResult<f64> {
+    Ok(SeamTolerance::for_model(
         model,
         AlignmentUnits {
             length_to_metres: units.length_to_metres,
@@ -549,8 +562,7 @@ fn snap(
         type_name: "IFCLINEARPLACEMENT".into(),
         detail: "the model's declared Precision is not a usable seam tolerance".into(),
     })?
-    .length();
-    Ok(nearest(seams, distance, precision).map(|seam| seam.distance))
+    .length())
 }
 
 /// The distance along a neutral polyline at its native `parameter` (one

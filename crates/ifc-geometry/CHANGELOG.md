@@ -48,6 +48,56 @@ everything released before per-crate changelogs began.
 Semver: minor. Refused runs now lower, an error variant and a refusal kind
 are added, and the dependency floors rise.
 
+### Changed (#427, derived placements on offsets whose length is a quadrature)
+
+- With `compile`, a derived `IfcLinearPlacement` on an offset whose length
+  is a quadrature now derives instead of being refused: an
+  `IfcOffsetCurveByDistances` beside an `IfcGradientCurve` (a kerb beside
+  an alignment), an offset beside a clothoid or another spiral, offsets of
+  B-splines and ellipses, a variable offset of a circle, and a relation
+  with a whole ellipse or B-spline piece. Such a piece reaches the
+  evaluator as an open-ended `PathPiece` (`PathPiece::whole`,
+  axiolid/kernel#298), its end resolved to the evaluator's own length, so
+  the path reads bit for bit as the stated path the kernel flattens the
+  same relation into. The offset's base is split at every seam of its curve
+  the kernel splits it at (chain joins, curvature seams, every profile
+  break), so the pieces are the kernel's. `basis_curve_path` returns such
+  a path.
+- The joints after an open piece are located by the evaluator's
+  `path_joint_distances`, certified to a thousandth of the window the
+  station lowering hands the kernel (the model's precision, capped at
+  1 mm, or rounding). A `DistanceAlong` whose window holds exactly one
+  joint (or a stated piece's seam after one) reads it from the incoming
+  piece (IFC4.3 ADD2 8.9.3.48.3, #409), at the evaluator's own point of
+  the joint; the result equals the lowered station's frame resolved by the
+  reference kernel, and `CachedPositionPolicy::Verify` compares a cache
+  against it. A segment of a basis placed at a windowed station along such
+  a basis is read the same way, within the station's own window.
+- `GeometryError::PathPieceLengthUnstated` now names only spans that start
+  inside a curve whose measure is a quadrature (a trim of an ellipse or a
+  B-spline at an interior parameter, by an arc length or a point, a span
+  between stations along a relation with such a piece), which no open
+  piece expresses. Its message no longer cites #427.
+- The same `axiolid` floors as #429 above; with feature `wire`,
+  `wire::FORMAT_VERSION` is 1.2. A derived placement writes no graph.
+
+### Added (#427)
+
+- With `compile`: `GeometryError::CurvePathOpenEndUnsupported { placement,
+  basis }`, an evaluator that reads stated spans only refusing an open
+  piece (`OPEN_PATH_END_UNSUPPORTED`); `GeometryError::PathJointDistancesUnsupported
+  { placement, basis }`, an evaluator that does not certify joints
+  (`PATH_JOINT_DISTANCES_UNSUPPORTED`); and
+  `GeometryError::PlacementSeamWindowRefused { placement, basis, distance,
+  refusal }`, the placement's window holding two seams, a seam straddling
+  its edge, or a joint the evaluator cannot certify
+  (`SeamWindowRefusal::Ambiguous`, `Straddled`, `UncertifiedLength`), as
+  the kernel refuses the same station. Each is typed; nothing falls back to
+  an estimate.
+
+Semver: minor while 0.x: placements that were refused now derive, a
+refusal narrows and error variants are added.
+
 ## [0.22.1] - 2026-10-12
 
 ### Fixed (axiolid/kernel#297)

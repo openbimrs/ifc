@@ -121,5 +121,9 @@ mod tests {
         assert_eq!(AMBIGUOUS, SEAM_WINDOW_AMBIGUOUS);
         assert_eq!(STRADDLED, SEAM_WINDOW_STRADDLED);
         assert_eq!(UNCERTIFIED, UNCERTIFIED_LENGTH);
+        assert_eq!(
+            crate::constraint::placement::derive::WINDOW_CERTIFICATION,
+            axiolid_evaluate::station::window::WINDOW_CERTIFICATION
+        );
     }
 }

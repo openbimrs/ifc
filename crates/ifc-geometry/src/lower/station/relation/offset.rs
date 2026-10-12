@@ -53,8 +53,11 @@
 //! part. Its joints are unknown here, so a station along it carries the
 //! kernel's seam-snapping window, which the kernel resolves against its own
 //! certified joint distances (#423, axiolid/kernel#294), as do the sections
-//! of a run along it (#429); an offset run along it (#433) and a derived
-//! placement on it (#427) are refused by name. The kernel's own named
+//! of a run along it (#429); an offset run along it (#433) is refused by
+//! name. A derived placement reads such a piece open-ended, its length the
+//! evaluator's (#427, `relation_pieces`). Its base is split at every seam
+//! of its curve the kernel splits it at, smooth or not (`kernel_cuts`), so
+//! the pieces are the kernel's. The kernel's own named
 //! refusals are repeated where
 //! the stored data shows them: an offset of an offset ([`OFFSET_OF_OFFSET`]),
 //! a planar (2D) offset law on a 3D curve ([`PLANAR_3D`]; IFC lowering
@@ -65,7 +68,9 @@
 //! resolves the station, by name.
 
 use axiolid_core::{Scalar, Vec3};
-use axiolid_curve::{Curve2, Curve3, OffsetFrame, OffsetLaw, PathOffsets};
+use axiolid_curve::{
+    ChainPiece2, Curve2, Curve3, ElevationLaw, OffsetFrame, OffsetLaw, PathOffsets,
+};
 use axiolid_model::{Station, StationFrame};
 
 use super::{pieces_between, Flat, Piece, INEXACT};
@@ -113,7 +118,9 @@ pub(crate) struct OffsetPiece<'s> {
 /// The offset of `base`, pieces laid end to end, by `law`: one piece per
 /// span of a base piece between the seams of its curve, as
 /// `offset_pieces` builds them. A linear law runs from its start at the
-/// first piece's start to its end at the last piece's end.
+/// first piece's start to its end at the last piece's end. A piece whose
+/// length has no closed form here is open (#427): its end is the
+/// evaluator's own length of the offset.
 pub(super) fn offset_pieces<'s>(
     base: &[Piece<'s>],
     law: OffsetLaw,
@@ -125,37 +132,57 @@ pub(super) fn offset_pieces<'s>(
         if piece.offset.is_some() {
             return Err(OFFSET_OF_OFFSET);
         }
-        if piece.plan {
-            return Err(INEXACT);
-        }
-        let mut cuts = vec![0.0];
-        cuts.extend(vertex_cuts(piece));
-        cuts.push(piece.length());
-        for pair in cuts.windows(2) {
-            let (a, b) = (pair[0], pair[1]);
-            let law = match law {
-                OffsetLaw::Linear { start, end, frame } => OffsetLaw::Linear {
-                    start: start.lerp(end, (run + a) / total),
-                    end: start.lerp(end, (run + b) / total),
-                    frame,
-                },
-                other => other,
-            };
-            let mut span = piece.clone();
-            if piece.reversed {
-                span.start = piece.end - b;
-                span.end = piece.end - a;
-            } else {
-                span.start = piece.start + a;
-                span.end = piece.start + b;
+        let cuts = kernel_cuts(piece)?;
+        let spans: Vec<(Piece<'s>, OffsetLaw)> = if piece.open {
+            // A base whose own end is the evaluator's: offset whole, which
+            // needs neither a cut nor where a linear law is along it.
+            if !cuts.is_empty() || matches!(law, OffsetLaw::Linear { .. }) {
+                return Err(INEXACT);
             }
-            let length = offset_length(&span, law)?;
+            vec![(piece.clone(), law)]
+        } else {
+            let mut bounds = vec![0.0];
+            bounds.extend(cuts);
+            bounds.push(piece.length());
+            bounds
+                .windows(2)
+                .map(|pair| {
+                    let (a, b) = (pair[0], pair[1]);
+                    let law = match law {
+                        OffsetLaw::Linear { start, end, frame } => OffsetLaw::Linear {
+                            start: start.lerp(end, (run + a) / total),
+                            end: start.lerp(end, (run + b) / total),
+                            frame,
+                        },
+                        other => other,
+                    };
+                    let mut span = piece.clone();
+                    if piece.reversed {
+                        span.start = piece.end - b;
+                        span.end = piece.end - a;
+                    } else {
+                        span.start = piece.start + a;
+                        span.end = piece.start + b;
+                    }
+                    (span, law)
+                })
+                .collect()
+        };
+        for (span, law) in spans {
+            let length = if span.open {
+                None
+            } else {
+                offset_length(&span, law)?
+            };
             out.push(Piece {
                 curve: piece.curve,
                 start: 0.0,
-                end: length,
+                end: length.unwrap_or(Scalar::INFINITY),
+                open: length.is_none(),
                 reversed: false,
-                plan: false,
+                // Beside a plan-measured curve the offset is measured in its
+                // own plan length (axiolid/kernel#294).
+                plan: piece.plan,
                 seams: Vec::new(),
                 placements: Vec::new(),
                 offset: Some(Box::new(OffsetPiece { base: span, law })),
@@ -208,49 +235,34 @@ pub(super) fn by_stations<'s>(
     Ok(out)
 }
 
-/// The distances into `piece`, in its direction, of its curve's polyline
-/// vertices strictly inside it: the compiler splits an offset's base there
-/// (`StationPiece::seams`), whether the edges turn or not.
-fn vertex_cuts(piece: &Piece<'_>) -> Vec<Scalar> {
-    let edges: Vec<Scalar> = match piece.curve {
-        AtomicCurve::Two(Curve2::Polyline(polyline)) => {
-            let points = &polyline.points;
-            let mut edges: Vec<Scalar> =
-                points.windows(2).map(|w| (w[1] - w[0]).length()).collect();
-            if let (true, Some(first), Some(last)) =
-                (polyline.closed, points.first(), points.last())
-            {
-                edges.push((*first - *last).length());
-            }
-            edges
-        }
-        AtomicCurve::Three(Curve3::Polyline(polyline)) => {
-            let points = &polyline.points;
-            let mut edges: Vec<Scalar> =
-                points.windows(2).map(|w| (w[1] - w[0]).length()).collect();
-            if let (true, Some(first), Some(last)) =
-                (polyline.closed, points.first(), points.last())
-            {
-                edges.push((*first - *last).length());
-            }
-            edges
-        }
-        _ => return Vec::new(),
-    };
-    // `polyline_seams`: the vertex where each non-degenerate edge starts
-    // after an earlier non-degenerate one.
-    let mut vertices = Vec::new();
-    let (mut at, mut started) = (0.0, false);
-    for edge in edges {
-        if edge > 0.0 {
-            if started {
-                vertices.push(at);
-            }
-            started = true;
-        }
-        at += edge;
+/// The distances into `piece`, in its direction, of every seam of its
+/// curve strictly inside it, smooth or not: the compiler splits an offset's
+/// base there (`StationPiece::seams`, `axiolid_evaluate::station_seams2`
+/// and `station_seams3`), so each offset piece's base spans no seam. They
+/// are a polyline's vertices, an intrinsic curve's curvature (and torsion)
+/// seams, a chain's joins and its intrinsic pieces' curvature seams, and an
+/// elevated curve's plan seams (on an intrinsic or chain plan) and every
+/// break of its profile, read from stored data as the kernel reads them.
+/// A circle or an ellipse has none, nor has a B-spline without a corner
+/// knot; one with a corner knot is refused before this
+/// (`super::super::seams::SPLINE`).
+fn kernel_cuts(piece: &Piece<'_>) -> Result<Vec<Scalar>, &'static str> {
+    let (seams, length) = curve_cuts(piece.curve);
+    let mut seams: Vec<Scalar> = seams
+        .into_iter()
+        .filter(|s| {
+            s.is_finite()
+                && *s > super::slack(0.0)
+                && length.is_none_or(|l| *s < l - super::slack(l))
+        })
+        .collect();
+    seams.sort_by(Scalar::total_cmp);
+    seams.dedup_by(|b, a| *b - *a <= super::slack(*b));
+    if piece.open {
+        // An open piece starts at its curve's start: every seam is inside.
+        return Ok(seams);
     }
-    let mut cuts: Vec<Scalar> = vertices
+    let mut cuts: Vec<Scalar> = seams
         .into_iter()
         .filter(|v| {
             *v > piece.start + super::slack(piece.start) && *v < piece.end - super::slack(piece.end)
@@ -264,12 +276,119 @@ fn vertex_cuts(piece: &Piece<'_>) -> Vec<Scalar> {
         })
         .collect();
     cuts.sort_by(Scalar::total_cmp);
-    cuts
+    Ok(cuts)
+}
+
+/// Every seam of `curve` in its station measure, unsorted, and its length
+/// where stated (module documentation of [`kernel_cuts`]).
+fn curve_cuts(curve: &AtomicCurve) -> (Vec<Scalar>, Option<Scalar>) {
+    let length = crate::lower::station::seams::stated_length(curve);
+    let seams = match curve {
+        AtomicCurve::Two(Curve2::Polyline(polyline)) => {
+            polyline_vertices(&polyline.points, polyline.closed, |a, b| (b - a).length())
+        }
+        AtomicCurve::Three(Curve3::Polyline(polyline)) => {
+            polyline_vertices(&polyline.points, polyline.closed, |a, b| (b - a).length())
+        }
+        AtomicCurve::Two(plan) => plan_seams(plan),
+        AtomicCurve::Three(Curve3::Intrinsic(intrinsic)) => {
+            let mut seams = intrinsic.curvature.seams_within(intrinsic.length);
+            seams.extend(intrinsic.torsion.seams_within(intrinsic.length));
+            seams
+        }
+        AtomicCurve::Three(Curve3::Elevated(elevated)) => {
+            let mut seams = plan_seams(&elevated.plan);
+            if elevated.elevation.is_well_formed() {
+                profile_breaks(&elevated.elevation, 0.0, &mut seams);
+            }
+            seams
+        }
+        _ => Vec::new(),
+    };
+    (seams, length)
+}
+
+/// The seams of a plan curve read by its intrinsic definition: an
+/// intrinsic curve's curvature seams, a chain's joins and its intrinsic
+/// pieces' curvature seams.
+fn plan_seams(curve: &Curve2) -> Vec<Scalar> {
+    match curve {
+        Curve2::Intrinsic(intrinsic) => intrinsic.curvature.seams_within(intrinsic.length),
+        Curve2::Chain(chain) => {
+            let mut seams = chain.joins().unwrap_or_default();
+            let mut begin = 0.0;
+            for piece in &chain.pieces {
+                if let ChainPiece2::Intrinsic { curvature, length } = piece {
+                    seams.extend(
+                        curvature
+                            .seams_within(*length)
+                            .into_iter()
+                            .filter(|s| *s > 0.0 && s < length)
+                            .map(|s| begin + s),
+                    );
+                }
+                begin += piece.length();
+            }
+            seams
+        }
+        _ => Vec::new(),
+    }
+}
+
+/// Every break of a piecewise profile, nested ones shifted by where their
+/// piece starts.
+fn profile_breaks(law: &ElevationLaw, offset: Scalar, out: &mut Vec<Scalar>) {
+    if let ElevationLaw::Piecewise { breaks, laws } = law {
+        for (index, piece) in laws.iter().enumerate() {
+            let start = if index == 0 { 0.0 } else { breaks[index - 1] };
+            profile_breaks(piece, offset + start, out);
+        }
+        out.extend(breaks.iter().map(|b| offset + b));
+    }
+}
+
+/// A polyline's vertices where each non-degenerate edge starts after an
+/// earlier non-degenerate one (`polyline_seams`), at their running sums.
+fn polyline_vertices<P: Copy>(
+    points: &[P],
+    closed: bool,
+    length: impl Fn(P, P) -> Scalar,
+) -> Vec<Scalar> {
+    let mut edges: Vec<Scalar> = points.windows(2).map(|w| length(w[0], w[1])).collect();
+    if let (true, Some(first), Some(last)) = (closed, points.first(), points.last()) {
+        edges.push(length(*last, *first));
+    }
+    let mut vertices = Vec::new();
+    let (mut at, mut started) = (0.0, false);
+    for edge in edges {
+        if edge > 0.0 {
+            if started {
+                vertices.push(at);
+            }
+            started = true;
+        }
+        at += edge;
+    }
+    vertices
 }
 
 /// The length of the offset by `law` of the span `piece`, holding no seam
 /// of its curve, where stored data states it.
-fn offset_length(piece: &Piece<'_>, law: OffsetLaw) -> Result<Scalar, &'static str> {
+///
+/// `Ok(None)` where it has no closed form (an offset beside a gradient
+/// curve, a spiral, an ellipse or a B-spline, a variable offset of a
+/// circle, a cusp): the piece is then open and the evaluator measures it
+/// (#427), or refuses it by name.
+fn offset_length(piece: &Piece<'_>, law: OffsetLaw) -> Result<Option<Scalar>, &'static str> {
+    match closed_form_length(piece, law) {
+        Ok(length) => Ok(Some(length)),
+        Err(reason) if reason == INEXACT => Ok(None),
+        Err(reason) => Err(reason),
+    }
+}
+
+/// [`offset_length`], `INEXACT` where it has no closed form.
+fn closed_form_length(piece: &Piece<'_>, law: OffsetLaw) -> Result<Scalar, &'static str> {
     let two_d = matches!(piece.curve, AtomicCurve::Two(_));
     if matches!(law, OffsetLaw::Planar { .. }) && !two_d {
         return Err(PLANAR_3D);
