@@ -12,6 +12,16 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (axiolid/kernel#297)
+
+- Requires `axiolid-model` 0.3.10 (through `ifc-geometry`'s `wire`
+  feature): `product_graphs` payloads carry the lowest wire format version
+  their content needs, 1.0 unless a station carries a seam-snapping
+  window, then 1.1. Window-free payloads are labelled 1.0 again, readable
+  by `axiolid-model` 0.3.8.
+
+Semver: patch.
+
 ## [0.28.0] - 2026-10-10
 
 ### Changed

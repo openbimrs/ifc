@@ -5,7 +5,7 @@
 //! ADR 0085), JSON text or CBOR bytes:
 //!
 //! ```json
-//! {"format":"axiolid-geometry-graph","version":"1.1","graph":{"nodes":[...],"roots":[...]}}
+//! {"format":"axiolid-geometry-graph","version":"1.0","graph":{"nodes":[...],"roots":[...]}}
 //! ```
 //!
 //! Nodes are in insertion order and a reference is the index of an earlier
@@ -13,11 +13,10 @@
 //! placement already applied. A host evaluates it with its own kernel, or
 //! reads it back with `GeometryGraph::from_json` / `from_cbor` in Rust.
 //! The envelope's `version` is the lowest wire format version its content
-//! needs: `1.0`, or `1.1` when a station in it carries a seam-snapping
-//! window (#423; a station on an offset whose length is a quadrature).
-//! `axiolid-model` 0.3.9 still labels every payload `1.1`
-//! (axiolid/kernel#297), so a host reads either; a reader on
-//! `axiolid-model` 0.3.8 or older refuses a `1.1` payload.
+//! needs: `1.0` unless a station in it carries a seam-snapping window
+//! (#423; a station on an offset whose length is a quadrature), then `1.1`
+//! (axiolid/kernel#297). A reader on `axiolid-model` 0.3.8 or older reads
+//! a `1.0` payload and refuses a `1.1` one.
 //! [`GEOMETRY_FORMAT_VERSION`] is the newest version this build writes. A
 //! minor version of the wire format reaches every binding as a minor
 //! release, a major one is a breaking change of every binding (ADR 0021).

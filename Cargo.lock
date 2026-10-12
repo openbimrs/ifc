@@ -308,9 +308,9 @@ dependencies = [
 
 [[package]]
 name = "axiolid-model"
-version = "0.3.9"
+version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f29a09cea39490cf41601ca1fb6ac7a508a94c4d21da0dc26af6eb0234fc3ede"
+checksum = "79dcbad26b3c444ae0e7e9ce870e13408b97313b58a7aa7b90fbb15424579b3e"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
@@ -349,9 +349,9 @@ dependencies = [
 
 [[package]]
 name = "axiolid-overlay"
-version = "0.3.12"
+version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "346640200a321de06514f8ccf0054117d354657785dde58c345bcce5452ea0be"
+checksum = "c907709baa6839914aafac4a7ed6d3bd6edcdd6b963327c5c1b7956dee5af839"
 dependencies = [
  "axiolid-core",
  "axiolid-exact",

@@ -219,6 +219,13 @@ four host APIs. The follow-up is
   (axiolid/kernel#297), so hosts and the binding tests read the version
   and accept either. A reader on `axiolid-model` 0.3.8 or older refuses a
   `1.1` payload, as the format's versioning promises.
+  - *Note 2026-10-12 (axiolid/kernel#297):* `axiolid-model` 0.3.10 fixes
+    the labelling, and the workspace requires it. An envelope carries the
+    lowest version its content needs: `1.0` unless a station carries a
+    seam-snapping window, then `1.1`. A window-free payload is again
+    byte-identical to what 0.3.8 writes and readable by it, and the binding
+    tests hold a window-free product's payload to exactly `1.0` and a
+    windowed one's to `1.1`.
 
 ## Relation to existing code
 

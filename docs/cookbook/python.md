@@ -260,7 +260,7 @@ for product in model.product_geometry():  # or encoding="cbor": bytes
 <!-- /SNIPPET -->
 
 Each `payload` is the envelope `{"format": "axiolid-geometry-graph",
-"version": "1.1", "graph": {...}}`, exact, in world coordinates, metres;
+"version": "1.0", "graph": {...}}`, exact, in world coordinates, metres;
 `encoding="cbor"` gives it as `bytes`. The
 [binding page](/bindings/python#geometry) describes it.
 

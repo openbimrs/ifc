@@ -118,10 +118,10 @@ fn graphs_round_trip_through_the_wire_format_and_are_refused_per_product() {
     let text = graph.to_json().expect("encodes");
     let envelope: serde_json::Value = serde_json::from_str(&text).expect("JSON");
     assert_eq!(envelope["format"], FORMAT_NAME);
-    // The lowest version the content needs, 1.0 or 1.1; `axiolid-model`
-    // 0.3.9 labels every payload 1.1 (axiolid/kernel#297).
+    // The lowest version the content needs: no station carries a seam
+    // window, so 1.0, readable by `axiolid-model` 0.3.8 (axiolid/kernel#297).
     let version = envelope["version"].as_str().expect("a version");
-    assert!(["1.0", "1.1"].contains(&version), "{version}");
+    assert_eq!(version, "1.0");
     assert!(FORMAT_VERSION.reads(FormatVersion::parse(version).unwrap()));
     let back = GeometryGraph::from_json(&text).expect("reads back");
     assert_eq!(back.len(), graph.len());
@@ -143,4 +143,35 @@ fn graphs_round_trip_through_the_wire_format_and_are_refused_per_product() {
         .as_ref()
         .expect_err("a text literal is no solid");
     assert!(refused.is_unsupported(), "{refused}");
+}
+
+/// A Body swept along a segment placed by a station near an offset's joint
+/// carries a seam-snapping window (#423), so its payload is wire format
+/// 1.1, the lowest version that holds it (axiolid/kernel#297).
+#[cfg(feature = "geometry-wire")]
+#[test]
+fn a_body_with_a_seam_window_is_labelled_wire_format_1_1() {
+    use ifc::geometry::GeometryGraph;
+
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test/fixtures/synthetic-lowering/station_offset_bases_ifc4x3.ifc"
+    );
+    let model = StepCodec
+        .read_bytes(&std::fs::read(path).expect("fixture"))
+        .expect("parses");
+    // RAIL_NEAR and RAIL_EDGE, the two proxies with a Body.
+    let graphs = ifc::product_graphs(&model, Some(&[EntityId(188), EntityId(199)]));
+    for (product, graph) in graphs {
+        let graph = graph
+            .unwrap_or_else(|e| panic!("#{}: {e:?}", product.0))
+            .graph
+            .expect("a Body");
+        let text = graph.to_json().expect("encodes");
+        let envelope: serde_json::Value = serde_json::from_str(&text).expect("JSON");
+        assert_eq!(envelope["version"], "1.1", "#{}: {text}", product.0);
+        assert!(text.contains("\"seam_window\""), "#{}: {text}", product.0);
+        let back = GeometryGraph::from_json(&text).expect("reads back");
+        assert_eq!(back.to_json().unwrap(), text);
+    }
 }

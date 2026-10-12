@@ -13,7 +13,7 @@ public enum GeometryEncoding
 /// <summary>One product's Body as Axiolid's neutral geometry graph (#367), from <see cref="IfcModel.ProductGeometry"/>.</summary>
 /// <remarks>
 /// The payload is Axiolid's versioned wire format:
-/// <c>{"format":"axiolid-geometry-graph","version":"1.1","graph":{"nodes":[...],"roots":[...]}}</c>,
+/// <c>{"format":"axiolid-geometry-graph","version":"1.0","graph":{"nodes":[...],"roots":[...]}}</c>,
 /// exact, in world coordinates, metres. Its <c>version</c> is the lowest the content needs:
 /// <c>1.0</c>, or <c>1.1</c> when a station carries a seam-snapping window (#423).
 /// The bytes are a copy the caller owns.

@@ -75,10 +75,9 @@ export type GeometryGraphNode = { [kind: string]: unknown };
 export interface GeometryGraphEnvelope {
   format: "axiolid-geometry-graph";
   /**
-   * `"MAJOR.MINOR"`: the lowest version the content needs, `"1.0"`, or
-   * `"1.1"` when a station carries a seam-snapping window (#423). This
-   * build writes at most `"1.1"` (and, on `axiolid-model` 0.3.9, labels
-   * every payload `"1.1"`, axiolid/kernel#297).
+   * `"MAJOR.MINOR"`: the lowest version the content needs, `"1.0"` unless
+   * a station carries a seam-snapping window (#423), then `"1.1"`
+   * (axiolid/kernel#297). This build writes at most `"1.1"`.
    */
   version: string;
   graph: {

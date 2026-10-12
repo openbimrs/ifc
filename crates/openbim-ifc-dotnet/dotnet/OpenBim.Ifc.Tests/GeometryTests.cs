@@ -109,7 +109,7 @@ public class GeometryTests
                     System.Console.WriteLine($"#{product.Geometry.Id}: {refusal.Code}");
                     continue;
                 }
-                // {"format":"axiolid-geometry-graph","version":"1.1","graph":{...}},
+                // {"format":"axiolid-geometry-graph","version":"1.0","graph":{...}},
                 // exact, in world metres: hand it to your own kernel's reader.
                 System.Console.WriteLine($"{product.Geometry.TypeName}: {product.Json}");
             }
@@ -120,10 +120,11 @@ public class GeometryTests
             Assert.Equal("json", wall.Geometry.Encoding);
             Assert.Equal(wall.Geometry.PayloadSize, (long)wall.Payload.Length);
             // Axiolid's writer orders the envelope: format, version, graph. The version is the
-            // lowest the content needs, 1.0 or 1.1 (axiolid-model 0.3.9 labels every payload 1.1).
-            var heads = new[] { "1.0", "1.1" }.Select(version =>
-                "{\"format\":\"" + ProductGraph.Format + "\",\"version\":\"" + version + "\",\"graph\":{\"nodes\":[");
-            Assert.Contains(heads, head => wall.Json!.StartsWith(head, System.StringComparison.Ordinal));
+            // lowest the content needs: no station carries a seam window, so 1.0
+            // (axiolid/kernel#297).
+            Assert.StartsWith(
+                "{\"format\":\"" + ProductGraph.Format + "\",\"version\":\"1.0\",\"graph\":{\"nodes\":[",
+                wall.Json!);
             Assert.Equal("1.1", ProductGraph.FormatVersion);
             Assert.Equal("axiolid-geometry-graph", ProductGraph.Format);
             // Three nodes (profile, extrusion, placed instance), the last the root.

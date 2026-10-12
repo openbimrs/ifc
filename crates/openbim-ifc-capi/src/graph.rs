@@ -37,7 +37,7 @@ pub const OPENBIM_IFC_GEOMETRY_CBOR: u32 = 1;
 /// `openbim_ifc_v0_1_graphs_destroy`.
 ///
 /// The payload is the envelope `{"format":"axiolid-geometry-graph",
-/// "version":"1.1","graph":{"nodes":[...],"roots":[...]}}`, in world
+/// "version":"1.0","graph":{"nodes":[...],"roots":[...]}}`, in world
 /// coordinates, metres; its version is the lowest the content needs,
 /// "1.0", or "1.1" when a station carries a seam-snapping window. A product that cannot be lowered is a record with
 /// a refusal, not a failed call. `InvalidArgument` for another `encoding`;

@@ -26,6 +26,12 @@ FIXTURE = os.path.join(
     os.path.dirname(__file__),
     "..", "..", "..", "..", "test", "fixtures", "synthetic-bindings", "binding_geometry.ifc",
 )
+# Stations along offsets whose length is a quadrature (#423); its two
+# Bodies, RAIL_NEAR (#188) and RAIL_EDGE (#199), carry a seam window.
+SEAM_WINDOWS = os.path.join(
+    os.path.dirname(__file__),
+    "..", "..", "..", "..", "test", "fixtures", "synthetic-lowering", "station_offset_bases_ifc4x3.ifc",
+)
 MESH = os.environ.get("OPENBIM_IFC_MESH") == "1"
 # The mesh wheel is built with `graph` too: one opt-in geometry wheel.
 GRAPH = MESH
@@ -147,15 +153,14 @@ class GraphTests(unittest.TestCase):
                 continue
             if product.payload is None:
                 continue  # no Body: an axis-only product
-            # {"format": "axiolid-geometry-graph", "version": "1.1", "graph":
+            # {"format": "axiolid-geometry-graph", "version": "1.0", "graph":
             # {"nodes": [...], "roots": [...]}}, exact, in world metres.
             envelope = json.loads(product.payload)
             print((product.type_name, envelope["version"], len(envelope["graph"]["nodes"])))
         # docs:end
-        # The lowest version the content needs; axiolid-model 0.3.9 labels
-        # every payload 1.1 (axiolid/kernel#297).
-        self.assertEqual((printed[0][0], printed[0][2]), ("IFCWALL", 3))
-        self.assertIn(printed[0][1], ("1.0", "1.1"))
+        # The lowest version the content needs: no station carries a seam
+        # window, so 1.0 (axiolid/kernel#297).
+        self.assertEqual(printed[0], ("IFCWALL", "1.0", 3))
         self.assertEqual(printed[2], (65, "unsupported"))
 
         wall, _, axis_only, text = model.product_geometry()
@@ -165,7 +170,7 @@ class GraphTests(unittest.TestCase):
         self.assertEqual(wall.payload_size, len(wall.payload.encode("utf-8")))
         envelope = json.loads(wall.payload)
         self.assertEqual(envelope["format"], GEOMETRY_FORMAT)
-        self.assertIn(envelope["version"], ("1.0", GEOMETRY_FORMAT_VERSION))
+        self.assertEqual(envelope["version"], "1.0")
         self.assertEqual((GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION), ("axiolid-geometry-graph", "1.1"))
         nodes = envelope["graph"]["nodes"]
         self.assertEqual(envelope["graph"]["roots"], [len(nodes) - 1])
@@ -176,6 +181,20 @@ class GraphTests(unittest.TestCase):
         self.assertIsNone(axis_only.refusal)
         assert text.refusal is not None
         self.assertEqual((text.refusal.code, text.refusal.entity), ("unsupported", 62))
+
+    @unittest.skipUnless(GRAPH, "needs a wheel built with --features graph")
+    def test_a_seam_window_is_labelled_wire_format_1_1(self) -> None:
+        # The lowest version that holds a seam window (axiolid/kernel#297).
+        with open(SEAM_WINDOWS, "rb") as handle:
+            m = IfcModel.parse(handle.read())
+        products = m.product_geometry([188, 199])
+        self.assertEqual([p.id for p in products], [188, 199])
+        for product in products:
+            self.assertIsNone(product.refusal)
+            assert isinstance(product.payload, str)
+            envelope = json.loads(product.payload)
+            self.assertEqual(envelope["version"], GEOMETRY_FORMAT_VERSION)
+            self.assertIn('"seam_window"', product.payload)
 
     @unittest.skipUnless(GRAPH, "needs a wheel built with --features graph")
     def test_the_cbor_payload_decodes_to_the_json_envelope(self) -> None:

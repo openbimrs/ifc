@@ -12,11 +12,11 @@ a release here does not imply a release of any other crate in the family.
 
 - `GEOMETRY_FORMAT_VERSION` is `"1.1"`, the newest version a build writes
   (`axiolid-model` 0.3.9: a station's seam-snapping window). An envelope
-  carries the lowest wire version its content needs: 1.0, or 1.1 when a
-  station carries a seam-snapping window; `axiolid-model` 0.3.9 labels
-  every payload 1.1 (axiolid/kernel#297), and a reader on `axiolid-model`
-  0.3.8 or older refuses 1.1. Tests read the envelope's version and accept
-  either.
+  carries the lowest wire version its content needs: 1.0 unless a station
+  carries a seam-snapping window, then 1.1 (`axiolid-model` 0.3.10,
+  axiolid/kernel#297). A reader on `axiolid-model` 0.3.8 or older reads a
+  1.0 payload and refuses 1.1. Tests hold a window-free payload to 1.0 and
+  a windowed one to 1.1.
 
 ### Added (#367, geometry Level 2, ADR 0021)
 
