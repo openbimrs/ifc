@@ -61,10 +61,10 @@ mod graph {
         let text = wall.json().expect("JSON text");
         let envelope: serde_json::Value = serde_json::from_str(text).unwrap();
         assert_eq!(envelope["format"], GEOMETRY_FORMAT);
-        // The lowest version the content needs; `axiolid-model` 0.3.9 labels
-        // every payload 1.1 (axiolid/kernel#297), so either is accepted.
+        // The lowest version the content needs: no station carries a seam
+        // window, so 1.0 (axiolid/kernel#297).
         let version = envelope["version"].as_str().expect("a version");
-        assert!(["1.0", "1.1"].contains(&version), "{version}");
+        assert_eq!(version, "1.0");
         assert!(FORMAT_VERSION.reads(FormatVersion::parse(version).unwrap()));
         assert_eq!(
             (GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION),
@@ -141,6 +141,35 @@ mod graph {
             Some(&Field::Count(records[0].payload.as_ref().unwrap().len()))
         );
         assert_eq!(record.get("refusal"), Some(&Field::Null));
+    }
+
+    /// A Body swept along a segment placed by a station near an offset's
+    /// joint carries a seam-snapping window (#423): its payload is 1.1, the
+    /// lowest version that holds it (axiolid/kernel#297).
+    #[test]
+    fn a_payload_with_a_seam_window_is_wire_format_1_1() {
+        let path = format!(
+            "{}/../../test/fixtures/synthetic-lowering/station_offset_bases_ifc4x3.ifc",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let model = IfcModel::open(std::path::Path::new(&path)).expect("fixture reads");
+        // RAIL_NEAR and RAIL_EDGE, the two proxies with a Body.
+        let records = model
+            .product_geometry(Some(&[188, 199]), GeometryEncoding::Json)
+            .unwrap();
+        assert_eq!(records.len(), 2);
+        for record in &records {
+            assert_eq!(record.refusal, None, "#{}", record.id);
+            let text = record.json().expect("JSON text");
+            let envelope: serde_json::Value = serde_json::from_str(text).unwrap();
+            assert_eq!(
+                envelope["version"], GEOMETRY_FORMAT_VERSION,
+                "#{}",
+                record.id
+            );
+            assert!(text.contains("\"seam_window\""), "#{}: {text}", record.id);
+            GeometryGraph::from_json(text).expect("reads back");
+        }
     }
 }
 

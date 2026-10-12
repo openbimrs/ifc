@@ -351,7 +351,7 @@ foreach (var product in model.ProductGeometry())
         System.Console.WriteLine($"#{product.Geometry.Id}: {refusal.Code}");
         continue;
     }
-    // {"format":"axiolid-geometry-graph","version":"1.1","graph":{...}},
+    // {"format":"axiolid-geometry-graph","version":"1.0","graph":{...}},
     // exact, in world metres: hand it to your own kernel's reader.
     System.Console.WriteLine($"{product.Geometry.TypeName}: {product.Json}");
 }
@@ -359,13 +359,13 @@ foreach (var product in model.ProductGeometry())
 
 <!-- /SNIPPET -->
 
-The envelope is `{"format":"axiolid-geometry-graph","version":"1.1",
+The envelope is `{"format":"axiolid-geometry-graph","version":"1.0",
 "graph":{"nodes":[...],"roots":[...]}}`, in world coordinates, metres,
-with the record's transform already applied. Its `version` is the lowest the content needs: `1.0`, or `1.1` when a
+with the record's transform already applied. Its `version` is the lowest the content needs: `1.0` unless a
 station carries a seam-snapping window
-([#423](https://github.com/openbimrs/ifc/issues/423)); `axiolid-model`
-0.3.9 labels every payload `1.1` (axiolid/kernel#297), and a reader on
-`axiolid-model` 0.3.8 or older refuses `1.1`. `ProductGraph.Format`
+([#423](https://github.com/openbimrs/ifc/issues/423)), then `1.1`
+(axiolid/kernel#297). A reader on `axiolid-model` 0.3.8 or older reads a
+`1.0` payload and refuses `1.1`. `ProductGraph.Format`
 and `ProductGraph.FormatVersion` name the format and the newest version
 the package writes, `"1.1"`. A major version of the wire format
 would be a breaking release of the package (ADR 0021).

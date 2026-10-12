@@ -8,6 +8,15 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Fixed (axiolid/kernel#297)
+
+- Window-free payloads are labelled 1.0 again, readable by `axiolid-model`
+  0.3.8: built with `axiolid-model` 0.3.10, the geometry graph payload's
+  envelope carries the lowest wire format version its content needs, 1.0
+  unless a station carries a seam-snapping window, then 1.1. `GeometryGraphEnvelope.version` documents the rule.
+
+Semver: patch.
+
 ## [0.6.0] - 2026-10-10
 
 ### Changed (#423, wire format 1.1)

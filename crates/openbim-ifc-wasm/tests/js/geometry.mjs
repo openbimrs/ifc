@@ -209,20 +209,19 @@ if (!mesh) {
         continue;
       }
       if (!product.payload) continue; // no Body: an axis-only product
-      // { format: "axiolid-geometry-graph", version: "1.1", graph }, exact,
+      // { format: "axiolid-geometry-graph", version: "1.0", graph }, exact,
       // in world coordinates (metres): hand it to your own kernel.
       const { format, version, graph } = product.payload;
-      // The lowest wire version the content needs: "1.0", or "1.1".
+      // The lowest wire version the content needs: "1.0", or "1.1" when a
+      // station carries a seam-snapping window.
       console.log(product.typeName, format, version, Object.keys(graph.nodes.at(-1))[0]);
     }
     // docs:end
-    // The version is the lowest the content needs; axiolid-model 0.3.9
-    // labels every payload "1.1" (axiolid/kernel#297), so either is read.
-    const versions = log.filter((entry) => entry.length === 4).map((entry) => entry[2]);
-    assert.ok(versions.every((version) => ["1.0", "1.1"].includes(version)), versions.join());
-    assert.deepEqual(log.map((entry) => (entry.length === 4 ? [entry[0], entry[1], entry[3]] : entry)), [
-      ["IFCWALL", "axiolid-geometry-graph", "Instance"],
-      ["IFCSLAB", "axiolid-geometry-graph", "Instance"],
+    // No station carries a seam window, so every payload is the lowest
+    // version, "1.0" (axiolid/kernel#297).
+    assert.deepEqual(log, [
+      ["IFCWALL", "axiolid-geometry-graph", "1.0", "Instance"],
+      ["IFCSLAB", "axiolid-geometry-graph", "1.0", "Instance"],
       [65n, "unsupported"],
     ]);
 
@@ -240,7 +239,7 @@ if (!mesh) {
     assert.equal(wall.payloadSize, new TextEncoder().encode(wall.payload).length);
     const envelope = JSON.parse(wall.payload);
     assert.equal(envelope.format, "axiolid-geometry-graph");
-    assert.ok(["1.0", "1.1"].includes(envelope.version), envelope.version);
+    assert.equal(envelope.version, "1.0");
     assert.deepEqual(envelope.graph.roots, [envelope.graph.nodes.length - 1]);
     // The extrusion: 4 m by 0.2 m, 2.8 m deep, placed 5,403 km out in f64.
     const [, extrusion, instance] = envelope.graph.nodes;
@@ -270,6 +269,31 @@ if (!mesh) {
       () => model.productGeometry(undefined, "xml"),
       (error) => error.name === "IfcError" && error.code === "invalid-value",
     );
+  });
+
+  test("a payload with a seam window is wire format 1.1", () => {
+    // Stations along offsets whose length is a quadrature (#423): the two
+    // Bodies, RAIL_NEAR (#188) and RAIL_EDGE (#199), carry a seam window,
+    // so their payloads are 1.1, the lowest version that holds one
+    // (axiolid/kernel#297).
+    const model = IfcModel.parse(
+      readFileSync(
+        path.resolve(
+          here,
+          "../../../../test/fixtures/synthetic-lowering/station_offset_bases_ifc4x3.ifc",
+        ),
+      ),
+    );
+    const products = model.productGeometry([188n, 199n]);
+    assert.deepEqual(
+      products.map((p) => p.id),
+      [188n, 199n],
+    );
+    for (const product of products) {
+      assert.equal(product.refusal, undefined);
+      assert.equal(JSON.parse(product.payload).version, "1.1");
+      assert.ok(product.payload.includes('"seam_window"'), product.payload);
+    }
   });
 
   test("meshes come as typed arrays relative to each product", () => {

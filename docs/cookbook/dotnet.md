@@ -274,7 +274,7 @@ foreach (var product in model.ProductGeometry()) // or GeometryEncoding.Cbor
 <!-- /SNIPPET -->
 
 `ProductGraph.Payload` is the envelope `{"format":"axiolid-geometry-graph",
-"version":"1.1","graph":{...}}`, exact, in world coordinates, metres;
+"version":"1.0","graph":{...}}`, exact, in world coordinates, metres;
 `GeometryEncoding.Cbor` gives it as CBOR. The
 [binding page](/bindings/dotnet#geometry) describes it.
 

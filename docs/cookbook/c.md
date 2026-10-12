@@ -479,7 +479,7 @@ if (status == OPENBIM_IFC_STATUS_OK) {
 
 `openbim_ifc_v0_1_graphs_records` gives each graph's record (id, global
 id, type name, transform, encoding, payload size, refusal). The payload is
-the envelope `{"format":"axiolid-geometry-graph","version":"1.1",
+the envelope `{"format":"axiolid-geometry-graph","version":"1.0",
 "graph":{...}}`, exact, in world coordinates, metres; the
 [binding page](/bindings/c#geometry) describes it.
 

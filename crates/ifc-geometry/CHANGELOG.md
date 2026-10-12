@@ -12,6 +12,17 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (axiolid/kernel#297)
+
+- The `wire` feature requires `axiolid-model` 0.3.10, whose writer labels
+  each payload with the lowest wire format version its content needs:
+  1.0 unless a station carries a seam-snapping window, then 1.1.
+  Window-free payloads are labelled 1.0 again, byte-identical to what
+  `axiolid-model` 0.3.8 writes and readable by it; 0.3.9 labelled every
+  payload 1.1.
+
+Semver: patch.
+
 ## [0.22.0] - 2026-10-10
 
 ### Changed (#423, stations on offsets whose length is a quadrature)

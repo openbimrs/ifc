@@ -250,7 +250,7 @@ class IfcModel(ModelAccess):
         """Each product's Body as Axiolid's neutral geometry graph, exact,
         for ``ids`` or every product with a shape, in Axiolid's versioned
         wire format: ``{"format": "axiolid-geometry-graph", "version":
-        "1.1", "graph": {"nodes": [...], "roots": [...]}}`` (the lowest
+        "1.0", "graph": {"nodes": [...], "roots": [...]}}`` (the lowest
         version the content needs, ``"1.0"`` or ``"1.1"``), in world
         coordinates, metres. ``encoding`` ``"json"`` gives the payload as a
         ``str``, ``"cbor"`` as ``bytes``; any other raises ``ValueError``. A
