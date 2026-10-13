@@ -509,6 +509,21 @@ the large offsets of a georeferenced site in `f64`. A product with no
 Body has empty arrays and no refusal; one whose lowering or compilation
 is refused carries the typed `refusal`.
 
+Each mesh also carries its `colour`, a `SurfaceColour`
+([#449](https://github.com/openbimrs/ifc/issues/449)): `red`, `green`,
+`blue` and `transparency` (each in `[0, 1]`; `transparency` is `None`
+when the file states none, which reads as opaque), the `source` that
+supplied it, `item`, `layer` or `material` in that precedence, the
+`source_entity` and the `surface_style`. The colour comes from the Body
+item's `IfcStyledItem`, else its styled presentation layer, else the
+`IfcMaterialDefinitionRepresentation` of the material the product (or its
+type) is made of: an `IfcMaterial`, the one material of a layer or
+profile set, or, for a constituent set, the constituent whose
+`IfcShapeAspect` names the item. `colour` is `None` when nothing colours
+the product, and `colour_refusal` says why it is not resolved, with code
+`ambiguous` for a set of several materials or Body items of different
+colours. A colour never refuses the mesh.
+
 `model.product_geometry(ids=None, encoding="json")` hands over each
 product's Body as Axiolid's neutral geometry graph instead
 ([#367](https://github.com/openbimrs/ifc/issues/367)): exact extrusions,

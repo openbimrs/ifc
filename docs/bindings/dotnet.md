@@ -326,7 +326,14 @@ record with a `GeometryRefusal` (`Code` `unsupported`, `invalid-model`,
 `missing-reference` or `budget-exceeded`), not an exception.
 `ProductMeshes(ids)` returns a `MeshedProduct` per product: its
 `ProductMesh` record and `float[] Positions` (relative to its transform)
-and `uint[] Indices`. It needs a native library built with the C ABI's
+and `uint[] Indices`. `ProductMesh.Colour` is its `SurfaceColour`
+([#449](https://github.com/openbimrs/ifc/issues/449)): `Red`, `Green`,
+`Blue` and `Transparency` (null when the file states none, which reads
+as opaque), the `Source` that supplied it, `item`, `layer` or `material`
+in that precedence, `SourceEntity` and `SurfaceStyle`; null when nothing
+colours the product, with `ColourRefusal` (code `ambiguous` for a set of
+several materials or Body items of different colours) when it is not
+resolved. A colour never refuses the mesh. It needs a native library built with the C ABI's
 `mesh` feature; the packaged one throws `IfcException` with code
 `feature-disabled`.
 

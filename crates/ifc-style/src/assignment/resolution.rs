@@ -133,7 +133,7 @@ impl<'m, 's> StyleView<'m, 's> {
     /// Replaces each IFC2x3 `IfcPresentationStyleAssignment` wrapper id in
     /// `ids` with its member styles; direct `IfcPresentationStyle` ids pass
     /// through unchanged.
-    fn flatten_assignments(&self, ids: Vec<EntityId>) -> StyleResult<Vec<EntityId>> {
+    pub(crate) fn flatten_assignments(&self, ids: Vec<EntityId>) -> StyleResult<Vec<EntityId>> {
         let mut out = Vec::new();
         for id in ids {
             let entity = self.model.get(id).ok_or(StyleError::UnknownEntity { id })?;

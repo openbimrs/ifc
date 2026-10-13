@@ -8,6 +8,20 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#449)
+
+- The `ProductMesh` records of `openbim_ifc_v0_1_meshes_records` gain two
+  trailing fields: colour (a `SurfaceColour` record of red, green, blue,
+  transparency, source `item`/`layer`/`material`, source entity and
+  surface style, or `NULL`) and colour refusal (`GeometryRefusal` or
+  `NULL`, code `ambiguous` or a geometry code). No function signature
+  changed; the header changes only in its documentation.
+
+Semver: additive, released on the 0.1 line (the `v0_1` ABI is unchanged
+and additive: a reader that walks a record's fields by its child count
+reads the new ones; one that hard-codes seven fields reads the first seven
+unchanged).
+
 ## [0.1.10] - 2026-10-13
 
 ### Changed (#433, wire format 1.3)

@@ -9,6 +9,19 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#449)
+
+- `ProductMesh` gains `Colour` (`SurfaceColour`: `Red`, `Green`, `Blue`,
+  `Transparency`, `Source` `item`/`layer`/`material`, `SourceEntity`,
+  `SurfaceStyle`) and `ColourRefusal` (a `GeometryRefusal`, code
+  `ambiguous` or a geometry code) as its last positional parameters, in a
+  native library built with `mesh`: the colour of the Body's item style,
+  else its presentation layer's, else its material's styled
+  representation.
+
+Semver: additive, a minor release while 0.x (a caller that constructs
+`ProductMesh` itself passes the two new parameters).
+
 ## [0.5.0] - 2026-10-13
 
 ### Changed (#433, wire format 1.3)

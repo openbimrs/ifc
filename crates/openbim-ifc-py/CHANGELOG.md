@@ -8,6 +8,18 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#449)
+
+- `ProductMesh.colour` (`SurfaceColour`: `red`, `green`, `blue`,
+  `transparency`, `source` `item`/`layer`/`material`, `source_entity`,
+  `surface_style`) and `ProductMesh.colour_refusal` (a `GeometryRefusal`,
+  code `ambiguous` or a geometry code), both defaulting to `None`, in a
+  wheel built with `mesh`: the colour of the Body's item style, else its
+  presentation layer's, else its material's styled representation.
+  `SurfaceColour` is exported from `openbim_ifc`.
+
+Semver: additive, a minor release while 0.x.
+
 ## [0.8.0] - 2026-10-13
 
 ### Changed (#433, wire format 1.3)

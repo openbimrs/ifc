@@ -30,6 +30,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `authoring` |  | Schema-checked authoring (`ifc-author`) and the checked authoring batch (`apply_authoring`), against the releases the build names. |
 | `classification` |  | [`ifc-classification`](./ifc-classification): Classification systems, document references, libraries, external references. |
 | `codecs` |  | Both codecs: STEP and ifcXML. |
+| `colour` |  | The surface colour of each product's Body (`product_colours`): the item's styled item, its styled presentation layer, else its material's styled representation (layer, profile and constituent sets resolved per item), with the source and a typed refusal. Kernel-free. |
 | `constraint` |  | [`ifc-constraint`](./ifc-constraint): Bounded IFC4 metric, objective, and constraint relationships. |
 | `control` |  | [`ifc-control`](./ifc-control): Bounded IFC control semantics: permits, project orders, action requests, and performance history. |
 | `cost` |  | [`ifc-cost`](./ifc-cost): Cost semantics as a borrowed view over the IFC model. |
@@ -48,7 +49,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `ifcxml` |  | [`ifc-xml`](./ifc-xml): ifcXML (ISO 10303-28) codec for the IFC model. |
 | `material` |  | [`ifc-material`](./ifc-material): Material definitions: layer sets, profile sets, constituents, usage. |
 | `material-templates` |  | Material views together with the property template catalogue. |
-| `mesh` |  | Triangle meshes per product (`product_meshes`) through `ifc-geometry`'s reference compile backend: positions relative to each product's world placement, a typed refusal per product. Opt-in; links an execution provider (ADR 0004, ADR 0012). |
+| `mesh` |  | Triangle meshes per product (`product_meshes`) through `ifc-geometry`'s reference compile backend: positions relative to each product's world placement, its surface colour (`colour`), a typed refusal per product. Opt-in; links an execution provider (ADR 0004, ADR 0012). |
 | `occurrence` |  | [`ifc-occurrence`](./ifc-occurrence): Built element and distribution occurrence classes and their type pairing. |
 | `properties` |  | Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry; together with `spatial`, element properties by spatial container. |
 | `property-catalog` |  | The PSD/QTO template catalogue (`ifc-template-catalog`), every edition embedded. |
