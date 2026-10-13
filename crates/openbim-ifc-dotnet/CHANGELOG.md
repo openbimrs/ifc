@@ -9,6 +9,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-13
+
 ### Added (#478, cascading delete and purge)
 
 - `model.RemoveProduct(id, rebasePlacements, untypeOccurrences, dryRun)`

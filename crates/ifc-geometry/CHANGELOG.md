@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-10-13
+
+### Changed
+
+- Requires `ifc-alignment` 0.9 (alignment writers now refuse malformed
+  GlobalIds, #492). No change in lowering. Semver: minor, because the
+  dependency's minor bump changes a public requirement.
+
 ## [0.25.1] - 2026-10-13
 
 ### Changed (#439, stations on B-splines trimmed by points resolve in the kernel)
@@ -2014,7 +2022,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.25.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.26.0...HEAD
+[0.26.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.26.0
 [0.25.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.25.1
 [0.25.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.25.0
 [0.24.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.24.0

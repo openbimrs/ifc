@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-10-13
+
 ### Added (#478, cascading delete and purge)
 
 - `openbim_ifc_v0_1_model_remove_product(model, product, flags, ...)` and

@@ -11,7 +11,7 @@ Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.8.0 (2026-10-13) |
+| Latest release | 0.9.0 (2026-10-13) |
 | Registries | [PyPI `openbim-ifc`](https://pypi.org/project/openbim-ifc/) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_py/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-py/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-py) |
@@ -42,20 +42,61 @@ This crate adds calling-convention glue only. IFC behaviour belongs in
 
 ## Changes
 
-Latest release, 0.8.0 (2026-10-13):
+Latest release, 0.9.0 (2026-10-13):
 
-### Changed (#433, wire format 1.3)
+### Added (#478, cascading delete and purge)
 
-- The geometry graph payload (#367) may be Axiolid's wire format 1.3
-  (`axiolid-model` 0.3.12), a minor version of the format (ADR 0021,
-  amended): an `IfcOffsetCurveByDistances` along an offset whose length is
-  a quadrature now lowers, continued to the basis's ends the kernel
-  measures. An envelope carries the lowest version its content needs, so
-  every other payload is unchanged: 1.0, 1.1 or 1.2. A reader on
-  `axiolid-model` 0.3.11 or older refuses 1.3.
-  `GEOMETRY_FORMAT_VERSION` is `"1.3"`, the newest version the wheel
-  writes.
+- `model.remove_product(id, *, rebase_placements=False,
+  untype_occurrences=False, dry_run=False)` and `model.purge(classes=(),
+  *, include_roots=False, include_owner_history=False, dry_run=False)`,
+  returning a `RemovalReport` (`RemovedEntity`, `KeptEntity`).
 
-Semver: minor, as ADR 0021 states for a minor version of the wire format.
+### Deprecated (#478)
+
+- `model.remove(id)` leaves references dangling and now warns with a
+  `DeprecationWarning`; use `remove_with_relationships` or
+  `remove_product`. It keeps working.
+
+Semver: additive, a minor release while 0.x.
+
+### Added (#450)
+
+- `IfcModel.write_ifczip(*, inner="step", xsd_profile=None)`, and ifcZIP
+  input to `IfcModel.parse` and `IfcModel.open`, recognized by the ZIP
+  signature and read within a decompression budget (`parse`,
+  `unsupported` or `budget-exceeded` otherwise).
+
+Semver: minor (additive).
+
+### Added (#449)
+
+- `ProductMesh.colour` (`SurfaceColour`: `red`, `green`, `blue`,
+  `transparency`, `source` `item`/`layer`/`material`, `source_entity`,
+  `surface_style`) and `ProductMesh.colour_refusal` (a `GeometryRefusal`,
+  code `ambiguous` or a geometry code), both defaulting to `None`, in a
+  wheel built with `mesh`: the colour of the Body's item style, else its
+  presentation layer's, else its material's styled representation.
+  `SurfaceColour` is exported from `openbim_ifc`.
+
+### Added (#463, GlobalIds, types and openings)
+
+- `model.by_guid(global_id)` (an `Entity` or `None`) and
+  `model.id_by_guid(global_id)`, through an index built on the first lookup;
+  a `GlobalId` several entities carry raises `IfcError` (`invalid-model`),
+  and `model.duplicate_global_ids()` lists them as `DuplicateGlobalId`.
+- `model.type_object(id)`, `occurrences_of`, `openings_of`, `fillings_of`
+  and `voided_element_of`, in IFC2X3, IFC4 and IFC4X3.
+- `openbim_ifc.new_guid()` and `openbim_ifc.name_based_guid(*parts)`.
+
+Semver: additive, a minor release while 0.x.
+
+### Changed
+
+- `IfcModel.georeferencing()` reads IFC2X3 files through their `ePSet_MapConversion` and
+  `ePSet_ProjectedCRS` property sets instead of refusing them as
+  `unsupported-schema` (#451); such a record's source kind is
+  `property-set`. Through `openbim-ifc-binding-core`.
+
+Semver: minor (ADR 0021).
 
 Full history: [`crates/openbim-ifc-py/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-py/CHANGELOG.md)

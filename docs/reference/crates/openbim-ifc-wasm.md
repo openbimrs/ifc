@@ -11,7 +11,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.8.0 (2026-10-13) |
+| Latest release | 0.9.0 (2026-10-13) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_wasm/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-wasm) |
@@ -68,19 +68,65 @@ suites here cover only the JS conversion itself.
 
 ## Changes
 
-Latest release, 0.8.0 (2026-10-13):
+Latest release, 0.9.0 (2026-10-13):
 
-### Changed (#433, wire format 1.3)
+### Added (#478, cascading delete and purge)
 
-- The geometry graph payload (#367) may be Axiolid's wire format 1.3
-  (`axiolid-model` 0.3.12), a minor version of the format (ADR 0021,
-  amended): an `IfcOffsetCurveByDistances` along an offset whose length is
-  a quadrature now lowers, continued to the basis's ends the kernel
-  measures. An envelope carries the lowest version its content needs, so
-  every other payload is unchanged: 1.0, 1.1 or 1.2. A reader on
-  `axiolid-model` 0.3.11 or older refuses 1.3.
-  `GeometryGraphEnvelope.version` documents the rule.
+- `model.removeProduct(id, { rebasePlacements?, untypeOccurrences?,
+  dryRun? })` and `model.purge({ classes?, includeRoots?,
+  includeOwnerHistory?, dryRun? })`, returning a `RemovalReport`
+  (`RemovedEntity`, `KeptEntity`; `RemoveProductOptions`, `PurgeOptions`
+  in the declarations).
 
-Semver: minor, as ADR 0021 states for a minor version of the wire format.
+### Deprecated (#478)
+
+- `model.remove(id)`, which leaves references dangling (`@deprecated` in
+  the declarations); use `removeWithRelationships` or `removeProduct`. It
+  keeps working.
+
+Semver: additive, a minor release while 0.x.
+
+### Added (#450)
+
+- `model.writeIfcZip(inner?, profile?)`, and ifcZIP input to
+  `IfcModel.parse`, recognized by the ZIP signature and read within a
+  decompression budget (`parse`, `unsupported` or `budget-exceeded`
+  otherwise). The `zip` cargo feature, on by default, carries it.
+
+Semver: minor (additive).
+
+### Added (#449)
+
+- `ProductMesh.colour` (`SurfaceColour`: `red`, `green`, `blue`,
+  `transparency`, `source` `"item" | "layer" | "material"`,
+  `sourceEntity`, `surfaceStyle`) and `ProductMesh.colourRefusal`
+  (`ColourRefusal`, code `"ambiguous"` or a geometry code) in the
+  `@openbim/ifc/mesh` entry: the colour of the Body's item style, else its
+  presentation layer's, else its material's styled representation.
+  TypeScript declarations included.
+
+### Added (#463, GlobalIds, types and openings)
+
+- `model.byGuid(globalId)` (`bigint | undefined`), through an index built on
+  the first lookup; a `GlobalId` several entities carry throws
+  `invalid-model`, and `model.duplicateGlobalIds()` lists them
+  (`DuplicateGlobalId`).
+- `model.typeObject(id)`, `occurrencesOf`, `openingsOf`, `fillingsOf` and
+  `voidedElementOf`, in IFC2X3, IFC4 and IFC4X3.
+- `IfcModel.newGuid()`, drawn from the host's `crypto.getRandomValues`
+  (browsers, Node 19 and later; `unsupported` on Node 18), and
+  `IfcModel.nameBasedGuid(parts)`. The module now links getrandom's
+  JavaScript backend.
+
+Semver: additive, a minor release while 0.x.
+
+### Changed
+
+- `IfcModel.georeferencing()` reads IFC2X3 files through their `ePSet_MapConversion` and
+  `ePSet_ProjectedCRS` property sets instead of refusing them as
+  `unsupported-schema` (#451); such a record's source kind is
+  `property-set`. Through `openbim-ifc-binding-core`.
+
+Semver: minor (ADR 0021).
 
 Full history: [`crates/openbim-ifc-wasm/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-wasm/CHANGELOG.md)

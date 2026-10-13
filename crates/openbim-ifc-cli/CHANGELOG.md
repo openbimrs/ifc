@@ -11,6 +11,8 @@ documents) is this crate's public interface.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-13
+
 ### Added (#450)
 
 - `convert` reads and writes ifcZIP: an input archive is recognized by its
@@ -97,5 +99,6 @@ Semver: patch.
 
 Semver: a new crate, first release 0.1.0.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-cli-v0.1.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-cli-v0.2.0...HEAD
+[0.2.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.2.0
 [0.1.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.1.0

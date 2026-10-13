@@ -11,8 +11,8 @@ Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP file
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.1.10 (2026-10-13) |
-| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.10) |
+| Latest release | 0.1.11 (2026-10-13) |
+| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.11) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_capi/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-capi/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-capi) |
 
@@ -67,21 +67,86 @@ than altering a `v0_1_` one.
 
 ## Changes
 
-Latest release, 0.1.10 (2026-10-13):
+Latest release, 0.1.11 (2026-10-13):
 
-### Changed (#433, wire format 1.3)
+### Added (#478, cascading delete and purge)
 
-- The geometry graph payload (#367) may be Axiolid's wire format 1.3
-  (`axiolid-model` 0.3.12), a minor version of the format (ADR 0021,
-  amended): an `IfcOffsetCurveByDistances` along an offset whose length is
-  a quadrature now lowers, continued to the basis's ends the kernel
-  measures. An envelope carries the lowest version its content needs, so
-  every other payload is unchanged: 1.0, 1.1 or 1.2. A reader on
-  `axiolid-model` 0.3.11 or older refuses 1.3. No `v0_1` symbol changed;
-  the ABI version is unchanged.
+- `openbim_ifc_v0_1_model_remove_product(model, product, flags, ...)` and
+  `openbim_ifc_v0_1_model_purge(model, classes, class_lengths,
+  class_count, flags, ...)`, answering a `RemovalReport` record tape.
+  Flags `OPENBIM_IFC_REMOVE_REBASE_PLACEMENTS`,
+  `OPENBIM_IFC_REMOVE_UNTYPE_OCCURRENCES`, `OPENBIM_IFC_REMOVE_DRY_RUN`,
+  `OPENBIM_IFC_PURGE_INCLUDE_ROOTS`,
+  `OPENBIM_IFC_PURGE_INCLUDE_OWNER_HISTORY`, `OPENBIM_IFC_PURGE_DRY_RUN`;
+  an unknown flag is `InvalidArgument`. A size query or a short buffer
+  plans the removal and answers `BufferTooSmall` without applying it. The
+  header is regenerated.
+- ABI version 0.1.12 (on top of #449's 0.1.11); every export above is new,
+  no `v0_1` symbol changed.
 
-Semver: a minor change in ADR 0021's terms, released on the 0.1 line (as 0.1.7
-was): the C package keeps 0.1.x while the `v0_1` ABI is unchanged, because
-CMake's `find_package(openbim_ifc 0.1)` does not accept 0.2.
+### Deprecated (#478)
+
+- `openbim_ifc_v0_1_entity_remove`, which leaves references dangling (a
+  header note); use `openbim_ifc_v0_1_entity_remove_with_relationships` or
+  `openbim_ifc_v0_1_model_remove_product`. It keeps working for the life of
+  the `v0_1` ABI.
+
+Semver: additive, released on the 0.1 line: the C package keeps 0.1.x while
+the `v0_1` ABI is unchanged, because CMake's `find_package(openbim_ifc 0.1)`
+does not accept 0.2.
+
+### Added (#450)
+
+- `openbim_ifc_v0_1_model_write_ifczip`, and ifcZIP input to
+  `openbim_ifc_v0_1_model_parse` and `_model_open`, recognized by the ZIP
+  signature: one STEP or ifcXML model, read within a decompression budget
+  (`PARSE`, `UNSUPPORTED` or `BUDGET_EXCEEDED` otherwise). No existing
+  symbol changed.
+
+Semver: minor, released on the 0.1 line: the `v0_1` ABI only gains a
+symbol.
+
+### Added (#449)
+
+- The `ProductMesh` records of `openbim_ifc_v0_1_meshes_records` gain two
+  trailing fields: colour (a `SurfaceColour` record of red, green, blue,
+  transparency, source `item`/`layer`/`material`, source entity and
+  surface style, or `NULL`) and colour refusal (`GeometryRefusal` or
+  `NULL`, code `ambiguous` or a geometry code). No function signature
+  changed; the header changes only in its documentation.
+- ABI version 0.1.11 (on top of #463's 0.1.10); no `v0_1` symbol changed.
+
+Semver: additive, released on the 0.1 line (the `v0_1` ABI is unchanged
+and additive: a reader that walks a record's fields by its child count
+reads the new ones; one that hard-codes seven fields reads the first seven
+unchanged).
+
+### Added (#463, GlobalIds, types and openings)
+
+- `openbim_ifc_v0_1_model_by_guid` (`out_id`, `NoValue` when absent,
+  `InvalidModel` when several entities carry it) and
+  `openbim_ifc_v0_1_model_duplicate_global_ids` (a tape of `LIST`s: the
+  `GlobalId` and its holders).
+- `openbim_ifc_v0_1_entity_type_object`, `_entity_occurrences`,
+  `_entity_openings`, `_entity_fillings` and `_entity_voided_element`: an
+  optional id to `out_id` or `NoValue`, a list through the buffer protocol.
+- `openbim_ifc_v0_1_new_guid` and `openbim_ifc_v0_1_name_based_guid`,
+  which need no model. The header is regenerated.
+- ABI version 0.1.10; every export above is new, no `v0_1` symbol changed.
+
+Semver: additive, released on the 0.1 line: the C package keeps 0.1.x while
+the `v0_1` ABI is unchanged, because CMake's `find_package(openbim_ifc 0.1)`
+does not accept 0.2.
+
+### Changed
+
+- `openbim_ifc_v0_1_model_georeferencing` reads IFC2X3 files through their `ePSet_MapConversion` and
+  `ePSet_ProjectedCRS` property sets instead of refusing them as
+  `unsupported-schema` (#451); such a record's source kind is
+  `property-set`. Through `openbim-ifc-binding-core`. No `v0_1` symbol
+  changed.
+
+Semver: a behaviour change of an existing export, released on the 0.1
+line like the additions above: the `v0_1` ABI is unchanged.
 
 Full history: [`crates/openbim-ifc-capi/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-capi/CHANGELOG.md)

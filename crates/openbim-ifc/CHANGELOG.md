@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-10-13
+
 ### Added (#478, cascading delete and purge)
 
 - `AuthorOp::RemoveProduct { product, options }` removes an `IfcProduct` or
@@ -821,7 +823,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.31.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.32.0...HEAD
+[0.32.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.32.0
 [0.31.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.31.0
 [0.30.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.30.0
 [0.29.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.29.0
