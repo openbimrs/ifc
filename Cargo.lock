@@ -122,9 +122,9 @@ dependencies = [
 
 [[package]]
 name = "axiolid-curve"
-version = "0.3.8"
+version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed89b801669840adcb05c0943a9f953855752ec3d382f79ea580a6d0718fa6b9"
+checksum = "08f54307bfbbc19a24467869fa81f1f4f6dd86bc1686e37038c1b4d2a72bb3dd"
 dependencies = [
  "axiolid-core",
  "axiolid-linear",
@@ -133,9 +133,9 @@ dependencies = [
 
 [[package]]
 name = "axiolid-curve-evaluate-contract"
-version = "0.3.6"
+version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f060a7ccf33a69c9c31f057d7f1d32869a2036cccac00d152c2c7daa5f00e463"
+checksum = "6adb49410c6eb4215bc82f06c7d25de50e4cad345d836eb77916050e6faddcdf"
 dependencies = [
  "axiolid-contracts",
  "axiolid-core",
@@ -144,9 +144,9 @@ dependencies = [
 
 [[package]]
 name = "axiolid-evaluate"
-version = "0.3.12"
+version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68b305ccc3c8f9d513760f0da36ffc3e7b572e3fc7ad5fe82ac0e16a1042bd45"
+checksum = "f148ee24639b7581394bc4021e92579c2b09923ba012f1703f96dd168505b407"
 dependencies = [
  "axiolid-contracts",
  "axiolid-core",
@@ -248,9 +248,9 @@ dependencies = [
 
 [[package]]
 name = "axiolid-mesh-compile"
-version = "0.3.22"
+version = "0.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5f0a50780f2765145f837ea2bb0bb9390feef56fe141b71e212f2fcf453aab9"
+checksum = "1af44cee2225596d79e57fec5a4a103435a38a85b3e56c3193636d822111341e"
 dependencies = [
  "axiolid-brep",
  "axiolid-brep-boolean",
@@ -308,9 +308,9 @@ dependencies = [
 
 [[package]]
 name = "axiolid-model"
-version = "0.3.11"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b1220e606c9770b7391dd447d927fbfec65c158f5fb9fd95c90ffdda7e461b4"
+checksum = "fbc7a97267f1db428deec0a331b0a5fd90baac5624a95e12580a5f0fce85c3a3"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",

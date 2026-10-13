@@ -19,6 +19,9 @@
 //! mitres there. Its refusals of a run surface as
 //! `GeometryError::RunSeamWindowRefused` naming the run.
 //!
+//! Offset runs along the kerb, continued to its ends (#433), are in
+//! `stations/offset_runs.rs`.
+//!
 //! An offset of a banked curve, the first case whose length the kernel
 //! refuses to certify, cannot be lowered from IFC: `IfcSegmentedReferenceCurve`
 //! is refused while lowering (#311), and a banked basis by name. The
@@ -46,22 +49,22 @@ pub fn bases() -> Model {
 }
 
 /// The declared precision, the window every station carries.
-const PRECISION: f64 = 1e-5;
+pub const PRECISION: f64 = 1e-5;
 
 /// The kerb's own plan length at its joint at the grade break (20 m along
 /// the alignment): beside the line it runs from (0, 2) to (20, 2.5).
-fn grade_joint() -> f64 {
+pub fn grade_joint() -> f64 {
     20.0f64.hypot(0.5)
 }
 
 /// At the horizontal joint (30 m): on to (30, 2.75).
-fn bend_joint() -> f64 {
+pub fn bend_joint() -> f64 {
     grade_joint() + 10.0f64.hypot(0.25)
 }
 
 /// The proxy named `name`.
 #[cfg(feature = "compile-reference-backend")]
-fn product(model: &Model, name: &str) -> EntityId {
+pub fn product(model: &Model, name: &str) -> EntityId {
     model
         .ids_of_type("IFCBUILDINGELEMENTPROXY")
         .iter()

@@ -121,16 +121,11 @@ fn an_offset_arc_has_its_exact_length() {
     );
 }
 
-/// What an offset basis cannot carry is refused by name, before any
-/// station is resolved: an offset of an offset, a trim of an offset and an
-/// offset through a circle's centre. A station on an offset whose length is
-/// a quadrature (beside an ellipse), refused before #423, carries the
-/// kernel's window. An offset run along it is refused by name: its length
-/// is a quadrature too, so its continuation to the end cannot be placed
-/// (#433).
-#[test]
-fn offset_bases_the_kernel_refuses_are_refused_by_name() {
-    let model = step(
+/// The inline offset bases the kernel refuses, and the trimmed ellipse's
+/// offset (`#42`) with the run beside it (`#45`) that axioval/engine
+/// lowers, and a run along an unbounded line (`#54`).
+fn ellipse_model() -> Model {
+    step(
         "#10=IFCCARTESIANPOINT((0.,0.));
 #11=IFCCARTESIANPOINT((10.,0.));
 #12=IFCPOLYLINE((#10,#11));
@@ -149,15 +144,60 @@ fn offset_bases_the_kernel_refuses_are_refused_by_name() {
 #42=IFCOFFSETCURVE2D(#41,0.5,.F.);
 #43=IFCPOINTBYDISTANCEEXPRESSION(IFCLENGTHMEASURE(1.),$,$,$,#42);
 #44=IFCPOINTBYDISTANCEEXPRESSION(IFCLENGTHMEASURE(1.),0.5,$,$,#42);
-#45=IFCOFFSETCURVEBYDISTANCES(#42,(#44),$);",
+#45=IFCOFFSETCURVEBYDISTANCES(#42,(#44),$);
+#50=IFCDIRECTION((1.,0.));
+#51=IFCVECTOR(#50,1.);
+#52=IFCLINE(#10,#51);
+#53=IFCPOINTBYDISTANCEEXPRESSION(IFCLENGTHMEASURE(1.),0.5,$,$,#52);
+#54=IFCOFFSETCURVEBYDISTANCES(#52,(#53),$);",
         false,
-    );
+    )
+}
+
+/// What an offset basis cannot carry is refused by name, before any
+/// station is resolved: an offset of an offset, a trim of an offset and an
+/// offset through a circle's centre. A station on an offset whose length is
+/// a quadrature (beside an ellipse), refused before #423, carries the
+/// kernel's window. An offset run along it, refused before #433, continues
+/// to the start and the end the kernel measures; an offset run along an
+/// unbounded line, which has no end, is still refused by name.
+#[test]
+fn offset_bases_the_kernel_refuses_are_refused_by_name() {
+    let model = ellipse_model();
     refused(lower(&model, 15), true, "offset of an offset curve");
     refused(lower(&model, 17), true, "trim of an offset curve");
     refused(lower(&model, 34), true, "collapses");
     assert_windowed(&lower(&model, 43).expect("lowers"), 1.0, 1e-5);
-    // The run stops short of an end whose distance is a quadrature (#433).
-    refused(lower(&model, 45), true, "(#433)");
+    // The run stops short of both ends, whose distances are quadratures
+    // the kernel measures (#433).
+    ellipse_run(&model);
+    refused(lower(&model, 54), true, "the basis is unbounded");
+}
+
+/// The offset run beside the trimmed ellipse's offset (`#45` above):
+/// `RunStation::at_basis_start` and `at_basis_end` around its one stated
+/// station, which carries the kernel's window (#433).
+fn ellipse_run(model: &Model) -> ifc_geometry::lower::LoweredGeometry {
+    use axiolid_model::{RunStation, StationOffsets};
+
+    let lowered = lower(model, 45).expect("the run lowers");
+    let GeometryNode::CurveRelation(CurveRelation::OffsetsAtStations { stations, .. }) =
+        root(&lowered)
+    else {
+        panic!("an offset run: {:?}", root(&lowered));
+    };
+    let offsets = StationOffsets::new(0.5, 0.0, 0.0);
+    assert_eq!(stations.len(), 3, "{stations:?}");
+    assert_eq!(stations[0], RunStation::at_basis_start(offsets));
+    assert_eq!(stations[1].station.distance, 1.0);
+    assert_eq!(stations[1].seam_window, 1e-5);
+    assert_eq!(stations[2], RunStation::at_basis_end(offsets));
+    #[cfg(feature = "wire")]
+    {
+        let json = lowered.graph.to_json().expect("writes");
+        assert!(json.contains("\"version\":\"1.3\""), "{json}");
+    }
+    lowered
 }
 
 #[cfg(feature = "compile-reference-backend")]
@@ -176,7 +216,9 @@ mod kernel {
     use ifc_geometry::transform::Transform;
     use ifc_geometry::units;
 
-    use super::super::common::{close_point, close_vec, lower, root, step};
+    use super::super::common::{
+        close_point, close_vec, lower, ring_around, root, step, swept_along,
+    };
     use super::super::seams::item;
     use super::{offsets, side, LANE};
 
@@ -292,6 +334,32 @@ mod kernel {
                 .length();
             assert!(within(kernel, length), "{name}: {kernel} != {length}");
         }
+    }
+
+    /// The run beside the offset of the trimmed ellipse `(4 cos t, 2 sin t)`,
+    /// t in [0, 1], resolves through the reference kernel (#433): swept
+    /// along its whole extent, it starts and ends 1 m (0.5 + 0.5) left of
+    /// the ellipse, inwards, at t = 0 and t = 1, where the kernel measures
+    /// the offset's ends.
+    #[test]
+    fn the_run_beside_an_ellipse_runs_to_its_ends() {
+        let model = super::ellipse_model();
+        super::ellipse_run(&model);
+        let lowered = swept_along(&model, 45, 0.05);
+        let options = ExecutionOptions::new(Tolerance::MILLIMETRE);
+        let mesh = default_backend()
+            .compile_mesh(&lowered.graph, lowered.root, &options)
+            .expect("compiles");
+        ring_around(&mesh, [3.0, 0.0, 0.0], 0.05, "the start");
+        let t = 1.0f64;
+        let tangent = (-4.0 * t.sin(), 2.0 * t.cos());
+        let norm = tangent.0.hypot(tangent.1);
+        let end = [
+            4.0 * t.cos() - tangent.1 / norm,
+            2.0 * t.sin() + tangent.0 / norm,
+            0.0,
+        ];
+        ring_around(&mesh, end, 0.05, "the end");
     }
 
     /// The offset of the L polyline 1 m to its left has no joint at the

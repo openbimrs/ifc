@@ -12,6 +12,38 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#433, offset runs to a basis end with quadrature length)
+
+- An `IfcOffsetCurveByDistances` whose basis is bounded but has no stated
+  length (an offset beside a gradient curve, a spiral, a B-spline or an
+  ellipse, a relation with an ellipse or a B-spline piece, a B-spline or an
+  ellipse itself) now lowers instead of being refused with the former
+  `NO_QUADRATURE_LENGTH` reason or "states no length". IFC4.3 ADD2
+  8.9.3.42.3 continues its first and last offsets unchanged to the basis's
+  ends: the run is `CurveRelation::OffsetsAtStations` ending in
+  `RunStation::at_basis_end` with the last offsets and, where the first
+  offset stops short of the start, starting with
+  `RunStation::at_basis_start` (`axiolid-model` 0.3.12,
+  axiolid/kernel#303). The kernel resolves the end to the basis's length
+  by its own measure. Stations along a basis whose seams are quadratures
+  keep their #429 seam-snapping windows. Such a graph is wire format 1.3.
+  Bases with a stated length keep their stated continuation and emit the
+  identical graph: every representation item of the committed fixtures and
+  the reference corpus lowers to the same wire bytes as before.
+- `SeamWindowRefusal::PastBasisEnd` (feature `compile`): the kernel refuses
+  a run that states a station at or past the end it measures, reported as
+  `GeometryError::RunSeamWindowRefused` naming the run, which
+  `ProvenanceMap::seam_window_runs` now also lists for runs continued to
+  such an end.
+- Offsets that stop short of an unbounded basis (a line) stay refused,
+  now with a reason naming the unbounded basis.
+- Requires `axiolid-model` 0.3.12, `axiolid-curve` 0.3.9,
+  `axiolid-evaluate` 0.3.13, `axiolid-curve-evaluate-contract` 0.3.7 and
+  `axiolid-mesh-compile` 0.3.23.
+
+Semver: minor. Refused offset runs now lower, a refusal kind is added, and
+the dependency floors rise.
+
 ## [0.23.0] - 2026-10-12
 
 ### Changed (#429, runs of sections along bases with quadrature joints)

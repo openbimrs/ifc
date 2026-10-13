@@ -14,7 +14,10 @@
 //! a run adds one refusal of its own: its stations, snapped, no longer
 //! increase strictly in distance, a `GeomError::InvalidInput` whose text
 //! `axiolid-mesh-compile` keeps private; it is repeated here, and a test
-//! that compiles such a run pins it.
+//! that compiles such a run pins it. An offset run continued to its
+//! basis's end, which the kernel measures (#433, axiolid/kernel#303), adds
+//! another: a stated station at or past that end, another private
+//! `GeomError::InvalidInput` text repeated and pinned the same way.
 
 use axiolid_contracts::GeomError;
 
@@ -35,6 +38,13 @@ pub(crate) const UNCERTIFIED: &str =
      profile in a leaning frame; an offset by distances along an ellipse or a B-spline; a 3D \
      offset direction that is not vertical beside a plan-measured or intrinsic base; a base \
      placed in a frame that tilts +Z; a skewed frame; or a tolerance below the points' rounding";
+
+/// `axiolid-mesh-compile`'s refusal of an offset run whose stations, its
+/// basis's ends resolved, do not increase (`station::RESOLVED_NOT_INCREASING`,
+/// private there).
+pub(crate) const PAST_BASIS_END: &str =
+    "station: the run's stations, its stations at the basis's ends measured by the kernel, do \
+     not increase strictly in distance: a stated station at or past the basis's end";
 
 /// `axiolid-mesh-compile`'s refusal of a run whose snapped stations no
 /// longer increase (`station::SNAPPED_NOT_INCREASING`, private there).
@@ -63,13 +73,26 @@ pub enum SeamWindowRefusal {
     /// one past its neighbour (#429). The model's precision is coarser
     /// than the distance between them.
     NotIncreasing,
+    /// An offset run continued to its basis's end, whose distance the
+    /// kernel measures (#433), states a station at or past that end, so its
+    /// stations do not increase strictly once the end is resolved. IFC4.3
+    /// ADD2 (8.9.3.42.3) continues the offsets only where they stop short
+    /// of the end; one stated within the model's precision of it is
+    /// refused too, since this crate cannot tell it from the end.
+    PastBasisEnd,
 }
 
 impl SeamWindowRefusal {
     /// The refusal `error` is, if it is one of a window's.
     pub(crate) fn of(error: &GeomError) -> Option<Self> {
         if let GeomError::InvalidInput(detail) = error {
-            return (detail == NOT_INCREASING).then_some(Self::NotIncreasing);
+            return if detail == NOT_INCREASING {
+                Some(Self::NotIncreasing)
+            } else if detail == PAST_BASIS_END {
+                Some(Self::PastBasisEnd)
+            } else {
+                None
+            };
         }
         let GeomError::UnsupportedInput { input, .. } = error else {
             return None;
@@ -103,6 +126,10 @@ impl std::fmt::Display for SeamWindowRefusal {
             Self::NotIncreasing => {
                 "the run's stations, snapped onto seams within the window, no longer increase \
                  strictly in distance"
+            }
+            Self::PastBasisEnd => {
+                "the offset run states a station at or past its basis's end, which the kernel \
+                 measures, so its stations do not increase strictly in distance"
             }
         })
     }

@@ -79,7 +79,7 @@ axiolid-mesh = { version = "0.3.0" }
 # #429); wire format 1.2 carries them.
 # It also carries the open-ended path pieces of axiolid-curve 0.3.8
 # (axiolid/kernel#298; #427).
-axiolid-model = { version = "0.3.11" }
+axiolid-model = { version = "0.3.12" }
 axiolid-primitive = { version = "0.3.0" }
 axiolid-profile = { version = "0.3.0" }
 axiolid-surface = { version = "0.3.0" }
@@ -108,9 +108,9 @@ axiolid-spatial = { version = "0.3.0" }
 # its curve, or refused as `OPEN_PATH_END_UNSUPPORTED` (axiolid/kernel#298);
 # a derived linear placement on an offset whose length is a quadrature
 # reads it (#427).
-axiolid-curve = { version = "0.3.8" }
-axiolid-evaluate = { version = "0.3.12" }
-axiolid-curve-evaluate-contract = { version = "0.3.6" }
+axiolid-curve = { version = "0.3.9" }
+axiolid-evaluate = { version = "0.3.13" }
+axiolid-curve-evaluate-contract = { version = "0.3.7" }
 # Dev-only: the exact volume of a compiled body, to check an arc-bounded
 # half-space clip against its closed form (#398).
 axiolid-measure = { version = "0.3.10" }
@@ -139,7 +139,7 @@ axiolid-contracts = { version = "0.3.1" }
 # windows (axiolid/kernel#301; #429).
 # It is also built with the open-end curve and evaluate crates
 # (axiolid/kernel#298; #427).
-axiolid-mesh-compile = { version = "0.3.22" }
+axiolid-mesh-compile = { version = "0.3.23" }
 axiolid-mesh-compile-contract = { version = "0.3.3" }
 axiolid-mesh-boolean-boolmesh = { version = "0.3.0" }
 # Not used directly: `axiolid-mesh-compile` reaches it. Pinned here only to

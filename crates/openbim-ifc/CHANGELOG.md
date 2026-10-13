@@ -12,6 +12,16 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#433)
+
+- Requires `ifc-geometry` with #433: an `IfcOffsetCurveByDistances` along a
+  bounded basis whose length is a quadrature lowers, continued to the
+  basis's ends the kernel measures, and `product_graphs` labels such a
+  payload wire format 1.3 (`axiolid-model` 0.3.12, axiolid/kernel#303).
+  Every other payload keeps its version and bytes.
+
+Semver: minor, following the dependency.
+
 ## [0.29.0] - 2026-10-12
 
 ### Changed (#429)
