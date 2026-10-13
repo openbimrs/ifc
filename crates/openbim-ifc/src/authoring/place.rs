@@ -20,6 +20,20 @@ impl Planner<'_, '_> {
         location: [f64; 3],
         axes: Option<([f64; 3], [f64; 3])>,
     ) -> Result<EntityId, F> {
+        let relative = self.axis_placement(location, axes)?;
+        let mut attributes = vec![("RelativePlacement".to_owned(), Value::Ref(relative))];
+        if let Some(parent) = relative_to {
+            attributes.push(("PlacementRelTo".to_owned(), Value::Ref(parent)));
+        }
+        self.create("IfcLocalPlacement", attributes)
+    }
+
+    /// An `IfcAxis2Placement3D` with its point and, when given, directions.
+    pub(super) fn axis_placement(
+        &mut self,
+        location: [f64; 3],
+        axes: Option<([f64; 3], [f64; 3])>,
+    ) -> Result<EntityId, F> {
         finite("location", &location)?;
         if let Some((axis, ref_direction)) = axes {
             finite("axis", &axis)?;
@@ -48,12 +62,7 @@ impl Planner<'_, '_> {
             attributes.push(("Axis".to_owned(), Value::Ref(axis)));
             attributes.push(("RefDirection".to_owned(), Value::Ref(ref_direction)));
         }
-        let relative = self.create("IfcAxis2Placement3D", attributes)?;
-        let mut attributes = vec![("RelativePlacement".to_owned(), Value::Ref(relative))];
-        if let Some(parent) = relative_to {
-            attributes.push(("PlacementRelTo".to_owned(), Value::Ref(parent)));
-        }
-        self.create("IfcLocalPlacement", attributes)
+        self.create("IfcAxis2Placement3D", attributes)
     }
 
     fn direction(&mut self, ratios: [f64; 3]) -> Result<EntityId, F> {

@@ -212,7 +212,8 @@ mod authoring;
 pub use {
     authoring::{
         apply_authoring, authoring_handle, fresh_seed, stage_authoring, AuthorOp, AuthoringError,
-        AuthoringFailure, AuthoringOutcome, NamedValues, OwnerHistoryOp, StagedAuthoring,
+        AuthoringFailure, AuthoringOutcome, KeepReason, KeptEntity, NamedValues, OwnerHistoryOp,
+        PurgeOptions, RemovalReport, RemoveProductOptions, RemovedEntity, StagedAuthoring,
         HANDLE_BASE,
     },
     ifc_author as author,

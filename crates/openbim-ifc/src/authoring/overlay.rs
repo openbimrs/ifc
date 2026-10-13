@@ -6,9 +6,10 @@
 //! changes beside the untouched base model, answers reads through them,
 //! and only at the end emits one transaction holding all of them.
 
+use std::cell::OnceCell;
 use std::collections::{BTreeMap, BTreeSet};
 
-use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
+use ifc_model::{Edit, Entity, EntityId, Model, ReverseIndex, Transaction, Value};
 
 /// The base model plus the batch's staged changes.
 pub(super) struct Overlay<'m> {
@@ -21,6 +22,9 @@ pub(super) struct Overlay<'m> {
     changed: BTreeMap<EntityId, Entity>,
     /// Base entities the batch removes.
     removed: BTreeSet<EntityId>,
+    /// Who references whom in the base model, built on the first removal
+    /// that asks: one scan serves every reference count of the batch.
+    index: OnceCell<ReverseIndex>,
 }
 
 impl<'m> Overlay<'m> {
@@ -31,6 +35,7 @@ impl<'m> Overlay<'m> {
             created: BTreeMap::new(),
             changed: BTreeMap::new(),
             removed: BTreeSet::new(),
+            index: OnceCell::new(),
         }
     }
 
@@ -92,14 +97,16 @@ impl<'m> Overlay<'m> {
             .collect()
     }
 
-    /// Every entity holding a reference to `target`, in id order.
+    /// Every entity holding a reference to `target`, in id order: the base
+    /// model's referrers from its reverse index, minus those the batch
+    /// removed or rewrote, plus the batch's own records that hold it.
     pub(super) fn referrers(&self, target: EntityId) -> Vec<EntityId> {
-        let mut found: BTreeSet<EntityId> = self
-            .base
+        let index = self.index.get_or_init(|| ReverseIndex::build(self.base));
+        let mut found: BTreeSet<EntityId> = index
+            .referrers(target)
             .iter()
-            .filter(|(id, _)| !self.removed.contains(id) && !self.changed.contains_key(id))
-            .filter(|(_, entity)| holds(&entity.attributes, target))
-            .map(|(id, _)| id)
+            .map(|referrer| referrer.from)
+            .filter(|id| !self.removed.contains(id) && !self.changed.contains_key(id))
             .collect();
         found.extend(
             self.created
@@ -110,6 +117,18 @@ impl<'m> Overlay<'m> {
         );
         found.remove(&target);
         found.into_iter().collect()
+    }
+
+    /// Every entity of the model as the batch so far leaves it, in id
+    /// order.
+    pub(super) fn ids(&self) -> Vec<EntityId> {
+        let mut ids: BTreeSet<EntityId> = self
+            .base
+            .ids()
+            .filter(|id| !self.removed.contains(id))
+            .collect();
+        ids.extend(self.created.keys().copied());
+        ids.into_iter().collect()
     }
 
     /// One transaction holding every staged change.

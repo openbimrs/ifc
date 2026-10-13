@@ -44,6 +44,51 @@ pub enum AuthorOp {
         /// The entity to remove.
         entity: EntityId,
     },
+    /// Remove a product (or a type object) with everything it solely owns,
+    /// as one step of the batch. Produces nothing; the batch outcome
+    /// carries a [`RemovalReport`](super::RemovalReport) for it.
+    ///
+    /// Removed with it: its `ObjectPlacement`, its representation down to
+    /// the items no one else uses, the property and quantity sets only it
+    /// is defined by with their properties, its material usage (not the
+    /// material definitions), its openings (each with the same cascade)
+    /// and its ports, and every relationship left without an end. Kept,
+    /// and reported with the reason: anything another entity that stays
+    /// still uses (a shared property set, a type's representation maps,
+    /// a style used elsewhere), related objects (its type, its container,
+    /// the fillings of its openings), and definitions the cascade never
+    /// deletes (material definitions, classification references, units,
+    /// contexts, the owner history).
+    ///
+    /// Refused with [`PlacementHasDependents`] while another placement is
+    /// relative to its placement (unless
+    /// [`RemoveProductOptions::rebase_placements`]), with
+    /// [`TypeHasOccurrences`] for a type object that still types objects
+    /// (unless [`RemoveProductOptions::untype_occurrences`]), and with
+    /// [`StillReferenced`] when an entity that stays, and is neither a
+    /// relationship nor a layer assignment, still needs something removed.
+    ///
+    /// [`PlacementHasDependents`]: super::AuthoringFailure::PlacementHasDependents
+    /// [`TypeHasOccurrences`]: super::AuthoringFailure::TypeHasOccurrences
+    /// [`StillReferenced`]: super::AuthoringFailure::StillReferenced
+    RemoveProduct {
+        /// The `IfcProduct` or `IfcTypeObject` to remove.
+        product: EntityId,
+        /// What to do where the removal would otherwise be refused.
+        options: RemoveProductOptions,
+    },
+    /// Remove unreferenced entities. Without classes: every entity that is
+    /// not an `IfcRoot` and that no `IfcRoot` reaches through references,
+    /// nor annotates something reached (a styled item, a layer
+    /// assignment, a shape aspect, a resource relationship, a coordinate
+    /// operation). With classes: entities of those classes, subtypes
+    /// included, that nothing references once the rest of the purge is
+    /// gone. `IfcRoot` entities, the owner history with its actors, and
+    /// representation contexts are never purged unless
+    /// [`PurgeOptions`] asks. Produces nothing; the batch outcome carries a
+    /// [`RemovalReport`](super::RemovalReport) for it. Stage the batch
+    /// ([`stage_authoring`](super::stage_authoring)) for a dry run.
+    Purge(PurgeOptions),
     /// Create the model's `IfcProject`; a model holds one. Produces it.
     Project {
         /// Its attributes by name (`Name`, `UnitsInContext`,
@@ -143,6 +188,91 @@ pub enum AuthorOp {
     OwnerHistory(OwnerHistoryOp),
 }
 
+/// How [`AuthorOp::RemoveProduct`] treats what would otherwise refuse it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
+pub struct RemoveProductOptions {
+    /// Re-base every placement relative to a removed placement onto the
+    /// removed placement's own parent, composing the transforms so nothing
+    /// moves, instead of refusing. Needs `IfcLocalPlacement`s over
+    /// `IfcAxis2Placement3D`s along the way.
+    pub rebase_placements: bool,
+    /// Remove a type object's `IfcRelDefinesByType`, leaving its
+    /// occurrences untyped, instead of refusing.
+    pub untype_occurrences: bool,
+}
+
+impl RemoveProductOptions {
+    /// No option set: refuse dependent placements and typed occurrences.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            rebase_placements: false,
+            untype_occurrences: false,
+        }
+    }
+
+    /// With [`Self::rebase_placements`] set to `rebase`.
+    #[must_use]
+    pub const fn rebase_placements(mut self, rebase: bool) -> Self {
+        self.rebase_placements = rebase;
+        self
+    }
+
+    /// With [`Self::untype_occurrences`] set to `untype`.
+    #[must_use]
+    pub const fn untype_occurrences(mut self, untype: bool) -> Self {
+        self.untype_occurrences = untype;
+        self
+    }
+}
+
+/// What [`AuthorOp::Purge`] removes.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[non_exhaustive]
+pub struct PurgeOptions {
+    /// The entity types to purge, subtypes included, any case; empty for
+    /// every resource entity no `IfcRoot` reaches. A type the declared
+    /// release does not declare is refused.
+    pub classes: Vec<String>,
+    /// Also purge unreferenced `IfcRoot` entities of `classes`. `IfcProject`
+    /// only when `classes` names `IfcProject` itself.
+    pub include_roots: bool,
+    /// Also purge an unreferenced owner history with its person,
+    /// organization and application, and, without `classes`, unused
+    /// representation contexts.
+    pub include_owner_history: bool,
+}
+
+impl PurgeOptions {
+    /// The default purge: resource entities no `IfcRoot` reaches.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Purge unreferenced entities of `classes` instead.
+    #[must_use]
+    pub fn classes<S: Into<String>>(mut self, classes: impl IntoIterator<Item = S>) -> Self {
+        self.classes = classes.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// With [`Self::include_roots`] set.
+    #[must_use]
+    pub const fn include_roots(mut self, include: bool) -> Self {
+        self.include_roots = include;
+        self
+    }
+
+    /// With [`Self::include_owner_history`] set.
+    #[must_use]
+    pub const fn include_owner_history(mut self, include: bool) -> Self {
+        self.include_owner_history = include;
+        self
+    }
+}
+
 /// The fields of [`AuthorOp::OwnerHistory`].
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 #[non_exhaustive]
@@ -198,8 +328,12 @@ impl AuthorOp {
     pub(super) fn ids_mut(&mut self) -> Vec<&mut EntityId> {
         let mut ids: Vec<&mut EntityId> = Vec::new();
         match self {
-            Self::Create { .. } | Self::OwnerHistory(_) => {}
-            Self::Edit { entity, .. } | Self::Remove { entity } => ids.push(entity),
+            Self::Create { .. } | Self::OwnerHistory(_) | Self::Purge(_) => {}
+            Self::Edit { entity, .. }
+            | Self::Remove { entity }
+            | Self::RemoveProduct {
+                product: entity, ..
+            } => ids.push(entity),
             Self::Project { owner_history, .. } | Self::TypeObject { owner_history, .. } => {
                 ids.extend(owner_history.as_mut());
             }
