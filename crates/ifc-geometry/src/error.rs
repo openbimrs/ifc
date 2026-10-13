@@ -397,7 +397,8 @@ pub enum GeometryError {
     /// [`UncertifiedLength`](crate::compile::SeamWindowRefusal::UncertifiedLength)
     /// for a joint the evaluator cannot certify to a thousandth of it: a
     /// piece before the window, or one reaching it, whose length it cannot
-    /// bound (#436).
+    /// bound (#436); [`CertificationBudgetExceeded`](crate::compile::SeamWindowRefusal::CertificationBudgetExceeded)
+    /// where it can only within more panels than its budget (#443).
     #[cfg(feature = "compile")]
     #[error(
         "{placement} (IFCLINEARPLACEMENT): along basis curve {basis} at {distance} m, {refusal}"
@@ -701,6 +702,7 @@ impl GeometryError {
             | Self::RunSeamWindowRefused { refusal, .. } => matches!(
                 refusal,
                 crate::compile::SeamWindowRefusal::UncertifiedLength
+                    | crate::compile::SeamWindowRefusal::CertificationBudgetExceeded
             ),
             // A net refusal is as supported as the reason behind it.
             Self::OpeningNotSubtracted { cause, .. } => cause.is_unsupported(),

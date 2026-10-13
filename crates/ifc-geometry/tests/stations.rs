@@ -12,8 +12,9 @@
 //! and segments placed at stations (#311), `stations/offsets.rs` stations
 //! along offsets (#414) and `stations/offset_bases.rs` along offsets whose
 //! length is a quadrature, snapped by the kernel's seam window (#423), with
-//! runs of sections along them (#429), and `stations/offset_runs.rs` offset
-//! runs continued to such a basis's ends (#433).
+//! runs of sections along them (#429), `stations/offset_runs.rs` offset
+//! runs continued to such a basis's ends (#433), and
+//! `stations/offset_run_bases.rs` stations along such a run (#443).
 
 #![cfg(feature = "lowering")]
 
@@ -22,6 +23,7 @@ mod stations {
     mod compile;
     mod offset;
     pub mod offset_bases;
+    mod offset_run_bases;
     mod offset_runs;
     mod offsets;
     mod points;

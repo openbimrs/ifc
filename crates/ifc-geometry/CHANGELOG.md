@@ -12,6 +12,55 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#443, stations along offset runs continued to their basis's ends)
+
+Semver: minor (0.x). Stations that were refused now lower, a refusal kind
+is added to the `#[non_exhaustive]` `SeamWindowRefusal`, and refusal texts
+change. No graph that lowered before changes: every representation item
+of the committed fixtures and `references/competitor` (6851 items) lowers
+to byte-identical wire JSON or to the same refusal.
+
+- A station whose basis is an `IfcOffsetCurveByDistances` lowered to
+  `CurveRelation::OffsetsAtStations` (#429, #433) now lowers. Its stations
+  carry the kernel's seam-snapping window. Examples are an
+  `IfcSectionedSolidHorizontal` or `IfcSectionedSurface` section, an
+  `IfcPointByDistanceExpression`, or an `IfcAxis2PlacementLinear` on such a
+  curve. Before, these were refused with "the basis curve relation is a
+  parameter-space curve, a surface curve whose p-curve governs, or an
+  instanced curve".
+  - The relation is flattened as `axiolid-mesh-compile` 0.3.23 flattens
+    it as a station basis. A station at the basis's start stands at `0`.
+  - The span to a station at the basis's end runs open to the end the
+    evaluator measures (#427).
+  - A windowed station stands at its own distance where no seam of the
+    basis lies within its window.
+  - A derived `IfcLinearPlacement` on such a curve reads the same path as
+    the compiler, bit for bit.
+- An offset of an offset (`IfcOffsetCurveByDistances`, `IfcOffsetCurve2D`
+  or `IfcOffsetCurve3D` over another offset curve, an `OffsetsAtStations`
+  included) is refused as a station basis by its own name, as Axiolid
+  refuses it (axiolid/kernel#289). The text names that rule. A trim of an
+  `OffsetsAtStations` is refused as a trim of an offset.
+- No offset relation reaches the catch-all refusal any more. Its text now
+  names the offset curves Axiolid reads. A basis nested deeper than 64
+  relations is refused by its own reason.
+- With `compile`, `SeamWindowRefusal::CertificationBudgetExceeded` is new.
+  It is returned where the kernel cannot certify a seam to a thousandth of
+  the window within its panel budget (a `BudgetExceeded` of
+  "certified length panels"). It is reported, like `UncertifiedLength`, as
+  `is_unsupported`.
+- Known limit, upstream (`TODO(#443)`): `axiolid-evaluate` 0.3.13 does not
+  certify an offset by distances whose law varies along an ellipse or a
+  B-spline. So a windowed station along such a run, past its first stated
+  offset, is refused by the reference kernel:
+  - for a sectioned solid, `RunSeamWindowRefused { refusal:
+    UncertifiedLength }`, which names the runs;
+  - for a derived placement, `PlacementSeamWindowRefused` with
+    `UncertifiedLength` or `CertificationBudgetExceeded`.
+
+  The lowered graph itself is correct. With its windows set to zero, the
+  axioval/engine deck compiles to the closed-form prism.
+
 ## [0.24.0] - 2026-10-13
 
 ### Fixed

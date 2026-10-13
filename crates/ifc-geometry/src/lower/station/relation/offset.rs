@@ -53,8 +53,10 @@
 //! part. Its joints are unknown here, so a station along it carries the
 //! kernel's seam-snapping window, which the kernel resolves against its own
 //! certified joint distances (#423, axiolid/kernel#294), as do the sections
-//! of a run along it (#429); an offset run along it (#433) is refused by
-//! name. A derived placement reads such a piece open-ended, its length the
+//! of a run along it (#429); an offset run along it continues to the end
+//! the kernel measures (#433). A station along such an offset run
+//! (`OffsetsAtStations`, #443) is flattened as the kernel flattens it
+//! ([`by_stations`]). A derived placement reads such a piece open-ended, its length the
 //! evaluator's (#427, `relation_pieces`). Its base is split at every seam
 //! of its curve the kernel splits it at, smooth or not (`kernel_cuts`), so
 //! the pieces are the kernel's. The kernel's own named
@@ -71,15 +73,20 @@ use axiolid_core::{Scalar, Vec3};
 use axiolid_curve::{
     ChainPiece2, Curve2, Curve3, ElevationLaw, OffsetFrame, OffsetLaw, PathOffsets,
 };
-use axiolid_model::{Station, StationFrame};
+use axiolid_model::{BasisEnd, RunStation, StationFrame};
 
 use super::{pieces_between, Flat, Piece, INEXACT};
 use crate::lower::session::AtomicCurve;
 
-/// Why an offset of an offset is refused.
+/// Why an offset of an offset is refused: Axiolid's own rule
+/// (axiolid/kernel#289, `axiolid-evaluate`'s `StationOffset::new`), whatever
+/// the two offsets are (`IfcOffsetCurve2D`, `IfcOffsetCurve3D`,
+/// `IfcOffsetCurveByDistances`, in any combination).
 pub(crate) const OFFSET_OF_OFFSET: &str =
-    "the basis is an offset of an offset curve; Axiolid measures a station along an offset of \
-     atomic curves only (offset the base once, by the summed distance)";
+    "the basis is an offset of an offset curve (an IfcOffsetCurve2D, IfcOffsetCurve3D or \
+     IfcOffsetCurveByDistances whose BasisCurve is itself an offset curve); Axiolid measures a \
+     station along an offset of atomic curves only (axiolid/kernel#289: offset the base once, \
+     by the summed law)";
 
 /// Why a planar offset law on a 3D curve is refused.
 pub(crate) const PLANAR_3D: &str =
@@ -125,19 +132,21 @@ pub(super) fn offset_pieces<'s>(
     base: &[Piece<'s>],
     law: OffsetLaw,
 ) -> Result<Vec<Piece<'s>>, &'static str> {
+    if base.iter().any(|piece| piece.offset.is_some()) {
+        return Err(OFFSET_OF_OFFSET);
+    }
     let total: Scalar = base.iter().map(Piece::length).sum();
     let mut out = Vec::new();
     let mut run = 0.0;
     for piece in base {
-        if piece.offset.is_some() {
-            return Err(OFFSET_OF_OFFSET);
-        }
         let cuts = kernel_cuts(piece)?;
         let spans: Vec<(Piece<'s>, OffsetLaw)> = if !piece.is_stated() {
             // A base whose own end (or start, #436) is the evaluator's:
             // offset whole, which needs neither a cut nor where a linear
-            // law is along it.
-            if !cuts.is_empty() || matches!(law, OffsetLaw::Linear { .. }) {
+            // law is along it; a constant one (the offsets an offset by
+            // distances carries on to its basis's end, #443) is the same
+            // wherever it is read.
+            if !cuts.is_empty() || !constant(law) {
                 return Err(INEXACT);
             }
             vec![(piece.clone(), law)]
@@ -150,11 +159,13 @@ pub(super) fn offset_pieces<'s>(
                 .map(|pair| {
                     let (a, b) = (pair[0], pair[1]);
                     let law = match law {
-                        OffsetLaw::Linear { start, end, frame } => OffsetLaw::Linear {
-                            start: start.lerp(end, (run + a) / total),
-                            end: start.lerp(end, (run + b) / total),
-                            frame,
-                        },
+                        OffsetLaw::Linear { start, end, frame } if start != end => {
+                            OffsetLaw::Linear {
+                                start: start.lerp(end, (run + a) / total),
+                                end: start.lerp(end, (run + b) / total),
+                                frame,
+                            }
+                        }
                         other => other,
                     };
                     let mut span = piece.clone();
@@ -196,14 +207,58 @@ pub(super) fn offset_pieces<'s>(
     Ok(out)
 }
 
-/// An offset by distances along `base`, flattened: the basis between each
-/// pair of consecutive stations (an atomic one measured from its own start,
-/// a line unbounded), offset by the offsets interpolated between them.
+/// Whether `law` is the same all along: a constant offset, or a linear one
+/// whose two ends agree.
+fn constant(law: OffsetLaw) -> bool {
+    match law {
+        OffsetLaw::Linear { start, end, .. } => start == end,
+        _ => true,
+    }
+}
+
+/// Where a station of an offset by distances stands along its basis.
+#[derive(Debug, Clone, Copy)]
+enum At {
+    /// At this distance, stated.
+    Distance(Scalar),
+    /// At the basis's end, which the kernel measures (#433).
+    End,
+}
+
+/// An offset by distances along `base`, flattened (`OffsetByStations`, or
+/// its general form `OffsetsAtStations`, #429, #433, #443): the basis
+/// between each pair of consecutive stations (an atomic one measured from
+/// its own start, a line unbounded), offset by the offsets interpolated
+/// between them, as `axiolid-mesh-compile`'s `offset_by_stations` builds
+/// them.
+///
+/// The kernel resolves a station at the basis's start to `0` and one at its
+/// end to the basis's length by its own measure, then snaps every station
+/// within its seam-snapping window, and splits the basis there. Here:
+///
+/// - a station at the start stands at `0`;
+/// - a station at the end, last, closes a span that runs to the basis's
+///   end: clipped from the stated pieces where every length is stated, and
+///   otherwise reaching into its last piece whose length is a quadrature,
+///   left open there (#427), the evaluator's end;
+/// - a windowed station stands at its own distance where no seam of the
+///   basis lies within its window, the kernel's snap then a no-op. A seam
+///   within it, which the kernel would snap onto, or one past a piece whose
+///   length is a quadrature, leaves where the span ends to the kernel
+///   ([`INEXACT`]).
+///
+/// An offset of an offset is refused first, as the kernel refuses it
+/// ([`OFFSET_OF_OFFSET`]).
 pub(super) fn by_stations<'s>(
     base: Flat<'s>,
-    stations: &[Station],
+    stations: &[RunStation],
     frame: StationFrame,
 ) -> Result<Vec<Piece<'s>>, &'static str> {
+    if let Flat::Pieces(pieces) = &base {
+        if pieces.iter().any(|piece| piece.offset.is_some()) {
+            return Err(OFFSET_OF_OFFSET);
+        }
+    }
     if stations.len() < 2 {
         return Err(INEXACT);
     }
@@ -212,21 +267,63 @@ pub(super) fn by_stations<'s>(
         StationFrame::Plan => OffsetFrame::Plan,
         _ => return Err(INEXACT),
     };
-    let offsets = |station: &Station| {
-        PathOffsets::new(
-            station.offsets.lateral,
-            station.offsets.vertical,
-            station.offsets.longitudinal,
-        )
+    let offsets = |station: &RunStation| {
+        let offsets = &station.station.offsets;
+        PathOffsets::new(offsets.lateral, offsets.vertical, offsets.longitudinal)
     };
-    let mut out = Vec::new();
-    for pair in stations.windows(2) {
-        let (a, b) = (pair[0].distance, pair[1].distance);
-        let span = match &base {
-            Flat::Atomic(curve, placements) => {
-                vec![super::piece(curve, a, b, placements.clone())?]
+    // The whole basis, read only by a run that carries a window or a
+    // station at its end, so a plain run is flattened as it always was.
+    let general = stations
+        .iter()
+        .any(|station| station.basis_end.is_some() || station.seam_window > 0.0);
+    let whole = if general {
+        match &base {
+            Flat::Atomic(curve, placements) => Flat::Atomic(curve, placements.clone()),
+            Flat::Pieces(pieces) => Flat::Pieces(pieces.clone()),
+        }
+        .into_pieces()?
+    } else {
+        Vec::new()
+    };
+    let seams = if general {
+        snap_seams(&whole)?
+    } else {
+        Vec::new()
+    };
+    let places = stations
+        .iter()
+        .map(|station| match station.basis_end {
+            None => {
+                let distance = station.station.distance;
+                let window = station.seam_window;
+                let snaps = window > 0.0
+                    && seams
+                        .iter()
+                        .any(|seam| (seam - distance).abs() <= window + super::slack(distance));
+                if snaps {
+                    Err(INEXACT)
+                } else {
+                    Ok(At::Distance(distance))
+                }
             }
-            Flat::Pieces(pieces) => pieces_between(pieces, a, b)?,
+            Some(BasisEnd::Start) => Ok(At::Distance(0.0)),
+            Some(BasisEnd::End) => Ok(At::End),
+            Some(_) => Err(INEXACT),
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut out = Vec::new();
+    for (pair, at) in stations.windows(2).zip(places.windows(2)) {
+        let span = match (at[0], at[1]) {
+            (At::Distance(a), At::Distance(b)) => match &base {
+                Flat::Atomic(curve, placements) => {
+                    vec![super::piece(curve, a, b, placements.clone())?]
+                }
+                Flat::Pieces(pieces) => pieces_between(pieces, a, b)?,
+            },
+            (At::Distance(a), At::End) => to_end(&whole, a)?,
+            // A station at the end before another: the kernel refuses the
+            // run's order by name.
+            (At::End, _) => return Err(INEXACT),
         };
         let law = OffsetLaw::Linear {
             start: offsets(&pair[0]),
@@ -234,6 +331,62 @@ pub(super) fn by_stations<'s>(
             frame,
         };
         out.extend(offset_pieces(&span, law)?);
+    }
+    Ok(out)
+}
+
+/// The pieces of `pieces`, the whole basis, from the distance `from` to its
+/// end. Where its last piece's length is a quadrature (open, #427, or ending
+/// at a parameter or a point, #436) and every piece before it is stated, the
+/// span keeps that piece from its stated start (shifted by `from` where
+/// `from` lies inside it), so its end stays the evaluator's, as the
+/// kernel's own `pieces_between(from, length)` ends at the length it
+/// measures. Any other leaves where the span starts unknown ([`INEXACT`]).
+fn to_end<'s>(pieces: &[Piece<'s>], from: Scalar) -> Result<Vec<Piece<'s>>, &'static str> {
+    let Some((last, before)) = pieces.split_last() else {
+        return Err(INEXACT);
+    };
+    if last.is_stated() {
+        let length: Scalar = pieces.iter().map(Piece::length).sum();
+        return pieces_between(pieces, from, length);
+    }
+    if last.reversed || last.start_bound.is_some() || !before.iter().all(Piece::is_stated) {
+        return Err(INEXACT);
+    }
+    let prefix: Scalar = before.iter().map(Piece::length).sum();
+    let mut out = if from < prefix - super::slack(prefix) {
+        pieces_between(before, from, prefix)?
+    } else {
+        Vec::new()
+    };
+    let mut tail = last.clone();
+    if from > prefix + super::slack(prefix) {
+        tail.start = last.start + (from - prefix);
+    }
+    out.push(tail);
+    Ok(out)
+}
+
+/// The distances along `pieces`, the whole basis, of every seam the kernel
+/// may snap a windowed station onto (`axiolid_evaluate::station::window`):
+/// every joint and every seam of a stated piece's curve inside it
+/// ([`kernel_cuts`], a superset of the seams whose frame may jump), up to
+/// the first piece whose length is a quadrature, whose start is the last
+/// one stated. Such a piece is an ellipse's, a B-spline's without a corner
+/// knot (one with a corner knot is refused before this, `SPLINE`) or an
+/// offset's of a span without seams, so it holds none.
+fn snap_seams(pieces: &[Piece<'_>]) -> Result<Vec<Scalar>, &'static str> {
+    let mut out = Vec::new();
+    let mut at = 0.0;
+    for (index, piece) in pieces.iter().enumerate() {
+        if index > 0 {
+            out.push(at);
+        }
+        if !piece.is_stated() {
+            break;
+        }
+        out.extend(kernel_cuts(piece)?.into_iter().map(|cut| at + cut));
+        at += piece.length();
     }
     Ok(out)
 }
@@ -262,10 +415,16 @@ fn kernel_cuts(piece: &Piece<'_>) -> Result<Vec<Scalar>, &'static str> {
     seams.sort_by(Scalar::total_cmp);
     seams.dedup_by(|b, a| *b - *a <= super::slack(*b));
     if !piece.is_stated() {
-        // An open piece starts at its curve's start: every seam is inside.
-        // A bounded one (#436) is an ellipse's or a B-spline's, refused
-        // before this if it has a seam (`SPLINE`): it has none to cut at.
-        return Ok(seams);
+        // An open piece runs to its curve's end from its stated start: every
+        // seam past that start is inside (#443; a whole curve's start is
+        // `0`). A bounded one (#436) is an ellipse's or a B-spline's,
+        // refused before this if it has a seam (`SPLINE`): it has none to
+        // cut at.
+        if piece.reversed || piece.start_bound.is_some() {
+            return Ok(seams);
+        }
+        let from = piece.start + super::slack(piece.start);
+        return Ok(seams.into_iter().filter(|s| *s > from).collect());
     }
     let mut cuts: Vec<Scalar> = seams
         .into_iter()

@@ -462,7 +462,7 @@ impl Reader<'_, '_> {
         depth: usize,
     ) -> GeometryResult<(Transform3, bool)> {
         if depth > MAX_DEPTH {
-            return Err(self.unsupported(crate::lower::station::relation::UNSUPPORTED));
+            return Err(self.unsupported(crate::lower::station::relation::TOO_DEEP));
         }
         let at = station.station.station.distance;
         let measure = CurveMeasure::Distance(at);
