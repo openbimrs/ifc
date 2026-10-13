@@ -78,7 +78,8 @@ axiolid-mesh = { version = "0.3.0" }
 # `RunStation`) and `CurveRelation::OffsetsAtStations` (axiolid/kernel#301;
 # #429); wire format 1.2 carries them.
 # It also carries the open-ended path pieces of axiolid-curve 0.3.8
-# (axiolid/kernel#298; #427).
+# (axiolid/kernel#298; #427). 0.3.12 is the release built with the
+# bounded-piece curve and evaluate crates (axiolid/kernel#304, #305; #436).
 axiolid-model = { version = "0.3.12" }
 axiolid-primitive = { version = "0.3.0" }
 axiolid-profile = { version = "0.3.0" }
@@ -107,7 +108,13 @@ axiolid-spatial = { version = "0.3.0" }
 # (`PathPiece::to_end`, `whole`), resolved to the provider's own length of
 # its curve, or refused as `OPEN_PATH_END_UNSUPPORTED` (axiolid/kernel#298);
 # a derived linear placement on an offset whose length is a quadrature
-# reads it (#427).
+# reads it (#427). 0.3.7 of the contract (with axiolid-curve 0.3.9 and
+# axiolid-evaluate 0.3.13): a path piece may start or end at a native
+# parameter or a point of its curve (`PathBound`, axiolid/kernel#304), and
+# `path_joint_distances_within` certifies only the joints near a window
+# (axiolid/kernel#305); a derived linear placement on a trim of an ellipse
+# or a B-spline reads the first, and every derived placement on a path
+# with an open or bounded piece the second (#436).
 axiolid-curve = { version = "0.3.9" }
 axiolid-evaluate = { version = "0.3.13" }
 axiolid-curve-evaluate-contract = { version = "0.3.7" }
@@ -138,7 +145,9 @@ axiolid-contracts = { version = "0.3.1" }
 # (axiolid/kernel#294; #423). 0.3.22 snaps run stations within their seam
 # windows (axiolid/kernel#301; #429).
 # It is also built with the open-end curve and evaluate crates
-# (axiolid/kernel#298; #427).
+# (axiolid/kernel#298; #427). 0.3.23 is the release built with the
+# bounded-piece curve and evaluate crates (axiolid/kernel#304, #305; the
+# #436 tests compare its `station::curve_path`).
 axiolid-mesh-compile = { version = "0.3.23" }
 axiolid-mesh-compile-contract = { version = "0.3.3" }
 axiolid-mesh-boolean-boolmesh = { version = "0.3.0" }

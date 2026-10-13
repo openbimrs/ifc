@@ -1,8 +1,9 @@
-//! Reading along a curve path with an open piece (#427): the joints after
-//! it located by the evaluator's certified joint distances, a distance
-//! within the model's precision of one read on it from the side the reading
-//! names, as the kernel reads the same basis's station (#423); see the
-//! parent module's documentation.
+//! Reading along a curve path with an open or bounded piece (#427, #436):
+//! the joints near the distance read located by the evaluator's certified
+//! joint distances within its window (#436), a distance within the model's
+//! precision of one read on it from the side the reading names, as the
+//! kernel reads the same basis's station (#423); see the parent module's
+//! documentation.
 
 use axiolid_contracts::{GeomError, GeomResult};
 use axiolid_core::{Frame3, Scalar};
@@ -49,8 +50,17 @@ enum Place {
     Inside(usize, Scalar),
 }
 
-/// The frame at `distance` along `path`, a path with an open piece, read
+/// The frame at `distance` along `path`, a path with an open or bounded
+/// piece, read
 /// on the seam its `window` holds from `side` (module documentation).
+///
+/// Only the joints that can fall within the window are certified
+/// (`CurveEvaluator::path_joint_distances_within`, axiolid/kernel#305):
+/// every piece before it, none after it. A stated piece's own seam `u`
+/// into it lies in the window only if the joint it follows lies within
+/// `[d - w - u, d + w - u]`, so those joints are asked for over the
+/// window reaching back by the farthest such `u`; a joint left out lies
+/// outside it, and so does the seam after it.
 pub(super) fn read_open(
     evaluator: &dyn CurveEvaluator,
     path: &CurvePath,
@@ -63,29 +73,49 @@ pub(super) fn read_open(
     if !(window > 0.0 && window.is_finite() && distance.is_finite()) {
         return Ok(evaluator.path_frame_at_on(path, at, side)?);
     }
-    let pieces = path.pieces();
-    let joints = evaluator.path_joint_distances(path, window * WINDOW_CERTIFICATION)?;
-    if joints.len() + 1 != pieces.len() {
-        return Err(OpenRefusal::Evaluator(GeomError::InvalidInput(format!(
-            "the evaluator certified {} joints of a path of {} pieces",
-            joints.len(),
-            pieces.len()
-        ))));
-    }
-    let starts = |k: usize| {
-        k.checked_sub(1)
-            .map_or(DistanceInterval::point(0.0), |j| joints[j])
+    let pieces = path.pieces().len();
+    let tolerance = window * WINDOW_CERTIFICATION;
+    let within = |around: Scalar, window: Scalar| -> Result<_, OpenRefusal> {
+        let joints = evaluator.path_joint_distances_within(path, around, window, tolerance)?;
+        match joints.iter().find(|(joint, _)| joint + 1 >= pieces) {
+            Some((joint, _)) => Err(OpenRefusal::Evaluator(GeomError::InvalidInput(format!(
+                "the evaluator certified joint {joint} of a path of {pieces} pieces"
+            )))),
+            None => Ok(joints),
+        }
     };
-    let seams = joints
+    let near = within(distance, window)?;
+    let reach = inner
         .iter()
-        .enumerate()
-        .map(|(j, interval)| (*interval, Place::Joint(j + 1)))
-        .chain(inner.iter().map(|(k, seam)| {
-            let start = starts(*k);
-            (
-                DistanceInterval::new(start.lower + seam.distance, start.upper + seam.distance),
+        .map(|(_, seam)| seam.distance)
+        .fold(0.0, Scalar::max);
+    let anchors = if inner.is_empty() {
+        Vec::new()
+    } else {
+        // `[d - w - reach, d + w]`, its upper end kept clear of rounding.
+        let half = 0.5 * reach;
+        within(
+            distance - half,
+            (window + half) * (1.0 + 4.0 * Scalar::EPSILON),
+        )?
+    };
+    // Where piece `k` starts, if it can bear a seam in the window.
+    let start = |k: usize| match k.checked_sub(1) {
+        None => Some(DistanceInterval::point(0.0)),
+        Some(joint) => anchors
+            .iter()
+            .find(|(j, _)| *j == joint)
+            .map(|(_, interval)| *interval),
+    };
+    let seams = near
+        .iter()
+        .map(|(joint, interval)| (*interval, Place::Joint(joint + 1)))
+        .chain(inner.iter().filter_map(|(k, seam)| {
+            let from = start(*k)?;
+            Some((
+                DistanceInterval::new(from.lower + seam.distance, from.upper + seam.distance),
                 Place::Inside(*k, seam.distance),
-            )
+            ))
         }));
     match snapped(seams, distance, window)? {
         Some(place) => Ok(frame_on(evaluator, path, place, side)?),

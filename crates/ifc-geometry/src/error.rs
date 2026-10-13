@@ -245,28 +245,32 @@ pub enum GeometryError {
     },
 
     /// A curve evaluator cannot be handed an `IfcLinearPlacement`'s basis
-    /// curve: it lowers to a curve relation holding a span that starts
-    /// inside a curve whose measure is a quadrature (a trim of an ellipse
-    /// or a B-spline at an interior parameter, by an arc length or by a
-    /// point, a span between stations of an offset along a relation with
-    /// such a piece), or that its data does not state otherwise (a trim of
-    /// a relation by a Cartesian point).
+    /// curve: it lowers to a curve relation holding a span whose ends its
+    /// data does not state in a form Axiolid's neutral `CurvePath` takes.
     ///
-    /// Axiolid's neutral `CurvePath` states each piece's span in its own
-    /// measure. A piece whose length is a quadrature but which runs from
-    /// its curve's start to its end is handed over open (#427,
-    /// axiolid/kernel#298), the evaluator resolving its end; a span that
-    /// starts inside such a curve has no open form, and only an execution
-    /// provider computes where it starts, which this crate links none of
-    /// (ADR 0004). The placement is refused rather than derived from an
-    /// estimated path. The same basis lowers as a station, which the
-    /// kernel resolves itself.
+    /// A piece whose length is a quadrature is handed over open (#427,
+    /// axiolid/kernel#298), and a trim of an ellipse or a B-spline at an
+    /// interior parameter, a point or a forward arc length is bounded there
+    /// (#436, axiolid/kernel#304), the evaluator resolving each. What
+    /// remains has neither form: a span between distances along a relation
+    /// (a trim of it by parameters, an offset by distances along it) that
+    /// reaches a piece whose length is a quadrature other than its last, or
+    /// that reaches the last from an end that is not stated, since which
+    /// piece the span ends in is itself a quadrature; an arc-length trim of
+    /// an ellipse or a B-spline against its sense, or of a B-spline whose
+    /// parameters do not start at `0`, which is a quadrature from the
+    /// curve's start; a varying offset of such a piece; and a trim of a
+    /// relation by a Cartesian point. Only an execution provider computes
+    /// these, which this crate links none of (ADR 0004). The placement is
+    /// refused rather than derived from an estimated path. The same basis
+    /// lowers as a station, which the kernel resolves itself.
     #[cfg(feature = "compile")]
     #[error(
-        "{placement} (IFCLINEARPLACEMENT): basis curve {basis} holds a span that starts inside a \
-         curve whose measure is a quadrature (a trim of an ellipse or a B-spline, or a span \
-         between stations along one); a curve path for the evaluator needs where it starts, \
-         which only an execution provider computes"
+        "{placement} (IFCLINEARPLACEMENT): basis curve {basis} holds a span whose ends lie at \
+         distances that are quadratures (a span between distances along a relation reaching a \
+         piece whose length is a quadrature, an arc-length trim of an ellipse or a B-spline \
+         against its sense); a curve path for the evaluator needs them, and only an execution \
+         provider computes them"
     )]
     PathPieceLengthUnstated {
         /// The `IfcLinearPlacement`.
@@ -297,16 +301,76 @@ pub enum GeometryError {
         basis: EntityId,
     },
 
+    /// An `IfcLinearPlacement`'s basis curve is trimmed at a point of an
+    /// ellipse or a B-spline (#436) that does not lie on the curve.
+    ///
+    /// The point reaches the evaluator as a `PathBound::Point`
+    /// (axiolid/kernel#304), which refuses it with `PATH_POINT_OFF_CURVE`
+    /// when no parameter of the curve names it within Axiolid's joint
+    /// tolerance: it is never projected onto the curve.
+    #[cfg(feature = "compile")]
+    #[error(
+        "{placement} (IFCLINEARPLACEMENT): basis curve {basis} is trimmed at a point that does \
+         not lie on its ellipse or B-spline"
+    )]
+    PathPointOffCurve {
+        /// The `IfcLinearPlacement`.
+        placement: EntityId,
+        /// Its basis curve.
+        basis: EntityId,
+    },
+
+    /// An `IfcLinearPlacement`'s basis curve is trimmed at a point of an
+    /// ellipse or a B-spline (#436) that several of its parameters name:
+    /// the curve passes through it more than once, or it is the seam of a
+    /// closed B-spline.
+    ///
+    /// The evaluator refuses the `PathBound::Point` with
+    /// `PATH_POINT_AMBIGUOUS` (axiolid/kernel#304) rather than pick one.
+    #[cfg(feature = "compile")]
+    #[error(
+        "{placement} (IFCLINEARPLACEMENT): basis curve {basis} is trimmed at a point its ellipse \
+         or B-spline passes through more than once, so the point names no one place on it"
+    )]
+    PathPointAmbiguous {
+        /// The `IfcLinearPlacement`.
+        placement: EntityId,
+        /// Its basis curve.
+        basis: EntityId,
+    },
+
+    /// An `IfcLinearPlacement`'s basis curve holds a trim of an ellipse or
+    /// a B-spline at an interior parameter or a point (#436), handed to the
+    /// evaluator as a bounded path piece, and the caller's curve evaluator
+    /// reads spans stated as distances only.
+    ///
+    /// Such an evaluator refuses the path with
+    /// `PATH_PIECE_BOUND_UNSUPPORTED` (axiolid/kernel#304); the placement
+    /// is refused rather than derived from a distance this crate would
+    /// have to estimate.
+    #[cfg(feature = "compile")]
+    #[error(
+        "{placement} (IFCLINEARPLACEMENT): basis curve {basis} is trimmed at a parameter or a \
+         point of an ellipse or a B-spline, which the curve evaluator would have to locate \
+         itself, and it reads curve paths of spans stated as distances only"
+    )]
+    CurvePathBoundUnsupported {
+        /// The `IfcLinearPlacement`.
+        placement: EntityId,
+        /// Its basis curve.
+        basis: EntityId,
+    },
+
     /// An `IfcLinearPlacement`'s basis curve has joints after a piece whose
     /// length is a quadrature (#427), and the caller's curve evaluator
     /// does not certify where they lie.
     ///
     /// Whether `DistanceAlong` lies on such a joint within the model's
     /// precision, where IFC4.3 ADD2 (8.9.3.48.3) takes the previous
-    /// segment, is told from `CurveEvaluator::path_joint_distances`
-    /// (axiolid/kernel#294); an evaluator that refuses it with
-    /// `PATH_JOINT_DISTANCES_UNSUPPORTED` cannot tell, and the placement is
-    /// refused rather than read on an estimate.
+    /// segment, is told from `CurveEvaluator::path_joint_distances_within`
+    /// (axiolid/kernel#294, #305), the joints near it; an evaluator that
+    /// refuses it with `PATH_JOINT_DISTANCES_UNSUPPORTED` cannot tell, and
+    /// the placement is refused rather than read on an estimate.
     #[cfg(feature = "compile")]
     #[error(
         "{placement} (IFCLINEARPLACEMENT): basis curve {basis} has joints after a piece whose \
@@ -331,7 +395,9 @@ pub enum GeometryError {
     /// seams within it, [`Straddled`](crate::compile::SeamWindowRefusal::Straddled)
     /// for a seam whose certified position straddles its edge, and
     /// [`UncertifiedLength`](crate::compile::SeamWindowRefusal::UncertifiedLength)
-    /// for a joint the evaluator cannot certify to a thousandth of it.
+    /// for a joint the evaluator cannot certify to a thousandth of it: a
+    /// piece before the window, or one reaching it, whose length it cannot
+    /// bound (#436).
     #[cfg(feature = "compile")]
     #[error(
         "{placement} (IFCLINEARPLACEMENT): along basis curve {basis} at {distance} m, {refusal}"
@@ -582,6 +648,9 @@ impl GeometryError {
             #[cfg(feature = "compile")]
             Self::PathPieceLengthUnstated { placement, .. }
             | Self::CurvePathOpenEndUnsupported { placement, .. }
+            | Self::PathPointOffCurve { placement, .. }
+            | Self::PathPointAmbiguous { placement, .. }
+            | Self::CurvePathBoundUnsupported { placement, .. }
             | Self::PathJointDistancesUnsupported { placement, .. }
             | Self::PlacementSeamWindowRefused { placement, .. } => Some(*placement),
             #[cfg(feature = "compile")]
@@ -615,10 +684,13 @@ impl GeometryError {
             #[cfg(feature = "compile")]
             Self::CurvePathUnsupported { .. } => true,
             // Valid IFC whose path needs an execution provider, or an
-            // evaluator with open ends or certified joints (#427).
+            // evaluator with open ends, piece bounds or certified joints
+            // (#427, #436). A trim point off its curve, or one it passes
+            // through twice, is the file failing to name one place.
             #[cfg(feature = "compile")]
             Self::PathPieceLengthUnstated { .. }
             | Self::CurvePathOpenEndUnsupported { .. }
+            | Self::CurvePathBoundUnsupported { .. }
             | Self::PathJointDistancesUnsupported { .. } => true,
             // A seam the kernel cannot certify is valid IFC it cannot read;
             // two seams within precision, or a seam on its edge, is the

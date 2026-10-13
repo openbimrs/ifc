@@ -12,6 +12,59 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#436, derived placements on spans inside quadrature-measured curves)
+
+- With `compile`, a derived `IfcLinearPlacement` on a trim of an ellipse
+  or a B-spline at an interior parameter, at a point, or at an arc length
+  in its sense from a parameter `0` where its measure starts (the CUBIC
+  transition's `IfcPolynomialCurve` segment) now derives instead of being
+  refused with `PathPieceLengthUnstated`. Such a trim reaches the
+  evaluator as a bounded `PathPiece` (`PathBound::Parameter` or
+  `PathBound::Point` in the curve's own coordinates, a stated distance
+  for the arc length; axiolid/kernel#304), which it resolves as the
+  compiler resolves the trim: inside the path it reads bit for bit as the
+  one `station::curve_path` flattens the lowered basis into, a closed
+  conic's span running across its parameter seam as the compiler's
+  periodic trim does. The derived frame equals the lowered station's,
+  resolved by the reference kernel. A B-spline trimmed by points derives
+  although the reference compiler, which inverts no point on a B-spline,
+  refuses that station; the frame equals its station on the trim by the
+  parameters the points name.
+- A span between distances along a relation (a trim of a composite by
+  parameters) may now reach a piece whose length is a quadrature when it
+  is the relation's last piece and every piece before it is stated: the
+  span is stated, so a derived placement reads it and the station
+  lowering snaps onto its joints exactly, with no window, where before it
+  carried the kernel's seam-snapping window.
+- New `GeometryError` variants (feature `compile`): `PathPointOffCurve` and
+  `PathPointAmbiguous` for a trim point the evaluator refuses
+  (`PATH_POINT_OFF_CURVE`, `PATH_POINT_AMBIGUOUS`), and
+  `CurvePathBoundUnsupported` for an evaluator that reads no piece bounds
+  (`PATH_PIECE_BOUND_UNSUPPORTED`), each naming the placement and its
+  basis. `PathPieceLengthUnstated` now names only what has neither an open
+  nor a bounded form: a span between distances along a relation reaching
+  a quadrature piece other than its last, an arc-length trim of an
+  ellipse or a B-spline against its sense, a varying offset of such a
+  piece, and a trim of a relation by a Cartesian point.
+- The joints of a path with an open or bounded piece are certified only
+  near the placement (`CurveEvaluator::path_joint_distances_within`,
+  axiolid/kernel#305): every piece before the window, none after it. A
+  piece the evaluator cannot certify after the placement no longer
+  refuses it; one before it still does, as `PlacementSeamWindowRefused`
+  with `UncertifiedLength`. The kernel's station resolution also
+  certifies the piece holding the station, so a placement inside such a
+  piece (5 m along a tilted `IfcOffsetCurve3D`, formerly refused) now
+  derives while its lowered station is refused.
+- The station lowering is otherwise unchanged: it hands the kernel the
+  relation, never a path, and links no evaluator to resolve a bounded
+  piece, so a basis holding one keeps the kernel's seam-snapping window.
+- Requires `axiolid-curve` 0.3.9, `axiolid-model` 0.3.12,
+  `axiolid-evaluate` 0.3.13, `axiolid-curve-evaluate-contract` 0.3.7 and
+  `axiolid-mesh-compile` 0.3.23.
+
+Semver: minor. Refused placements now derive, error variants are added,
+one station lowering now snaps exactly, and the dependency floors rise.
+
 ### Changed (#433, offset runs to a basis end with quadrature length)
 
 - An `IfcOffsetCurveByDistances` whose basis is bounded but has no stated
