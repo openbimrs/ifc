@@ -31,6 +31,7 @@ use axiolid_core::{Frame3, Point3, Vec3};
 use axiolid_curve::{Curve3, CurvePath, PathBound};
 use axiolid_curve_evaluate_contract::{
     CurveEvaluator, CurveMeasure, DistanceConvention, SeamSide, PATH_PIECE_BOUND_UNSUPPORTED,
+    PATH_POINT_AMBIGUOUS, PATH_POINT_OFF_CURVE,
 };
 use axiolid_evaluate::ReferenceCurveEvaluator;
 use axiolid_mesh_compile::station::{curve_path, resolve};
@@ -246,6 +247,41 @@ fn assert_matches_station_of(
     transform
 }
 
+/// The derived placement of `expression` is its lowered, windowed station's
+/// frame, resolved by the reference compiler, bit for bit.
+fn assert_is_station_bitwise(model: &Model, expression: u64) {
+    let transform = derived(model, expression, &ReferenceCurveEvaluator::default())
+        .unwrap_or_else(|e| panic!("#{expression}: {e}"));
+    let (graph, root, _) = lowered(model, expression);
+    let station = resolve(&graph, root).unwrap_or_else(|e| panic!("#{expression} resolves: {e:?}"));
+    assert_eq!(
+        [
+            transform.origin,
+            transform.basis[0],
+            transform.basis[1],
+            transform.basis[2],
+        ],
+        [
+            array(station.point),
+            array(station.section.tangent),
+            array(station.section.lateral),
+            array(station.section.up),
+        ],
+        "#{expression}: origin, x, y, z"
+    );
+}
+
+/// The kernel refuses the lowered station of `expression` naming `needle`.
+fn assert_kernel_refuses(model: &Model, expression: u64, needle: &str) {
+    let (graph, root, _) = lowered(model, expression);
+    match resolve(&graph, root) {
+        Err(GeomError::UnsupportedInput { input, .. }) => {
+            assert_eq!(input, needle, "#{expression}");
+        }
+        other => panic!("#{expression}: expected {needle:?}, got {other:?}"),
+    }
+}
+
 /// The path derived for `expression`'s basis reads, through the reference
 /// evaluator, as the stated path the compiler flattens the lowered basis
 /// into, bit for bit at every distance inside it and from both sides
@@ -257,19 +293,6 @@ fn assert_reads_as_compilers_path(
     basis: u64,
     bounded: &[bool],
 ) -> CurvePath {
-    assert_reads_as_path_of(model, expression, basis, bounded, model, expression)
-}
-
-/// As [`assert_reads_as_compilers_path`], against the path the compiler
-/// flattens `station`'s basis in `other` into.
-fn assert_reads_as_path_of(
-    model: &Model,
-    expression: u64,
-    basis: u64,
-    bounded: &[bool],
-    other: &Model,
-    station: u64,
-) -> CurvePath {
     let scale = units::resolve(model);
     let evaluator = ReferenceCurveEvaluator::default();
     let ours = basis_curve_path(
@@ -280,7 +303,7 @@ fn assert_reads_as_path_of(
         &evaluator,
     )
     .unwrap_or_else(|e| panic!("#{basis}: {e}"));
-    let (graph, _, node) = lowered(other, station);
+    let (graph, _, node) = lowered(model, expression);
     let theirs = curve_path(&graph, node).expect("the compiler flattens it");
     assert_eq!(
         ours.pieces().len(),
@@ -444,17 +467,16 @@ fn an_ellipse_trimmed_across_its_seam_is_the_stations() {
 
 /// The B-spline trimmed by its points at `t = 0.25` and `0.75` reaches the
 /// evaluator bounded by those points, which it inverts. The reference
-/// compiler inverts no point on a B-spline (its `curve::invert3` has no
-/// B-spline arm), so its station on this trim is refused; the derived frame
-/// equals its station on the trim by the parameters the points name, and
-/// the path reads as that trim's.
+/// compiler resolves the same trim through the same inversion
+/// (axiolid/kernel#306, #439): the path it flattens the lowered basis into
+/// reads as the derived one, and the derived frame is its station's bit for
+/// bit. Both equal the trim by the parameters the points name, within
+/// rounding.
 #[test]
-fn a_b_spline_trimmed_by_points_is_the_stations_of_its_parameters() {
+fn a_b_spline_trimmed_by_points_is_the_stations() {
     let distances = [0.5, 2.5, 4.5];
     let (model, ids) = points(2024, &distances);
-    let (by_parameters, stations) = points(2033, &distances);
-    let theirs =
-        assert_reads_as_path_of(&model, ids[0], 2024, &[true], &by_parameters, stations[0]);
+    let theirs = assert_reads_as_compilers_path(&model, ids[0], 2024, &[true]);
     let path = basis_curve_path(
         &model,
         &units::resolve(&model),
@@ -471,14 +493,13 @@ fn a_b_spline_trimmed_by_points_is_the_stations_of_its_parameters() {
             Some(PathBound::Point(Point3::new(7.5, 1.875, 0.0)))
         )
     );
+    for id in &ids {
+        assert_is_station_bitwise(&model, *id);
+    }
+    let (by_parameters, stations) = points(2033, &distances);
     for (id, station) in ids.iter().zip(&stations) {
         assert_matches_station_of(&model, *id, &by_parameters, *station);
     }
-    let (graph, root, _) = lowered(&model, ids[0]);
-    assert!(
-        resolve(&graph, root).is_err(),
-        "the compiler inverts no point"
-    );
     // Half way along the symmetric arc, at its top (5, 2.5), heading east.
     let evaluator = ReferenceCurveEvaluator::default();
     let (top, id) = points(2024, &[theirs.length() / 2.0]);
@@ -566,6 +587,9 @@ fn a_trim_point_off_its_curve_is_refused_naming_the_placement() {
         "the file names no point of the curve"
     );
     assert!(error.to_string().contains("#2025"), "{error}");
+    // The kernel refuses the station on the same trim by the same name
+    // (axiolid/kernel#306; #439).
+    assert_kernel_refuses(&model, ids[0], PATH_POINT_OFF_CURVE);
 }
 
 #[test]
@@ -582,6 +606,7 @@ fn a_trim_point_the_curve_passes_twice_is_refused_naming_the_placement() {
     );
     assert!(!error.is_unsupported());
     assert!(error.to_string().contains("more than once"), "{error}");
+    assert_kernel_refuses(&model, ids[0], PATH_POINT_AMBIGUOUS);
 }
 
 /// Delegates every query to the reference evaluator, but refuses a path

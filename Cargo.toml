@@ -116,9 +116,11 @@ axiolid-spatial = { version = "0.3.0" }
 # `path_joint_distances_within` certifies only the joints near a window
 # (axiolid/kernel#305); a derived linear placement on a trim of an ellipse
 # or a B-spline reads the first, and every derived placement on a path
-# with an open or bounded piece the second (#436).
+# with an open or bounded piece the second (#436). axiolid-evaluate 0.3.14:
+# certified frame-law bounds of a station piece (`piece_frame_bounds`,
+# axiolid/kernel#247), released with axiolid-mesh-compile 0.3.24.
 axiolid-curve = { version = "0.3.9" }
-axiolid-evaluate = { version = "0.3.13" }
+axiolid-evaluate = { version = "0.3.14" }
 axiolid-curve-evaluate-contract = { version = "0.3.7" }
 # Dev-only: the exact volume of a compiled body, to check an arc-bounded
 # half-space clip against its closed form (#398).
@@ -149,18 +151,25 @@ axiolid-contracts = { version = "0.3.1" }
 # It is also built with the open-end curve and evaluate crates
 # (axiolid/kernel#298; #427). 0.3.23 is the release built with the
 # bounded-piece curve and evaluate crates (axiolid/kernel#304, #305; the
-# #436 tests compare its `station::curve_path`).
-axiolid-mesh-compile = { version = "0.3.23" }
+# #436 tests compare its `station::curve_path`). 0.3.24 resolves a trim of a
+# B-spline by points through the same point inversion as `PathBound::Point`,
+# bitwise (axiolid/kernel#306; #439), certifies runs of sections at stations
+# where the frame law is bounded (axiolid/kernel#247), and mitres swept disks
+# beside arcs and sweeps closed polylines as loops (axiolid/kernel#248).
+axiolid-mesh-compile = { version = "0.3.24" }
 axiolid-mesh-compile-contract = { version = "0.3.3" }
-axiolid-mesh-boolean-boolmesh = { version = "0.3.0" }
+# 0.3.5: batch booleans keep their memory budget (axiolid/kernel#259); the
+# release `axiolid-mesh-compile` 0.3.24 is tested with.
+axiolid-mesh-boolean-boolmesh = { version = "0.3.5" }
 # Not used directly: `axiolid-mesh-compile` reaches it. Pinned here only to
 # raise the floor to the release whose fixes the compiled results depend on
 # (axiolid/kernel#164 half-space frame origin, #166 downward extrusion,
 # #169 swept-disk frame along a bent path, #245 half-angle corner mitre),
 # and to the release `axiolid-mesh-compile` 0.3.16 is built and tested
 # with (0.3.17: an exact right-cylinder wall per boundary arc,
-# axiolid/kernel#277; #398).
-axiolid-construct = { version = "0.3.17" }
+# axiolid/kernel#277; #398). 0.3.18: the closed-loop swept disk
+# (`pipe::swept_disk_along_loop`, axiolid/kernel#248) 0.3.24 calls.
+axiolid-construct = { version = "0.3.18" }
 
 # No default features: the default `runtime-rng` pulls getrandom 0.3, which
 # does not build on wasm32-unknown-unknown. Members opt into a seed source
