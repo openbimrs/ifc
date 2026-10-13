@@ -333,6 +333,41 @@ Each `payload` is the envelope `{ format, version, graph }`, typed as
 [binding page](/bindings/javascript#exact-geometry-graphs) describes the
 encodings.
 
+## Find entities by GlobalId, types and openings
+
+An entity by its `GlobalId`, an occurrence's type object and the type's
+other occurrences, and a wall's openings with what fills them, read from
+`test/fixtures/synthetic-relations/relations_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-js-global-ids -->
+
+```js
+const name = (id) => model.attributeByName(id, "Name").value;
+const wall = model.byGuid("0LwOtle8vEaxZPGHkxQdYT"); // 17n, or undefined
+// The first lookup indexes every GlobalId once; the rest reuse it.
+
+const wallType = model.typeObject(wall); // IfcRelDefinesByType
+log(name(wallType), model.occurrencesOf(wallType)); // "WT-200" [17n, 18n]
+for (const opening of model.openingsOf(wall)) { // IfcRelVoidsElement
+  log(name(opening), model.fillingsOf(opening).map(name));
+}
+// "Door opening" ["Door 1"]
+// "Recess" []
+
+log(model.duplicateGlobalIds()); // [] -- a copied GlobalId is listed here
+log(IfcModel.newGuid()); // random, from crypto.getRandomValues
+log(IfcModel.nameBasedGuid(["my-exporter", "wall", "42"])); // same every run
+```
+
+<!-- /SNIPPET -->
+
+A `GlobalId` that several entities carry throws `IfcError` with `code`
+`invalid-model` naming every holder; `duplicateGlobalIds()` lists them
+all. `IfcModel.newGuid()` draws an RFC 9562 version-4 UUID from the host's
+`crypto.getRandomValues` (browsers, Node 19 and later; `unsupported` on
+Node 18); `IfcModel.nameBasedGuid(parts)` is version 8, the same for the
+same parts in every binding. Both are IFC's 22-character form.
+
 ## Create a model
 
 <!-- SNIPPET:cookbook-js-create -->

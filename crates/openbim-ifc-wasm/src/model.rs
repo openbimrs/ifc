@@ -38,6 +38,10 @@ fn big(id: u64) -> JsValue {
     BigInt::from(id).into()
 }
 
+fn optional_id(id: Option<u64>) -> JsValue {
+    id.map_or(JsValue::UNDEFINED, big)
+}
+
 fn tagged_array(values: &JsValue) -> Result<Vec<Tagged>, BindingError> {
     if !Array::is_array(values) {
         return Err(BindingError::InvalidValue(
@@ -419,6 +423,106 @@ impl IfcModel {
             .into_iter()
             .map(big)
             .collect())
+    }
+
+    /// The id of the entity whose `GlobalId` is `globalId`, or `undefined`.
+    ///
+    /// The first lookup indexes every `GlobalId` once; later ones reuse the
+    /// index until the model changes. Throws `invalid-value` for text that
+    /// is not a `GlobalId` and `invalid-model` when several entities carry
+    /// it (`duplicateGlobalIds` lists them).
+    #[wasm_bindgen(js_name = byGuid, unchecked_return_type = "bigint | undefined")]
+    pub fn by_guid_js(
+        &self,
+        #[wasm_bindgen(js_name = globalId)] global_id: &str,
+    ) -> Result<JsValue, JsValue> {
+        Ok(optional_id(self.0.by_guid(global_id).map_err(js_error)?))
+    }
+
+    /// Every `GlobalId` several entities carry, with its holders in file
+    /// order; empty for a conformant file.
+    #[wasm_bindgen(js_name = duplicateGlobalIds, unchecked_return_type = "DuplicateGlobalId[]")]
+    pub fn duplicate_global_ids_js(&self) -> Result<Array, JsValue> {
+        Ok(self
+            .0
+            .duplicate_global_ids()
+            .map_err(js_error)?
+            .into_iter()
+            .map(|duplicate| {
+                let object = js_sys::Object::new();
+                let ids: Array = duplicate.ids.into_iter().map(big).collect();
+                // Setting a property on a fresh plain object cannot fail.
+                let _ =
+                    js_sys::Reflect::set(&object, &"globalId".into(), &duplicate.global_id.into());
+                let _ = js_sys::Reflect::set(&object, &"ids".into(), &ids);
+                JsValue::from(object)
+            })
+            .collect())
+    }
+
+    /// The type object of occurrence `id` (`IfcRelDefinesByType`), or
+    /// `undefined`. Throws `wrong-entity-type` for a non-`IfcObject` and
+    /// `invalid-model` when the file states two types.
+    #[wasm_bindgen(js_name = typeObject, unchecked_return_type = "bigint | undefined")]
+    pub fn type_object_js(&self, id: u64) -> Result<JsValue, JsValue> {
+        Ok(optional_id(self.0.type_object(id).map_err(js_error)?))
+    }
+
+    /// Every object type object `id` types, in file order.
+    #[wasm_bindgen(js_name = occurrencesOf, unchecked_return_type = "bigint[]")]
+    pub fn occurrences_of_js(&self, id: u64) -> Result<Array, JsValue> {
+        Ok(self
+            .0
+            .occurrences_of(id)
+            .map_err(js_error)?
+            .into_iter()
+            .map(big)
+            .collect())
+    }
+
+    /// Every opening voiding element `id` (`IfcRelVoidsElement`).
+    #[wasm_bindgen(js_name = openingsOf, unchecked_return_type = "bigint[]")]
+    pub fn openings_of_js(&self, id: u64) -> Result<Array, JsValue> {
+        Ok(self
+            .0
+            .openings_of(id)
+            .map_err(js_error)?
+            .into_iter()
+            .map(big)
+            .collect())
+    }
+
+    /// Every element filling opening `id` (`IfcRelFillsElement`).
+    #[wasm_bindgen(js_name = fillingsOf, unchecked_return_type = "bigint[]")]
+    pub fn fillings_of_js(&self, id: u64) -> Result<Array, JsValue> {
+        Ok(self
+            .0
+            .fillings_of(id)
+            .map_err(js_error)?
+            .into_iter()
+            .map(big)
+            .collect())
+    }
+
+    /// The element opening `id` voids, or `undefined`.
+    #[wasm_bindgen(js_name = voidedElementOf, unchecked_return_type = "bigint | undefined")]
+    pub fn voided_element_of_js(&self, id: u64) -> Result<JsValue, JsValue> {
+        Ok(optional_id(self.0.voided_element_of(id).map_err(js_error)?))
+    }
+
+    /// A new random `GlobalId`: an RFC 9562 version-4 UUID from the host's
+    /// `crypto.getRandomValues`, in IFC's 22-character form. Throws
+    /// `unsupported` on a host without it (Node 18).
+    #[wasm_bindgen(js_name = newGuid)]
+    pub fn new_guid_js() -> Result<String, JsValue> {
+        openbim_ifc_binding_core::new_guid().map_err(js_error)
+    }
+
+    /// The `GlobalId` named by `parts` (RFC 9562 version 8): the same parts
+    /// give the same `GlobalId` in every binding and release.
+    #[wasm_bindgen(js_name = nameBasedGuid)]
+    pub fn name_based_guid_js(parts: Vec<String>) -> String {
+        openbim_ifc_binding_core::name_based_guid(&parts)
     }
 
     /// The upper-case type name of entity `id`.

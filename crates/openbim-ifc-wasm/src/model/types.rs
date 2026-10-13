@@ -135,6 +135,13 @@ export interface ValidationReport {
   findings: ValidationFinding[];
 }
 
+/** A `GlobalId` several entities carry, from `IfcModel.duplicateGlobalIds`. */
+export interface DuplicateGlobalId {
+  globalId: string;
+  /** Its holders, in file order. */
+  ids: bigint[];
+}
+
 /** A product no viewer will draw, from `IfcModel.unreachableProducts`. */
 export interface UnreachableProduct {
   id: bigint;

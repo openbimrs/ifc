@@ -17,6 +17,7 @@ from openbim_ifc import Bool, IfcModel, Typed
 FIXTURES = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "test", "fixtures")
 PROPERTIES = os.path.join(FIXTURES, "synthetic-properties", "synthetic_properties.ifc")
 GEOMETRY = os.path.join(FIXTURES, "synthetic-bindings", "binding_geometry.ifc")
+RELATIONS = os.path.join(FIXTURES, "synthetic-relations", "relations_ifc4.ifc")
 MESH = os.environ.get("OPENBIM_IFC_MESH") == "1"
 
 
@@ -241,6 +242,34 @@ class Cookbook(unittest.TestCase):
         # docs:end
         self.assertEqual(sorted(kinds), [36, 46])
         self.assertEqual(kinds[36], ["Profile", "SolidOperation", "Instance"])
+
+    def test_global_ids_types_and_openings(self) -> None:
+        model = openbim_ifc.open(RELATIONS)
+        printed: List[Any] = []
+        print = printed.append  # noqa: A001
+        # docs:snippet cookbook-py-global-ids
+        wall = model.by_guid("0LwOtle8vEaxZPGHkxQdYT")  # an Entity, or None
+        # The first lookup indexes every GlobalId once; the rest reuse it.
+
+        wall_type = model.type_object(wall.id)  # IfcRelDefinesByType
+        print((model[wall_type].Name, model.occurrences_of(wall_type)))  # ('WT-200', [17, 18])
+        for opening in model.openings_of(wall.id):  # IfcRelVoidsElement
+            fillings = [model[id].Name for id in model.fillings_of(opening)]
+            print((model[opening].Name, fillings))
+        # ('Door opening', ['Door 1'])
+        # ('Recess', [])
+
+        print(model.duplicate_global_ids())  # [] -- a copied GlobalId is listed here
+        print(openbim_ifc.new_guid())  # random, e.g. '2Vq9nF0yL5yQ$1x_4kZb3T'
+        print(openbim_ifc.name_based_guid("my-exporter", "wall", "42"))  # same every run
+        # docs:end
+        self.assertIsNotNone(wall)
+        self.assertEqual(printed[0], ("WT-200", [17, 18]))
+        self.assertEqual(printed[1:3], [("Door opening", ["Door 1"]), ("Recess", [])])
+        self.assertEqual(printed[3], [])
+        self.assertEqual(len(printed[4]), 22)
+        self.assertEqual(printed[5], openbim_ifc.name_based_guid("my-exporter", "wall", "42"))
+        self.assertIsNone(model.by_guid("3MtNd0Uaz8Ix2OPtRq_3Kk"))
 
     def test_create(self) -> None:
         # docs:snippet cookbook-py-create

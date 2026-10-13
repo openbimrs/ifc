@@ -118,6 +118,13 @@ public sealed record UnreachableProduct(
     EquatableList<string> FoundViews,
     string Message);
 
+/// <summary>A <c>GlobalId</c> several entities carry, which the schema forbids (#463).</summary>
+/// <param name="GlobalId">The shared <c>GlobalId</c>.</param>
+/// <param name="Ids">Its holders, in file order.</param>
+public sealed record DuplicateGlobalId(
+    string GlobalId,
+    EquatableList<ulong> Ids);
+
 /// <summary>A reference to an entity the model does not contain.</summary>
 /// <param name="From">The referencing entity.</param>
 /// <param name="To">The missing id it points to.</param>

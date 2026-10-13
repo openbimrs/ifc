@@ -246,27 +246,18 @@ pub(crate) fn find_entity(model: &Model, schema: &Schema, reference: &str) -> Cl
             )))
         };
     }
-    if trimmed.len() != 22 {
+    let Some(guid) = ifc::Guid::parse(trimmed) else {
         return Err(CliError::Usage(format!(
-            "{trimmed:?} is neither an entity id (#12) nor a 22-character GlobalId"
+            "{trimmed:?} is neither an entity id (#12) nor a valid 22-character GlobalId"
         )));
+    };
+    match ifc::by_guid(model, schema, &guid) {
+        Ok(Some(id)) => Ok(id),
+        Ok(None) => Err(CliError::MissingEntity(format!(
+            "no entity has GlobalId {trimmed}"
+        ))),
+        Err(duplicate) => Err(CliError::InvalidModel(duplicate.to_string())),
     }
-    let mut found = None;
-    for id in model.ids() {
-        let Some(identity) = ifc::root_identity(model, schema, id) else {
-            continue;
-        };
-        if identity.global_id == Some(trimmed) {
-            if let Some(EntityId(first)) = found {
-                return Err(CliError::InvalidModel(format!(
-                    "GlobalId {trimmed} is on both #{first} and #{}",
-                    id.0
-                )));
-            }
-            found = Some(id);
-        }
-    }
-    found.ok_or_else(|| CliError::MissingEntity(format!("no entity has GlobalId {trimmed}")))
 }
 
 /// The line each STEP record starts on, for reports that point into the file.

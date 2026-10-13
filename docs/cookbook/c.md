@@ -483,6 +483,57 @@ the envelope `{"format":"axiolid-geometry-graph","version":"1.0",
 "graph":{...}}`, exact, in world coordinates, metres; the
 [binding page](/bindings/c#geometry) describes it.
 
+## Find entities by GlobalId, types and openings
+
+An entity by its `GlobalId`, an occurrence's type object and the type's
+other occurrences, and a wall's openings with what fills them, read from
+`test/fixtures/synthetic-relations/relations_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-c-global-ids -->
+
+```c
+/* The entity a GlobalId names, or NO_VALUE. The first lookup indexes every
+ * GlobalId once; the rest reuse the index until the model changes. */
+const char *guid = "0LwOtle8vEaxZPGHkxQdYT";
+uint64_t wall = 0, wall_type = 0;
+if (openbim_ifc_v0_1_model_by_guid(model, (const uint8_t *)guid, strlen(guid), &wall) !=
+    OPENBIM_IFC_STATUS_OK) {
+  print_error(model); /* none carries it, or several do (INVALID_MODEL) */
+  return 1;
+}
+openbim_ifc_v0_1_entity_type_object(model, wall, &wall_type); /* IfcRelDefinesByType */
+printf("wall #%llu, type #%llu\n", (unsigned long long)wall, (unsigned long long)wall_type);
+
+uint64_t openings[16], fillings[16];
+size_t count = 0, filled = 0;
+openbim_ifc_v0_1_entity_openings(model, wall, openings, 16, &count); /* IfcRelVoidsElement */
+for (size_t i = 0; i < count; i++) {
+  openbim_ifc_v0_1_entity_fillings(model, openings[i], fillings, 16, &filled);
+  printf("opening #%llu: %zu filling(s)\n", (unsigned long long)openings[i], filled);
+}
+/* wall #17, type #16
+ * opening #21: 1 filling(s)
+ * opening #23: 0 filling(s) */
+
+char fresh[23], named[23]; /* 22 characters and the NUL */
+size_t need = 0;
+openbim_ifc_v0_1_new_guid((uint8_t *)fresh, sizeof fresh, &need); /* random, version 4 */
+const uint8_t *parts[] = {(const uint8_t *)"my-exporter", (const uint8_t *)"wall-42"};
+size_t lengths[] = {11, 7};
+openbim_ifc_v0_1_name_based_guid(parts, lengths, 2, (uint8_t *)named, sizeof named, &need);
+/* `named` is the same on every run, in every binding */
+```
+
+<!-- /SNIPPET -->
+
+A `GlobalId` that several entities carry is `OPENBIM_IFC_STATUS_INVALID_MODEL`,
+the last error naming every holder; `openbim_ifc_v0_1_model_duplicate_global_ids`
+lists them all as a tape. `openbim_ifc_v0_1_entity_type_object` and
+`openbim_ifc_v0_1_entity_voided_element` answer `NO_VALUE` when there is
+none. `openbim_ifc_v0_1_new_guid` draws an RFC 9562 version-4 UUID from
+the operating system; `openbim_ifc_v0_1_name_based_guid` is version 8, the
+same for the same parts in every binding. Both need no model.
+
 ## Create a model
 
 Values passed in are tapes too; this builder writes them:

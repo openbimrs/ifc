@@ -300,6 +300,7 @@ impl<'m, 's> Planner<'m, 's> {
             &format!("{:032x}", self.seed),
             &id.0.to_string(),
         ])
+        .to_string()
     }
 
     /// Record the `GlobalId` of `entity`, refusing one another entity holds.

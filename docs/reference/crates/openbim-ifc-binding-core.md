@@ -44,6 +44,7 @@ view of `openbim-ifc`; if a binding needs more, the facade grows first.
 | `ifc4x2` | yes | `openbim-ifc/ifc4x2` |
 | `ifc4x3` | yes | `openbim-ifc/ifc4x3` |
 | `ifcxml` | yes | `openbim-ifc/ifcxml` |
+| `js-random` |  | `openbim-ifc/js-random` |
 | `material` | yes | `openbim-ifc/material` |
 | `mesh` |  | `placements`, `openbim-ifc/mesh` |
 | `placements` | yes | `openbim-ifc/geometry-select` |
