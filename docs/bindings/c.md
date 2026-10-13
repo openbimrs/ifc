@@ -440,6 +440,23 @@ Not bound yet: checked multi-edit transactions over arbitrary entities
 (`Transaction`, `Applied`, `Conflict`), deferred until a host asks for
 them. Use the Rust crates for those.
 
+## GlobalIds, types and openings
+
+`openbim_ifc_v0_1_model_by_guid` finds an entity by `GlobalId` through an
+index built on the first lookup and kept until the model changes; a
+`GlobalId` several entities carry is `INVALID_MODEL`, the last error naming
+them all, and `openbim_ifc_v0_1_model_duplicate_global_ids` lists every one.
+`openbim_ifc_v0_1_entity_type_object` and `openbim_ifc_v0_1_entity_occurrences`
+read `IfcRelDefinesByType` in every release; `openbim_ifc_v0_1_entity_openings`,
+`openbim_ifc_v0_1_entity_fillings` and `openbim_ifc_v0_1_entity_voided_element`
+read `IfcRelVoidsElement` and `IfcRelFillsElement`. An optional answer is
+written to `out_id`, or is `NO_VALUE`. `openbim_ifc_v0_1_new_guid` draws a
+random version-4 `GlobalId` and `openbim_ifc_v0_1_name_based_guid` derives
+a reproducible version-8 one; neither needs a model. These exports make the
+ABI version 0.1.10; no `v0_1` symbol changed. The
+[cookbook](/cookbook/c#find-entities-by-globalid-types-and-openings) has a
+recipe.
+
 ## Geometry
 
 Geometry crosses at three levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)):

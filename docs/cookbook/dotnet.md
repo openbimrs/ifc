@@ -278,6 +278,41 @@ foreach (var product in model.ProductGeometry()) // or GeometryEncoding.Cbor
 `GeometryEncoding.Cbor` gives it as CBOR. The
 [binding page](/bindings/dotnet#geometry) describes it.
 
+## Find entities by GlobalId, types and openings
+
+An entity by its `GlobalId`, an occurrence's type object and the type's
+other occurrences, and a wall's openings with what fills them, read from
+`test/fixtures/synthetic-relations/relations_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-dotnet-global-ids -->
+
+```csharp
+string? Name(ulong id) => (model.AttributeByName(id, "Name") as Value.Text)?.Value;
+// The first lookup indexes every GlobalId once; the rest reuse it.
+ulong wall = model.ByGuid("0LwOtle8vEaxZPGHkxQdYT") ?? throw new KeyNotFoundException();
+
+ulong wallType = model.TypeObject(wall)!.Value; // IfcRelDefinesByType
+Print($"{Name(wallType)}: {string.Join(", ", model.OccurrencesOf(wallType))}"); // WT-200: 17, 18
+foreach (var opening in model.OpeningsOf(wall)) // IfcRelVoidsElement
+{
+    Print($"{Name(opening)}: [{string.Join(", ", model.FillingsOf(opening).Select(Name))}]");
+}
+// Door opening: [Door 1]
+// Recess: []
+
+var duplicates = model.DuplicateGlobalIds(); // empty; a copied GlobalId is listed here
+string fresh = IfcModel.NewGuid(); // random, version 4
+string named = IfcModel.NameBasedGuid("my-exporter", "wall", "42"); // same every run
+```
+
+<!-- /SNIPPET -->
+
+A `GlobalId` that several entities carry throws `IfcException` with
+`Code` `invalid-model` naming every holder; `DuplicateGlobalIds()` lists
+them all. `IfcModel.NewGuid()` draws an RFC 9562 version-4 UUID from the
+operating system; `IfcModel.NameBasedGuid(parts)` is version 8, the same
+for the same parts in every binding. Both are IFC's 22-character form.
+
 ## Create a model
 
 <!-- SNIPPET:cookbook-dotnet-create -->

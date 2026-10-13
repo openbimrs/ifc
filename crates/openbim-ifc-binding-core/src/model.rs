@@ -14,6 +14,8 @@ use crate::{BindingError, ParseOptions};
 #[derive(Debug, Default)]
 pub struct IfcModel {
     pub(crate) inner: Model,
+    /// The `GlobalId` index `by_guid` builds on first use (#463).
+    pub(crate) guid_index: crate::relations::GuidCache,
 }
 
 impl IfcModel {
@@ -98,7 +100,10 @@ impl IfcModel {
         result: Result<Model, ModelError>,
     ) -> Result<Self, BindingError> {
         match result {
-            Ok(inner) => Ok(Self { inner }),
+            Ok(inner) => Ok(Self {
+                inner,
+                guid_index: Default::default(),
+            }),
             Err(ModelError::Io(detail)) => Err(BindingError::Io(detail)),
             Err(error) => Err(BindingError::Parse(format!("{format}: {error}"))),
         }

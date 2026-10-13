@@ -273,6 +273,12 @@ to this package.
 | `ifcopenshell.util.element.get_psets(entity)` | `entity.psets` and `entity.qtos` | `get_psets` returns property and quantity sets together unless `psets_only` or `qtos_only` is passed; here they are separate. Sets carry no `"id"` key (`entity.property_sets()` has every id) and are read-only |
 | `get_psets(entity, should_inherit=False)` | `entity.property_sets()`, keeping `source == "occurrence"` | |
 | `ifcopenshell.api.pset.edit_pset(...)` | `entity.set_property(set, name, value)` | One property per call, a checked transaction; `model.set_properties` batches |
+| `model.by_guid(guid)` | `model.by_guid(guid)` | `None` when absent, where IfcOpenShell raises; a `GlobalId` several entities carry raises `IfcError` (`invalid-model`) naming them all, and `model.duplicate_global_ids()` lists every one |
+| `ifcopenshell.guid.new()` | `openbim_ifc.new_guid()` | |
+| (no equivalent) | `openbim_ifc.name_based_guid(*parts)` | Reproducible: the same parts give the same `GlobalId` |
+| `util.element.get_type(entity)` | `model.type_object(entity.id)` | An id or `None`; two types for one object raise `invalid-model` |
+| `util.element.get_types(type)` | `model.occurrences_of(type.id)` | Ids |
+| `entity.HasOpenings`, `opening.HasFillings`, `opening.VoidsElements` | `model.openings_of(id)`, `model.fillings_of(id)`, `model.voided_element_of(id)` | Ids, read from the relationships; no inverse attributes |
 
 ## Beyond the record model
 
@@ -445,6 +451,21 @@ a `Pset_`/`Qto_` set with `feature-disabled`.
 Not bound yet: checked multi-edit transactions over arbitrary entities
 (`Transaction`, `Applied`, `Conflict`), deferred until a host asks for
 them. Use the Rust crates for those.
+
+## GlobalIds, types and openings
+
+`model.by_guid(global_id)` finds an entity by `GlobalId` through an index
+built on the first lookup and kept until the model changes; a `GlobalId`
+several entities carry raises `invalid-model` naming them all, and
+`model.duplicate_global_ids()` lists every one. `model.type_object(id)` and
+`model.occurrences_of(type)` read `IfcRelDefinesByType` in every release
+(IFC2X3's `IsDefinedBy` included); `openings_of`, `fillings_of` and
+`voided_element_of` read `IfcRelVoidsElement` and `IfcRelFillsElement`.
+`openbim_ifc.new_guid()` draws a random version-4 `GlobalId` from the
+operating system and `openbim_ifc.name_based_guid(*parts)` derives a
+reproducible version-8 one. The
+[cookbook](/cookbook/python#find-entities-by-globalid-types-and-openings)
+has a recipe.
 
 ## Geometry
 
@@ -672,6 +693,13 @@ class, record and function of the package with its docstring and types.
 | `model.ids() -> List[int]` | Every entity id, in file order. |
 | `model.ids_of_type(type_name: str) -> List[int]` | Ids of every entity of exactly `type_name` (case-insensitive). |
 | `model.ids_of_type_including_subtypes(type_name: str) -> List[int]` | Ids of `type_name` or any subtype, per the file's schema. |
+| `model.id_by_guid(global_id: str) -> Optional[int]` | The id of the entity whose `GlobalId` is `global_id`, or `None`. The first lookup indexes every `GlobalId` once; later ones reuse it until the model changes. Raises `invalid-value` for text that is not a `GlobalId` and `invalid-model` when several entities carry it. :meth:`by_guid` returns the :class:`Entity`. |
+| `model.duplicate_global_ids() -> List[DuplicateGlobalId]` | Every `GlobalId` several entities carry, with its holders; empty for a conformant file. |
+| `model.type_object(id: int) -> Optional[int]` | The type object of occurrence `id` (`IfcRelDefinesByType`), or `None`. Raises `wrong-entity-type` for a non-`IfcObject` and `invalid-model` when the file states two types. |
+| `model.occurrences_of(id: int) -> List[int]` | Every object type object `id` types, in file order. |
+| `model.openings_of(id: int) -> List[int]` | Every opening voiding element `id` (`IfcRelVoidsElement`). |
+| `model.fillings_of(id: int) -> List[int]` | Every element filling opening `id` (`IfcRelFillsElement`). |
+| `model.voided_element_of(id: int) -> Optional[int]` | The element opening `id` voids, or `None`. |
 | `model.type_of(id: int) -> str` | The upper-case type name of entity `id`. |
 | `model.attributes(id: int) -> List[Value]` | Every attribute of entity `id`, in declaration order. |
 | `model.attribute(id: int, index: int) -> Value` | Attribute `index` of entity `id`; `Null` past the end. |
@@ -687,6 +715,7 @@ class, record and function of the package with its docstring and types.
 | `model.remove_with_relationships(id: int) -> None` | Remove entity `id` with the relationships that reference it, leaving nothing dangling (:meth:`author` with one :meth:`AuthorOp.remove`). Raises `still-referenced` while an entity other than a relationship needs it. |
 | `model.dangling_references() -> List[Tuple[int, int]]` | Every `(from, to)` pair where `to` does not exist. |
 | `model.by_id(id: int) -> Entity` | Entity `#id` as an :class:`Entity`; raises :class:`openbim_ifc.IfcError` (`missing-entity`) when absent. |
+| `model.by_guid(global_id: str) -> Optional[Entity]` | The entity whose `GlobalId` is `global_id` as an :class:`Entity`, or `None`: :meth:`IfcModel.id_by_guid`. |
 | `model[id] -> Entity` | `model[id]`: :meth:`by_id`, raising `KeyError` when absent. |
 | `id in model -> bool` | `id in model` (an `int`) or `entity in model`. |
 | `iter(model) -> Iterator[Entity]` | `iter(model)`: every entity as an :class:`Entity`, in file order. |

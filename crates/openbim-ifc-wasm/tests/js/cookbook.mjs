@@ -20,6 +20,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const fixtures = path.resolve(here, "../../../../test/fixtures");
 const PROPERTIES = path.join(fixtures, "synthetic-properties/synthetic_properties.ifc");
 const GEOMETRY = path.join(fixtures, "synthetic-bindings/binding_geometry.ifc");
+const RELATIONS = path.join(fixtures, "synthetic-relations/relations_ifc4.ifc");
 
 // docs:snippet cookbook-js-plain
 // A tagged IfcValue as a plain JavaScript value: typed wrappers unwrapped,
@@ -276,6 +277,35 @@ test("read exact geometry graphs through the mesh entry", { skip: !existsSync(me
   // docs:end
   assert.deepEqual([...kinds.keys()], [36n, 46n]);
   assert.deepEqual(kinds.get(36n), ["Profile", "SolidOperation", "Instance"]);
+});
+
+test("find entities by GlobalId, types, openings and fillings", () => {
+  const model = IfcModel.parse(readFileSync(RELATIONS));
+  const printed = [];
+  const log = (...values) => printed.push(values);
+  // docs:snippet cookbook-js-global-ids
+  const name = (id) => model.attributeByName(id, "Name").value;
+  const wall = model.byGuid("0LwOtle8vEaxZPGHkxQdYT"); // 17n, or undefined
+  // The first lookup indexes every GlobalId once; the rest reuse it.
+
+  const wallType = model.typeObject(wall); // IfcRelDefinesByType
+  log(name(wallType), model.occurrencesOf(wallType)); // "WT-200" [17n, 18n]
+  for (const opening of model.openingsOf(wall)) { // IfcRelVoidsElement
+    log(name(opening), model.fillingsOf(opening).map(name));
+  }
+  // "Door opening" ["Door 1"]
+  // "Recess" []
+
+  log(model.duplicateGlobalIds()); // [] -- a copied GlobalId is listed here
+  log(IfcModel.newGuid()); // random, from crypto.getRandomValues
+  log(IfcModel.nameBasedGuid(["my-exporter", "wall", "42"])); // same every run
+  // docs:end
+  assert.equal(wall, 17n);
+  assert.deepEqual(printed[0], ["WT-200", [17n, 18n]]);
+  assert.deepEqual(printed.slice(1, 3), [["Door opening", ["Door 1"]], ["Recess", []]]);
+  assert.deepEqual(printed[3], [[]]);
+  assert.match(printed[4][0], /^[0-3][0-9A-Za-z_$]{21}$/);
+  assert.equal(printed[5][0], IfcModel.nameBasedGuid(["my-exporter", "wall", "42"]));
 });
 
 test("create a model from nothing", () => {

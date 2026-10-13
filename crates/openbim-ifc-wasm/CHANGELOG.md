@@ -8,6 +8,21 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#463, GlobalIds, types and openings)
+
+- `model.byGuid(globalId)` (`bigint | undefined`), through an index built on
+  the first lookup; a `GlobalId` several entities carry throws
+  `invalid-model`, and `model.duplicateGlobalIds()` lists them
+  (`DuplicateGlobalId`).
+- `model.typeObject(id)`, `occurrencesOf`, `openingsOf`, `fillingsOf` and
+  `voidedElementOf`, in IFC2X3, IFC4 and IFC4X3.
+- `IfcModel.newGuid()`, drawn from the host's `crypto.getRandomValues`
+  (browsers, Node 19 and later; `unsupported` on Node 18), and
+  `IfcModel.nameBasedGuid(parts)`. The module now links getrandom's
+  JavaScript backend.
+
+Semver: additive, a minor release while 0.x.
+
 ### Changed
 
 - `IfcModel.georeferencing()` reads IFC2X3 files through their `ePSet_MapConversion` and

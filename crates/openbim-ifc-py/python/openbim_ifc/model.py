@@ -25,7 +25,13 @@ from .domains import (
 )
 from .entity import Assignable, ModelAccess, _plain_wire
 from .geometry import ProductGeometry, ProductMesh, ProductPlacement
-from .records import Header, ParseOptions, UnreachableProduct, ValidationReport
+from .records import (
+    DuplicateGlobalId,
+    Header,
+    ParseOptions,
+    UnreachableProduct,
+    ValidationReport,
+)
 from .values import Value, from_wire, to_wire
 
 
@@ -305,6 +311,44 @@ class IfcModel(ModelAccess):
     def ids_of_type_including_subtypes(self, type_name: str) -> List[int]:
         """Ids of ``type_name`` or any subtype, per the file's schema."""
         return self._native.ids_of_type_including_subtypes(type_name)
+
+    def id_by_guid(self, global_id: str) -> Optional[int]:
+        """The id of the entity whose ``GlobalId`` is ``global_id``, or
+        ``None``. The first lookup indexes every ``GlobalId`` once; later
+        ones reuse it until the model changes. Raises ``invalid-value`` for
+        text that is not a ``GlobalId`` and ``invalid-model`` when several
+        entities carry it. :meth:`by_guid` returns the :class:`Entity`."""
+        return self._native.by_guid(global_id)
+
+    def duplicate_global_ids(self) -> List[DuplicateGlobalId]:
+        """Every ``GlobalId`` several entities carry, with its holders;
+        empty for a conformant file."""
+        return [
+            DuplicateGlobalId(global_id, tuple(ids))
+            for global_id, ids in self._native.duplicate_global_ids()
+        ]
+
+    def type_object(self, id: int) -> Optional[int]:
+        """The type object of occurrence ``id`` (``IfcRelDefinesByType``),
+        or ``None``. Raises ``wrong-entity-type`` for a non-``IfcObject``
+        and ``invalid-model`` when the file states two types."""
+        return self._native.type_object(id)
+
+    def occurrences_of(self, id: int) -> List[int]:
+        """Every object type object ``id`` types, in file order."""
+        return self._native.occurrences_of(id)
+
+    def openings_of(self, id: int) -> List[int]:
+        """Every opening voiding element ``id`` (``IfcRelVoidsElement``)."""
+        return self._native.openings_of(id)
+
+    def fillings_of(self, id: int) -> List[int]:
+        """Every element filling opening ``id`` (``IfcRelFillsElement``)."""
+        return self._native.fillings_of(id)
+
+    def voided_element_of(self, id: int) -> Optional[int]:
+        """The element opening ``id`` voids, or ``None``."""
+        return self._native.voided_element_of(id)
 
     def type_of(self, id: int) -> str:
         """The upper-case type name of entity ``id``."""

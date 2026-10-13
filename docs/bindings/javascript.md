@@ -397,6 +397,21 @@ Not bound yet: checked multi-edit transactions over arbitrary entities
 (`Transaction`, `Applied`, `Conflict`), deferred until a host asks for
 them. Use the Rust crates for those.
 
+## GlobalIds, types and openings
+
+`model.byGuid(globalId)` finds an entity by `GlobalId` through an index
+built on the first lookup and kept until the model changes; a `GlobalId`
+several entities carry throws `invalid-model` naming them all, and
+`duplicateGlobalIds()` lists every one. `typeObject(id)` and
+`occurrencesOf(type)` read `IfcRelDefinesByType` in every release
+(IFC2X3's `IsDefinedBy` included); `openingsOf`, `fillingsOf` and
+`voidedElementOf` read `IfcRelVoidsElement` and `IfcRelFillsElement`.
+`IfcModel.newGuid()` draws a random version-4 `GlobalId` from the host's
+`crypto.getRandomValues` (browsers, Node 19 and later), and
+`IfcModel.nameBasedGuid(parts)` derives a reproducible version-8 one. The
+[cookbook](/cookbook/javascript#find-entities-by-globalid-types-and-openings)
+has a recipe.
+
 ## Geometry
 
 Geometry crosses at three levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)):
@@ -865,6 +880,15 @@ class, interface and type the package's `.d.ts` declares.
 | `model.ids(): bigint[]` |  | Every entity id (`bigint`), in file order. |
 | `model.idsOfType(typeName: string): bigint[]` |  | Ids of every entity of exactly `typeName`, case-insensitive. |
 | `model.idsOfTypeIncludingSubtypes(typeName: string): bigint[]` | yes | Ids of every entity of `typeName` or any subtype, per the file's declared schema: `IfcWall` also finds `IFCWALLSTANDARDCASE`. |
+| `model.byGuid(globalId: string): bigint \| undefined` | yes | The id of the entity whose `GlobalId` is `globalId`, or `undefined`. |
+| `model.duplicateGlobalIds(): DuplicateGlobalId[]` | yes | Every `GlobalId` several entities carry, with its holders in file order; empty for a conformant file. |
+| `model.typeObject(id: bigint): bigint \| undefined` | yes | The type object of occurrence `id` (`IfcRelDefinesByType`), or `undefined`. Throws `wrong-entity-type` for a non-`IfcObject` and `invalid-model` when the file states two types. |
+| `model.occurrencesOf(id: bigint): bigint[]` | yes | Every object type object `id` types, in file order. |
+| `model.openingsOf(id: bigint): bigint[]` | yes | Every opening voiding element `id` (`IfcRelVoidsElement`). |
+| `model.fillingsOf(id: bigint): bigint[]` | yes | Every element filling opening `id` (`IfcRelFillsElement`). |
+| `model.voidedElementOf(id: bigint): bigint \| undefined` | yes | The element opening `id` voids, or `undefined`. |
+| `IfcModel.newGuid(): string` | yes | A new random `GlobalId`: an RFC 9562 version-4 UUID from the host's `crypto.getRandomValues`, in IFC's 22-character form. Throws `unsupported` on a host without it (Node 18). |
+| `IfcModel.nameBasedGuid(parts: string[]): string` |  | The `GlobalId` named by `parts` (RFC 9562 version 8): the same parts give the same `GlobalId` in every binding and release. |
 | `model.typeOf(id: bigint): string` | yes | The upper-case type name of entity `id`. |
 | `model.attributes(id: bigint): IfcValue[]` | yes | Every attribute of entity `id`, as tagged values. |
 | `model.attribute(id: bigint, slot: number): IfcValue` | yes | Attribute `index` of entity `id`, as a tagged value. |
@@ -1008,6 +1032,13 @@ export interface ValidationReport {
   warnings: number;
   unsupported: number;
   findings: ValidationFinding[];
+}
+
+/** A `GlobalId` several entities carry, from `IfcModel.duplicateGlobalIds`. */
+export interface DuplicateGlobalId {
+  globalId: string;
+  /** Its holders, in file order. */
+  ids: bigint[];
 }
 
 /** A product no viewer will draw, from `IfcModel.unreachableProducts`. */

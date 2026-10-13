@@ -25,6 +25,7 @@
 
 static char properties_path[4096];
 static char geometry_path[4096];
+static char relations_path[4096];
 /* What the recipes print, so each test can check it. */
 static char out[16384];
 static size_t out_len;
@@ -615,6 +616,52 @@ static int recipe_create(void) {
   return 0;
 }
 
+static int recipe_global_ids(OpenbimIfcModel model) {
+  out_len = 0;
+  out[0] = 0;
+  // docs:snippet cookbook-c-global-ids
+  /* The entity a GlobalId names, or NO_VALUE. The first lookup indexes every
+   * GlobalId once; the rest reuse the index until the model changes. */
+  const char *guid = "0LwOtle8vEaxZPGHkxQdYT";
+  uint64_t wall = 0, wall_type = 0;
+  if (openbim_ifc_v0_1_model_by_guid(model, (const uint8_t *)guid, strlen(guid), &wall) !=
+      OPENBIM_IFC_STATUS_OK) {
+    print_error(model); /* none carries it, or several do (INVALID_MODEL) */
+    return 1;
+  }
+  openbim_ifc_v0_1_entity_type_object(model, wall, &wall_type); /* IfcRelDefinesByType */
+  printf("wall #%llu, type #%llu\n", (unsigned long long)wall, (unsigned long long)wall_type);
+
+  uint64_t openings[16], fillings[16];
+  size_t count = 0, filled = 0;
+  openbim_ifc_v0_1_entity_openings(model, wall, openings, 16, &count); /* IfcRelVoidsElement */
+  for (size_t i = 0; i < count; i++) {
+    openbim_ifc_v0_1_entity_fillings(model, openings[i], fillings, 16, &filled);
+    printf("opening #%llu: %zu filling(s)\n", (unsigned long long)openings[i], filled);
+  }
+  /* wall #17, type #16
+   * opening #21: 1 filling(s)
+   * opening #23: 0 filling(s) */
+
+  char fresh[23], named[23]; /* 22 characters and the NUL */
+  size_t need = 0;
+  openbim_ifc_v0_1_new_guid((uint8_t *)fresh, sizeof fresh, &need); /* random, version 4 */
+  const uint8_t *parts[] = {(const uint8_t *)"my-exporter", (const uint8_t *)"wall-42"};
+  size_t lengths[] = {11, 7};
+  openbim_ifc_v0_1_name_based_guid(parts, lengths, 2, (uint8_t *)named, sizeof named, &need);
+  /* `named` is the same on every run, in every binding */
+  // docs:end
+  CHECK(strcmp(out, "wall #17, type #16\nopening #21: 1 filling(s)\nopening #23: 0 filling(s)\n") == 0,
+        out);
+  CHECK(strlen(fresh) == 22, fresh);
+  CHECK(strlen(named) == 22, named);
+  uint64_t none = 0;
+  CHECK(openbim_ifc_v0_1_model_by_guid(model, (const uint8_t *)fresh, 22, &none) ==
+            OPENBIM_IFC_STATUS_NO_VALUE,
+        "a fresh GlobalId parses and names nothing");
+  return 0;
+}
+
 int main(int argc, char **argv) {
   if (argc != 3) {
     fprintf(stderr, "usage: cookbook <test/fixtures directory> <scratch directory>\n");
@@ -664,6 +711,13 @@ int main(int argc, char **argv) {
   if (recipe_placements(model) != 0) return 1;
   if (recipe_meshes(model) != 0) return 1;
   if (recipe_graphs(model) != 0) return 1;
+  OK(openbim_ifc_v0_1_model_destroy(model));
+
+  snprintf(relations_path, sizeof relations_path, "%s/synthetic-relations/relations_ifc4.ifc",
+           argv[1]);
+  OK(openbim_ifc_v0_1_model_open((const uint8_t *)relations_path, strlen(relations_path), &model,
+                                 NULL, 0));
+  if (recipe_global_ids(model) != 0) return 1;
   OK(openbim_ifc_v0_1_model_destroy(model));
 
   if (recipe_create() != 0) return 1;
