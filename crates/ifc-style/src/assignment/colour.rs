@@ -1,50 +1,5 @@
-//! The surface colour of a representation item or a material (#449).
-//!
-//! A viewer paints a surface with the colour of an `IfcSurfaceStyle`'s
-//! `IfcSurfaceStyleShading` (or its `IfcSurfaceStyleRendering` subtype).
-//! The style reaches a representation item in one of three ways, and
-//! [`StyleIndex`] answers each of them separately:
-//!
-//! 1. **The item.** An `IfcStyledItem` whose `Item` is the representation
-//!    item ([`StyleIndex::item_colour`], [`ColourSource::StyledItem`]).
-//! 2. **Its presentation layer.** An `IfcPresentationLayerWithStyle` whose
-//!    `AssignedItems` include it ([`StyleIndex::item_colour`],
-//!    [`ColourSource::PresentationLayer`]).
-//! 3. **Its material.** The `IfcMaterialDefinitionRepresentation` of the
-//!    `IfcMaterial` the element is made of: its `IfcStyledRepresentation`s
-//!    hold `IfcStyledItem`s with no `Item` whose styles present the
-//!    material ([`StyleIndex::material_colour`], [`ColourSource::Material`]).
-//!
-//! The precedence is that order. The item over the layer is the
-//! standard's: "If the styled item has style information assigned [...]
-//! then it overrides the style provided by the
-//! IfcPresentationLayerAssignmentWithStyle" (IFC4 ADD2 TC1,
-//! `IfcPresentationLayerWithStyle`, second note), and it is the cascade
-//! [`StyleView::resolve_item_style`](crate::StyleView::resolve_item_style)
-//! already applies. The material comes last because it is the general
-//! case: `IfcStyledItem` "holds presentation style information for
-//! products, either explicitly for an IfcGeometricRepresentationItem being
-//! part of an IfcShapeRepresentation assigned to a product, or by assigning
-//! presentation information to IfcMaterial being assigned as other
-//! representation for a product" (IFC4 ADD2 TC1, `IfcStyledItem`), and
-//! `IfcMaterialDefinitionRepresentation` "defines presentation information
-//! relating to IfcMaterial" used at element occurrences and types (IFC4
-//! ADD2 TC1, `IfcMaterialDefinitionRepresentation`; the entity is new in
-//! IFC2x3 and unchanged in IFC4X3 ADD2). The standard states no order
-//! between a layer style and a material style; this one is IfcOpenShell's
-//! (`mapping.cpp`, `find_style` before the material fallback) and the
-//! one #449 fixes.
-//!
-//! The precedence is per colour, not per style: a level that states no
-//! surface colour (a styled item with only a curve style, say) does not
-//! hide the next one. The layer note says a styled item on a layer
-//! "inherits the style information from the layer", omitting "its own
-//! style information" for the styles it does not state.
-//!
-//! Which `IfcMaterial` an element is made of (a layer of a set, a
-//! constituent) is the material domain's question, not this crate's: the
-//! caller resolves it and passes the material here. The `openbim-ifc`
-//! facade joins the two (`product_colour`).
+//! The surface colour of a representation item or a material (#449);
+//! see [`StyleIndex`] for the precedence and its citations.
 
 use std::collections::BTreeMap;
 
@@ -94,6 +49,54 @@ pub enum ColourSource {
 /// every item of every product; the index reads each `IfcStyledItem`,
 /// `IfcPresentationLayerAssignment` and `IfcMaterialDefinitionRepresentation`
 /// once.
+///
+/// # Precedence
+///
+/// A viewer paints a surface with the colour of an `IfcSurfaceStyle`'s
+/// `IfcSurfaceStyleShading` (or its `IfcSurfaceStyleRendering` subtype).
+/// The style reaches a representation item in one of three ways, and
+/// [`StyleIndex`] answers each of them separately:
+///
+/// 1. **The item.** An `IfcStyledItem` whose `Item` is the representation
+///    item ([`StyleIndex::item_colour`], [`ColourSource::StyledItem`]).
+/// 2. **Its presentation layer.** An `IfcPresentationLayerWithStyle` whose
+///    `AssignedItems` include it ([`StyleIndex::item_colour`],
+///    [`ColourSource::PresentationLayer`]).
+/// 3. **Its material.** The `IfcMaterialDefinitionRepresentation` of the
+///    `IfcMaterial` the element is made of: its `IfcStyledRepresentation`s
+///    hold `IfcStyledItem`s with no `Item` whose styles present the
+///    material ([`StyleIndex::material_colour`], [`ColourSource::Material`]).
+///
+/// The precedence is that order. The item over the layer is the
+/// standard's: "If the styled item has style information assigned [...]
+/// then it overrides the style provided by the
+/// IfcPresentationLayerAssignmentWithStyle" (IFC4 ADD2 TC1,
+/// `IfcPresentationLayerWithStyle`, second note), and it is the cascade
+/// [`StyleView::resolve_item_style`](crate::StyleView::resolve_item_style)
+/// already applies. The material comes last because it is the general
+/// case: `IfcStyledItem` "holds presentation style information for
+/// products, either explicitly for an IfcGeometricRepresentationItem being
+/// part of an IfcShapeRepresentation assigned to a product, or by assigning
+/// presentation information to IfcMaterial being assigned as other
+/// representation for a product" (IFC4 ADD2 TC1, `IfcStyledItem`), and
+/// `IfcMaterialDefinitionRepresentation` "defines presentation information
+/// relating to IfcMaterial" used at element occurrences and types (IFC4
+/// ADD2 TC1, `IfcMaterialDefinitionRepresentation`; the entity is new in
+/// IFC2x3 and unchanged in IFC4X3 ADD2). The standard states no order
+/// between a layer style and a material style; this one is IfcOpenShell's
+/// (`mapping.cpp`, `find_style` before the material fallback) and the
+/// one #449 fixes.
+///
+/// The precedence is per colour, not per style: a level that states no
+/// surface colour (a styled item with only a curve style, say) does not
+/// hide the next one. The layer note says a styled item on a layer
+/// "inherits the style information from the layer", omitting "its own
+/// style information" for the styles it does not state.
+///
+/// Which `IfcMaterial` an element is made of (a layer of a set, a
+/// constituent) is the material domain's question, not this crate's: the
+/// caller resolves it and passes the material here. The `openbim-ifc`
+/// facade joins the two (`product_colour`).
 #[derive(Debug, Clone)]
 pub struct StyleIndex<'m, 's> {
     view: StyleView<'m, 's>,
@@ -156,7 +159,7 @@ impl<'m, 's> StyleIndex<'m, 's> {
     }
 
     /// The surface colour `item` states itself: its own `IfcStyledItem`
-    /// first, then its presentation layers (see the [module](self) docs).
+    /// first, then its presentation layers (see [the precedence](StyleIndex#precedence)).
     /// `None` when neither states a surface colour.
     ///
     /// # Errors

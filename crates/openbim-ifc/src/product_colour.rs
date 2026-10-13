@@ -16,11 +16,12 @@
 //!    of the `IfcMaterial` the product is made of, the product's own
 //!    `IfcRelAssociatesMaterial` first, else its type's.
 //!
-//! The order, and why the standard supports it, is documented and cited in
-//! [`ifc_style::StyleIndex`]'s module: item over layer is the standard's
-//! (IFC4 ADD2 TC1, `IfcPresentationLayerWithStyle`); material last is the
-//! general case `IfcStyledItem` and `IfcMaterialDefinitionRepresentation`
-//! describe, and IfcOpenShell's order.
+//! The order, and why the standard supports it, is documented and cited
+//! in [`ifc_style::StyleIndex`] (its Precedence section): item over layer
+//! is the standard's (IFC4 ADD2 TC1, `IfcPresentationLayerWithStyle`);
+//! material last is the general case `IfcStyledItem` and
+//! `IfcMaterialDefinitionRepresentation` describe, and IfcOpenShell's
+//! order.
 //!
 //! # Which material
 //!
