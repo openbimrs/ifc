@@ -8,6 +8,15 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed
+
+- `openbim_ifc_v0_1_model_georeferencing` reads IFC2X3 files through their `ePSet_MapConversion` and
+  `ePSet_ProjectedCRS` property sets instead of refusing them as
+  `unsupported-schema` (#451); such a record's source kind is
+  `property-set`. Through `openbim-ifc-binding-core`.
+
+Semver: minor (ADR 0021).
+
 ## [0.1.10] - 2026-10-13
 
 ### Changed (#433, wire format 1.3)

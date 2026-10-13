@@ -158,6 +158,50 @@ pub enum GeorefError {
         /// The rejected value.
         value: f64,
     },
+    /// IFC2X3 property-set georeferencing: an object carries one of
+    /// `ePSet_MapConversion` and `ePSet_ProjectedCRS` but not the other, so
+    /// it states a conversion without a CRS or a CRS without a conversion.
+    ///
+    /// Refused rather than completed from another object: a pair is never
+    /// joined across hosts.
+    IncompletePropertySets {
+        /// The `IfcProject` or `IfcSite` the present set is attached to.
+        host: EntityId,
+        /// The property set that is missing.
+        missing: &'static str,
+    },
+    /// IFC2X3 property-set georeferencing: an object carries more than one
+    /// property set of the same georeferencing name, so which one applies
+    /// is ambiguous.
+    AmbiguousPropertySets {
+        /// The `IfcProject` or `IfcSite`.
+        host: EntityId,
+        /// The repeated property-set name.
+        name: &'static str,
+        /// Every property set of that name on the host, ascending.
+        sets: Vec<EntityId>,
+    },
+    /// IFC2X3 property-set georeferencing: a property the conversion
+    /// requires is absent, or present with no `NominalValue`.
+    MissingProperty {
+        /// The `IfcPropertySet`.
+        property_set: EntityId,
+        /// The property name, such as `Eastings`.
+        name: &'static str,
+    },
+    /// IFC2X3 property-set georeferencing: a property is present but is not
+    /// an `IfcPropertySingleValue` holding the value its definition states,
+    /// such as an `Eastings` that is not a finite `IfcLengthMeasure`.
+    InvalidProperty {
+        /// The `IfcPropertySet`.
+        property_set: EntityId,
+        /// The property entity.
+        property: EntityId,
+        /// The property name.
+        name: &'static str,
+        /// What the property must hold.
+        expected: &'static str,
+    },
 }
 
 impl std::fmt::Display for GeorefError {
@@ -251,6 +295,34 @@ impl std::fmt::Display for GeorefError {
             Self::InvalidParameter { name, value } => {
                 write!(f, "parameter {name} has invalid value {value}")
             }
+            Self::IncompletePropertySets { host, missing } => {
+                write!(
+                    f,
+                    "{host} carries one georeferencing property set but not {missing}"
+                )
+            }
+            Self::AmbiguousPropertySets { host, name, sets } => {
+                write!(
+                    f,
+                    "{host} carries {} property sets named {name}: {sets:?}",
+                    sets.len()
+                )
+            }
+            Self::MissingProperty { property_set, name } => {
+                write!(
+                    f,
+                    "{property_set} has no value for required property {name}"
+                )
+            }
+            Self::InvalidProperty {
+                property_set,
+                property,
+                name,
+                expected,
+            } => write!(
+                f,
+                "{property_set} property {name} ({property}) must be {expected}"
+            ),
         }
     }
 }

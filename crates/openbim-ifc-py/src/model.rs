@@ -350,7 +350,9 @@ impl NativeModel {
         records::record_to_py(py, &cost.to_record())
     }
 
-    /// Every coordinate operation, resolved, as record dicts.
+    /// Every coordinate operation, resolved, as record dicts. IFC2X3 is
+    /// read from its `ePSet_MapConversion` and `ePSet_ProjectedCRS`
+    /// property sets.
     fn georeferencing<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyList>> {
         let maps = self.inner.georeferencing().map_err(py_err)?;
         records::records_to_py(py, &to_records(&maps))

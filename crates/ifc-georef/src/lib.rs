@@ -5,6 +5,13 @@
 //! feature, a format-neutral `axiolid_core::Transform3`. It does not place
 //! products, reproject coordinates, or select a geometry backend.
 //!
+//! IFC4 and IFC4X3 state georeferencing as `IfcCoordinateOperation`
+//! entities ([`resolve_project_to_map`]); IFC2X3, which declares none, as
+//! the `ePSet_MapConversion` and `ePSet_ProjectedCRS` property sets of the
+//! buildingSMART geo-referencing guide
+//! ([`resolve_property_set_georeferencing`]). Both resolve to the same
+//! [`ProjectToMap`]; the declared release decides which is read.
+//!
 //! # Features
 //!
 //! - `transform` (default): links `axiolid-core` and adds
@@ -35,8 +42,9 @@ pub use authoring::{
 pub use context::compose_project_frame;
 pub use context::{coordinate_operation_for, resolve_operation_source, OperationSource};
 pub use conversion::{
-    resolve_geographic_offset_in, resolve_project_to_map, resolve_project_to_map_in,
-    GeographicOffset, OperationKind, ProjectToMap,
+    has_property_set_georeferencing, resolve_geographic_offset_in, resolve_project_to_map,
+    resolve_project_to_map_in, resolve_property_set_georeferencing, GeographicOffset,
+    OperationKind, ProjectToMap, MAP_CONVERSION_PSET, PROJECTED_CRS_PSET,
 };
 pub use crs::{AngleUnit, GeographicCrs, LengthUnit, ProjectedCrs};
 pub use error::{GeorefError, GeorefResult};

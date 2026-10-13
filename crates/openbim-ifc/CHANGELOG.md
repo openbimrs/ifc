@@ -12,6 +12,19 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- `georeferencing` reads IFC2X3 (#451): the `ePSet_MapConversion` and
+  `ePSet_ProjectedCRS` property sets of the project (or else of each site)
+  resolve with the project length unit to the same `ProjectToMap` as
+  IFC4's entities. An IFC2X3 file used to be refused with
+  `UnsupportedSchema`; without the sets it now has an empty list, and a
+  malformed or incomplete set is refused with the new `GeorefError`
+  variants. Property sets of those names in an IFC4 or IFC4X3 file are not
+  read. Requires `ifc-georef` with #451.
+
+Semver: minor. A release that was refused now resolves.
+
 ## [0.31.0] - 2026-10-13
 
 ### Changed

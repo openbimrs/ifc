@@ -53,6 +53,12 @@ pub enum OperationSource {
     /// An `IfcCoordinateReferenceSystem` subtype: an operation chained from
     /// another CRS.
     CoordinateReferenceSystem(EntityId),
+    /// IFC2X3: the `IfcProject` (or, as a legacy fallback, the `IfcSite`)
+    /// whose `ePSet_MapConversion` and `ePSet_ProjectedCRS` state the
+    /// operation. IFC2X3 has no `SourceCRS`; the property sets apply to the
+    /// object they are attached to (see
+    /// [`crate::resolve_property_set_georeferencing`]).
+    PropertySet(EntityId),
 }
 
 impl OperationSource {
@@ -60,7 +66,7 @@ impl OperationSource {
     #[must_use]
     pub const fn entity(&self) -> EntityId {
         match self {
-            Self::Context(id) | Self::CoordinateReferenceSystem(id) => *id,
+            Self::Context(id) | Self::CoordinateReferenceSystem(id) | Self::PropertySet(id) => *id,
         }
     }
 }

@@ -63,15 +63,19 @@ pub struct ProjectToMap {
     /// `IfcCoordinateReferenceSystemSelect`: an
     /// `IfcGeometricRepresentationContext` or an
     /// `IfcCoordinateReferenceSystem`, in IFC4 and IFC4X3 alike. `source`
-    /// says which.
+    /// says which. For IFC2X3 property-set georeferencing, the
+    /// `IfcProject` or `IfcSite` carrying the sets
+    /// ([`OperationSource::PropertySet`]).
     pub source_crs: EntityId,
     /// The validated source, typed.
     pub source: OperationSource,
-    /// The coordinate-operation entity this was resolved from.
+    /// The coordinate-operation entity this was resolved from; for IFC2X3,
+    /// the `ePSet_MapConversion` property set.
     pub operation: EntityId,
     /// Which subtype `operation` is, with its subtype-only attributes.
     pub kind: OperationKind,
-    /// The target projected CRS.
+    /// The target projected CRS; for IFC2X3, read from the
+    /// `ePSet_ProjectedCRS` property set, whose id is its `entity`.
     pub target_crs: ProjectedCrs,
     /// Affine operation from neutral project metres to neutral map metres.
     ///

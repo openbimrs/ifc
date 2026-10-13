@@ -25,7 +25,10 @@
 //!
 //! - **IFC2X3** declares no georeferencing entities at all (`IfcMapConversion`,
 //!   `IfcProjectedCRS`, `IfcCoordinateReferenceSystem` do not exist in
-//!   `IFC2X3_TC1.exp`). There is no reduced IFC2X3 path to offer.
+//!   `IFC2X3_TC1.exp`), so this view refuses it. IFC2X3 files carry the same
+//!   parameters in the `ePSet_MapConversion` and `ePSet_ProjectedCRS`
+//!   property sets instead, read by
+//!   [`crate::resolve_property_set_georeferencing`] without a view.
 //! - **IFC4** declares exactly one coordinate-operation shape:
 //!   `IfcMapConversion` targeting `IfcProjectedCRS` (the only
 //!   `IfcCoordinateReferenceSystem` subtype IFC4 has).
@@ -58,23 +61,11 @@ impl<'m> GeorefView<'m> {
     /// Pin the model's declared schema and confirm it is IFC4 or IFC4X3.
     ///
     /// IFC2X3 is refused: it declares no `IfcMapConversion`,
-    /// `IfcProjectedCRS`, or `IfcCoordinateReferenceSystem` at all, so there
-    /// is no reduced behavior to offer instead of a typed refusal.
+    /// `IfcProjectedCRS`, or `IfcCoordinateReferenceSystem` at all. Its
+    /// property-set georeferencing is read by
+    /// [`crate::resolve_property_set_georeferencing`].
     pub fn for_model(model: &'m Model) -> GeorefResult<Self> {
-        let token = match model.header().schema.as_slice() {
-            [] => return Err(GeorefError::MissingSchema),
-            [token] => token,
-            tokens => {
-                return Err(GeorefError::AmbiguousSchema {
-                    tokens: tokens.to_vec(),
-                });
-            }
-        };
-        let version = SchemaVersion::from_header_token(token).ok_or_else(|| {
-            GeorefError::UnsupportedSchema {
-                token: token.clone(),
-            }
-        })?;
+        let (token, version) = declared_release(model)?;
         let schema = match version {
             // A verified release whose table this build leaves out (#306)
             // is refused like an unverified one.
@@ -138,6 +129,30 @@ impl<'m> GeorefView<'m> {
         }
         Ok(type_name)
     }
+}
+
+/// The one `FILE_SCHEMA` token of `model` and the release it names.
+///
+/// # Errors
+///
+/// [`GeorefError::MissingSchema`] for no token,
+/// [`GeorefError::AmbiguousSchema`] for more than one, and
+/// [`GeorefError::UnsupportedSchema`] for a token that names no release.
+pub(crate) fn declared_release(model: &Model) -> GeorefResult<(&String, SchemaVersion)> {
+    let token = match model.header().schema.as_slice() {
+        [] => return Err(GeorefError::MissingSchema),
+        [token] => token,
+        tokens => {
+            return Err(GeorefError::AmbiguousSchema {
+                tokens: tokens.to_vec(),
+            });
+        }
+    };
+    let version =
+        SchemaVersion::from_header_token(token).ok_or_else(|| GeorefError::UnsupportedSchema {
+            token: token.clone(),
+        })?;
+    Ok((token, version))
 }
 
 #[cfg(test)]

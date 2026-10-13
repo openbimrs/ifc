@@ -665,7 +665,7 @@ class, record and function of the package with its docstring and types.
 | `model.product_meshes(ids: Optional[Iterable[int]] = None) -> List[ProductMesh]` | Each product's Body as triangles from the reference backend, for `ids` or every product with a shape; a product that cannot be meshed carries a typed `refusal`. Needs a wheel built with the `mesh` feature; the published wheel raises `feature-disabled`. |
 | `model.systems() -> Systems` | Every system with its members and served structures, and the memberships the reader could not honour. |
 | `model.cost() -> Cost` | Every cost schedule and cost item; values as authored, typed. |
-| `model.georeferencing() -> List[MapConversion]` | Every coordinate operation resolved with the project length unit; empty when the model has none. |
+| `model.georeferencing() -> List[MapConversion]` | Every coordinate operation resolved with the project length unit; empty when the model has none. IFC2X3 is read from its `ePSet_MapConversion` and `ePSet_ProjectedCRS` property sets. |
 | `len(model) -> int` | Number of entities. |
 | `model.schema: Optional[str]` | The first `FILE_SCHEMA` token, e.g. `"IFC4"`, or `None`. |
 | `model.diagnostics() -> List[str]` | Non-fatal problems found while reading. |

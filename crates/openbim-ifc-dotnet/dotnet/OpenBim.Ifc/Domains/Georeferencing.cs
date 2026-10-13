@@ -5,8 +5,8 @@ namespace OpenBim.Ifc;
 /// <summary>One coordinate operation, resolved with the project length unit.</summary>
 /// <param name="Operation">The coordinate-operation entity.</param>
 /// <param name="Kind"><c>map-conversion</c>, <c>map-conversion-scaled</c> or <c>rigid-operation</c>.</param>
-/// <param name="Source"><c>SourceCRS</c>: a representation context or a CRS.</param>
-/// <param name="SourceKind"><c>context</c> or <c>crs</c>.</param>
+/// <param name="Source"><c>SourceCRS</c>: a representation context or a CRS; for IFC2X3, the <c>IfcProject</c> or <c>IfcSite</c> carrying the <c>ePSet_MapConversion</c> and <c>ePSet_ProjectedCRS</c> property sets.</param>
+/// <param name="SourceKind"><c>context</c>, <c>crs</c> or (IFC2X3) <c>property-set</c>.</param>
 /// <param name="TargetCrs">The target <c>IfcProjectedCRS</c>.</param>
 /// <param name="Eastings"><c>Eastings</c> as authored, in the map unit.</param>
 /// <param name="Northings"><c>Northings</c> as authored, in the map unit.</param>

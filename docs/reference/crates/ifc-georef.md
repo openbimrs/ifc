@@ -26,6 +26,13 @@ into plain-number operation parameters and, with the default `transform`
 feature, a format-neutral `axiolid_core::Transform3`. It does not place
 products, reproject coordinates, or select a geometry backend.
 
+IFC4 and IFC4X3 state georeferencing as `IfcCoordinateOperation`
+entities (`resolve_project_to_map`); IFC2X3, which declares none, as
+the `ePSet_MapConversion` and `ePSet_ProjectedCRS` property sets of the
+buildingSMART geo-referencing guide
+(`resolve_property_set_georeferencing`). Both resolve to the same
+`ProjectToMap`; the declared release decides which is read.
+
 ## Features
 
 | Feature | Default | Enables |

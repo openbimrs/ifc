@@ -278,7 +278,8 @@ class IfcModel(ModelAccess):
 
     def georeferencing(self) -> List[MapConversion]:
         """Every coordinate operation resolved with the project length
-        unit; empty when the model has none."""
+        unit; empty when the model has none. IFC2X3 is read from its
+        ``ePSet_MapConversion`` and ``ePSet_ProjectedCRS`` property sets."""
         return list(domains._from_wire(self._native.georeferencing()))
 
     def __len__(self) -> int:

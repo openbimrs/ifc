@@ -8,9 +8,15 @@
 //! resolved operation from project metres to map metres. These are
 //! resolved parameters, not IFC values, so they cross as host numbers.
 //!
-//! Only IFC4 and IFC4X3 declare georeferencing: any other release is
-//! refused with `unsupported-schema`. A model without a coordinate
-//! operation has an empty list.
+//! IFC4 and IFC4X3 declare georeferencing as entities. IFC2X3 states it in
+//! the `ePSet_MapConversion` and `ePSet_ProjectedCRS` property sets of the
+//! buildingSMART geo-referencing guide (#451): each pair, on the
+//! `IfcProject` or else on each `IfcSite`, crosses as one `map-conversion`
+//! whose `source_kind` is `property-set`, `source` the host object,
+//! `operation` the `ePSet_MapConversion` set and `target_crs.id` the
+//! `ePSet_ProjectedCRS` set. Any other release is refused with
+//! `unsupported-schema`. A model without a coordinate operation has an
+//! empty list.
 
 use crate::record::{Field, Record, ToRecord};
 use crate::{BindingError, IfcModel};
@@ -18,13 +24,15 @@ use crate::{BindingError, IfcModel};
 /// One coordinate operation, resolved.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MapConversion {
-    /// The coordinate-operation entity.
+    /// The coordinate-operation entity; for IFC2X3, the
+    /// `ePSet_MapConversion` property set.
     pub operation: u64,
     /// `map-conversion`, `map-conversion-scaled` or `rigid-operation`.
     pub kind: String,
-    /// `SourceCRS`: a representation context or a CRS.
+    /// `SourceCRS`: a representation context or a CRS; for IFC2X3, the
+    /// `IfcProject` or `IfcSite` carrying the property sets.
     pub source: u64,
-    /// `context` or `crs`.
+    /// `context`, `crs` or (IFC2X3) `property-set`.
     pub source_kind: String,
     /// The target `IfcProjectedCRS`.
     pub target_crs: ProjectedCrs,
@@ -87,9 +95,11 @@ pub struct LengthUnit {
 impl IfcModel {
     /// Every coordinate operation, resolved, in file order.
     ///
-    /// Refused with `unsupported-schema` for a release other than IFC4 or
-    /// IFC4X3, `unsupported` for an operation with no project-to-map form,
-    /// `invalid-model` for a malformed operation or project length unit,
+    /// Refused with `unsupported-schema` for a release other than IFC2X3,
+    /// IFC4 or IFC4X3, `unsupported` for an operation with no project-to-map
+    /// form, `invalid-model` for a malformed operation, an incomplete,
+    /// ambiguous or malformed IFC2X3 property set, or a malformed project
+    /// length unit,
     /// `missing-reference` for a dangling one, and `feature-disabled`
     /// without the `georef` feature.
     pub fn georeferencing(&self) -> Result<Vec<MapConversion>, BindingError> {
@@ -128,6 +138,7 @@ mod read {
                 let (source, source_kind) = match map.source {
                     OperationSource::Context(id) => (id.0, "context"),
                     OperationSource::CoordinateReferenceSystem(id) => (id.0, "crs"),
+                    OperationSource::PropertySet(id) => (id.0, "property-set"),
                     _ => (map.source_crs.0, "other"),
                 };
                 let unit = |unit: &ifc::georef::LengthUnit| LengthUnit {
