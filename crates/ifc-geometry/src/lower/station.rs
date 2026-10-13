@@ -146,7 +146,12 @@
 //! only the runs that used to be refused carry windows (format 1.2). An
 //! `IfcOffsetCurveByDistances` along such a basis continues its offsets to
 //! the basis's end, a quadrature, which the kernel measures (`offset`,
-//! #433, `RunStation::at_basis_end`, axiolid/kernel#303; format 1.3).
+//! #433, `RunStation::at_basis_end`, axiolid/kernel#303; format 1.3). A
+//! station along such a run (`OffsetsAtStations`) carries the window too
+//! (#443, `relation::offset::by_stations`); the reference kernel
+//! (`axiolid-evaluate` 0.3.13) certifies no offset law that varies along
+//! an ellipse or a B-spline, so it refuses a window past the run's first
+//! stated offset there by name (`TODO(#443)`).
 //!
 //! # Frames
 //!
@@ -238,6 +243,7 @@ impl Basis {
             if [
                 seams::BANKED,
                 relation::UNSUPPORTED,
+                relation::TOO_DEEP,
                 relation::MIXED,
                 relation::TRIM_OF_OFFSET,
                 relation::OFFSET_OF_OFFSET,

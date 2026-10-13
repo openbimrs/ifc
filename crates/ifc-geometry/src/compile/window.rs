@@ -18,6 +18,9 @@
 //! basis's end, which the kernel measures (#433, axiolid/kernel#303), adds
 //! another: a stated station at or past that end, another private
 //! `GeomError::InvalidInput` text repeated and pinned the same way.
+//! Certifying a seam to the window's tolerance may also exceed the kernel's
+//! panel budget, a `GeomError::BudgetExceeded` whose private resource name
+//! is repeated here and pinned by a test that triggers it (#443).
 
 use axiolid_contracts::GeomError;
 
@@ -38,6 +41,11 @@ pub(crate) const UNCERTIFIED: &str =
      profile in a leaning frame; an offset by distances along an ellipse or a B-spline; a 3D \
      offset direction that is not vertical beside a plan-measured or intrinsic base; a base \
      placed in a frame that tilts +Z; a skewed frame; or a tolerance below the points' rounding";
+
+/// The resource `axiolid-evaluate` names when certifying a piece's length
+/// to a window's tolerance needs more panels than its budget allows
+/// (`station::certify`, private there): a `GeomError::BudgetExceeded`.
+pub(crate) const CERTIFICATION_BUDGET: &str = "certified length panels";
 
 /// `axiolid-mesh-compile`'s refusal of an offset run whose stations, its
 /// basis's ends resolved, do not increase (`station::RESOLVED_NOT_INCREASING`,
@@ -66,7 +74,12 @@ pub enum SeamWindowRefusal {
     Straddled,
     /// A seam's distance cannot be certified (an offset of a banked or a 3D
     /// intrinsic curve, an offset by distances along an ellipse or a
-    /// B-spline, and the other cases the kernel names).
+    /// B-spline, and the other cases the kernel names). Along an offset by
+    /// distances whose law varies beside an ellipse or a B-spline, which
+    /// `axiolid-evaluate` 0.3.13 does not certify, every windowed station
+    /// past its first stated offset is refused so (#443).
+    // TODO(#443): lift once Axiolid certifies a varying offset law along an
+    // ellipse or a B-spline.
     UncertifiedLength,
     /// A run's stations, snapped onto seams within their windows, no
     /// longer increase strictly in distance: two snapped onto one seam, or
@@ -80,11 +93,23 @@ pub enum SeamWindowRefusal {
     /// of the end; one stated within the model's precision of it is
     /// refused too, since this crate cannot tell it from the end.
     PastBasisEnd,
+    /// Certifying a seam's distance to the window's tolerance (a thousandth
+    /// of it) needs more panels than the kernel's budget allows: a piece
+    /// whose length is a quadrature, before the window or reaching it, that
+    /// the kernel bounds only coarsely (#443, a constant offset beside an
+    /// ellipse past a varying one, at a 1e-5 m precision).
+    // TODO(#443): lift once Axiolid certifies such a piece within its
+    // panel budget at a thousandth of the window.
+    CertificationBudgetExceeded,
 }
 
 impl SeamWindowRefusal {
     /// The refusal `error` is, if it is one of a window's.
     pub(crate) fn of(error: &GeomError) -> Option<Self> {
+        if let GeomError::BudgetExceeded { resource } = error {
+            return (*resource == CERTIFICATION_BUDGET)
+                .then_some(Self::CertificationBudgetExceeded);
+        }
         if let GeomError::InvalidInput(detail) = error {
             return if detail == NOT_INCREASING {
                 Some(Self::NotIncreasing)
@@ -126,6 +151,10 @@ impl std::fmt::Display for SeamWindowRefusal {
             Self::NotIncreasing => {
                 "the run's stations, snapped onto seams within the window, no longer increase \
                  strictly in distance"
+            }
+            Self::CertificationBudgetExceeded => {
+                "the distance of a seam of the basis curve cannot be certified to the window \
+                 within the kernel's panel budget"
             }
             Self::PastBasisEnd => {
                 "the offset run states a station at or past its basis's end, which the kernel \

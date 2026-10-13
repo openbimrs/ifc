@@ -365,6 +365,18 @@ for the kernel to snap onto a joint within precision:
   `GUTTER_PAST` states its last offset at 60 m, the alignment's length,
   past the kerb's own end (about 58.24 m): the kernel refuses the run's
   order.
+- Stations along an offset run continued to its basis's ends (#443,
+  axioval/engine's deck), created after everything above: `RING`, an
+  `IfcOffsetCurveByDistances` beside an `IfcEllipse` centred at (30, 0)
+  with semi-axes 10 and 6, lateral 0.5 m at 2 m and 0.75 m at 20 m along
+  it, so continued to both of the ellipse's ends (`OffsetsAtStations`).
+  `RING_DECK`, an `IfcSectionedSolidHorizontal` of the 2 x 1 m deck
+  rectangle at 0 and 5 m along `RING`, in its own length: a curved prism
+  of about 2 x 5 m3 (Pappus), starting 0.5 m inside the ellipse at
+  (39.5, 0). (The same deck beside an `IfcOffsetCurve2D` of the ellipse,
+  an offset of an offset refused while lowering, is inline in the tests.)
+  Three `IfcLinearPlacement`s on `RING`, 1 m, 10 m and
+  30 m along it, in no representation.
 
 Run:  python3 tools/gen_lowering_fixtures.py test/fixtures/synthetic-lowering
 """
@@ -1500,6 +1512,10 @@ def bases_kerb_joints():
     return grade, bend, bend + simpson(speed, 30.0, 40.0)
 
 
+# #443: the distances along the ring of the linear placements on it.
+RING_PLACEMENTS = (1.0, 10.0, 30.0)
+
+
 def station_offset_bases():
     """#423: stations along offsets whose length is a quadrature."""
     label = "station-offset-bases"
@@ -1707,6 +1723,26 @@ def station_offset_bases():
                                     (BASES_LINE + BASES_ARC, 0.75)]),
     ]
     contain(f, label + "/runs", site, runs)
+
+    # #443: stations along an offset run continued to its basis's ends
+    # (`OffsetsAtStations`), axioval/engine's deck; created after
+    # everything above so its ids stay.
+    ellipse = f.create_entity("IfcEllipse", Position=place2((30.0, 0.0), (1.0, 0.0)),
+                              SemiAxis1=10.0, SemiAxis2=6.0)
+    ring_run = f.create_entity(
+        "IfcOffsetCurveByDistances", BasisCurve=ellipse,
+        OffsetValues=[along(ellipse, 2.0, lateral=0.5), along(ellipse, 20.0, lateral=0.75)])
+    rings = [
+        product("RING", [rep(f, ctx, "Axis", "Curve3D", [ring_run])]),
+        body("RING_DECK", sectioned(ring_run, [0.0, 5.0])),
+    ]
+    contain(f, label + "/rings", site, rings)
+    # Linear placements on the ring, in no representation: 1 m along it
+    # (beside the ellipse before its first stated offset), 10 m along it
+    # (between its stated offsets) and 30 m along it (past its last one,
+    # on to the ellipse's end).
+    for distance in RING_PLACEMENTS:
+        f.create_entity("IfcLinearPlacement", RelativePlacement=position(ring_run, distance))
     return f
 
 

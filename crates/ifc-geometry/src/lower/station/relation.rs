@@ -40,7 +40,10 @@
 //! - an offset (`IfcOffsetCurve2D`, `IfcOffsetCurve3D`) as one offset piece
 //!   per span of its basis's pieces between their seams, and an offset by
 //!   distances (`IfcOffsetCurveByDistances`) likewise per interval between
-//!   its stations ([`offset`]).
+//!   its stations ([`offset`]), its general form (`OffsetsAtStations`,
+//!   #443) with a station at the basis's start at `0` and the span to one
+//!   at its end open to the end the evaluator measures; an offset of an
+//!   offset is refused by name, as the kernel refuses it.
 //!
 //! A piece's length is read only where stored data states it exactly: a
 //! line's `|direction|` times the parameter span, a circle's radius times
@@ -81,8 +84,8 @@
 use axiolid_core::Scalar;
 use axiolid_curve::{Curve2, Curve3, OffsetLaw, PathBound};
 use axiolid_model::{
-    CurveRelation, GeometryNode, MasterRepresentation, NodeId, OrientedCurveStation, TrimSelector,
-    TrimmingPreference,
+    CurveRelation, GeometryNode, MasterRepresentation, NodeId, OrientedCurveStation, RunStation,
+    TrimSelector, TrimmingPreference,
 };
 
 use super::seams::{tangent_seams, Seam, BANKED};
@@ -118,11 +121,23 @@ pub(crate) const INEXACT: &str =
      its joints, where IFC4.3 ADD2 (8.9.3.48.3) reads the previous segment, cannot be located \
      within the model's precision";
 
-/// Why a relation the kernel measures no station along is refused.
+/// Why a relation the kernel measures no station along is refused: one
+/// that is not a composite, a trim, a surface curve whose 3D curve governs,
+/// a curve placed at a station or an offset. Every offset relation
+/// (`Offset`, `OffsetByStations`, `OffsetsAtStations`) is flattened or
+/// refused by its own name ([`OFFSET_OF_OFFSET`], [`TRIM_OF_OFFSET`],
+/// [`PLANAR_3D`], [`COLLAPSE`], [`INEXACT`]), never by this one.
 pub(crate) const UNSUPPORTED: &str =
     "the basis curve relation is a parameter-space curve, a surface curve whose p-curve \
      governs, or an instanced curve; Axiolid measures a station along a composite, a trim, a \
-     surface curve whose 3D curve governs, a curve placed at a station and an offset only";
+     surface curve whose 3D curve governs, a curve placed at a station and an offset curve \
+     (IfcOffsetCurve2D, IfcOffsetCurve3D, IfcOffsetCurveByDistances) only";
+
+/// Why a basis nested through more relations and placements than the
+/// kernel reads is refused (its `MAX_BASIS_DEPTH`, a budget).
+pub(crate) const TOO_DEEP: &str =
+    "the basis curve is nested through more than 64 curve relations and placements, more than \
+     Axiolid reads a station basis through";
 
 /// Why a trim of an offset curve is refused.
 pub(crate) const TRIM_OF_OFFSET: &str =
@@ -392,7 +407,7 @@ fn flatten<'s>(
     depth: usize,
 ) -> Result<Flat<'s>, &'static str> {
     if depth > MAX_DEPTH {
-        return Err(UNSUPPORTED);
+        return Err(TOO_DEEP);
     }
     if let Some(curve) = session.atomic_curve(node) {
         return Ok(Flat::Atomic(curve, Vec::new()));
@@ -435,7 +450,9 @@ fn flatten<'s>(
             if matches!(
                 session.relation(*basis),
                 Some(GeometryNode::CurveRelation(
-                    CurveRelation::Offset { .. } | CurveRelation::OffsetByStations { .. }
+                    CurveRelation::Offset { .. }
+                        | CurveRelation::OffsetByStations { .. }
+                        | CurveRelation::OffsetsAtStations { .. }
                 ))
             ) {
                 return Err(TRIM_OF_OFFSET);
@@ -487,6 +504,19 @@ fn flatten<'s>(
             Ok(Flat::Pieces(offset::offset_pieces(&base, law)?))
         }
         Some(GeometryNode::CurveRelation(CurveRelation::OffsetByStations {
+            basis,
+            stations,
+            frame,
+        })) => {
+            let base = flatten(session, *basis, depth + 1)?;
+            let stations: Vec<RunStation> =
+                stations.iter().copied().map(RunStation::from).collect();
+            Ok(Flat::Pieces(offset::by_stations(base, &stations, *frame)?))
+        }
+        // Its general form (#429, #433): stations that carry the kernel's
+        // seam-snapping window, or stand at the basis's start or end, which
+        // the kernel measures (#443, `offset::by_stations`).
+        Some(GeometryNode::CurveRelation(CurveRelation::OffsetsAtStations {
             basis,
             stations,
             frame,
