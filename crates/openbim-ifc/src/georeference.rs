@@ -27,7 +27,7 @@ use ifc_georef::{
 };
 use ifc_model::{EntityId, Model};
 use ifc_properties::{exact_unit, ExactUnitError};
-use ifc_schema::SchemaVersion;
+use ifc_schema::{for_version, SchemaVersion};
 
 /// Why a model's coordinate operations could not be resolved.
 #[derive(Debug, Clone, PartialEq)]
@@ -83,7 +83,16 @@ impl std::error::Error for GeoreferencingError {}
 /// [`GeoreferencingError::OffsetLengthUnit`] when an operation exists but
 /// the project length unit cannot scale it.
 pub fn georeferencing(model: &Model) -> Result<Vec<ProjectToMap>, GeoreferencingError> {
-    if declares_ifc2x3(model) {
+    if let Some(token) = declared_ifc2x3(model) {
+        // A build without the IFC2X3 table refuses the release (#306),
+        // whether or not the model carries the sets.
+        if for_version(SchemaVersion::Ifc2x3).is_err() {
+            return Err(GeoreferencingError::Georef(
+                GeorefError::UnsupportedSchema {
+                    token: token.to_owned(),
+                },
+            ));
+        }
         if !has_property_set_georeferencing(model) {
             return Ok(Vec::new());
         }
@@ -119,14 +128,17 @@ pub fn georeferencing(model: &Model) -> Result<Vec<ProjectToMap>, Georeferencing
         .map_err(GeoreferencingError::Georef)
 }
 
-/// Whether the header declares exactly IFC2X3, the release read through
-/// property sets. Any other header, missing or ambiguous ones included,
-/// goes to [`GeorefView::for_model`], which refuses it with its reason.
-fn declares_ifc2x3(model: &Model) -> bool {
-    matches!(
-        model.header().schema.as_slice(),
-        [token] if SchemaVersion::from_header_token(token) == Some(SchemaVersion::Ifc2x3)
-    )
+/// The header's one schema token when it declares IFC2X3, the release
+/// read through property sets. Any other header, missing or ambiguous ones
+/// included, goes to [`GeorefView::for_model`], which refuses it with its
+/// reason.
+fn declared_ifc2x3(model: &Model) -> Option<&str> {
+    match model.header().schema.as_slice() {
+        [token] if SchemaVersion::from_header_token(token) == Some(SchemaVersion::Ifc2x3) => {
+            Some(token)
+        }
+        _ => None,
+    }
 }
 
 /// The project length unit's exact metre scale.
