@@ -241,6 +241,20 @@ four host APIs. The follow-up is
   rule is unchanged: a window-free payload is `1.0`, one whose stations
   alone carry windows `1.1`, and only a payload with a windowed run `1.2`.
   A reader on `axiolid-model` 0.3.10 or older refuses a `1.2` payload.
+- *Amended 2026-10-13 (#433): wire format 1.3 reaches the bindings as a
+  minor release.* `axiolid-model` 0.3.12 (axiolid/kernel#303) adds format
+  1.3: a station of `CurveRelation::OffsetsAtStations` may stand at its
+  basis's start or end (`RunStation::basis_end`), its distance measured by
+  the kernel. `ifc-geometry` sets them on an `IfcOffsetCurveByDistances`
+  whose offsets stop short of the ends of a basis whose length is a
+  quadrature. Under the stability rule above that is a minor version:
+  `GEOMETRY_FORMAT_VERSION` (and Python's constant, .NET's
+  `ProductGraph.FormatVersion`) is now `"1.3"`, and the npm package, the
+  wheel and the .NET package take a minor release; the C ABI keeps its
+  `v0_1` symbols, so the C package stays on 0.1.x. The lowest-version
+  rule is unchanged: only a payload holding a station at its basis's end
+  is `1.3`, every other keeps `1.0`, `1.1` or `1.2`, and a reader on
+  `axiolid-model` 0.3.11 or older refuses a `1.3` payload.
 
 ## Relation to existing code
 

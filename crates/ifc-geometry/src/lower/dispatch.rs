@@ -558,15 +558,29 @@ pub const PARTIAL: &[Variant] = &[
     },
     Variant {
         family: "IFCOFFSETCURVEBYDISTANCES",
-        variant: "offsets short of an unbounded or unstated end (along a basis \
-                  whose seams and length lie at arc-length integrals too), a \
-                  non-zero OffsetLongitudinal, a member on another basis, or a \
-                  run across a seam where the basis turns back on itself",
+        variant: "OffsetValues short of the ends of a bounded basis whose length \
+                  lies at an arc-length integral (an offset beside a gradient \
+                  curve, a spiral, a B-spline or an ellipse, a relation with an \
+                  ellipse or a B-spline piece, a B-spline or an ellipse)",
+        support: Support::Admitted,
+        rationale: "OffsetsAtStations continued by stations at the basis's start \
+                    and end, whose distances the kernel measures \
+                    (RunStation::at_basis_start / at_basis_end, \
+                    axiolid/kernel#303, #433), as 8.9.3.42.3 states; stations \
+                    carry the kernel's seam-snapping window where the seams are \
+                    quadratures (#429); a stated station at or past the end the \
+                    kernel measures is refused by it by name",
+    },
+    Variant {
+        family: "IFCOFFSETCURVEBYDISTANCES",
+        variant: "offsets short of an unbounded end, a non-zero \
+                  OffsetLongitudinal, a member on another basis, or a run \
+                  across a seam where the basis turns back on itself",
         support: Support::Refused,
-        rationale: "the neutral offset curve stops at its last station and the \
-                    basis's end is a quadrature this crate does not compute \
-                    (#433), IFC states no law for a longitudinal offset along a \
-                    curve, and a mitre has no plane at a reversal",
+        rationale: "an unbounded line has no end to continue the offsets to and \
+                    the neutral offset curve stops at its last station, IFC \
+                    states no law for a longitudinal offset along a curve, and a \
+                    mitre has no plane at a reversal",
     },
     Variant {
         family: "IFCSECTIONEDSOLIDHORIZONTAL",

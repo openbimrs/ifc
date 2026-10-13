@@ -251,7 +251,7 @@ class IfcModel(ModelAccess):
         for ``ids`` or every product with a shape, in Axiolid's versioned
         wire format: ``{"format": "axiolid-geometry-graph", "version":
         "1.0", "graph": {"nodes": [...], "roots": [...]}}`` (the lowest
-        version the content needs, ``"1.0"``, ``"1.1"`` or ``"1.2"``), in world
+        version the content needs, ``"1.0"`` to ``"1.3"``), in world
         coordinates, metres. ``encoding`` ``"json"`` gives the payload as a
         ``str``, ``"cbor"`` as ``bytes``; any other raises ``ValueError``. A
         product that cannot be lowered carries a typed ``refusal``; the call

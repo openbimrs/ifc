@@ -135,3 +135,50 @@ pub fn assert_windowed(lowered: &LoweredGeometry, distance: f64, window: f64) {
     assert_eq!(station.station.station.distance, distance);
     assert!(station.orientation.is_base());
 }
+
+/// Representation item `item` (a curve) lowered under the identity frame,
+/// with a disk of `radius` swept along its whole extent as the root: what
+/// a body along the curve compiles to, without the parameter range IFC
+/// requires of a sweep along an unbounded curve.
+#[cfg(feature = "compile-reference-backend")]
+pub fn swept_along(model: &Model, item: u64, radius: f64) -> LoweredGeometry {
+    let scale = units::resolve(model);
+    let mut session = LoweringSession::new(model, &scale);
+    let curve = lower_representation_item(&mut session, EntityId(item), Transform::identity())
+        .unwrap_or_else(|e| panic!("#{item} lowers: {e}"));
+    let disk = session
+        .node(GeometryNode::SolidOperation(
+            axiolid_model::SolidOperation::SweptDisk {
+                directrix: curve,
+                radius,
+                inner_radius: None,
+                parameter_range: None,
+                fillet_radius: None,
+            },
+        ))
+        .expect("a disk");
+    session.finish(disk).expect("a valid graph")
+}
+
+/// A disk of `radius` swept along a curve ends in a ring of vertices
+/// around the curve's end point: the ring is found within `1e-6` of the
+/// radius and its centroid checked against `point` to `1e-6`.
+#[cfg(feature = "compile-reference-backend")]
+pub fn ring_around(mesh: &axiolid_mesh::TriMesh, point: [f64; 3], radius: f64, what: &str) {
+    let point = Point3::new(point[0], point[1], point[2]);
+    let ring: Vec<Point3> = mesh
+        .positions
+        .iter()
+        .copied()
+        .filter(|p| ((*p - point).length() - radius).abs() <= 1e-6)
+        .collect();
+    assert!(ring.len() >= 8, "{what}: no ring around {point:?}");
+    let sum = ring
+        .iter()
+        .fold(Vec3::new(0.0, 0.0, 0.0), |sum, p| sum + (*p - Point3::ZERO));
+    let centroid = Point3::ZERO + sum / ring.len() as f64;
+    assert!(
+        (centroid - point).length() <= 1e-6,
+        "{what}: the ring's centre {centroid:?} != {point:?}"
+    );
+}

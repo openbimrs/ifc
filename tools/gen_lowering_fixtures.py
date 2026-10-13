@@ -351,6 +351,20 @@ for the kernel to snap onto a joint within precision:
   joint and 2 um past it: both snap onto that joint, so the kernel
   refuses the run's order. `DECK_TILTED`, the rectangle along `TILTED`
   at 0 and 5 m, whose length the kernel does not certify.
+- Offset runs along the kerb continued to its ends (#433), each with a
+  0.05 m `IfcSweptDiskSolid` along it from 0 to 50 m in its parameter,
+  the kerb's distance, created after everything above:
+  `GUTTER`, an `IfcOffsetCurveByDistances` beside the kerb, lateral 0.5 m
+  at half the grade-break joint, 4 um past that joint and 4 um before the
+  horizontal joint, then 0.75 m 4 um before the kerb's joint at 40 m along
+  the alignment, beside the arc. Its offsets stop short of both of the
+  kerb's ends, whose distances are quadratures, so they continue to them
+  (8.9.3.42.3): 0.5 m from the kerb's start, (0, 2, 10), and 0.75 m to its
+  end, 3.75 m left of the alignment's end at height 10. `GUTTER_AT`, the
+  same on the joints themselves: snapped, it is the same curve.
+  `GUTTER_PAST` states its last offset at 60 m, the alignment's length,
+  past the kerb's own end (about 58.24 m): the kernel refuses the run's
+  order.
 
 Run:  python3 tools/gen_lowering_fixtures.py test/fixtures/synthetic-lowering
 """
@@ -1455,6 +1469,8 @@ BASES_GRADES = [(20.0, 0.02), (40.0, -0.01)]
 BASES_HEIGHT = 10.0
 CLOTHOID_A2 = 200.0
 CLOTHOID_RUN = 20.0
+BASES_TUBE = 0.05
+BASES_TUBE_END = 50.0
 
 
 def simpson(fn, a, b, panels=200000):
@@ -1665,6 +1681,32 @@ def station_offset_bases():
     # A linear placement near the kerb's grade break, in no representation.
     frame = f.create_entity("IfcAxis2PlacementLinear", Location=along(kerb, near))
     f.create_entity("IfcLinearPlacement", RelativePlacement=frame)
+
+    # #433: offset runs along the kerb, continued to its ends, which the
+    # kernel measures; created after everything above so its ids stay.
+    def gutter(stations):
+        return f.create_entity(
+            "IfcOffsetCurveByDistances", BasisCurve=kerb,
+            OffsetValues=[along(kerb, v, lateral=lateral) for v, lateral in stations],
+            Tag="gutter")
+
+    def run_product(name, stations):
+        run = gutter(stations)
+        # Its parameter is the kerb's distance (8.9.3.40.1, from the basis).
+        tube = f.create_entity("IfcSweptDiskSolid", Directrix=run, Radius=BASES_TUBE,
+                               StartParam=0.0, EndParam=BASES_TUBE_END)
+        return product(name, [rep(f, ctx, "Axis", "Curve3D", [run]),
+                              rep(f, body_ctx, "Body", "AdvancedSweptSolid", [tube])])
+
+    runs = [
+        run_product("GUTTER", [(grade_joint / 2.0, 0.5), (near, 0.5),
+                               (bend_joint - 4e-6, 0.5), (arc_joint - 4e-6, 0.75)]),
+        run_product("GUTTER_AT", [(grade_joint / 2.0, 0.5), (grade_joint, 0.5),
+                                  (bend_joint, 0.5), (arc_joint, 0.75)]),
+        run_product("GUTTER_PAST", [(grade_joint / 2.0, 0.5),
+                                    (BASES_LINE + BASES_ARC, 0.75)]),
+    ]
+    contain(f, label + "/runs", site, runs)
     return f
 
 

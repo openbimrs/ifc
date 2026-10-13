@@ -328,6 +328,24 @@ pub(crate) fn stated_length(curve: &AtomicCurve) -> Option<Scalar> {
     .filter(|length| length.is_finite() && *length >= 0.0)
 }
 
+/// Whether the basis curve is bounded but its length an arc-length
+/// integral, which the kernel measures (#433): an ellipse, a B-spline, or
+/// an elevated curve over one, measured in plan. A line is unbounded.
+pub(crate) fn measured_length(curve: &AtomicCurve) -> bool {
+    match curve {
+        AtomicCurve::Two(curve) => measured2(curve),
+        AtomicCurve::Three(curve) => match curve {
+            Curve3::Ellipse(_) | Curve3::BSpline(_) => true,
+            Curve3::Elevated(elevated) => measured2(&elevated.plan),
+            _ => false,
+        },
+    }
+}
+
+fn measured2(curve: &Curve2) -> bool {
+    matches!(curve, Curve2::Ellipse(_) | Curve2::BSpline(_))
+}
+
 fn length2(curve: &Curve2) -> Option<Scalar> {
     match curve {
         Curve2::Intrinsic(intrinsic) => Some(intrinsic.length),

@@ -68,7 +68,7 @@ mod graph {
         assert!(FORMAT_VERSION.reads(FormatVersion::parse(version).unwrap()));
         assert_eq!(
             (GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION),
-            ("axiolid-geometry-graph", "1.2")
+            ("axiolid-geometry-graph", "1.3")
         );
         assert_eq!(GEOMETRY_FORMAT, FORMAT_NAME);
         assert_eq!(GEOMETRY_FORMAT_VERSION, FORMAT_VERSION.to_string());
@@ -146,8 +146,10 @@ mod graph {
     /// A Body swept along a segment placed by a station near an offset's
     /// joint carries a seam-snapping window (#423): its payload is 1.1, the
     /// lowest version that holds it (axiolid/kernel#297), though this build
-    /// writes up to 1.2. A run of sections along the offset (#429) carries
-    /// windows on its sections: its payload is 1.2.
+    /// writes up to 1.3. A run of sections along the offset (#429) carries
+    /// windows on its sections: its payload is 1.2. A tube along an offset
+    /// run continued to the offset's ends, which the kernel measures (#433),
+    /// holds stations at the basis's ends: its payload is 1.3.
     #[test]
     fn a_payload_with_a_seam_window_is_wire_format_1_1() {
         let path = format!(
@@ -177,15 +179,24 @@ mod graph {
             assert_eq!(record.refusal, None, "#{}", record.id);
             let text = record.json().expect("JSON text");
             let envelope: serde_json::Value = serde_json::from_str(text).unwrap();
-            assert_eq!(
-                envelope["version"], GEOMETRY_FORMAT_VERSION,
-                "#{}",
-                record.id
-            );
-            assert_eq!(GEOMETRY_FORMAT_VERSION, "1.2");
+            assert_eq!(envelope["version"], "1.2", "#{}", record.id);
             assert!(text.contains("\"seam_window\""), "#{}: {text}", record.id);
+            assert!(!text.contains("\"basis_end\""), "#{}: {text}", record.id);
             GeometryGraph::from_json(text).expect("reads back");
         }
+        // GUTTER, the tube along an offset run beside the kerb.
+        let gutter = model
+            .product_geometry(Some(&[337]), GeometryEncoding::Json)
+            .unwrap();
+        assert_eq!(gutter.len(), 1);
+        let record = &gutter[0];
+        assert_eq!(record.refusal, None);
+        let text = record.json().expect("JSON text");
+        let envelope: serde_json::Value = serde_json::from_str(text).unwrap();
+        assert_eq!(envelope["version"], GEOMETRY_FORMAT_VERSION);
+        assert_eq!(GEOMETRY_FORMAT_VERSION, "1.3");
+        assert!(text.contains("\"basis_end\":\"End\""), "{text}");
+        GeometryGraph::from_json(text).expect("reads back");
     }
 }
 

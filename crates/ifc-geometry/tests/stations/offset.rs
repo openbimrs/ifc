@@ -111,7 +111,7 @@ fn offset_curves_ifc_and_axiolid_cannot_share_are_refused_by_name() {
     );
     let model = step(&records, false);
     // An unbounded line: nowhere to continue the offsets to.
-    refused(lower(&model, 30), true, "states no length");
+    refused(lower(&model, 30), true, "the basis is unbounded");
     refused(lower(&model, 31), true, "OffsetLongitudinal");
     refused(lower(&model, 32), true, "another BasisCurve");
     refused(lower(&model, 33), false, "increase strictly");

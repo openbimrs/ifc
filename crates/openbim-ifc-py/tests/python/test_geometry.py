@@ -28,7 +28,8 @@ FIXTURE = os.path.join(
 )
 # Stations along offsets whose length is a quadrature (#423): RAIL_NEAR
 # (#188) and RAIL_EDGE (#199) carry a seam window on a station, DECK (#264)
-# and SURFACE (#296) on the sections of a run (#429).
+# and SURFACE (#296) on the sections of a run (#429); GUTTER (#337) is a
+# tube along an offset run continued to its basis's ends (#433).
 SEAM_WINDOWS = os.path.join(
     os.path.dirname(__file__),
     "..", "..", "..", "..", "test", "fixtures", "synthetic-lowering", "station_offset_bases_ifc4x3.ifc",
@@ -172,7 +173,7 @@ class GraphTests(unittest.TestCase):
         envelope = json.loads(wall.payload)
         self.assertEqual(envelope["format"], GEOMETRY_FORMAT)
         self.assertEqual(envelope["version"], "1.0")
-        self.assertEqual((GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION), ("axiolid-geometry-graph", "1.2"))
+        self.assertEqual((GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION), ("axiolid-geometry-graph", "1.3"))
         nodes = envelope["graph"]["nodes"]
         self.assertEqual(envelope["graph"]["roots"], [len(nodes) - 1])
         self.assertEqual(list(nodes[-1]), ["Instance"])
@@ -186,18 +187,20 @@ class GraphTests(unittest.TestCase):
     @unittest.skipUnless(GRAPH, "needs a wheel built with --features graph")
     def test_a_seam_window_is_labelled_wire_format_1_1(self) -> None:
         # The lowest version that holds a seam window (axiolid/kernel#297):
-        # 1.1 on a station, 1.2 on a run's sections (#429).
+        # 1.1 on a station, 1.2 on a run's sections (#429), 1.3 on an offset
+        # run continued to its basis's ends (#433).
         with open(SEAM_WINDOWS, "rb") as handle:
             m = IfcModel.parse(handle.read())
-        products = m.product_geometry([188, 199, 264, 296])
-        self.assertEqual([p.id for p in products], [188, 199, 264, 296])
-        for product, version in zip(products, ["1.1", "1.1", "1.2", "1.2"]):
+        products = m.product_geometry([188, 199, 264, 296, 337])
+        self.assertEqual([p.id for p in products], [188, 199, 264, 296, 337])
+        for product, version in zip(products, ["1.1", "1.1", "1.2", "1.2", "1.3"]):
             self.assertIsNone(product.refusal)
             assert isinstance(product.payload, str)
             envelope = json.loads(product.payload)
             self.assertEqual(envelope["version"], version)
             self.assertIn('"seam_window"', product.payload)
-        self.assertEqual(GEOMETRY_FORMAT_VERSION, "1.2")
+            self.assertEqual('"basis_end"' in product.payload, version == "1.3")
+        self.assertEqual(GEOMETRY_FORMAT_VERSION, "1.3")
 
     @unittest.skipUnless(GRAPH, "needs a wheel built with --features graph")
     def test_the_cbor_payload_decodes_to_the_json_envelope(self) -> None:

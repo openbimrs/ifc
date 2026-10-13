@@ -365,12 +365,15 @@ with the record's transform already applied. Its `version` is the lowest the con
 station carries a seam-snapping window
 ([#423](https://github.com/openbimrs/ifc/issues/423)), then `1.1`, or a
 run's sections do ([#429](https://github.com/openbimrs/ifc/issues/429),
-a sectioned solid or surface along such an offset), then `1.2`
-(axiolid/kernel#297, #301). A reader on `axiolid-model` 0.3.8 or older
-reads a `1.0` payload and refuses `1.1`; one on 0.3.10 or older refuses
-`1.2`. `ProductGraph.Format`
+a sectioned solid or surface along such an offset), then `1.2`, or an
+offset run continues to a basis end the kernel measures
+([#433](https://github.com/openbimrs/ifc/issues/433), an
+`IfcOffsetCurveByDistances` along such an offset), then `1.3`
+(axiolid/kernel#297, #301, #303). A reader on `axiolid-model` 0.3.8 or
+older reads a `1.0` payload and refuses `1.1`; one on 0.3.10 or older
+refuses `1.2`, one on 0.3.11 or older `1.3`. `ProductGraph.Format`
 and `ProductGraph.FormatVersion` name the format and the newest version
-the package writes, `"1.2"`. A major version of the wire format
+the package writes, `"1.3"`. A major version of the wire format
 would be a breaking release of the package (ADR 0021).
 
 ## Creating entities
@@ -472,7 +475,7 @@ and `MeshedProduct` included, from its XML documentation comments.
 | `ValidationReport Validate(int? maxFindings = null)` | Validate against the schema the header declares; findings sorted by severity, rule, entity and slot. `maxFindings` caps the report (default 10,000). |
 | `IReadOnlyList<UnreachableProduct> UnreachableProducts()` | Products no viewer will draw, with a stable reason, in id order. |
 | `IReadOnlyList<ProductPlacement> ProductPlacements(IReadOnlyList<ulong>? ids = null)` | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or, when null, every product with a shape, in id order (#328). |
-| `IReadOnlyList<ProductGraph> ProductGeometry(IReadOnlyList<ulong>? ids = null, GeometryEncoding encoding = GeometryEncoding.Json)` | Each product's Body as Axiolid's neutral geometry graph (#367), for `ids` or, when null, every product with a shape, in id order, encoded as `encoding` in Axiolid's wire format (1.0; 1.1 when a station carries a seam-snapping window, 1.2 when a run's sections do). |
+| `IReadOnlyList<ProductGraph> ProductGeometry(IReadOnlyList<ulong>? ids = null, GeometryEncoding encoding = GeometryEncoding.Json)` | Each product's Body as Axiolid's neutral geometry graph (#367), for `ids` or, when null, every product with a shape, in id order, encoded as `encoding` in Axiolid's wire format (1.0; 1.1 when a station carries a seam-snapping window, 1.2 when a run's sections do, 1.3 when an offset run continues to a basis end the kernel measures). |
 | `IReadOnlyList<MeshedProduct> ProductMeshes(IReadOnlyList<ulong>? ids = null)` | Each product's Body as triangles from the reference backend, for `ids` or, when null, every product with a shape, in id order (#328). |
 | `IReadOnlyList<PropertySet> PropertySets(ulong id)` | The property sets, quantity sets and predefined property sets of object `id`: its own first, then those its type object holds, an occurrence property overriding an inherited one of the same name. |
 | `IReadOnlyList<ObjectPropertySets> PropertySetsMany(IReadOnlyList<ulong>? ids = null)` | `PropertySets` of each of `ids`, in that order, or, when null, of every object definition (`IfcObjectDefinition` and its subtypes) in file order, in one pass (#358). |
