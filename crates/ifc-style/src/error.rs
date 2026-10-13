@@ -124,6 +124,17 @@ pub enum StyleError {
         /// The number of conflicting `IfcStyledItem`s found.
         count: usize,
     },
+    /// One assignment level states two different surface colours for the
+    /// same surface: two surface styles in one `IfcStyledItem`, two styled
+    /// presentation layers on one item, or a material whose styled
+    /// representations disagree. The colour lookup refuses to guess (#449).
+    #[error("{owner} states {} different surface styles", styles.len())]
+    AmbiguousSurfaceColour {
+        /// The styled item, layer, item or material with the conflict.
+        owner: EntityId,
+        /// The conflicting `IfcSurfaceStyle`s, ascending.
+        styles: Vec<EntityId>,
+    },
 }
 
 /// The result type returned by this crate's projection and authoring operations.

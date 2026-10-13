@@ -29,6 +29,7 @@ from .geometry import (
     ProductMesh,
     ProductPlacement,
     SelectedRepresentation,
+    SurfaceColour,
 )
 from .domains import (
     HANDLE_BASE,
@@ -185,6 +186,7 @@ __all__ = [
     "GEOMETRY_FORMAT",
     "GEOMETRY_FORMAT_VERSION",
     "ProductMesh",
+    "SurfaceColour",
     "Value",
     "Null",
     "Derived",

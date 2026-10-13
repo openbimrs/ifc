@@ -20,6 +20,10 @@
 //!   gives, so a change to placement resolution reaches both.
 //! - **One refusal per product.** A product the compiler or the lowering
 //!   refuses keeps its typed [`GeometryError`]; the others still mesh.
+//! - **A colour per product** (#449). Each mesh carries the surface colour
+//!   its Body's items agree on, from [`ColourResolver`]: the item's style,
+//!   its presentation layer's, else its material's. A colour that cannot be
+//!   resolved is its own typed [`ColourError`] and never refuses the mesh.
 //!
 //! The tolerance is [`Tolerance::MILLIMETRE`]: lowering converts every
 //! length to metres, so it is a millimetre whatever unit the file declared
@@ -33,6 +37,8 @@ use ifc_geometry::{
 };
 use ifc_model::{EntityId, Model};
 
+use super::colour::{ColourError, ColourResolver, SurfaceColour};
+
 /// One product's Body as triangles.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
@@ -45,6 +51,10 @@ pub struct ProductMesh {
     pub positions: Vec<f32>,
     /// Triangle corners, three indices into the vertices per triangle.
     pub indices: Vec<u32>,
+    /// The surface colour the Body's items agree on
+    /// ([`ColourResolver::product_colour`]); `Ok(None)` when nothing
+    /// colours it, and the typed reason when it cannot be resolved.
+    pub colour: Result<Option<SurfaceColour>, ColourError>,
 }
 
 /// The Body mesh of each of `products`, or, with `None`, of every product
@@ -62,6 +72,11 @@ pub fn product_meshes(
     let products = products.map_or_else(|| geometric_products(model), <[EntityId]>::to_vec);
     let scale = units::resolve(model);
     let backend = default_backend();
+    let resolver = ColourResolver::new(model);
+    let colour = |product| match &resolver {
+        Ok(resolver) => resolver.product_colour(product),
+        Err(error) => Err(error.clone()),
+    };
     products_world_transforms(model, &scale, products)
         .into_iter()
         .map(|(product, world)| {
@@ -73,6 +88,7 @@ pub fn product_meshes(
                         world,
                         positions: Vec::new(),
                         indices: Vec::new(),
+                        colour: colour(product),
                     });
                 };
                 let to_local = Inverse::of(&world).ok_or_else(|| GeometryError::Degenerate {
@@ -93,6 +109,7 @@ pub fn product_meshes(
                     world,
                     positions,
                     indices: mesh.indices,
+                    colour: colour(product),
                 })
             });
             (product, mesh)

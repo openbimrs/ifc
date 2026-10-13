@@ -20,6 +20,7 @@ from openbim_ifc import (
     ProductGeometry,
     ProductMesh,
     ProductPlacement,
+    SurfaceColour,
 )
 
 FIXTURE = os.path.join(
@@ -33,6 +34,11 @@ FIXTURE = os.path.join(
 SEAM_WINDOWS = os.path.join(
     os.path.dirname(__file__),
     "..", "..", "..", "..", "test", "fixtures", "synthetic-lowering", "station_offset_bases_ifc4x3.ifc",
+)
+# One cube per colour source (#449).
+COLOURS = os.path.join(
+    os.path.dirname(__file__),
+    "..", "..", "..", "..", "test", "fixtures", "synthetic-colour", "material_colour.ifc",
 )
 MESH = os.environ.get("OPENBIM_IFC_MESH") == "1"
 # The mesh wheel is built with `graph` too: one opt-in geometry wheel.
@@ -252,6 +258,30 @@ class MeshTests(unittest.TestCase):
         for got, want in zip(extent, (2.0, 0.1, 2.8)):
             self.assertAlmostEqual(got, want, places=4)
         self.assertEqual(wall.transform, model.product_placements([36])[0].transform)
+        # The binding fixture states no style and no material.
+        self.assertIsNone(wall.colour)
+        self.assertIsNone(wall.colour_refusal)
+
+    @unittest.skipUnless(MESH, "needs a wheel built with --features mesh")
+    def test_meshes_carry_the_item_layer_or_material_colour(self) -> None:
+        with open(COLOURS, "rb") as handle:
+            coloured = IfcModel.parse(handle.read())
+        # MATERIAL, ITEM_OVER_MATERIAL, LAYER_OVER_MATERIAL, MULTI_LAYER
+        material, item, layer, multi = coloured.product_meshes([58, 89, 107, 125])
+        self.assertIsInstance(material.colour, SurfaceColour)
+        self.assertEqual(
+            (material.colour.red, material.colour.green, material.colour.blue),
+            (0.8, 0.1, 0.1),
+        )
+        self.assertEqual(material.colour.transparency, 0.25)
+        self.assertEqual(material.colour.source, "material")
+        self.assertIsNone(material.colour_refusal)
+        self.assertEqual(item.colour.source, "item")
+        self.assertEqual(item.colour.blue, 0.9)
+        self.assertEqual(layer.colour.source, "layer")
+        self.assertIsNone(multi.colour)
+        self.assertEqual(multi.colour_refusal.code, "ambiguous")
+        self.assertGreater(len(multi.indices), 0)
 
 
 if __name__ == "__main__":
