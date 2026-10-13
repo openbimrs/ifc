@@ -898,6 +898,15 @@ static const char GEOMETRY_TEXT[] =
     "#15=IFCSHAPEREPRESENTATION(#5,'Body','SweptSolid',(#14));\n"
     "#16=IFCPRODUCTDEFINITIONSHAPE($,$,(#15));\n"
     "#17=IFCWALL('1YvctVUKr0kugbFTf53O9L',$,'Wall',$,$,#9,#16,$,.STANDARD.);\n"
+    /* Its material paints it red, a quarter transparent (#449). */
+    "#18=IFCMATERIAL('Red',$,$);\n"
+    "#19=IFCCOLOURRGB($,0.8,0.1,0.1);\n"
+    "#20=IFCSURFACESTYLERENDERING(#19,0.25,$,$,$,$,$,$,.NOTDEFINED.);\n"
+    "#21=IFCSURFACESTYLE('Red',.BOTH.,(#20));\n"
+    "#22=IFCSTYLEDITEM($,(#21),$);\n"
+    "#23=IFCSTYLEDREPRESENTATION(#5,'Style','Material',(#22));\n"
+    "#24=IFCMATERIALDEFINITIONREPRESENTATION($,$,(#23),#18);\n"
+    "#25=IFCRELASSOCIATESMATERIAL('2YvctVUKr0kugbFTf53O9L',$,$,$,(#17),#18);\n"
     "ENDSEC;\nEND-ISO-10303-21;\n";
 
 /* The geometry example published on the docs site's C page. */
@@ -1009,7 +1018,19 @@ static int geometry(void) {
     CHECK(status == OPENBIM_IFC_STATUS_OK, "meshes compile");
     OK(openbim_ifc_v0_1_meshes_records(meshes, &count, nodes, 128, &node_count, strings,
                                        sizeof strings, &string_len));
-    CHECK(count == 1 && nodes[1].child_count == 7, "one ProductMesh record");
+    CHECK(count == 1 && nodes[1].child_count == 9, "one ProductMesh record");
+    /* id, global id, type, transform (17 nodes), vertex and triangle
+     * counts, refusal, then colour: red, green, blue, transparency,
+     * source, source entity, surface style; colour refusal (#449). */
+    CHECK(nodes[24].kind == OPENBIM_IFC_KIND_NULL, "no refusal");
+    CHECK(nodes[25].kind == OPENBIM_IFC_KIND_LIST && nodes[25].child_count == 7,
+          "a SurfaceColour record");
+    CHECK(nodes[26].real_value == 0.8 && nodes[29].real_value == 0.25,
+          "red, a quarter transparent");
+    CHECK(nodes[30].str_len == 8 && memcmp(strings + nodes[30].str_offset, "material", 8) == 0,
+          "from the material");
+    CHECK(nodes[31].kind == OPENBIM_IFC_KIND_REF && nodes[31].int_value == 18, "the material");
+    CHECK(nodes[33].kind == OPENBIM_IFC_KIND_NULL, "no colour refusal");
     size_t need = 0;
     CHECK(openbim_ifc_v0_1_meshes_indices(meshes, 0, NULL, 0, &need) ==
               OPENBIM_IFC_STATUS_BUFFER_TOO_SMALL && need >= 36,

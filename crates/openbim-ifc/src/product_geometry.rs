@@ -23,8 +23,11 @@ use ifc_geometry::{
 };
 use ifc_model::{EntityId, Model};
 
+mod colour;
 mod graph;
 mod mesh;
+#[cfg(feature = "colour")]
+pub use colour::{product_colours, ColourError, ColourResolver, ColourSource, SurfaceColour};
 #[cfg(feature = "geometry-wire")]
 pub use graph::{product_graphs, ProductGraph};
 #[cfg(feature = "mesh")]

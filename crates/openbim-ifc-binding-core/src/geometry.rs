@@ -12,6 +12,10 @@
 //!   the reference backend, `f32` positions relative to the product's world
 //!   placement and `u32` indices. The facade's `product_meshes`; it links an
 //!   execution provider, which ADR 0004 keeps out of every default build.
+//!   Each mesh carries its surface colour (#449): RGB and transparency, and
+//!   whether the representation item, its presentation layer or its
+//!   material supplied it; `null` when nothing colours the product, with a
+//!   typed `colour_refusal` when its colour cannot be resolved.
 //!
 //! A product that cannot be placed, selected or meshed is a record with a
 //! typed [`GeometryRefusal`], never an error that aborts the call: one
@@ -80,6 +84,29 @@ pub struct ProductPlacement {
     pub refusal: Option<GeometryRefusal>,
 }
 
+/// The surface colour a mesh is painted with (#449).
+#[derive(Debug, Clone, PartialEq)]
+pub struct SurfaceColour {
+    /// Red, in `[0, 1]`.
+    pub red: f64,
+    /// Green, in `[0, 1]`.
+    pub green: f64,
+    /// Blue, in `[0, 1]`.
+    pub blue: f64,
+    /// `Transparency` in `[0, 1]`, 0 opaque; `None` when the file states
+    /// none, which the standard reads as opaque.
+    pub transparency: Option<f64>,
+    /// Where the style was assigned: `item` (an `IfcStyledItem` on the
+    /// representation item), `layer` (an `IfcPresentationLayerWithStyle`)
+    /// or `material` (the `IfcMaterial`'s
+    /// `IfcMaterialDefinitionRepresentation`), in that precedence.
+    pub source: String,
+    /// The `IfcStyledItem`, the layer assignment or the `IfcMaterial`.
+    pub source_entity: u64,
+    /// The `IfcSurfaceStyle` the colour is read from.
+    pub surface_style: u64,
+}
+
 /// One product's Body as triangles.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProductMesh {
@@ -99,6 +126,16 @@ pub struct ProductMesh {
     /// Why there is no mesh. Empty arrays and no refusal is a product
     /// with no Body representation (an axis only).
     pub refusal: Option<GeometryRefusal>,
+    /// The surface colour the Body's items agree on; `None` when nothing
+    /// colours the product or its colour is refused.
+    pub colour: Option<SurfaceColour>,
+    /// Why the colour could not be resolved: `ambiguous` (two styled items
+    /// or two colours at one level, a layer or profile set of several
+    /// materials, a constituent set no shape aspect resolves, or Body items
+    /// of different colours), or the shared codes `invalid-model`,
+    /// `missing-reference`, `unsupported` and `budget-exceeded`. Never
+    /// refuses the mesh itself.
+    pub colour_refusal: Option<GeometryRefusal>,
 }
 
 impl IfcModel {
@@ -215,12 +252,18 @@ fn meshes(model: &IfcModel, products: Option<&[u64]>) -> Result<Vec<ProductMesh>
             positions: Vec::new(),
             indices: Vec::new(),
             refusal: None,
+            colour: None,
+            colour_refusal: None,
         };
         match mesh {
             Ok(mesh) => {
                 record.transform = Some(ifc::column_major(&mesh.world));
                 record.positions = mesh.positions;
                 record.indices = mesh.indices;
+                match mesh.colour {
+                    Ok(colour) => record.colour = colour.as_ref().map(surface_colour),
+                    Err(error) => record.colour_refusal = Some(colour_refusal(&error)),
+                }
             }
             Err(error) => record.refusal = Some(refusal(&error)),
         }
@@ -256,6 +299,59 @@ fn refusal(error: &ifc::geometry::GeometryError) -> GeometryRefusal {
     GeometryRefusal {
         code: code.to_owned(),
         entity: error.entity().map(|id| id.0),
+        message: error.to_string(),
+    }
+}
+
+/// The host record of a resolved colour.
+#[cfg(feature = "mesh")]
+fn surface_colour(colour: &ifc::SurfaceColour) -> SurfaceColour {
+    use ifc::ColourSource as S;
+    let (source, entity) = match colour.source {
+        S::StyledItem(id) => ("item", id),
+        S::PresentationLayer(id) => ("layer", id),
+        S::Material { material, .. } => ("material", material),
+        // A source added to the facade after this binding: still typed.
+        _ => ("other", colour.surface_style),
+    };
+    let [red, green, blue] = colour.rgb;
+    SurfaceColour {
+        red,
+        green,
+        blue,
+        transparency: colour.transparency,
+        source: source.to_owned(),
+        source_entity: entity.0,
+        surface_style: colour.surface_style.0,
+    }
+}
+
+/// The typed refusal for a colour that cannot be resolved.
+#[cfg(feature = "mesh")]
+fn colour_refusal(error: &ifc::ColourError) -> GeometryRefusal {
+    use ifc::material::MaterialError as M;
+    use ifc::style::StyleError as S;
+    use ifc::ColourError as E;
+    let (code, entity) = match error {
+        E::Geometry(error) => return refusal(error),
+        E::AmbiguousMaterial { item, .. } => ("ambiguous", Some(*item)),
+        E::ItemsDiffer { product, .. } => ("ambiguous", Some(*product)),
+        E::UnsupportedSchema { .. } => ("unsupported", None),
+        E::Style(S::AmbiguousStyleAssignment { item, .. }) => ("ambiguous", Some(*item)),
+        E::Style(S::AmbiguousSurfaceColour { owner, .. }) => ("ambiguous", Some(*owner)),
+        E::Style(S::UnknownEntity { id }) => ("missing-reference", Some(*id)),
+        E::Style(S::DanglingReference { source_id, .. }) => ("missing-reference", Some(*source_id)),
+        E::Style(S::UnsupportedSchema { .. }) => ("unsupported", None),
+        E::Material(M::AmbiguousAssignment { object, .. } | M::AmbiguousType { object, .. }) => {
+            ("ambiguous", Some(*object))
+        }
+        E::Material(M::UnsupportedSchema { .. }) => ("unsupported", None),
+        E::Material(M::UnknownEntity { id }) => ("missing-reference", Some(*id)),
+        _ => ("invalid-model", None),
+    };
+    GeometryRefusal {
+        code: code.to_owned(),
+        entity: entity.map(|id| id.0),
         message: error.to_string(),
     }
 }
@@ -337,6 +433,31 @@ impl ToRecord for ProductMesh {
                 ("vertex_count", Field::Count(self.positions.len() / 3)),
                 ("triangle_count", Field::Count(self.indices.len() / 3)),
                 ("refusal", Field::record(self.refusal.as_ref())),
+                ("colour", Field::record(self.colour.as_ref())),
+                (
+                    "colour_refusal",
+                    Field::record(self.colour_refusal.as_ref()),
+                ),
+            ],
+        )
+    }
+}
+
+impl ToRecord for SurfaceColour {
+    fn to_record(&self) -> Record {
+        Record::new(
+            "SurfaceColour",
+            vec![
+                ("red", Field::Real(self.red)),
+                ("green", Field::Real(self.green)),
+                ("blue", Field::Real(self.blue)),
+                (
+                    "transparency",
+                    Field::optional(self.transparency.as_ref(), |t| Field::Real(*t)),
+                ),
+                ("source", Field::Text(self.source.clone())),
+                ("source_entity", Field::Id(self.source_entity)),
+                ("surface_style", Field::Id(self.surface_style)),
             ],
         )
     }
