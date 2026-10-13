@@ -12,6 +12,13 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed
+
+- Requires `axiolid-model` 0.3.13: geometry graphs written as wire JSON
+  (feature `wire`) read back bit for bit. 0.3.12 and older parsed about a
+  quarter of doubles one ulp off; payloads already written are unchanged
+  and now read back exactly.
+
 ### Changed (#436, derived placements on spans inside quadrature-measured curves)
 
 - With `compile`, a derived `IfcLinearPlacement` on a trim of an ellipse
