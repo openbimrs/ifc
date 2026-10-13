@@ -19,6 +19,21 @@ a release here does not imply a release of any other crate in the family.
 Semver: minor, released on the 0.1 line: the `v0_1` ABI only gains a
 symbol.
 
+### Added (#449)
+
+- The `ProductMesh` records of `openbim_ifc_v0_1_meshes_records` gain two
+  trailing fields: colour (a `SurfaceColour` record of red, green, blue,
+  transparency, source `item`/`layer`/`material`, source entity and
+  surface style, or `NULL`) and colour refusal (`GeometryRefusal` or
+  `NULL`, code `ambiguous` or a geometry code). No function signature
+  changed; the header changes only in its documentation.
+- ABI version 0.1.11 (on top of #463's 0.1.10); no `v0_1` symbol changed.
+
+Semver: additive, released on the 0.1 line (the `v0_1` ABI is unchanged
+and additive: a reader that walks a record's fields by its child count
+reads the new ones; one that hard-codes seven fields reads the first seven
+unchanged).
+
 ### Added (#463, GlobalIds, types and openings)
 
 - `openbim_ifc_v0_1_model_by_guid` (`out_id`, `NoValue` when absent,

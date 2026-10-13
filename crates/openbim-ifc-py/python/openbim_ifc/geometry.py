@@ -13,7 +13,9 @@ A ``transform`` is a 4x4 column-major matrix in metres, as a tuple of 16
 floats: three basis columns, then the origin. A mesh's ``positions`` are
 relative to it, so the world position of a vertex is ``transform`` applied
 to it; ``numpy.frombuffer(mesh.positions, numpy.float32)`` reads them
-without a copy.
+without a copy. Each mesh carries its :class:`SurfaceColour` (#449): its
+representation item's ``IfcStyledItem``, else its styled presentation
+layer, else its material's ``IfcMaterialDefinitionRepresentation``.
 """
 
 from __future__ import annotations
@@ -100,6 +102,27 @@ class ProductGeometry:
 
 
 @dataclass(frozen=True)
+class SurfaceColour:
+    """The surface colour a mesh is painted with (#449).
+
+    ``red``, ``green`` and ``blue`` are in ``[0, 1]``; ``transparency`` too,
+    0 opaque, and ``None`` when the file states none (which the standard
+    reads as opaque). ``source`` is ``item``, ``layer`` or ``material``, in
+    that precedence; ``source_entity`` the ``IfcStyledItem``, the layer
+    assignment or the ``IfcMaterial``; ``surface_style`` the
+    ``IfcSurfaceStyle``.
+    """
+
+    red: float
+    green: float
+    blue: float
+    transparency: Optional[float]
+    source: str
+    source_entity: int
+    surface_style: int
+
+
+@dataclass(frozen=True)
 class ProductMesh:
     """One product's Body as triangles.
 
@@ -107,6 +130,13 @@ class ProductMesh:
     relative to ``transform``), ``indices`` three vertex indices per
     triangle (``array('I')``). Empty arrays and no refusal: a product with
     no Body representation.
+
+    ``colour`` is the colour the Body's items agree on (#449), ``None``
+    when nothing colours the product or ``colour_refusal`` says why it is
+    not resolved: code ``ambiguous`` (two styled items or two colours at
+    one level, a layer or profile set of several materials, a constituent
+    set no shape aspect resolves, or Body items of different colours) or a
+    shared geometry code. A colour never refuses the mesh.
     """
 
     id: int
@@ -118,12 +148,20 @@ class ProductMesh:
     refusal: Optional[GeometryRefusal]
     positions: "array[float]"
     indices: "array[int]"
+    colour: Optional[SurfaceColour] = None
+    colour_refusal: Optional[GeometryRefusal] = None
 
 
 def _refusal(data: Optional[Dict[str, Any]]) -> Optional[GeometryRefusal]:
     if data is None:
         return None
     return GeometryRefusal(data["code"], data["entity"], data["message"])
+
+
+def _colour(data: Optional[Dict[str, Any]]) -> Optional[SurfaceColour]:
+    if data is None:
+        return None
+    return SurfaceColour(**{k: v for k, v in data.items() if k != "_record"})
 
 
 def _matrix(data: Optional[Any]) -> Optional[Matrix4]:
@@ -172,6 +210,8 @@ def _mesh(data: Dict[str, Any]) -> ProductMesh:
         refusal=_refusal(data["refusal"]),
         positions=positions,
         indices=indices,
+        colour=_colour(data["colour"]),
+        colour_refusal=_refusal(data["colour_refusal"]),
     )
 
 
@@ -183,4 +223,5 @@ __all__ = [
     "ProductMesh",
     "ProductPlacement",
     "SelectedRepresentation",
+    "SurfaceColour",
 ]

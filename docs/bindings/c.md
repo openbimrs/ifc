@@ -527,7 +527,12 @@ every buffer is sized by a first call, so
 opaque non-zero `OpenbimIfcMeshes` handle that owns its data and outlives
 the model. `openbim_ifc_v0_1_meshes_records` returns its `ProductMesh`
 records (id, global id, type name, transform, vertex count, triangle
-count, refusal); `openbim_ifc_v0_1_meshes_positions` copies mesh `index`'s
+count, refusal, colour, colour refusal; the colour, #449, is a
+`SurfaceColour` record of red, green, blue, transparency, source
+`item`, `layer` or `material`, source entity and surface style, read
+from the Body item's style, else its presentation layer's, else its
+material's, and a colour refusal of code `ambiguous` never refuses the
+mesh; these two fields make the ABI version 0.1.11); `openbim_ifc_v0_1_meshes_positions` copies mesh `index`'s
 `float` positions (`x, y, z` per vertex, metres, relative to its
 transform) and `openbim_ifc_v0_1_meshes_indices` its `uint32_t` indices
 (three per triangle), each after the usual size query; an index past the

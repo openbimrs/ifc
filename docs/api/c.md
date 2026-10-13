@@ -464,8 +464,20 @@ The set's `ProductMesh` records as a tape, in the order compiled;
 `out_count` gets their number. `ProductMesh`: id (`REF`), global id,
 type name, transform (`LIST` of 16 `REAL`s, column-major, metres, or
 `NULL`), vertex count, triangle count (`INTEGER`s), refusal
-(`GeometryRefusal` or `NULL`). Empty arrays and no refusal is a
-product with no Body representation.
+(`GeometryRefusal` or `NULL`), colour (`SurfaceColour` or `NULL`),
+colour refusal (`GeometryRefusal` or `NULL`). Empty arrays and no
+refusal is a product with no Body representation.
+
+`SurfaceColour` (#449): red, green, blue (`REAL`s in 0, 1),
+transparency (`REAL`, 0 opaque, or `NULL` when the file states none),
+source (`item`, `layer` or `material`, in that precedence), source
+entity (`REF`: the `IfcStyledItem`, the layer assignment or the
+`IfcMaterial`), surface style (`REF`). The colour is the one the Body's
+items agree on, `NULL` when nothing colours the product; the colour
+refusal's code is `ambiguous` (two styled items or colours at one
+level, a layer or profile set of several materials, a constituent set
+no shape aspect resolves, or Body items of different colours) or a
+shared geometry code, and never refuses the mesh.
 
 **Safety.**
 `out_count` valid for one write; otherwise as for

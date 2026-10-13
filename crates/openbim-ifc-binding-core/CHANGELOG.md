@@ -18,6 +18,18 @@ a release here does not imply a release of any other crate in the family.
   `unsupported`, `budget-exceeded`, `invalid-value`, and
   `feature-disabled` without the feature.
 
+### Added (#449)
+
+- `ProductMesh` gains `colour` (`SurfaceColour`: `red`, `green`, `blue`,
+  `transparency`, `source` `item`/`layer`/`material`, `source_entity`,
+  `surface_style`) and `colour_refusal` (a `GeometryRefusal`, code
+  `ambiguous` or a shared geometry code), the last two fields of its
+  record. A product nothing colours has neither; a refused colour never
+  refuses the mesh.
+
+Semver: additive (internal crate, not published); an additive minor
+change of every binding.
+
 ### Added (#463, GlobalIds, types and openings)
 
 - `IfcModel::by_guid` through the facade's `GlobalIdIndex`, kept beside

@@ -17,6 +17,16 @@ a release here does not imply a release of any other crate in the family.
 
 Semver: minor (additive).
 
+### Added (#449)
+
+- `ProductMesh.colour` (`SurfaceColour`: `red`, `green`, `blue`,
+  `transparency`, `source` `"item" | "layer" | "material"`,
+  `sourceEntity`, `surfaceStyle`) and `ProductMesh.colourRefusal`
+  (`ColourRefusal`, code `"ambiguous"` or a geometry code) in the
+  `@openbim/ifc/mesh` entry: the colour of the Body's item style, else its
+  presentation layer's, else its material's styled representation.
+  TypeScript declarations included.
+
 ### Added (#463, GlobalIds, types and openings)
 
 - `model.byGuid(globalId)` (`bigint | undefined`), through an index built on

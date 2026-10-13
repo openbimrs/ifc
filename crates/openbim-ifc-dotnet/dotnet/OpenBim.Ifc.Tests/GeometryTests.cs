@@ -94,6 +94,42 @@ public class GeometryTests
         }
     }
 
+    /// <summary>The wall, made of a material whose styled representation
+    /// paints it red, a quarter transparent (#449).</summary>
+    private static readonly string RedWall = Wall.Replace(
+        "ENDSEC;\nEND-ISO-10303-21;\n",
+        "#18=IFCMATERIAL('Red',$,$);\n"
+        + "#19=IFCCOLOURRGB($,0.8,0.1,0.1);\n"
+        + "#20=IFCSURFACESTYLERENDERING(#19,0.25,$,$,$,$,$,$,.NOTDEFINED.);\n"
+        + "#21=IFCSURFACESTYLE('Red',.BOTH.,(#20));\n"
+        + "#22=IFCSTYLEDITEM($,(#21),$);\n"
+        + "#23=IFCSTYLEDREPRESENTATION(#5,'Style','Material',(#22));\n"
+        + "#24=IFCMATERIALDEFINITIONREPRESENTATION($,$,(#23),#18);\n"
+        + "#25=IFCRELASSOCIATESMATERIAL('2YvctVUKr0kugbFTf53O9L',$,$,$,(#17),#18);\n"
+        + "ENDSEC;\nEND-ISO-10303-21;\n");
+
+    [Fact]
+    public void MeshesCarryTheirMaterialColour()
+    {
+        using var model = IfcModel.Parse(Fixtures.Bytes(RedWall));
+        try
+        {
+            var mesh = Assert.Single(model.ProductMeshes()).Mesh;
+            Assert.Null(mesh.ColourRefusal);
+            var colour = Assert.IsType<SurfaceColour>(mesh.Colour);
+            Assert.Equal((0.8, 0.1, 0.1), (colour.Red, colour.Green, colour.Blue));
+            Assert.Equal(0.25, colour.Transparency);
+            Assert.Equal("material", colour.Source);
+            Assert.Equal(18UL, colour.SourceEntity);
+            Assert.Equal(21UL, colour.SurfaceStyle);
+        }
+        catch (IfcException error)
+        {
+            // The packaged library leaves meshes out.
+            Assert.Equal("feature-disabled", error.Code);
+        }
+    }
+
     [Fact]
     public void GraphsAreOptInAndOtherwiseAxiolidsWireFormat()
     {

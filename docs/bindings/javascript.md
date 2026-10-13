@@ -517,6 +517,21 @@ would lose. A product with no Body has empty arrays and no refusal; one
 whose lowering or compilation is refused carries the `refusal`, typed as
 above.
 
+Each mesh also carries its surface `colour`
+([#449](https://github.com/openbimrs/ifc/issues/449)): `red`, `green`,
+`blue` and `transparency` (each in `[0, 1]`; `transparency` is
+`undefined` when the file states none, which reads as opaque), the
+`source` that supplied it, `item`, `layer` or `material` in that
+precedence, the `sourceEntity` and the `surfaceStyle`. The colour comes
+from the Body item's `IfcStyledItem`, else its styled presentation layer,
+else the `IfcMaterialDefinitionRepresentation` of the material the
+product (or its type) is made of: an `IfcMaterial`, the one material of a
+layer or profile set, or, for a constituent set, the constituent whose
+`IfcShapeAspect` names the item. `colour` is `undefined` when nothing
+colours the product, and `colourRefusal` says why it is not resolved,
+with code `ambiguous` for a set of several materials or Body items of
+different colours. A colour never refuses the mesh.
+
 `crates/openbim-ifc-wasm/examples/viewer/` draws a file's meshes with
 plain WebGL2 and no build step beyond the module. Its `viewer.mjs` imports
 `@openbim/ifc/mesh/web`, and the page's import map says where that is:
