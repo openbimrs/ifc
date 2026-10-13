@@ -176,7 +176,7 @@ gate_features() {
 
     # `spatial` and `properties` need a release to read through (#306), so
     # their combinations name one; both crates refuse to compile without.
-    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,ifc4" "--features step,schema-api" "--features step,geometry-select" "--features step,ifc4,validate" "--features step,ifc4,spatial,geometry-select" "--features step,ifc4,properties,geometry-select" "--features step,ifc4,spatial,properties" "--features step,ifc4,georef,properties" "--features step,ifc4,properties,property-catalog-runtime" "--features step,ifc4,authoring" "--features step,ifc4,geometry-wire" "--all-features"; do
+    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,ifc4" "--features step,schema-api" "--features step,geometry-select" "--features step,ifc4,validate" "--features step,ifc4,spatial,geometry-select" "--features step,ifc4,properties,geometry-select" "--features step,ifc4,spatial,properties" "--features step,ifc4,georef,properties" "--features step,ifc4,properties,property-catalog-runtime" "--features step,ifc4,authoring" "--features step,ifc4,geometry-wire" "--features zip" "--features ifcxml,zip" "--all-features"; do
         # shellcheck disable=SC2086
         cargo build -p openbim-ifc $features
         # shellcheck disable=SC2086

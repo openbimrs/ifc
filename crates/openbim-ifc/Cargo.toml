@@ -227,8 +227,10 @@ ifc-schema = { workspace = true, features = ["default", "express"] }
 # Reading the wire envelope's `format` and `version` entries (#367).
 serde_json = "1.0"
 # Building the ifcZIP refusal fixtures (#450): empty, several entries,
-# Stored entries whose headers a test then patches.
+# Stored entries whose headers a test then patches. `flate2` chooses the
+# Deflate backend for builds that leave the `zip` feature out.
 zip = { version = "9.0", default-features = false, features = ["deflate-flate2"] }
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
 
 [lints]
 workspace = true
