@@ -716,9 +716,10 @@ impl IfcModel {
         options: &JsValue,
     ) -> Result<JsValue, JsValue> {
         let mut parsed = RemoveProductOptions::new();
-        parsed.rebase_placements = flag(options, "rebasePlacements").map_err(js_error)?;
-        parsed.untype_occurrences = flag(options, "untypeOccurrences").map_err(js_error)?;
-        parsed.dry_run = flag(options, "dryRun").map_err(js_error)?;
+        parsed.rebase_placements = records::flag(options, "rebasePlacements").map_err(js_error)?;
+        parsed.untype_occurrences =
+            records::flag(options, "untypeOccurrences").map_err(js_error)?;
+        parsed.dry_run = records::flag(options, "dryRun").map_err(js_error)?;
         let report = self.0.remove_product(id, parsed).map_err(js_error)?;
         Ok(records::record_to_js(&report.to_record()))
     }
@@ -736,10 +737,11 @@ impl IfcModel {
         #[wasm_bindgen(unchecked_param_type = "PurgeOptions | undefined")] options: &JsValue,
     ) -> Result<JsValue, JsValue> {
         let mut parsed = PurgeOptions::new();
-        parsed.classes = classes(options).map_err(js_error)?;
-        parsed.include_roots = flag(options, "includeRoots").map_err(js_error)?;
-        parsed.include_owner_history = flag(options, "includeOwnerHistory").map_err(js_error)?;
-        parsed.dry_run = flag(options, "dryRun").map_err(js_error)?;
+        parsed.classes = records::classes(options).map_err(js_error)?;
+        parsed.include_roots = records::flag(options, "includeRoots").map_err(js_error)?;
+        parsed.include_owner_history =
+            records::flag(options, "includeOwnerHistory").map_err(js_error)?;
+        parsed.dry_run = records::flag(options, "dryRun").map_err(js_error)?;
         let report = self.0.purge(parsed).map_err(js_error)?;
         Ok(records::record_to_js(&report.to_record()))
     }
@@ -763,50 +765,4 @@ impl IfcModel {
             .map(|(from, to)| Array::of2(&big(from), &big(to)))
             .collect()
     }
-}
-
-/// The boolean `key` of an options object; `false` when the object or the
-/// key is absent.
-fn flag(options: &JsValue, key: &str) -> Result<bool, BindingError> {
-    if options.is_undefined() || options.is_null() {
-        return Ok(false);
-    }
-    if !options.is_object() {
-        return Err(BindingError::InvalidValue(
-            "options must be an object".into(),
-        ));
-    }
-    let value = js_sys::Reflect::get(options, &key.into())
-        .map_err(|_| BindingError::InvalidValue(format!("cannot read `{key}`")))?;
-    if value.is_undefined() || value.is_null() {
-        return Ok(false);
-    }
-    value
-        .as_bool()
-        .ok_or_else(|| BindingError::InvalidValue(format!("`{key}` must be a boolean")))
-}
-
-/// The `classes` array of purge options; empty when absent.
-fn classes(options: &JsValue) -> Result<Vec<String>, BindingError> {
-    if options.is_undefined() || options.is_null() || !options.is_object() {
-        return Ok(Vec::new());
-    }
-    let value = js_sys::Reflect::get(options, &"classes".into())
-        .map_err(|_| BindingError::InvalidValue("cannot read `classes`".into()))?;
-    if value.is_undefined() || value.is_null() {
-        return Ok(Vec::new());
-    }
-    if !js_sys::Array::is_array(&value) {
-        return Err(BindingError::InvalidValue(
-            "`classes` must be an array of strings".into(),
-        ));
-    }
-    js_sys::Array::from(&value)
-        .iter()
-        .map(|class| {
-            class
-                .as_string()
-                .ok_or_else(|| BindingError::InvalidValue("`classes` must hold strings".into()))
-        })
-        .collect()
 }
