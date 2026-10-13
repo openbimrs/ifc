@@ -5,7 +5,7 @@
 //! form, so this crate cannot state it (ADR 0004). Its pieces reach the
 //! evaluator open-ended (`PathPiece::whole`, axiolid/kernel#298), each end
 //! resolved to the evaluator's own length, and the joints after them are
-//! located by `CurveEvaluator::path_joint_distances`, certified to a
+//! located by `CurveEvaluator::path_joint_distances_within`, certified to a
 //! thousandth of the model's precision, the window the station lowering
 //! hands the kernel for the same basis (#423). A placement within that
 //! window of one joint reads the incoming piece (IFC4.3 ADD2 8.9.3.48.3).
@@ -353,18 +353,18 @@ fn verify_refuses_a_cache_computed_with_the_outgoing_piece() {
 
 // ---- refusals -------------------------------------------------------------
 
-/// Where the model's precision names no one joint, or the evaluator cannot
-/// certify one, the placement is refused as the kernel refuses the same
-/// station (#423): two joints of the twin in one window, a joint of the
-/// kerb straddling the window's edge, the tilted offset's uncertified
-/// length.
+/// Where the model's precision names no one joint, the placement is
+/// refused as the kernel refuses the same station (#423): two joints of the
+/// twin in one window, a joint of the kerb straddling the window's edge.
+/// (`#211`, 5 m along the tilted offset `#97`, was refused here too, its
+/// first piece's length uncertified; since #436 only the joints near the
+/// placement are certified, and it derives: `derive_bounded_paths.rs`.)
 #[test]
 fn window_refusals_name_the_placement() {
     let model = bases();
     for (expression, basis, refusal, unsupported) in [
         (200, 95, SeamWindowRefusal::Ambiguous, false),
         (189, 90, SeamWindowRefusal::Straddled, false),
-        (211, 97, SeamWindowRefusal::UncertifiedLength, true),
     ] {
         let error =
             derived(&model, expression, &ReferenceCurveEvaluator::default()).expect_err("refused");

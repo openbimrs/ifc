@@ -28,9 +28,9 @@
 //! - a trim of an atomic curve between the parameters its selectors name:
 //!   a parameter as is, an arc length from parameter `0` in the trim's
 //!   sense, a point inverted onto a line or a circle (the selector the
-//!   trimming preference picks); a closed conic from its start selector in
-//!   the trim's sense, at most one turn; reversed where the sense
-//!   disagrees;
+//!   trimming preference picks; on an ellipse or a B-spline the point
+//!   itself, #436); a closed conic from its start selector in the trim's
+//!   sense, at most one turn; reversed where the sense disagrees;
 //! - a trim of a relation between parameter selectors read as distances
 //!   along it, which needs the relation measured in arc length; a trim
 //!   whose basis is itself an offset is refused by name, as the kernel
@@ -52,6 +52,12 @@
 //! holding one the joints are unknown here ([`INEXACT`]), as an atomic
 //! B-spline's corner knot is, and a station along it carries the kernel's
 //! seam-snapping window instead (#423, `super`'s module documentation).
+//! Such a piece is kept as the span its data names (#436): open where it
+//! runs to its curve's end, else bounded at the native parameters or the
+//! points its trim selectors name, an arc length in the curve's sense from
+//! a parameter `0` where its measure starts kept as that distance. A trim
+//! point on an ellipse or a B-spline is not inverted here: the evaluator
+//! that reads the path does, and refuses one off the curve by name.
 //!
 //! The joints' points are not compared here: whether pieces meet is
 //! evaluation. A gap, an undeclared reversed piece, or an offset across a
@@ -73,7 +79,7 @@
 //! ([`offset::OffsetPiece`]), the neutral `PathOffset`'s two parts.
 
 use axiolid_core::{Point3, Scalar};
-use axiolid_curve::{Curve2, Curve3, OffsetLaw};
+use axiolid_curve::{Curve2, Curve3, OffsetLaw, PathBound};
 use axiolid_model::{
     CurveRelation, GeometryNode, MasterRepresentation, NodeId, OrientedCurveStation, TrimSelector,
     TrimmingPreference,
@@ -90,10 +96,17 @@ pub(crate) use offset::{OffsetPiece, COLLAPSE, OFFSET_OF_OFFSET, PLANAR_3D};
 /// quadrature. A station along it carries the kernel's seam-snapping window
 /// (#423), and so does each section of a run along it (#429); an offset
 /// run along it (#433) is refused. A derived placement on it reads such a
-/// piece as an open-ended path piece (#427, [`relation_pieces`]), unless
-/// the piece's span does not start at its curve's start (a trim at an
-/// interior parameter of an ellipse or a B-spline, a span between stations
-/// along a relation with such a piece).
+/// piece as an open-ended path piece (#427) or one bounded at a parameter
+/// or a point (#436, [`relation_pieces`]); [`relation_pieces`] itself
+/// refuses with this reason only a span whose ends no path piece states (a
+/// span between distances along a relation reaching a piece whose length
+/// is a quadrature other than its last, an arc-length trim of an ellipse or
+/// a B-spline against its sense, a varying offset of such a piece).
+///
+/// The station lowering cannot use those pieces: they are resolved only by
+/// a curve evaluator, which lowering links none of (ADR 0004), and it hands
+/// the kernel the relation itself, which the kernel resolves with its own
+/// window. Only seams and a length stated here would let it snap exactly.
 pub(crate) const INEXACT: &str =
     "the basis curve relation holds a piece whose length is not stated by its data (an \
      ellipse, a B-spline, a trim whose ends are not a parameter, an arc length on a curve \
@@ -176,7 +189,7 @@ pub(crate) fn relation_run<'s>(
     node: NodeId,
 ) -> Result<Run<'s>, &'static str> {
     let (pieces, plan) = relation_pieces(session, node)?;
-    if pieces.iter().any(|piece| piece.open) {
+    if !pieces.iter().all(Piece::is_stated) {
         return Err(INEXACT);
     }
     let mut seams = Vec::new();
@@ -209,9 +222,12 @@ pub(crate) fn relation_run<'s>(
 /// quadrature left open ([`Piece::open`], #427): an ellipse or a B-spline
 /// whole, and an offset other than the closed forms [`offset`] states (an
 /// offset beside a gradient curve, a spiral or a B-spline, a variable
-/// offset of a circle). Only a derived placement reads such a piece, as
-/// Axiolid's open-ended `PathPiece` (axiolid/kernel#298), whose end the
-/// evaluator resolves to its own length of the curve.
+/// offset of a circle); and a trim of an ellipse or a B-spline at an
+/// interior parameter, a point or an arc length bounded there
+/// ([`Piece::start_bound`], [`Piece::end_bound`], #436). Only a derived
+/// placement reads such a piece, as Axiolid's open-ended or bounded
+/// `PathPiece` (axiolid/kernel#298, #304), whose end the evaluator
+/// resolves.
 pub(crate) fn relation_pieces<'s>(
     session: &'s LoweringSession<'_>,
     node: NodeId,
@@ -240,6 +256,14 @@ pub(crate) struct Piece<'s> {
     /// Whether the span runs to its curve's end, a length its data does
     /// not state (#427): only an evaluator resolves it.
     pub open: bool,
+    /// Where the span starts when that is a native parameter or a point of
+    /// an ellipse or a B-spline (#436), whose distance in the curve's
+    /// measure is a quadrature: only an evaluator resolves it, and `start`
+    /// is not read.
+    pub start_bound: Option<PathBound>,
+    /// Where the span ends when that is such a parameter or point (#436);
+    /// `end` is then not read.
+    pub end_bound: Option<PathBound>,
     /// Whether the distance runs from `end` to `start`.
     pub reversed: bool,
     /// Measured in plan distance (an elevated or banked curve).
@@ -255,9 +279,19 @@ pub(crate) struct Piece<'s> {
 }
 
 impl Piece<'_> {
-    /// The span's length; infinite where the end is open.
+    /// The span's length; infinite where an end is open or bounded.
     pub(crate) fn length(&self) -> Scalar {
-        self.end - self.start
+        if self.is_stated() {
+            self.end - self.start
+        } else {
+            Scalar::INFINITY
+        }
+    }
+
+    /// Whether both ends are stated distances in the curve's measure:
+    /// neither open (#427) nor bounded by a parameter or a point (#436).
+    pub(crate) fn is_stated(&self) -> bool {
+        !self.open && self.start_bound.is_none() && self.end_bound.is_none()
     }
 
     fn reversed(mut self) -> Self {
@@ -266,13 +300,13 @@ impl Piece<'_> {
     }
 
     /// The curve's seams strictly inside the piece, at their distance
-    /// into it in the composite's direction; none on an open piece, whose
-    /// curves (an ellipse, a B-spline without a corner knot, an offset of
-    /// a span between its basis's seams) have none.
+    /// into it in the composite's direction; none on an open or bounded
+    /// piece, whose curves (an ellipse, a B-spline without a corner knot,
+    /// an offset of a span between its basis's seams) have none.
     pub(crate) fn inner_seams(&self) -> impl Iterator<Item = Seam> + '_ {
         self.seams
             .iter()
-            .filter(|_| !self.open)
+            .filter(|_| self.is_stated())
             .filter(|seam| {
                 seam.distance > self.start + slack(self.start)
                     && seam.distance < self.end - slack(self.end)
@@ -339,6 +373,8 @@ fn piece<'s>(
         start,
         end,
         open: false,
+        start_bound: None,
+        end_bound: None,
         reversed: false,
         plan,
         seams,
@@ -402,12 +438,14 @@ fn flatten<'s>(
                 return Err(TRIM_OF_OFFSET);
             }
             let pieces = match flatten(session, *basis, depth + 1)? {
-                Flat::Atomic(curve, placements) => {
-                    let (lo, hi) =
-                        trim_parameters(curve, start, end, *sense_agreement, *preference)?;
-                    let (from, to) = measures_between(curve, lo, hi)?;
-                    vec![piece(curve, from, to, placements)?]
-                }
+                Flat::Atomic(curve, placements) => vec![trimmed(
+                    curve,
+                    start,
+                    end,
+                    *sense_agreement,
+                    *preference,
+                    placements,
+                )?],
                 Flat::Pieces(pieces) => {
                     if pieces.iter().any(|piece| piece.plan) {
                         return Err(PLAN_TRIM);
@@ -483,27 +521,55 @@ fn measures_between(
 
 /// The pieces between `start < end` along them, clipped, as
 /// `CompositeBasis::pieces_between` keeps them.
+///
+/// Where a piece's length is the evaluator's (open, or bounded at a
+/// parameter or a point, #427, #436), where the pieces after it start is
+/// unknown here. The span may still reach into it when it is the last
+/// piece and every piece before it is stated: the distances into it are
+/// then stated, measured from its stated start (from its stated end where
+/// it is read backwards), and the span is a stated piece of its curve,
+/// which the evaluator refuses if it runs past the curve's end. Any other
+/// span reaching such a piece is refused ([`INEXACT`]): which piece its
+/// end falls in is a quadrature.
 fn pieces_between<'s>(
     pieces: &[Piece<'s>],
     start: Scalar,
     end: Scalar,
 ) -> Result<Vec<Piece<'s>>, &'static str> {
-    let length: Scalar = pieces.iter().map(Piece::length).sum();
-    // Where an open piece ends is the evaluator's to say.
-    if pieces.iter().any(|piece| piece.open) {
-        return Err(INEXACT);
-    }
     if !(start.is_finite() && end.is_finite()) || end <= start {
         return Err(INEXACT);
     }
-    let (start, end) = (start.max(0.0), end.min(length));
+    let start = start.max(0.0);
+    let length: Scalar = pieces.iter().map(Piece::length).sum();
+    let end = end.min(length);
     let mut out = Vec::new();
     let mut lo = 0.0;
-    for piece in pieces {
+    for (index, piece) in pieces.iter().enumerate() {
+        if lo >= end {
+            break;
+        }
+        if !piece.is_stated() {
+            if end - lo <= slack(end) {
+                // The span ends on its start.
+                break;
+            }
+            // Its measure is anchored where the span is read from.
+            let anchored = if piece.reversed {
+                !piece.open && piece.end_bound.is_none()
+            } else {
+                piece.start_bound.is_none()
+            };
+            if index + 1 != pieces.len() || !anchored {
+                return Err(INEXACT);
+            }
+        }
         let hi = lo + piece.length();
         let (a, b) = (start.max(lo) - lo, end.min(hi) - lo);
         if b - a > slack(b) {
             let mut clipped = piece.clone();
+            clipped.open = false;
+            clipped.start_bound = None;
+            clipped.end_bound = None;
             if piece.reversed {
                 clipped.start = piece.end - b;
                 clipped.end = piece.end - a;
@@ -579,15 +645,127 @@ fn closed_conic(curve: &AtomicCurve) -> bool {
     )
 }
 
-/// The parameters `lo < hi` a trim of an atomic curve spans, as the
-/// compiler reads them (`station::basis::trim_parameters`).
+/// The piece a trim of the atomic `curve` keeps (module documentation):
+/// stated in its station measure where its data states both ends, else,
+/// on an ellipse or a B-spline (#436), bounded at the native parameters or
+/// points its selectors name, which the evaluator resolves.
+fn trimmed<'s>(
+    curve: &'s AtomicCurve,
+    start: &[TrimSelector],
+    end: &[TrimSelector],
+    sense: bool,
+    preference: TrimmingPreference,
+    placements: Vec<&'s OrientedCurveStation>,
+) -> Result<Piece<'s>, &'static str> {
+    match trim_parameters(curve, start, end, sense, preference)? {
+        Trim::Parameters(lo, hi) => match measures_between(curve, lo, hi) {
+            Ok((from, to)) => piece(curve, from, to, placements),
+            // The distance to an interior parameter of an ellipse or a
+            // B-spline is a quadrature: the evaluator locates the span as
+            // `StationPiece::between_parameters` does, from the same `lo`
+            // and `hi` (`PathPiece::between_parameters`, #436).
+            Err(_) if quadrature(curve) => bounded(
+                curve,
+                TrimEnd::Parameter(lo),
+                TrimEnd::Parameter(hi),
+                placements,
+            ),
+            Err(reason) => Err(reason),
+        },
+        Trim::Bounded(from, to) => bounded(curve, from, to, placements),
+    }
+}
+
+/// The span of `curve` from `from` to `to`, in its direction, each end
+/// stated or left to the evaluator as a [`PathBound`] (#436).
+fn bounded<'s>(
+    curve: &'s AtomicCurve,
+    from: TrimEnd,
+    to: TrimEnd,
+    placements: Vec<&'s OrientedCurveStation>,
+) -> Result<Piece<'s>, &'static str> {
+    let mut out = piece(curve, -Scalar::INFINITY, Scalar::INFINITY, placements)?;
+    match from {
+        TrimEnd::Measure(m) => out.start = m,
+        other => out.start_bound = other.bound(),
+    }
+    match to {
+        TrimEnd::Measure(m) => out.end = m,
+        other => out.end_bound = other.bound(),
+    }
+    Ok(out)
+}
+
+/// Whether `curve` is an ellipse or a B-spline, whose station measure at
+/// an interior parameter is a quadrature.
+fn quadrature(curve: &AtomicCurve) -> bool {
+    matches!(
+        curve,
+        AtomicCurve::Two(Curve2::Ellipse(_) | Curve2::BSpline(_))
+            | AtomicCurve::Three(Curve3::Ellipse(_) | Curve3::BSpline(_))
+    )
+}
+
+/// What a trim of an atomic curve keeps.
+enum Trim {
+    /// The native parameters `lo < hi` it spans (`lo` may lie outside a
+    /// closed conic's first turn, `hi` past it).
+    Parameters(Scalar, Scalar),
+    /// On an ellipse or a B-spline, the ends its selectors name in the
+    /// curve's direction, at least one of them an arc length or a point
+    /// (#436).
+    Bounded(TrimEnd, TrimEnd),
+}
+
+/// One trim end read from its selectors.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum TrimEnd {
+    /// A native parameter of the curve.
+    Parameter(Scalar),
+    /// A distance in the curve's station measure: an arc length on an
+    /// ellipse or a B-spline whose measure starts at parameter `0`, in the
+    /// curve's own sense (#436).
+    Measure(Scalar),
+    /// A point of an ellipse or a B-spline, which only an evaluator
+    /// inverts (#436).
+    Point(Point3),
+}
+
+impl TrimEnd {
+    fn bound(self) -> Option<PathBound> {
+        match self {
+            Self::Parameter(t) => Some(PathBound::Parameter(t)),
+            Self::Point(p) => Some(PathBound::Point(p)),
+            Self::Measure(_) => None,
+        }
+    }
+
+    fn is_finite(self) -> bool {
+        match self {
+            Self::Parameter(v) | Self::Measure(v) => v.is_finite(),
+            Self::Point(p) => p.is_finite(),
+        }
+    }
+}
+
+/// The span a trim of an atomic curve keeps, as the compiler reads it
+/// (`station::basis::trim_parameters`): between parameters `lo < hi`, a
+/// closed conic's from the start selector in the trim's sense (possibly
+/// across its parameter seam), any other curve's between its two
+/// selectors. On an ellipse or a B-spline an end named by an arc length or
+/// a point is left to the evaluator (#436): the span runs from the start
+/// selector to the end selector in the trim's sense (from the end to the
+/// start against it), on a closed conic forwards within one turn as the
+/// compiler's periodic trim does. A span that does not run so (an open
+/// B-spline trimmed against the order of its parameters) is refused by the
+/// evaluator, by name.
 fn trim_parameters(
     curve: &AtomicCurve,
     start: &[TrimSelector],
     end: &[TrimSelector],
     sense: bool,
     preference: TrimmingPreference,
-) -> Result<(Scalar, Scalar), &'static str> {
+) -> Result<Trim, &'static str> {
     let scale = start
         .iter()
         .chain(end)
@@ -600,6 +778,10 @@ fn trim_parameters(
     let tolerance = POINT_TOLERANCE * scale;
     let a = trim_parameter(start, preference, curve, sense, tolerance)?;
     let b = trim_parameter(end, preference, curve, sense, tolerance)?;
+    let (TrimEnd::Parameter(a), TrimEnd::Parameter(b)) = (a, b) else {
+        let (from, to) = if sense { (a, b) } else { (b, a) };
+        return Ok(Trim::Bounded(from, to));
+    };
     if a == b {
         return Err(INEXACT);
     }
@@ -615,19 +797,22 @@ fn trim_parameters(
                 wrapped => wrapped,
             }
         };
-        return Ok(if sense { (a, a + span) } else { (a - span, a) });
+        let (lo, hi) = if sense { (a, a + span) } else { (a - span, a) };
+        return Ok(Trim::Parameters(lo, hi));
     }
-    Ok((a.min(b), a.max(b)))
+    Ok(Trim::Parameters(a.min(b), a.max(b)))
 }
 
-/// One trim end read as a basis parameter (`directrix::parameter`).
+/// One trim end read from its selectors (`directrix::parameter`): a
+/// parameter, a point inverted onto a line or a circle; on an ellipse or a
+/// B-spline an arc length or a point left to the evaluator (#436).
 fn trim_parameter(
     selectors: &[TrimSelector],
     preference: TrimmingPreference,
     curve: &AtomicCurve,
     sense: bool,
     tolerance: Scalar,
-) -> Result<Scalar, &'static str> {
+) -> Result<TrimEnd, &'static str> {
     let is_measure =
         |s: &&TrimSelector| matches!(s, TrimSelector::Parameter(_) | TrimSelector::ArcLength(_));
     let first_measure = || {
@@ -637,10 +822,19 @@ fn trim_parameter(
             .map_or(Ok(None), |s| measured(s, curve, sense))
     };
     let invert = || {
-        selectors.iter().find_map(|selector| match selector {
-            TrimSelector::Point2(p) => invert(curve, Point3::new(p.x, p.y, 0.0), tolerance),
-            TrimSelector::Point3(p) => invert(curve, *p, tolerance),
-            _ => None,
+        selectors.iter().find_map(|selector| {
+            let point = match selector {
+                TrimSelector::Point2(p) => Point3::new(p.x, p.y, 0.0),
+                TrimSelector::Point3(p) => *p,
+                _ => return None,
+            };
+            match invert(curve, point, tolerance) {
+                Some(t) => Some(TrimEnd::Parameter(t)),
+                // Inverted by the evaluator, which refuses a point off the
+                // curve or one several parameters name, by name.
+                None if quadrature(curve) => Some(TrimEnd::Point(point)),
+                None => None,
+            }
         })
     };
     let selected = match preference {
@@ -654,31 +848,63 @@ fn trim_parameter(
             _ => invert(),
         },
     };
-    selected.filter(|t| t.is_finite()).ok_or(INEXACT)
+    selected.filter(|end| end.is_finite()).ok_or(INEXACT)
 }
 
-/// A parameter or an arc length from parameter `0` in the trim's sense,
-/// as a parameter, where the arc length is stated by the curve's data.
+/// A parameter, or an arc length from parameter `0` in the trim's sense:
+/// as a parameter where the curve's data states it; on an ellipse or a
+/// B-spline whose measure starts at parameter `0`, in the curve's own
+/// sense, as the distance it is in the curve's measure (#436).
 fn measured(
     selector: &TrimSelector,
     curve: &AtomicCurve,
     sense: bool,
-) -> Result<Option<Scalar>, &'static str> {
+) -> Result<Option<TrimEnd>, &'static str> {
     match selector {
-        TrimSelector::Parameter(value) => Ok(Some(*value)),
+        TrimSelector::Parameter(value) => Ok(Some(TrimEnd::Parameter(*value))),
         TrimSelector::ArcLength(length) => {
             let signed = if sense { *length } else { -*length };
-            Ok(Some(match curve {
+            Ok(Some(TrimEnd::Parameter(match curve {
                 AtomicCurve::Two(Curve2::Line(line)) => signed / line.direction.length(),
                 AtomicCurve::Three(Curve3::Line(line)) => signed / line.direction.length(),
                 AtomicCurve::Two(Curve2::Circle(circle)) => signed / circle.radius,
                 AtomicCurve::Three(Curve3::Circle(circle)) => signed / circle.radius,
                 AtomicCurve::Two(Curve2::Intrinsic(_) | Curve2::Chain(_))
                 | AtomicCurve::Three(Curve3::Intrinsic(_)) => signed,
+                // The arc length from parameter `0` forwards is the
+                // curve's own measure there; backwards, or from a
+                // parameter `0` that is not where the measure starts, it
+                // is a quadrature from the start.
+                _ if sense && *length >= 0.0 && measured_from_zero(curve) => {
+                    return Ok(Some(TrimEnd::Measure(*length)));
+                }
                 _ => return Err(INEXACT),
-            }))
+            })))
         }
         _ => Ok(None),
+    }
+}
+
+/// Whether `curve` is an ellipse, or a B-spline whose parameter domain
+/// starts at `0`: its station measure is the arc length from parameter
+/// `0`.
+fn measured_from_zero(curve: &AtomicCurve) -> bool {
+    let spline_start = |degree: u16, knots: &[Scalar], multiplicities: &[u32]| {
+        knots
+            .iter()
+            .zip(multiplicities)
+            .flat_map(|(knot, times)| std::iter::repeat_n(*knot, *times as usize))
+            .nth(usize::from(degree))
+    };
+    match curve {
+        AtomicCurve::Two(Curve2::Ellipse(_)) | AtomicCurve::Three(Curve3::Ellipse(_)) => true,
+        AtomicCurve::Two(Curve2::BSpline(spline)) => {
+            spline_start(spline.degree, &spline.knots, &spline.multiplicities) == Some(0.0)
+        }
+        AtomicCurve::Three(Curve3::BSpline(spline)) => {
+            spline_start(spline.degree, &spline.knots, &spline.multiplicities) == Some(0.0)
+        }
+        _ => false,
     }
 }
 
@@ -764,6 +990,8 @@ mod tests {
             start,
             end,
             open: false,
+            start_bound: None,
+            end_bound: None,
             reversed,
             plan: false,
             seams: Vec::new(),
@@ -776,5 +1004,33 @@ mod tests {
         assert_eq!((kept[0].start, kept[0].end), (2.0, 4.0));
         // Reversed: distances 0..2 into it are its measures 7..5.
         assert_eq!((kept[1].start, kept[1].end), (5.0, 7.0));
+        // An open last piece after stated ones is clipped at stated
+        // measures from its start (#436); one before a later piece, or a
+        // bounded one, leaves where the span ends unknown.
+        let open = |reversed: bool| Piece {
+            open: true,
+            end: Scalar::INFINITY,
+            ..piece(0.0, 0.0, reversed)
+        };
+        let kept = pieces_between(&[piece(0.0, 4.0, false), open(false)], 2.0, 6.0)
+            .expect("the open piece is last");
+        assert!(kept.iter().all(Piece::is_stated));
+        assert_eq!((kept[1].start, kept[1].end), (0.0, 2.0));
+        let short = pieces_between(&[piece(0.0, 4.0, false), open(false)], 1.0, 3.0)
+            .expect("short of the open piece");
+        assert_eq!(short.len(), 1);
+        for pieces in [
+            vec![open(false), piece(0.0, 4.0, false)],
+            vec![piece(0.0, 4.0, false), open(true)],
+            vec![
+                piece(0.0, 4.0, false),
+                Piece {
+                    start_bound: Some(PathBound::Parameter(0.5)),
+                    ..piece(0.0, 1.0, false)
+                },
+            ],
+        ] {
+            assert_eq!(pieces_between(&pieces, 2.0, 6.0).err(), Some(INEXACT));
+        }
     }
 }

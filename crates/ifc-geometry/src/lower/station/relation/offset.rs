@@ -133,9 +133,10 @@ pub(super) fn offset_pieces<'s>(
             return Err(OFFSET_OF_OFFSET);
         }
         let cuts = kernel_cuts(piece)?;
-        let spans: Vec<(Piece<'s>, OffsetLaw)> = if piece.open {
-            // A base whose own end is the evaluator's: offset whole, which
-            // needs neither a cut nor where a linear law is along it.
+        let spans: Vec<(Piece<'s>, OffsetLaw)> = if !piece.is_stated() {
+            // A base whose own end (or start, #436) is the evaluator's:
+            // offset whole, which needs neither a cut nor where a linear
+            // law is along it.
             if !cuts.is_empty() || matches!(law, OffsetLaw::Linear { .. }) {
                 return Err(INEXACT);
             }
@@ -169,7 +170,7 @@ pub(super) fn offset_pieces<'s>(
                 .collect()
         };
         for (span, law) in spans {
-            let length = if span.open {
+            let length = if !span.is_stated() {
                 None
             } else {
                 offset_length(&span, law)?
@@ -179,6 +180,8 @@ pub(super) fn offset_pieces<'s>(
                 start: 0.0,
                 end: length.unwrap_or(Scalar::INFINITY),
                 open: length.is_none(),
+                start_bound: None,
+                end_bound: None,
                 reversed: false,
                 // Beside a plan-measured curve the offset is measured in its
                 // own plan length (axiolid/kernel#294).
@@ -258,8 +261,10 @@ fn kernel_cuts(piece: &Piece<'_>) -> Result<Vec<Scalar>, &'static str> {
         .collect();
     seams.sort_by(Scalar::total_cmp);
     seams.dedup_by(|b, a| *b - *a <= super::slack(*b));
-    if piece.open {
+    if !piece.is_stated() {
         // An open piece starts at its curve's start: every seam is inside.
+        // A bounded one (#436) is an ellipse's or a B-spline's, refused
+        // before this if it has a seam (`SPLINE`): it has none to cut at.
         return Ok(seams);
     }
     let mut cuts: Vec<Scalar> = seams

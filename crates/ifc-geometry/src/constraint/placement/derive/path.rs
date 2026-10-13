@@ -31,33 +31,50 @@
 //! runs to its curve's end, resolved by the evaluator to its own length of
 //! the curve (`axiolid-curve-evaluate-contract` 0.3.6, axiolid/kernel#298),
 //! so the distance runs through the path as through the stated path the
-//! kernel flattens the same relation into. A span that starts inside such
-//! a curve (a trim at an interior parameter of an ellipse or a B-spline, a
-//! span between stations along a relation with an open piece) has no open
-//! form and is refused by [`GeometryError::PathPieceLengthUnstated`].
+//! kernel flattens the same relation into. A trim of an ellipse or a
+//! B-spline at an interior parameter, at a point, or at an arc length in
+//! its sense from a parameter `0` where its measure starts (the CUBIC
+//! transition's Bezier) is bounded there (#436): `PathPiece::bounded`, a
+//! `PathBound::Parameter` or `PathBound::Point` in the curve's own
+//! coordinates, or a stated distance for the arc length
+//! (`axiolid-curve-evaluate-contract` 0.3.7, axiolid/kernel#304). The
+//! evaluator resolves a point to the one parameter naming it, refusing
+//! one off the curve ([`GeometryError::PathPointOffCurve`]) or one several
+//! parameters name ([`GeometryError::PathPointAmbiguous`]), and a closed
+//! conic's span runs across its parameter seam as the compiler's periodic
+//! trim does. A span between distances along a relation (a trim of it, an
+//! offset by distances along it) may reach such a piece only if it is the
+//! last and every piece before it is stated; any other is refused by
+//! [`GeometryError::PathPieceLengthUnstated`] (`relation::pieces_between`).
 //!
-//! # Joints of an open path (#427)
+//! # Joints of an open path (#427, #436)
 //!
-//! Where a joint follows an open piece, its distance is the evaluator's,
-//! not stored data, so it is not snapped to here as a stated path's joints
-//! are. As the kernel does for the same basis's station (#423,
-//! axiolid/kernel#294), the joints are certified instead: each joint's
-//! [`CurveEvaluator::path_joint_distances`] interval, to a thousandth
-//! (`open::WINDOW_CERTIFICATION`) of the window this crate snaps within (the
-//! model's precision, capped at 1 mm, or rounding: `seams::window`), and a
-//! stated piece's own seams after it, offset by the same interval. A
-//! `DistanceAlong` whose window holds exactly one of them wholly is read ON
-//! it, from the incoming side (IFC4.3 ADD2 8.9.3.48.3; [`SeamSide::Incoming`]):
-//! the end of the path cut there, read backwards from its end, so the point
-//! is the joint's own wherever the evaluator measures it. Two seams in the
-//! window, a seam whose interval straddles its edge, and a joint the
-//! evaluator cannot certify are refused by
+//! Where a joint follows an open or bounded piece, its distance is the
+//! evaluator's, not stored data, so it is not snapped to here as a stated
+//! path's joints are. As the kernel does for the same basis's station
+//! (#423, axiolid/kernel#294), the joints are certified instead: those
+//! that can fall within the window this crate snaps within (the model's
+//! precision, capped at 1 mm, or rounding: `seams::window`), each by
+//! [`CurveEvaluator::path_joint_distances_within`] (axiolid/kernel#305) to
+//! a thousandth of it (`open::WINDOW_CERTIFICATION`), and a stated piece's
+//! own seams after them, offset by the same interval. A `DistanceAlong`
+//! whose window holds exactly one of them wholly is read ON it, from the
+//! incoming side (IFC4.3 ADD2 8.9.3.48.3; [`SeamSide::Incoming`]): the end
+//! of the path cut there, read backwards from its end, so the point is the
+//! joint's own wherever the evaluator measures it. Two seams in the window,
+//! a seam whose interval straddles its edge, and a joint the evaluator
+//! cannot certify are refused by
 //! [`GeometryError::PlacementSeamWindowRefused`], as the kernel refuses the
-//! station. Every joint is certified, so a path holding a piece the
-//! evaluator cannot certify is refused wherever the placement lies. An
-//! evaluator that reads stated paths but not open ends, or does not
+//! station. Only the pieces before the window and within reach of it are
+//! certified: a piece the evaluator cannot certify after the placement no
+//! longer refuses it, one before it does. The kernel's own station
+//! resolution (`axiolid-evaluate` 0.3.13) also certifies the piece that
+//! holds the station, so where that piece is the uncertifiable one the
+//! lowered station is refused while the placement derives. An evaluator
+//! that reads stated paths but not open ends or bounds, or does not
 //! certify joints, is refused by
-//! [`GeometryError::CurvePathOpenEndUnsupported`] or
+//! [`GeometryError::CurvePathOpenEndUnsupported`],
+//! [`GeometryError::CurvePathBoundUnsupported`] or
 //! [`GeometryError::PathJointDistancesUnsupported`], never read on an
 //! estimate.
 //!
@@ -70,6 +87,7 @@ use axiolid_curve::{Curve2, Curve3, CurvePath, PathCurve, PathOffset, PathPiece}
 use axiolid_curve_evaluate_contract::{
     CurveEvaluator, CurveMeasure, CurveMeasure as KernelMeasure, DistanceConvention, SeamSide,
     CURVE_PATH_UNSUPPORTED, OPEN_PATH_END_UNSUPPORTED, PATH_JOINT_DISTANCES_UNSUPPORTED,
+    PATH_PIECE_BOUND_UNSUPPORTED, PATH_POINT_AMBIGUOUS, PATH_POINT_OFF_CURVE,
     SEAM_SIDE_UNSUPPORTED,
 };
 use axiolid_model::{NodeId, OrientedCurveStation, StationFrame};
@@ -115,8 +133,9 @@ pub(super) enum PathSeams {
     /// Every length stated: every interior joint and every seam of a piece
     /// inside it, ascending, in the path's distance.
     Stated(Vec<Seam>),
-    /// A piece left open (#427): each stated piece's own seams, at their
-    /// distance into it, with its index. The joints are the evaluator's.
+    /// A piece left open (#427) or bounded (#436): each stated piece's own
+    /// seams, at their distance into it, with its index. The joints are the
+    /// evaluator's.
     Open(Vec<(usize, Seam)>),
 }
 
@@ -221,9 +240,10 @@ pub(super) fn derive_on_path(
 /// # Errors
 ///
 /// A basis that is not a curve relation this module reads, a relation the
-/// station lowering refuses (an offset of an offset, say), a relation whose
-/// pieces' lengths
-/// its data does not state, and a placement `evaluator` refuses to frame,
+/// station lowering refuses (an offset of an offset, say), a relation
+/// holding a span whose ends its data states in no form a path piece takes
+/// ([`GeometryError::PathPieceLengthUnstated`]), and a placement
+/// `evaluator` refuses to frame,
 /// by name; [`GeometryError::CurvePathUnsupported`] when a segment is placed
 /// along a curve relation and `evaluator` reads single curves only.
 pub fn basis_curve_path(
@@ -369,16 +389,24 @@ fn inner_seams(pieces: &[Piece<'_>]) -> Vec<(usize, Seam)> {
 }
 
 /// The typed refusal an evaluator's answer names, if it is one of a
-/// capability it lacks: curve paths, open ends, certified joints.
+/// capability it lacks (curve paths, open ends, piece bounds, certified
+/// joints) or a trim point it cannot resolve (#436).
 fn path_refusal(error: &GeomError, placement: EntityId, basis: EntityId) -> Option<GeometryError> {
     let GeomError::UnsupportedInput { input, .. } = error else {
         return None;
     };
-    if *input == CURVE_PATH_UNSUPPORTED {
+    let input = *input;
+    if input == CURVE_PATH_UNSUPPORTED {
         Some(GeometryError::CurvePathUnsupported { placement, basis })
-    } else if *input == OPEN_PATH_END_UNSUPPORTED {
+    } else if input == OPEN_PATH_END_UNSUPPORTED {
         Some(GeometryError::CurvePathOpenEndUnsupported { placement, basis })
-    } else if *input == PATH_JOINT_DISTANCES_UNSUPPORTED {
+    } else if input == PATH_PIECE_BOUND_UNSUPPORTED {
+        Some(GeometryError::CurvePathBoundUnsupported { placement, basis })
+    } else if input == PATH_POINT_OFF_CURVE {
+        Some(GeometryError::PathPointOffCurve { placement, basis })
+    } else if input == PATH_POINT_AMBIGUOUS {
+        Some(GeometryError::PathPointAmbiguous { placement, basis })
+    } else if input == PATH_JOINT_DISTANCES_UNSUPPORTED {
         Some(GeometryError::PathJointDistancesUnsupported { placement, basis })
     } else {
         None
@@ -415,14 +443,7 @@ impl Reader<'_, '_> {
             ))),
             None => path_curve(piece.curve),
         };
-        // A piece whose length is a quadrature runs to its curve's end,
-        // which the evaluator resolves (#427); it starts at the curve's
-        // start.
-        let mut out = if piece.open {
-            PathPiece::whole(curve)
-        } else {
-            PathPiece::new(curve, piece.start, piece.end)
-        };
+        let mut out = span(curve, piece);
         if piece.reversed {
             out = out.reversed();
         }
@@ -470,12 +491,7 @@ impl Reader<'_, '_> {
                         let Some(piece) = run.first() else {
                             return Err(self.unsupported(PLACED_SEGMENT));
                         };
-                        let whole = if piece.open {
-                            PathPiece::whole(path_curve2(curve))
-                        } else {
-                            PathPiece::new(path_curve2(curve), piece.start, piece.end)
-                        };
-                        (whole, at)
+                        (span(path_curve2(curve), piece), at)
                     }
                 };
                 let path = CurvePath::from(piece);
@@ -488,10 +504,11 @@ impl Reader<'_, '_> {
             None => {
                 let pieces = self.run(basis)?;
                 let path = self.path(&pieces, depth)?;
-                if pieces.iter().any(|piece| piece.open) {
-                    // Along a path with an open piece the station is read
-                    // within its own seam-snapping window, as the kernel
-                    // reads it (#427, module documentation); never exact.
+                if !pieces.iter().all(Piece::is_stated) {
+                    // Along a path with an open or bounded piece (#427,
+                    // #436) the station is read within its own
+                    // seam-snapping window, as the kernel reads it (module
+                    // documentation); never exact.
                     let frame = read_open(
                         self.evaluator,
                         &path,
@@ -546,7 +563,8 @@ impl Reader<'_, '_> {
     }
 
     /// The pieces of the curve a segment is placed along, any whose length
-    /// is a quadrature left open (#427).
+    /// is a quadrature left open (#427), any trim of an ellipse or a
+    /// B-spline bounded (#436).
     fn run(&self, node: NodeId) -> GeometryResult<Vec<Piece<'_>>> {
         relation_pieces(self.session, node)
             .map(|(pieces, _)| pieces)
@@ -582,6 +600,26 @@ impl Reader<'_, '_> {
             _ => self.unsupported(PLACED_SEGMENT),
         }
     }
+}
+
+/// The span `piece` keeps of `curve`, forwards and unplaced: stated, or
+/// with an end the evaluator resolves. A piece whose length is a
+/// quadrature runs to its curve's end (#427); a trim of an ellipse or a
+/// B-spline at an interior parameter or a point is bounded there (#436),
+/// either end possibly a stated distance.
+fn span(curve: PathCurve, piece: &Piece<'_>) -> PathPiece {
+    let mut out = if piece.open {
+        PathPiece::to_end(curve, piece.start)
+    } else {
+        PathPiece::new(curve, piece.start, piece.end)
+    };
+    if let Some(bound) = piece.start_bound {
+        out = out.with_start(bound);
+    }
+    if let Some(bound) = piece.end_bound {
+        out = out.with_end(bound);
+    }
+    out
 }
 
 /// A stored curve as a path piece's curve.
