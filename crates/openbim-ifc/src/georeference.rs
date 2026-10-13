@@ -8,18 +8,26 @@
 //! layer. It gates itself on `all(georef, properties)` with an inner
 //! `#![cfg]`, so the module declaration compiles to nothing without both.
 //!
-//! Nothing is guessed. The release is pinned by `ifc-georef` (IFC4 or
-//! IFC4X3; IFC2X3 declares no georeferencing), the operations are found by
-//! the pinned release's subtype test, and the project length unit is
-//! resolved exactly by `ifc-properties`. A model with no coordinate
-//! operation resolves to an empty list without asking for its units.
+//! Nothing is guessed. The release is pinned by `ifc-georef`: in IFC4 and
+//! IFC4X3 the operations are the `IfcCoordinateOperation` entities, found
+//! by the pinned release's subtype test; IFC2X3, which declares none, is
+//! read through the `ePSet_MapConversion` and `ePSet_ProjectedCRS`
+//! property sets (#451, see `ifc_georef::resolve_property_set_georeferencing`
+//! for the source and the rules). The release decides which is read; the
+//! two are never merged. The project length unit is resolved exactly by
+//! `ifc-properties`. A model with nothing to read resolves to an empty
+//! list without asking for its units.
 #![cfg(all(feature = "georef", feature = "properties"))]
 
 use std::fmt;
 
-use ifc_georef::{resolve_project_to_map_in, GeorefError, GeorefView, ProjectToMap};
+use ifc_georef::{
+    has_property_set_georeferencing, resolve_project_to_map_in,
+    resolve_property_set_georeferencing, GeorefError, GeorefView, ProjectToMap,
+};
 use ifc_model::{EntityId, Model};
 use ifc_properties::{exact_unit, ExactUnitError};
+use ifc_schema::{for_version, SchemaVersion};
 
 /// Why a model's coordinate operations could not be resolved.
 #[derive(Debug, Clone, PartialEq)]
@@ -55,21 +63,43 @@ impl std::error::Error for GeoreferencingError {}
 /// Every `IfcCoordinateOperation` in `model` resolved to project-to-map
 /// parameters, in file order.
 ///
-/// The model's `FILE_SCHEMA` must pin IFC4 or IFC4X3
-/// ([`GeorefView::for_model`]). Operations are the entities the pinned
-/// release declares `IfcCoordinateOperation` subtypes; each is resolved by
-/// [`resolve_project_to_map_in`] with the project length unit's exact SI
-/// scale ([`exact_unit`] of `IFCLENGTHMEASURE`).
+/// The model's `FILE_SCHEMA` must pin IFC2X3, IFC4 or IFC4X3. Under IFC4
+/// and IFC4X3 ([`GeorefView::for_model`]) the operations are the entities
+/// the pinned release declares `IfcCoordinateOperation` subtypes, each
+/// resolved by [`resolve_project_to_map_in`]. Under IFC2X3 they are the
+/// `ePSet_MapConversion` and `ePSet_ProjectedCRS` pairs
+/// ([`resolve_property_set_georeferencing`]): the `IfcProject`'s, or else
+/// one per `IfcSite` carrying them, ordered by host. Property sets of those
+/// names in an IFC4 or IFC4X3 file are not read. Both use the project
+/// length unit's exact SI scale ([`exact_unit`] of `IFCLENGTHMEASURE`).
 ///
 /// # Errors
 ///
-/// [`GeoreferencingError::Georef`] when the release is not IFC4 or IFC4X3,
-/// or any operation cannot be resolved (an IFC4X3 plane-angle
+/// [`GeoreferencingError::Georef`] when the release is not IFC2X3, IFC4 or
+/// IFC4X3, an IFC2X3 property set is malformed or incomplete, or any
+/// operation cannot be resolved (an IFC4X3 plane-angle
 /// `IfcRigidOperation` onto an `IfcGeographicCRS` among them: it has no
 /// project-to-map form); [`GeoreferencingError::ProjectLengthUnit`] or
 /// [`GeoreferencingError::OffsetLengthUnit`] when an operation exists but
 /// the project length unit cannot scale it.
 pub fn georeferencing(model: &Model) -> Result<Vec<ProjectToMap>, GeoreferencingError> {
+    if let Some(token) = declared_ifc2x3(model) {
+        // A build without the IFC2X3 table refuses the release (#306),
+        // whether or not the model carries the sets.
+        if for_version(SchemaVersion::Ifc2x3).is_err() {
+            return Err(GeoreferencingError::Georef(
+                GeorefError::UnsupportedSchema {
+                    token: token.to_owned(),
+                },
+            ));
+        }
+        if !has_property_set_georeferencing(model) {
+            return Ok(Vec::new());
+        }
+        let scale = project_length_scale(model)?;
+        return resolve_property_set_georeferencing(model, scale)
+            .map_err(GeoreferencingError::Georef);
+    }
     let view = GeorefView::for_model(model).map_err(GeoreferencingError::Georef)?;
     let schema = view.schema();
     let types: Vec<&str> = model
@@ -90,14 +120,33 @@ pub fn georeferencing(model: &Model) -> Result<Vec<ProjectToMap>, Georeferencing
         model.ids().enumerate().map(|(i, id)| (id, i)).collect();
     operations.sort_by_key(|id| position.get(id).copied().unwrap_or(usize::MAX));
 
+    let scale = project_length_scale(model)?;
+    operations
+        .into_iter()
+        .map(|id| resolve_project_to_map_in(&view, id, scale))
+        .collect::<Result<_, _>>()
+        .map_err(GeoreferencingError::Georef)
+}
+
+/// The header's one schema token when it declares IFC2X3, the release
+/// read through property sets. Any other header, missing or ambiguous ones
+/// included, goes to [`GeorefView::for_model`], which refuses it with its
+/// reason.
+fn declared_ifc2x3(model: &Model) -> Option<&str> {
+    match model.header().schema.as_slice() {
+        [token] if SchemaVersion::from_header_token(token) == Some(SchemaVersion::Ifc2x3) => {
+            Some(token)
+        }
+        _ => None,
+    }
+}
+
+/// The project length unit's exact metre scale.
+fn project_length_scale(model: &Model) -> Result<f64, GeoreferencingError> {
     let unit = exact_unit(model, "IFCLENGTHMEASURE", None)
         .map_err(GeoreferencingError::ProjectLengthUnit)?;
     if unit.offset != 0.0 {
         return Err(GeoreferencingError::OffsetLengthUnit { unit: unit.unit });
     }
-    operations
-        .into_iter()
-        .map(|id| resolve_project_to_map_in(&view, id, unit.scale))
-        .collect::<Result<_, _>>()
-        .map_err(GeoreferencingError::Georef)
+    Ok(unit.scale)
 }

@@ -4,9 +4,12 @@
 //! `IfcAlignmentCant` are all `IfcProduct` subtypes, so they carry the same
 //! seven inherited attributes before adding their own.
 //!
-//! Nesting is deliberately not written here. `IfcRelNests` is a generic
-//! relationship owned by `ifc-author`, and duplicating its construction in
-//! this crate would give the same relationship two writers.
+//! Nesting is not written here: these writers stage the products only, and
+//! the caller relates them with an `IfcRelNests` (alignment to layouts,
+//! layout to `IfcAlignmentSegment`s). No crate has a dedicated generic
+//! `IfcRelNests` writer (`ifc-systems::nest_ports` nests ports only); the
+//! relationship is staged as a schema-checked record built with
+//! `ifc_author::EntityBuilder`, or as a plain `Entity` on the transaction.
 
 use ifc_model::{Entity, EntityId, Transaction, Value};
 

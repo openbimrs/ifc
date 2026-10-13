@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Documentation
+
+- `contain`, `contain_with_owner_history`, `serve_buildings` and
+  `serve_buildings_with_owner_history` are documented as the canonical
+  writers; the `ifc-systems` duplicates are deprecated (#492).
+
+Semver: patch. Documentation only.
+
 ## [0.5.0] - 2026-10-03
 
 ### Changed (breaking)

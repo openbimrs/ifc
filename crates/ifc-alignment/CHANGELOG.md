@@ -12,6 +12,18 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed
+
+- The writers' GlobalId check is `ifc_model::guid::Guid::parse` (#492):
+  22 characters were counted, so a text outside the IFC base-64 alphabet
+  or with a leading digit above `3` was staged. Both are now refused with
+  `AlignmentError::Invalid` naming `GlobalId`, before anything is staged.
+- The `authoring::layout` docs no longer claim `ifc-author` owns an
+  `IfcRelNests` writer; they say how to stage the nesting (#492).
+
+Semver: minor. A writer now refuses GlobalIds it accepted; a well-formed
+GlobalId behaves as before.
+
 ## [0.8.1] - 2026-10-10
 
 Semver: a patch release. No public item or behaviour changes; the

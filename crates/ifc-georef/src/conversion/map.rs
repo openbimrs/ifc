@@ -98,12 +98,7 @@ pub(super) fn lower(
             });
         }
     }
-    let (sx, sy) = (scale * fx, scale * fy);
-    let linear = [
-        [a * sx, b * sx, 0.0],
-        [-b * sy, a * sy, 0.0],
-        [0.0, 0.0, scale * fz],
-    ];
+    let linear = linear_part(scale, (a, b), factors);
     let metres = map_unit.metres_per_unit;
     let translation = [
         op.finite(slot::EASTINGS, "Eastings", eastings * metres)?,
@@ -123,6 +118,24 @@ pub(super) fn lower(
         linear,
         translation,
     ))
+}
+
+/// The metre-to-metre linear part of a map conversion: `scale` (declared
+/// scale times the map-to-project unit ratio), the normalised x axis
+/// `(a, b)` and the per-axis factors, as three columns. Shared by the
+/// entity reader and the IFC2X3 property-set reader (`pset.rs`), so both
+/// lower the same parameters to the same numbers.
+pub(super) fn linear_part(
+    scale: f64,
+    (a, b): (f64, f64),
+    (fx, fy, fz): (f64, f64, f64),
+) -> [[f64; 3]; 3] {
+    let (sx, sy) = (scale * fx, scale * fy);
+    [
+        [a * sx, b * sx, 0.0],
+        [-b * sy, a * sy, 0.0],
+        [0.0, 0.0, scale * fz],
+    ]
 }
 
 /// A mandatory `IfcMapConversionScaled` factor: finite and positive.

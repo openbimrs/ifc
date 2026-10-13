@@ -58,6 +58,15 @@ Semver: minor (additive).
 
 Semver: additive, a minor release while 0.x.
 
+### Changed
+
+- `IfcModel.georeferencing()` reads IFC2X3 files through their `ePSet_MapConversion` and
+  `ePSet_ProjectedCRS` property sets instead of refusing them as
+  `unsupported-schema` (#451); such a record's source kind is
+  `property-set`. Through `openbim-ifc-binding-core`.
+
+Semver: minor (ADR 0021).
+
 ## [0.8.0] - 2026-10-13
 
 ### Changed (#433, wire format 1.3)

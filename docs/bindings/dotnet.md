@@ -567,7 +567,7 @@ and `MeshedProduct` included, from its XML documentation comments.
 | `MaterialAssignment? Material(ulong id)` | The material association of object `id`, its own or its type's, or null. |
 | `SystemsView Systems()` | Every system with its members and served structures, and the memberships the reader could not honour. |
 | `Cost Cost()` | Every cost schedule and cost item; values as authored, typed. |
-| `IReadOnlyList<MapConversion> Georeferencing()` | Every coordinate operation resolved with the project length unit; empty when the model has none. |
+| `IReadOnlyList<MapConversion> Georeferencing()` | Every coordinate operation resolved with the project length unit; empty when the model has none. IFC2X3 is read from its `ePSet_MapConversion` and `ePSet_ProjectedCRS` property sets. |
 | `int Count { get; }` | Number of entities. |
 | `string? Schema { get; }` | The first `FILE_SCHEMA` token, e.g. `IFC4`, or null. |
 | `IReadOnlyList<string> Diagnostics { get; }` | Non-fatal problems found while reading, such as the records a lenient read skipped. |

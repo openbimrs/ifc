@@ -323,7 +323,9 @@ impl IfcModel {
     }
 
     /// Every coordinate operation (map conversion) resolved with the
-    /// project length unit; empty when the model has none.
+    /// project length unit; empty when the model has none. IFC2X3 is read
+    /// from its `ePSet_MapConversion` and `ePSet_ProjectedCRS` property
+    /// sets.
     #[wasm_bindgen(js_name = georeferencing, unchecked_return_type = "MapConversion[]")]
     pub fn georeferencing_js(&self) -> Result<Array, JsValue> {
         let maps = self.0.georeferencing().map_err(js_error)?;

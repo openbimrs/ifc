@@ -168,14 +168,16 @@ fn domain_refusals_keep_their_shared_status_and_code() {
     assert_eq!(openbim_ifc_v0_1_model_destroy(model), OpenbimIfcStatus::Ok);
 
     let text = String::from_utf8(CLASSIFIED.to_vec()).unwrap();
-    let ifc2x3 = parse(text.replace("'IFC4'", "'IFC2X3'").as_bytes());
+    // IFC2X3 is read through property sets (#451); IFC4X1 has no verified
+    // georeferencing layout and stays refused.
+    let ifc4x1 = parse(text.replace("'IFC4'", "'IFC4X1'").as_bytes());
     // SAFETY (closure): as above.
     let refused = tape(|n, nc, nr, s, sc, sr| unsafe {
-        openbim_ifc_v0_1_model_georeferencing(ifc2x3, count_out, n, nc, nr, s, sc, sr)
+        openbim_ifc_v0_1_model_georeferencing(ifc4x1, count_out, n, nc, nr, s, sc, sr)
     });
     assert_eq!(refused, Err(OpenbimIfcStatus::UnsupportedSchema));
-    assert_eq!(last_code(ifc2x3), "unsupported-schema");
-    assert_eq!(openbim_ifc_v0_1_model_destroy(ifc2x3), OpenbimIfcStatus::Ok);
+    assert_eq!(last_code(ifc4x1), "unsupported-schema");
+    assert_eq!(openbim_ifc_v0_1_model_destroy(ifc4x1), OpenbimIfcStatus::Ok);
 
     // A null count pointer is refused before the model is read.
     // SAFETY: deliberately null count; no buffer is touched.

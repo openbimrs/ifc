@@ -9,6 +9,10 @@
 //! RelatedElements`, whose `RelatedElements` there is an
 //! `IfcSpatialReferenceSelect` (IFC4: `IfcProduct`).
 
+// The deprecated `ifc_systems` containment and services writers (#492)
+// stay covered here until they are removed.
+#![allow(deprecated)]
+
 use ifc_model::{Codec, EntityId, Model, Transaction};
 use ifc_step::StepCodec;
 use ifc_systems::{

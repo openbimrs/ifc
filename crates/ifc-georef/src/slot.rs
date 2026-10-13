@@ -150,6 +150,36 @@ pub(crate) mod measure_with_unit {
     pub const UNIT_COMPONENT: usize = 1;
 }
 
+/// `IfcRelDefinesByProperties` (IFC2X3 TC1): `IfcRoot` (0..3), then
+/// `IfcRelDefines.RelatedObjects` and the relating definition. Read only by
+/// the IFC2X3 property-set georeferencing (`conversion::pset`).
+pub(crate) mod rel_defines_by_properties {
+    /// `RelatedObjects : SET [1:?] OF IfcObject`.
+    pub const RELATED_OBJECTS: usize = 4;
+    /// `RelatingPropertyDefinition : IfcPropertySetDefinition`.
+    pub const RELATING_PROPERTY_DEFINITION: usize = 5;
+}
+
+/// `IfcPropertySet` (IFC2X3 TC1): `IfcRoot` (0..3), then `HasProperties`.
+pub(crate) mod property_set {
+    /// `Name : OPTIONAL IfcLabel`, inherited from `IfcRoot` (`WR31`
+    /// requires it on a property set).
+    pub const NAME: usize = 2;
+    /// `HasProperties : SET [1:?] OF IfcProperty`.
+    pub const HAS_PROPERTIES: usize = 4;
+}
+
+/// `IfcPropertySingleValue` (IFC2X3 TC1): `IfcProperty` contributes `Name`
+/// and `Description`.
+pub(crate) mod property_single_value {
+    /// `Name : IfcIdentifier`, inherited from `IfcProperty`.
+    pub const NAME: usize = 0;
+    /// `NominalValue : OPTIONAL IfcValue`.
+    pub const NOMINAL_VALUE: usize = 2;
+    /// `Unit : OPTIONAL IfcUnit`.
+    pub const UNIT: usize = 3;
+}
+
 #[cfg(test)]
 mod tests {
     use ifc_schema::{ifc2x3, ifc4, ifc4x3, Schema};
@@ -367,6 +397,37 @@ mod tests {
             assert_eq!(names[site::REF_LONGITUDE], "RefLongitude", "{names:?}");
             assert_eq!(names[site::REF_ELEVATION], "RefElevation", "{names:?}");
         }
+    }
+
+    /// The IFC2X3 property-set readers index `IfcRelDefinesByProperties`,
+    /// `IfcPropertySet` and `IfcPropertySingleValue`; pin their IFC2X3
+    /// layouts.
+    #[test]
+    fn property_set_slots_match_the_bundled_ifc2x3_schema() {
+        let schema = ifc2x3();
+        let rel = schema.attribute_names("IfcRelDefinesByProperties");
+        assert_eq!(rel.len(), 6, "{rel:?}");
+        assert_eq!(
+            rel[rel_defines_by_properties::RELATED_OBJECTS],
+            "RelatedObjects"
+        );
+        assert_eq!(
+            rel[rel_defines_by_properties::RELATING_PROPERTY_DEFINITION],
+            "RelatingPropertyDefinition"
+        );
+        let pset = schema.attribute_names("IfcPropertySet");
+        assert_eq!(pset.len(), 5, "{pset:?}");
+        assert_eq!(pset[property_set::NAME], "Name");
+        assert_eq!(pset[property_set::HAS_PROPERTIES], "HasProperties");
+        let single = schema.attribute_names("IfcPropertySingleValue");
+        assert_eq!(
+            single,
+            ["Name", "Description", "NominalValue", "Unit"],
+            "{single:?}"
+        );
+        assert_eq!(single[property_single_value::NAME], "Name");
+        assert_eq!(single[property_single_value::NOMINAL_VALUE], "NominalValue");
+        assert_eq!(single[property_single_value::UNIT], "Unit");
     }
 
     /// IFC2X3 is refused by `GeorefView` because it declares none of the

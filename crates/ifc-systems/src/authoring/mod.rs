@@ -55,11 +55,14 @@ pub use distribution::{
 pub use error::{SystemAuthoringError, SystemAuthoringResult};
 pub use owned::{
     assign_to_group_with_owner_history, connect_port_to_element_with_owner_history,
-    connect_ports_with_owner_history, contain_in_spatial_structure_with_owner_history,
-    create_group_with_owner_history, create_port_with_owner_history,
-    create_system_with_owner_history, nest_ports_with_owner_history,
-    reference_in_spatial_structure_with_owner_history,
+    connect_ports_with_owner_history, create_group_with_owner_history,
+    create_port_with_owner_history, create_system_with_owner_history,
+    nest_ports_with_owner_history, reference_in_spatial_structure_with_owner_history,
 };
+// Deprecated duplicates of ifc-spatial's writers (#492), still exported.
+#[allow(deprecated)]
+pub use owned::contain_in_spatial_structure_with_owner_history;
+#[allow(deprecated)]
 pub use services::{serve_buildings, serve_buildings_with_owner_history};
 pub use system_kind::{
     create_classified_system, create_classified_system_with_owner_history, ClassifiedSystemDraft,
@@ -283,6 +286,10 @@ pub fn connect_ports(
 
 /// Stage an `IfcRelContainedInSpatialStructure`.
 ///
+/// Deprecated (#492): `ifc_spatial::contain` is the canonical writer of
+/// this relationship, with the same rules and layout. This one stays, with
+/// its own error type, for compatibility.
+///
 /// Containment is exclusive: an element belongs to exactly one
 /// structure. Use [`reference_in_spatial_structure`] for the
 /// non-exclusive case, such as a duct crossing several storeys.
@@ -294,6 +301,10 @@ pub fn connect_ports(
 ///
 /// Refuses a malformed GlobalId, an empty element list, and the
 /// structure listed among its own contents.
+#[deprecated(
+    since = "0.5.0",
+    note = "use ifc_spatial::contain, the canonical IfcRelContainedInSpatialStructure writer (#492)"
+)]
 pub fn contain_in_spatial_structure(
     tx: &mut Transaction,
     global_id: &str,

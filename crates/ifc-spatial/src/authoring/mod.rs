@@ -366,6 +366,9 @@ pub fn aggregate(
 
 /// Stage an `IfcRelContainedInSpatialStructure`.
 ///
+/// The canonical containment writer (#492):
+/// `ifc_systems::contain_in_spatial_structure` is a deprecated duplicate.
+///
 /// Note the slot inversion against IfcRelAggregates: here the
 /// structure is slot 5 and the elements slot 4. Passing `structure`
 /// as the parent keeps callers from having to know that.

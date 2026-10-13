@@ -13,7 +13,8 @@ use crate::slot::well_known_text as wkt_slot;
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub struct ProjectedCrs {
-    /// The `IfcProjectedCRS` entity this was read from.
+    /// The `IfcProjectedCRS` entity this was read from, or for IFC2X3 the
+    /// `ePSet_ProjectedCRS` property set.
     pub entity: EntityId,
     /// CRS identifier, conventionally an EPSG code such as `EPSG:25832`.
     ///
@@ -31,7 +32,8 @@ pub struct ProjectedCrs {
     pub map_projection: Option<String>,
     /// Optional projection zone, such as `32N`.
     pub map_zone: Option<String>,
-    /// `MapUnit` as authored: `None` when the file leaves it unset.
+    /// `MapUnit` as authored: `None` when the file leaves it unset. For
+    /// IFC2X3, the optional `MapUnit` text property, an SI length unit name.
     ///
     /// IFC4 and IFC4X3 both declare `MapUnit : OPTIONAL IfcNamedUnit`
     /// (`WHERE` it is a `LENGTHUNIT` when it exists); an omitted unit means

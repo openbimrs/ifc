@@ -69,6 +69,19 @@ change of every binding.
 Semver: additive (internal crate, not published); a minor change of every
 binding.
 
+### Changed (#451)
+
+- `IfcModel::georeferencing` reads IFC2X3 `ePSet_MapConversion` and
+  `ePSet_ProjectedCRS` instead of refusing the release with
+  `unsupported-schema`. Each pair crosses as a `map-conversion` record
+  whose `source_kind` is the new value `property-set`, `source` the
+  `IfcProject` or `IfcSite`, `operation` the `ePSet_MapConversion` set and
+  `target_crs.id` the `ePSet_ProjectedCRS` set. A malformed or incomplete
+  set is `invalid-model`.
+
+Semver: additive (internal crate, not published); a minor change of every
+binding (ADR 0021).
+
 ### Changed (#433, wire format 1.3)
 
 - `GEOMETRY_FORMAT_VERSION` is `"1.3"`, the newest version a build writes

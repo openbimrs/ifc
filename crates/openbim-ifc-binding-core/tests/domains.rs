@@ -740,7 +740,7 @@ mod georef {
 
     #[test]
     fn a_release_without_georeferencing_is_refused_and_none_is_empty() {
-        let refused = declaring(CLASSIFIED, "IFC2X3")
+        let refused = declaring(CLASSIFIED, "IFC4X1")
             .georeferencing()
             .unwrap_err();
         assert_eq!(refused.code(), "unsupported-schema", "{refused}");

@@ -10,8 +10,12 @@ latitude, longitude and elevation are read for IFC2X3, IFC4 and IFC4X3, and
 a site elevation that disagrees with the map conversion's orthogonal height
 is reported, never silently resolved. An omitted `IfcProjectedCRS.MapUnit`
 resolves to the project length unit, while the unit as authored stays
-readable (`ProjectToMap::declared_map_unit`, `None` when unset). It does not
-place products or reproject coordinates.
+readable (`ProjectToMap::declared_map_unit`, `None` when unset). IFC2X3,
+which declares no coordinate-operation entities, is read through the
+`ePSet_MapConversion` and `ePSet_ProjectedCRS` property sets of the
+buildingSMART "User Guide for Geo-referencing in IFC" v2.0
+(`resolve_property_set_georeferencing`) into the same resolved value. It
+does not place products or reproject coordinates.
 
 ```bash
 cargo add ifc-georef

@@ -11,6 +11,7 @@
 #![cfg(all(
     feature = "validate",
     feature = "systems",
+    feature = "spatial",
     feature = "schema",
     feature = "step"
 ))]
@@ -22,12 +23,13 @@ use ifc::systems::authoring::{
 };
 use ifc::systems::{
     assign_to_group_with_owner_history, connect_port_to_element_with_owner_history,
-    connect_ports_with_owner_history, contain_in_spatial_structure_with_owner_history,
-    create_classified_system_with_owner_history, create_group_with_owner_history,
-    create_port_with_owner_history, create_system, create_system_with_owner_history,
-    nest_ports_with_owner_history, reference_in_spatial_structure_with_owner_history,
-    ClassifiedSystemDraft, SystemKind,
+    connect_ports_with_owner_history, create_classified_system_with_owner_history,
+    create_group_with_owner_history, create_port_with_owner_history, create_system,
+    create_system_with_owner_history, nest_ports_with_owner_history,
+    reference_in_spatial_structure_with_owner_history, ClassifiedSystemDraft, SystemKind,
 };
+// Containment is staged with ifc-spatial's canonical writer (#492).
+use ifc::spatial::contain_with_owner_history;
 use ifc::{Codec, Model, StepCodec};
 use ifc_model::{EntityId, Transaction};
 
@@ -135,15 +137,7 @@ fn author(model: &mut Model, version: SchemaVersion) -> Vec<EntityId> {
         connect_ports_with_owner_history(&mut tx, m, &g(11), p1, p2, Some(bend), OWNER).unwrap(),
         assign_to_group_with_owner_history(&mut tx, m, &g(12), system, &[s1, s2], OWNER).unwrap(),
         assign_to_group_with_owner_history(&mut tx, m, &g(13), zone, &[SPACE], OWNER).unwrap(),
-        contain_in_spatial_structure_with_owner_history(
-            &mut tx,
-            m,
-            &g(14),
-            STOREY,
-            &[s1, s2, bend],
-            OWNER,
-        )
-        .unwrap(),
+        contain_with_owner_history(&mut tx, m, &g(14), STOREY, &[s1, s2, bend], OWNER).unwrap(),
         reference_in_spatial_structure_with_owner_history(&mut tx, m, &g(15), SPACE, &[s1], OWNER)
             .unwrap(),
     ]);

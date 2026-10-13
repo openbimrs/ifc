@@ -3,7 +3,7 @@
 
 #![cfg(all(feature = "georef", feature = "properties", feature = "step"))]
 
-use ifc::georef::{GeorefError, OperationKind};
+use ifc::georef::{GeorefError, OperationKind, OperationSource};
 use ifc::{georeferencing, Codec, GeoreferencingError, StepCodec};
 
 const FIXTURE: &str = "../../test/fixtures/synthetic-surfaces/synthetic_conic_offset_bounded.ifc";
@@ -69,14 +69,78 @@ fn no_operation_needs_no_units() {
 }
 
 #[test]
-fn a_release_without_georeferencing_is_refused() {
-    let text = MILLIMETRE_IFC4.replace("'IFC4'", "'IFC2X3'");
+fn a_release_without_a_verified_georeferencing_layout_is_refused() {
+    let text = MILLIMETRE_IFC4.replace("'IFC4'", "'IFC4X1'");
     assert!(matches!(
         georeferencing(&read(&text)),
         Err(GeoreferencingError::Georef(
             GeorefError::UnsupportedSchema { .. }
         ))
     ));
+}
+
+const GEOREF_FIXTURES: &str = "../../test/fixtures/synthetic-georef";
+
+fn fixture(name: &str) -> ifc::Model {
+    let text = std::fs::read_to_string(format!("{GEOREF_FIXTURES}/{name}")).expect("fixture");
+    read(&text)
+}
+
+/// #451: IFC2X3 is read through `ePSet_MapConversion` and
+/// `ePSet_ProjectedCRS`, with the project length unit resolved here, and
+/// matches its IFC4 twin.
+#[test]
+fn ifc2x3_property_sets_resolve_like_their_ifc4_twin() {
+    let ifc2x3 = georeferencing(&fixture("epset_project_ifc2x3.ifc")).expect("IFC2X3 resolves");
+    let ifc4 = georeferencing(&fixture("map_conversion_ifc4.ifc")).expect("IFC4 resolves");
+    let ([pset], [entity]) = (ifc2x3.as_slice(), ifc4.as_slice()) else {
+        panic!("one operation each: {ifc2x3:?} {ifc4:?}");
+    };
+    assert_eq!(pset.source, OperationSource::PropertySet(ifc::EntityId(13)));
+    assert!((pset.project_unit.metres_per_unit - 0.001).abs() < 1e-15);
+    assert_eq!(pset.project_unit, entity.project_unit);
+    assert_eq!(pset.map_unit, entity.map_unit);
+    assert_eq!(pset.linear_part(), entity.linear_part());
+    assert_eq!(pset.translation(), entity.translation());
+    assert_eq!(pset.target_crs.name, entity.target_crs.name);
+}
+
+#[test]
+fn an_ifc2x3_model_without_the_sets_has_no_operation_and_needs_no_units() {
+    let text = MILLIMETRE_IFC4
+        .replace("'IFC4'", "'IFC2X3'")
+        .replace("#9=IFCMAPCONVERSION(#5,#8,500.,600.,10.,$,$,$);\n", "")
+        .replace("#2=IFCUNITASSIGNMENT((#1));", "#2=IFCUNITASSIGNMENT((#3));");
+    assert_eq!(georeferencing(&read(&text)), Ok(Vec::new()));
+}
+
+#[test]
+fn a_malformed_ifc2x3_property_set_is_refused() {
+    assert!(matches!(
+        georeferencing(&fixture("epset_split_pair_ifc2x3.ifc")),
+        Err(GeoreferencingError::Georef(
+            GeorefError::IncompletePropertySets { .. }
+        ))
+    ));
+}
+
+/// The release decides: property sets of the georeferencing names in an
+/// IFC4 file are not read, only its `IfcMapConversion`.
+#[test]
+fn ifc4_entities_are_read_and_ifc4_property_sets_are_not() {
+    let text = MILLIMETRE_IFC4.replace(
+        "ENDSEC;\nEND-ISO",
+        "#20=IFCPROPERTYSINGLEVALUE('Eastings',$,IFCLENGTHMEASURE(1.),$);
+#21=IFCPROPERTYSET('0ezb0oWf13sB2o5xBWMMb9',$,'ePSet_MapConversion',$,(#20));
+#22=IFCRELDEFINESBYPROPERTIES('2ezb0oWf13sB2o5xBWMMb9',$,$,$,(#6),#21);
+ENDSEC;\nEND-ISO",
+    );
+    let model = read(&text);
+    assert!(ifc::georef::has_property_set_georeferencing(&model));
+    let operations = georeferencing(&model).expect("resolves");
+    assert_eq!(operations.len(), 1);
+    assert_eq!(operations[0].operation, ifc::EntityId(9));
+    assert_eq!(operations[0].eastings, 500.0);
 }
 
 #[test]

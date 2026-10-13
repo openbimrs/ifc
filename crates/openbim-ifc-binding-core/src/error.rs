@@ -26,7 +26,7 @@ pub enum BindingError {
     OutOfRange(String),
     /// The file's header names no schema this crate bundles, or (from a
     /// domain view, #123) a release the view is not verified for, such as
-    /// IFC4X1 for property sets or IFC2X3 for georeferencing.
+    /// IFC4X1 for property sets or georeferencing.
     UnsupportedSchema(String),
     /// A file could not be opened or read.
     Io(String),

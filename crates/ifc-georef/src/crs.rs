@@ -15,3 +15,4 @@ pub use unit::{AngleUnit, LengthUnit};
 
 pub(crate) use geographic::geographic_crs;
 pub(crate) use projected::projected_crs;
+pub(crate) use unit::resolve_length_unit;

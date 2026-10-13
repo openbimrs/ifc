@@ -20,7 +20,10 @@
 //! and both element-attachment forms, the undirected connection graph with
 //! cycle-safe traversal, flow roles and direction, zones, and what a system
 //! serves: `IfcRelServicesBuildings` and the IFC4X3 `ServicesFacilities`
-//! references, read onto [`System`] and authored with [`serve_buildings`].
+//! references, read onto [`System`]. Author the relationship with
+//! `ifc_spatial::serve_buildings`; this crate's [`serve_buildings`] is a
+//! deprecated duplicate (#492), as is [`contain_in_spatial_structure`]
+//! beside `ifc_spatial::contain`.
 
 pub mod authoring;
 mod connectivity;
@@ -33,13 +36,17 @@ mod system;
 pub use authoring::{
     assign_to_group, assign_to_group_with_owner_history, connect_port_to_element,
     connect_port_to_element_with_owner_history, connect_ports, connect_ports_with_owner_history,
-    contain_in_spatial_structure, contain_in_spatial_structure_with_owner_history,
     create_classified_system, create_classified_system_with_owner_history, create_group,
     create_group_with_owner_history, create_port, create_port_with_owner_history, create_system,
     create_system_with_owner_history, nest_ports, nest_ports_with_owner_history,
     reference_in_spatial_structure, reference_in_spatial_structure_with_owner_history,
-    serve_buildings, serve_buildings_with_owner_history, ClassifiedSystemDraft,
-    SystemAuthoringError, SystemAuthoringResult, SystemKind,
+    ClassifiedSystemDraft, SystemAuthoringError, SystemAuthoringResult, SystemKind,
+};
+// Deprecated duplicates of ifc-spatial's writers (#492), still exported.
+#[allow(deprecated)]
+pub use authoring::{
+    contain_in_spatial_structure, contain_in_spatial_structure_with_owner_history, serve_buildings,
+    serve_buildings_with_owner_history,
 };
 pub use connectivity::{
     Connection, ConnectionGraph, Direction, FlowNetwork, FlowQuery, NetworkGraph,

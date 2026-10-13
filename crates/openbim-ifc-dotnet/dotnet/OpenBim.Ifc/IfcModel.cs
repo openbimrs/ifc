@@ -717,7 +717,7 @@ public sealed unsafe class IfcModel : IDisposable
         return RecordDecoder.Decode<Cost>(Tape(m, (n, nc, nr, s, sc, sr) => NativeMethods.openbim_ifc_v0_1_model_cost(m, n, nc, nr, s, sc, sr)).One());
     }
 
-    /// <summary>Every coordinate operation resolved with the project length unit; empty when the model has none.</summary>
+    /// <summary>Every coordinate operation resolved with the project length unit; empty when the model has none. IFC2X3 is read from its <c>ePSet_MapConversion</c> and <c>ePSet_ProjectedCRS</c> property sets.</summary>
     public IReadOnlyList<MapConversion> Georeferencing()
     {
         using var lease = handle.Acquire();

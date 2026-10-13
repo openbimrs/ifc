@@ -77,6 +77,17 @@ Semver: additive, released on the 0.1 line: the C package keeps 0.1.x while
 the `v0_1` ABI is unchanged, because CMake's `find_package(openbim_ifc 0.1)`
 does not accept 0.2.
 
+### Changed
+
+- `openbim_ifc_v0_1_model_georeferencing` reads IFC2X3 files through their `ePSet_MapConversion` and
+  `ePSet_ProjectedCRS` property sets instead of refusing them as
+  `unsupported-schema` (#451); such a record's source kind is
+  `property-set`. Through `openbim-ifc-binding-core`. No `v0_1` symbol
+  changed.
+
+Semver: a behaviour change of an existing export, released on the 0.1
+line like the additions above: the `v0_1` ABI is unchanged.
+
 ## [0.1.10] - 2026-10-13
 
 ### Changed (#433, wire format 1.3)
