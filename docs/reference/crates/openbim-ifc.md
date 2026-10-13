@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.30.0 (2026-10-13) |
+| Latest release | 0.31.0 (2026-10-13) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -96,16 +96,13 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.30.0 (2026-10-13):
+Latest release, 0.31.0 (2026-10-13):
 
-### Changed (#433)
+### Changed
 
-- Requires `ifc-geometry` with #433: an `IfcOffsetCurveByDistances` along a
-  bounded basis whose length is a quadrature lowers, continued to the
-  basis's ends the kernel measures, and `product_graphs` labels such a
-  payload wire format 1.3 (`axiolid-model` 0.3.12, axiolid/kernel#303).
-  Every other payload keeps its version and bytes.
-
-Semver: minor, following the dependency.
+- Requires `ifc-geometry` 0.25: stations on IfcOffsetCurveByDistances
+  bases that lower to OffsetsAtStations lower with seam windows, and an
+  offset of an offset is refused by its own name (#443, part). Semver:
+  minor, following the dependency.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)
