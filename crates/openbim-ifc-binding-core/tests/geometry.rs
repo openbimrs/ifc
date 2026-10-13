@@ -258,6 +258,72 @@ mod mesh {
             ["missing-reference", "budget-exceeded", "invalid-model"]
         );
     }
+
+    #[test]
+    fn the_binding_fixture_states_no_colour() {
+        for mesh in fixture().product_meshes(None).unwrap() {
+            assert_eq!(mesh.colour, None, "{}", mesh.id);
+            assert_eq!(mesh.colour_refusal, None, "{}", mesh.id);
+        }
+    }
+
+    /// The generated #449 fixture: one cube per colour source.
+    fn colour_fixture(name: &str) -> IfcModel {
+        let path = format!(
+            "{}/../../test/fixtures/synthetic-colour/{name}",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        IfcModel::open(std::path::Path::new(&path)).expect("fixture reads")
+    }
+
+    #[test]
+    fn meshes_carry_the_item_layer_or_material_colour() {
+        use openbim_ifc_binding_core::ToRecord;
+        for (name, ids) in [
+            // MATERIAL, ITEM_OVER_MATERIAL, LAYER_OVER_MATERIAL, MULTI_LAYER
+            ("material_colour.ifc", [58, 89, 107, 125]),
+            ("material_colour_ifc4x3.ifc", [58, 89, 107, 125]),
+        ] {
+            let model = colour_fixture(name);
+            let meshes = model.product_meshes(Some(&ids)).unwrap();
+            let colour = |index: usize| meshes[index].colour.as_ref().expect(name);
+
+            let material = colour(0);
+            assert_eq!(
+                (material.red, material.green, material.blue),
+                (0.8, 0.1, 0.1)
+            );
+            assert_eq!(material.transparency, Some(0.25));
+            assert_eq!(material.source, "material");
+            assert_eq!(colour(1).source, "item");
+            assert_eq!(colour(1).blue, 0.9);
+            assert_eq!(colour(2).source, "layer");
+            assert_eq!(colour(2).red, 0.9);
+
+            let multi = &meshes[3];
+            assert_eq!(multi.colour, None);
+            assert!(
+                !multi.indices.is_empty(),
+                "the colour never refuses the mesh"
+            );
+            let refusal = multi.colour_refusal.as_ref().expect("two layers");
+            assert_eq!(refusal.code, "ambiguous");
+
+            // The record crosses with both new fields, last.
+            let record = meshes[0].to_record();
+            let names: Vec<&str> = record.fields.iter().map(|(name, _)| *name).collect();
+            assert_eq!(names[names.len() - 2..], ["colour", "colour_refusal"]);
+        }
+
+        let meshes = colour_fixture("material_colour_ifc2x3.ifc")
+            .product_meshes(Some(&[57]))
+            .unwrap();
+        let colour = meshes[0].colour.as_ref().expect("IFC2X3 material colour");
+        assert_eq!(
+            (colour.source.as_str(), colour.transparency),
+            ("material", Some(0.25))
+        );
+    }
 }
 
 #[cfg(not(feature = "mesh"))]

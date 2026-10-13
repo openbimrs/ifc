@@ -618,10 +618,10 @@ fn every_well_formed_bundled_schema_fixture_validates_clean() {
     // nested_mapped_item.ifc an empty `SET [1:?]`; both moved to
     // DELIBERATELY_INVALID with reasons), +2 for the #243 IFC4X3 fixtures
     // (synthetic_ifc4x3_geometry_families.ifc, ..._alignment_curves.ifc),
-    // +16 for synthetic-lowering/ (#311, #335-#414, #423), +1 #328, +3 #463,
+    // +16 for synthetic-lowering/ (#311, #335-#414, #423), +1 #328, +3 #463, +3 #449,
     // +3 #478.
     assert_eq!(
-        checked, 62,
+        checked, 65,
         "all intended-clean fixtures must run; raw-header fail fixtures stay excluded"
     );
     assert!(

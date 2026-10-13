@@ -113,6 +113,44 @@ export interface ProductGeometry {
   payload: string | GeometryGraphEnvelope | Uint8Array | undefined;
 }
 
+/**
+ * Why a mesh's colour could not be resolved (#449). `ambiguous`: two styled
+ * items or two colours at one level, a layer or profile set of several
+ * materials, a constituent set no shape aspect resolves, or Body items of
+ * different colours. Never refuses the mesh itself.
+ */
+export interface ColourRefusal {
+  code:
+    | "ambiguous"
+    | "unsupported"
+    | "invalid-model"
+    | "missing-reference"
+    | "budget-exceeded";
+  /** The entity at fault, when the refusal names one. */
+  entity: bigint | undefined;
+  message: string;
+}
+
+/**
+ * The surface colour a mesh is painted with (#449): its representation
+ * item's `IfcStyledItem`, else its styled presentation layer, else its
+ * material's `IfcMaterialDefinitionRepresentation`.
+ */
+export interface SurfaceColour {
+  /** Each channel in `[0, 1]`. */
+  red: number;
+  green: number;
+  blue: number;
+  /** In `[0, 1]`, 0 opaque; `undefined` when the file states none (opaque). */
+  transparency: number | undefined;
+  /** Which assignment supplied the colour, in that precedence. */
+  source: "item" | "layer" | "material";
+  /** The `IfcStyledItem`, the layer assignment or the `IfcMaterial`. */
+  sourceEntity: bigint;
+  /** The `IfcSurfaceStyle`. */
+  surfaceStyle: bigint;
+}
+
 /** One product's Body as triangles, from `IfcModel.productMeshes`. */
 export interface ProductMesh {
   id: bigint;
@@ -124,6 +162,12 @@ export interface ProductMesh {
   triangleCount: number;
   /** Empty arrays and no refusal: a product with no Body representation. */
   refusal: GeometryRefusal | undefined;
+  /**
+   * The colour the Body's items agree on; `undefined` when nothing colours
+   * the product or `colourRefusal` says why it is not resolved.
+   */
+  colour: SurfaceColour | undefined;
+  colourRefusal: ColourRefusal | undefined;
   /** `x, y, z` per vertex, metres, relative to `transform`. */
   positions: Float32Array;
   /** Three vertex indices per triangle. */

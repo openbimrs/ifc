@@ -12,6 +12,31 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#449)
+
+- `StyleIndex`: every `IfcStyledItem`, `IfcPresentationLayerAssignment`
+  and `IfcMaterialDefinitionRepresentation` of a model indexed once, with
+  `item_colour(item)` (the item's own `IfcStyledItem`, then its styled
+  presentation layers) and `material_colour(material)` (the item-less
+  `IfcStyledItem`s of the material's `IfcStyledRepresentation`s). Both
+  return a `SurfaceColour`: RGB, transparency (`None` when unstated),
+  the `IfcSurfaceStyle` and a `ColourSource` (`StyledItem`,
+  `PresentationLayer`, `Material`). The precedence, item over layer
+  over material, is documented and cited (IFC4 ADD2 TC1
+  `IfcPresentationLayerWithStyle`, `IfcStyledItem`,
+  `IfcMaterialDefinitionRepresentation`). It is applied per colour: a
+  level that states no surface colour does not hide the next. IFC2X3
+  reads its `IfcPresentationStyleAssignment` wrappers, and its
+  transparency from `IfcSurfaceStyleRendering`.
+- `StyleError::AmbiguousSurfaceColour`: one level stating two different
+  surface colours (two surface styles in one styled item, two styled
+  layers, a material whose styled representations disagree).
+
+`resolve_item_style` is unchanged.
+
+Semver: additive (`StyleError` is `#[non_exhaustive]`), a minor release
+while 0.x.
+
 ## [0.4.0] - 2026-09-29
 
 ### Changed (breaking)

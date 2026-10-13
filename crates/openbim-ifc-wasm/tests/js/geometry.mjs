@@ -335,6 +335,33 @@ if (!mesh) {
     near(wall.transform, model.productPlacements([36n])[0].transform, "one placement");
   });
 
+  test("meshes carry the item, layer or material colour (#449)", () => {
+    const colours = IfcModel.parse(
+      readFileSync(
+        path.resolve(here, "../../../../test/fixtures/synthetic-colour/material_colour.ifc"),
+      ),
+    );
+    // MATERIAL, ITEM_OVER_MATERIAL, LAYER_OVER_MATERIAL, MULTI_LAYER
+    const [material, item, layer, multi] = colours.productMeshes([58n, 89n, 107n, 125n]);
+    assert.deepEqual(
+      [material.colour.red, material.colour.green, material.colour.blue],
+      [0.8, 0.1, 0.1],
+    );
+    assert.equal(material.colour.transparency, 0.25);
+    assert.equal(material.colour.source, "material");
+    assert.equal(typeof material.colour.sourceEntity, "bigint");
+    assert.equal(material.colourRefusal, undefined);
+    assert.equal(item.colour.source, "item");
+    assert.equal(item.colour.blue, 0.9);
+    assert.equal(layer.colour.source, "layer");
+    assert.equal(multi.colour, undefined);
+    assert.equal(multi.colourRefusal.code, "ambiguous");
+    assert.ok(multi.indices.length > 0, "the colour never refuses the mesh");
+    for (const product of IfcModel.parse(bytes).productMeshes()) {
+      assert.equal(product.colour, undefined, "the binding fixture states no colour");
+    }
+  });
+
   test("the browser example's scene fits every mesh in view", async () => {
     const { buildScene } = await import("../../examples/viewer/scene.mjs");
     const scene = buildScene(IfcModel.parse(bytes).productMeshes());

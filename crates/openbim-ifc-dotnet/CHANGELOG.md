@@ -14,7 +14,7 @@ a release here does not imply a release of any other crate in the family.
 - `model.RemoveProduct(id, rebasePlacements, untypeOccurrences, dryRun)`
   and `model.Purge(classes, includeRoots, includeOwnerHistory, dryRun)`,
   returning a `RemovalReport` (`RemovedEntity`, `KeptEntity`).
-- Requires the C ABI 0.1.11 (`openbim-ifc-capi` with #478).
+- Requires the C ABI 0.1.12 (`openbim-ifc-capi` with #478).
 
 ### Deprecated (#478)
 
@@ -23,6 +23,19 @@ a release here does not imply a release of any other crate in the family.
   building with warnings as errors sees CS0618.
 
 Semver: additive, a minor release while 0.x.
+
+### Added (#449)
+
+- `ProductMesh` gains `Colour` (`SurfaceColour`: `Red`, `Green`, `Blue`,
+  `Transparency`, `Source` `item`/`layer`/`material`, `SourceEntity`,
+  `SurfaceStyle`) and `ColourRefusal` (a `GeometryRefusal`, code
+  `ambiguous` or a geometry code) as its last positional parameters, in a
+  native library built with `mesh`: the colour of the Body's item style,
+  else its presentation layer's, else its material's styled
+  representation.
+
+Semver: additive, a minor release while 0.x (a caller that constructs
+`ProductMesh` itself passes the two new parameters).
 
 ### Added (#463, GlobalIds, types and openings)
 

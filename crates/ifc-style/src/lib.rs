@@ -27,7 +27,8 @@ pub use annotation::{
     TextLiteralWithExtent, TextPath,
 };
 pub use assignment::{
-    PresentationStyleAssignment, PresentationStyleMember, ResolvedStyle, StyleSource, StyledItem,
+    ColourSource, PresentationStyleAssignment, PresentationStyleMember, ResolvedStyle, StyleIndex,
+    StyleSource, StyledItem, SurfaceColour,
 };
 pub use authoring::{
     create_annotation, create_annotation_fill_area, create_blob_texture, create_colour_rgb,

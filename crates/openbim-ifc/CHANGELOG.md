@@ -59,6 +59,30 @@ everything released before per-crate changelogs began.
 Semver: additive (new variants of `#[non_exhaustive]` enums, new fields of
 `#[non_exhaustive]` structs), a minor release while 0.x.
 
+### Added (#449)
+
+- Feature `colour` (`geometry-select`, `style`, `material`):
+  `product_colours(model, products)` and `ColourResolver`
+  (`product_colour`, `item_colours`) resolve the surface colour of each
+  product's Body. Each item takes its own `IfcStyledItem`, then its styled
+  presentation layer (a boolean result its `FirstOperand`'s, a mapped item
+  its enclosing `IfcMappedItem`'s), then the
+  `IfcMaterialDefinitionRepresentation` of the material the product, or
+  its type, is made of. An `IfcMaterial`, a layer or profile and its
+  material, layer and profile sets and their usages naming one material,
+  IFC2X3's `IfcMaterialList` of one material, and constituent sets by
+  item (the constituent whose `IfcShapeAspect` names the item) resolve. A
+  set of several materials is `ColourError::AmbiguousMaterial`, never its
+  first member; Body items that differ are `ColourError::ItemsDiffer`. The
+  colour carries its source (`ColourSource`: styled item, layer,
+  material).
+- `ProductMesh::colour` (`mesh` now implies `colour`): each mesh's colour,
+  or its typed `ColourError`, which never refuses the mesh. Positions and
+  indices are unchanged.
+
+Semver: additive (`ProductMesh` is `#[non_exhaustive]`), a minor release
+while 0.x.
+
 ### Added (#463, GlobalIds, types and openings)
 
 - `GlobalIdIndex::build(&model, schema)`: every `IfcRoot` by `GlobalId`,

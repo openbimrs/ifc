@@ -6,16 +6,20 @@
 //!
 //! A unique direct item assignment wins over layer styles. Multiple direct
 //! assignments are an ambiguity error; layer candidates remain inspectable.
+//! [`StyleIndex`] answers the surface colour of an item and, as the last
+//! fallback, of a material (#449).
 
 use ifc_model::{EntityId, Value};
 
 use crate::error::{StyleError, StyleResult};
 use crate::view::Record;
 
+mod colour;
 mod layer;
 mod resolution;
 mod styled_item;
 
+pub use colour::{ColourSource, StyleIndex, SurfaceColour};
 pub use layer::PresentationStyleAssignment;
 pub use resolution::{ResolvedStyle, StyleSource};
 pub use styled_item::StyledItem;

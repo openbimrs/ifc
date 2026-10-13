@@ -93,7 +93,9 @@ pub use error::BindingError;
 pub use geometry::graph::{
     GeometryEncoding, ProductGeometry, GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION,
 };
-pub use geometry::{GeometryRefusal, ProductMesh, ProductPlacement, SelectedRepresentation};
+pub use geometry::{
+    GeometryRefusal, ProductMesh, ProductPlacement, SelectedRepresentation, SurfaceColour,
+};
 pub use model::IfcModel;
 pub use options::{OnMalformed, ParseOptions};
 pub use record::{Field, Record, ToRecord};
