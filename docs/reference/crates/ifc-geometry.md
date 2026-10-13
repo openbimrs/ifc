@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.25.0 (2026-10-13) |
+| Latest release | 0.25.1 (2026-10-13) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -43,55 +43,41 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.25.0 (2026-10-13):
+Latest release, 0.25.1 (2026-10-13):
 
-### Changed (#443, stations along offset runs continued to their basis's ends)
+### Changed (#439, stations on B-splines trimmed by points resolve in the kernel)
 
-Semver: minor (0.x). Stations that were refused now lower, a refusal kind
-is added to the `#[non_exhaustive]` `SeamWindowRefusal`, and refusal texts
-change. No graph that lowered before changes: every representation item
-of the committed fixtures and `references/competitor` (6851 items) lowers
-to byte-identical wire JSON or to the same refusal.
+Semver: patch. No public item or lowering changes; only the dependency
+floors of the opt-in `compile` feature rise. Every product (1230) and
+every solid, surface and sweep item (2179) of the committed fixtures and
+`references/competitor` compiles to the same mesh, bit for bit, or to the
+same refusal under the old and the new releases.
 
-- A station whose basis is an `IfcOffsetCurveByDistances` lowered to
-  `CurveRelation::OffsetsAtStations` (#429, #433) now lowers. Its stations
-  carry the kernel's seam-snapping window. Examples are an
-  `IfcSectionedSolidHorizontal` or `IfcSectionedSurface` section, an
-  `IfcPointByDistanceExpression`, or an `IfcAxis2PlacementLinear` on such a
-  curve. Before, these were refused with "the basis curve relation is a
-  parameter-space curve, a surface curve whose p-curve governs, or an
-  instanced curve".
-  - The relation is flattened as `axiolid-mesh-compile` 0.3.23 flattens
-    it as a station basis. A station at the basis's start stands at `0`.
-  - The span to a station at the basis's end runs open to the end the
-    evaluator measures (#427).
-  - A windowed station stands at its own distance where no seam of the
-    basis lies within its window.
-  - A derived `IfcLinearPlacement` on such a curve reads the same path as
-    the compiler, bit for bit.
-- An offset of an offset (`IfcOffsetCurveByDistances`, `IfcOffsetCurve2D`
-  or `IfcOffsetCurve3D` over another offset curve, an `OffsetsAtStations`
-  included) is refused as a station basis by its own name, as Axiolid
-  refuses it (axiolid/kernel#289). The text names that rule. A trim of an
-  `OffsetsAtStations` is refused as a trim of an offset.
-- No offset relation reaches the catch-all refusal any more. Its text now
-  names the offset curves Axiolid reads. A basis nested deeper than 64
-  relations is refused by its own reason.
-- With `compile`, `SeamWindowRefusal::CertificationBudgetExceeded` is new.
-  It is returned where the kernel cannot certify a seam to a thousandth of
-  the window within its panel budget (a `BudgetExceeded` of
-  "certified length panels"). It is reported, like `UncertifiedLength`, as
-  `is_unsupported`.
-- Known limit, upstream (`TODO(#443)`): `axiolid-evaluate` 0.3.13 does not
-  certify an offset by distances whose law varies along an ellipse or a
-  B-spline. So a windowed station along such a run, past its first stated
-  offset, is refused by the reference kernel:
-  - for a sectioned solid, `RunSeamWindowRefused { refusal:
-    UncertifiedLength }`, which names the runs;
-  - for a derived placement, `PlacementSeamWindowRefused` with
-    `UncertifiedLength` or `CertificationBudgetExceeded`.
-
-  The lowered graph itself is correct. With its windows set to zero, the
-  axioval/engine deck compiles to the closed-form prism.
+- Requires `axiolid-mesh-compile` 0.3.24, `axiolid-construct` 0.3.18 and
+  `axiolid-mesh-boolean-boolmesh` 0.3.5 (and `axiolid-evaluate` 0.3.14 for
+  the tests).
+- A station on an `IfcTrimmedCurve` over an `IfcBSplineCurveWithKnots`
+  trimmed by Cartesian points now resolves through the reference kernel
+  (axiolid/kernel#306). Before, the kernel refused it: its point inversion
+  had no B-spline arm. It now uses the same inversion as
+  `PathBound::Point`. A derived `IfcLinearPlacement` on such a trim is the
+  lowered station's frame, bit for bit, so lowering and derivation agree
+  (#436 already derived it).
+  - A trim point off the B-spline, or one it passes through twice, is
+    refused by the kernel as `PATH_POINT_OFF_CURVE` or
+    `PATH_POINT_AMBIGUOUS`. These are the names the derivation reports as
+    `GeometryError::PathPointOffCurve` and `PathPointAmbiguous`.
+  - The kernel still refuses a polyline trimmed by points as a station
+    basis (an upstream follow-up). No committed fixture uses one.
+- The kernel's deviation report for runs of sections at stations
+  (`IfcSectionedSolidHorizontal`, `IfcSectionedSurface`) is `Certified`
+  where the frame law along the basis is bounded (axiolid/kernel#247).
+  This crate does not read that report. Of the eight such items that
+  compile in the committed fixtures, one now reports `Certified`; the
+  other seven stay `Unbounded` and now name their numerically framed
+  basis. Their meshes are unchanged, as are the three refusals.
+- Swept disks are mitred at corners beside arcs, and closed polylines
+  sweep as loops (axiolid/kernel#248). No committed fixture was refused
+  for either before.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
