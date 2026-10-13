@@ -1,7 +1,9 @@
 //! The native model class, wrapped by `openbim_ifc.IfcModel` in Python.
 
 use openbim_ifc_binding_core::record::to_records;
-use openbim_ifc_binding_core::{GeometryEncoding, IfcModel, ParseOptions, ToRecord};
+use openbim_ifc_binding_core::{
+    GeometryEncoding, IfcModel, ParseOptions, PurgeOptions, RemoveProductOptions, ToRecord,
+};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyBool, PyBytes, PyDict, PyList, PyString};
@@ -560,6 +562,43 @@ impl NativeModel {
     /// Remove an entity with its relationships.
     fn remove_with_relationships(&mut self, id: u64) -> PyResult<()> {
         self.inner.remove_with_relationships(id).map_err(py_err)
+    }
+
+    /// Remove a product with what it solely owns; the report.
+    #[pyo3(signature = (id, rebase_placements = false, untype_occurrences = false, dry_run = false))]
+    fn remove_product<'py>(
+        &mut self,
+        py: Python<'py>,
+        id: u64,
+        rebase_placements: bool,
+        untype_occurrences: bool,
+        dry_run: bool,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let mut options = RemoveProductOptions::new();
+        options.rebase_placements = rebase_placements;
+        options.untype_occurrences = untype_occurrences;
+        options.dry_run = dry_run;
+        let report = self.inner.remove_product(id, options).map_err(py_err)?;
+        records::record_to_py(py, &report.to_record())
+    }
+
+    /// Purge unreferenced entities; the report.
+    #[pyo3(signature = (classes = Vec::new(), include_roots = false, include_owner_history = false, dry_run = false))]
+    fn purge<'py>(
+        &mut self,
+        py: Python<'py>,
+        classes: Vec<String>,
+        include_roots: bool,
+        include_owner_history: bool,
+        dry_run: bool,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let mut options = PurgeOptions::new();
+        options.classes = classes;
+        options.include_roots = include_roots;
+        options.include_owner_history = include_owner_history;
+        options.dry_run = dry_run;
+        let report = self.inner.purge(options).map_err(py_err)?;
+        records::record_to_py(py, &report.to_record())
     }
 
     /// The handle of operation `index`'s entity.

@@ -1,6 +1,8 @@
 //! Checked authoring batches (#330): create entities by type and named
 //! attributes, the spatial-structure, product, type and placement builders,
-//! and removal together with relationships, applied as one transaction.
+//! removal together with relationships, and the removal of a product with
+//! what it solely owns and the purge of what nothing uses (#478), applied
+//! as one transaction.
 //!
 //! A batch is a list of [`AuthorOp`]s run in order against the model as the
 //! operations before them leave it, then committed as one
@@ -66,22 +68,28 @@
 //! ```
 #![cfg(feature = "authoring")]
 
+mod cascade;
 mod check;
 mod error;
+mod kinds;
 mod op;
 mod overlay;
 mod owner;
 mod place;
 mod plan;
+mod purge;
+mod rebase;
 mod relate;
 mod remove;
+mod report;
 mod seed;
 
 use ifc_model::{EntityId, Model, Transaction, Value};
 use ifc_schema::Schema;
 
 pub use error::{AuthoringError, AuthoringFailure};
-pub use op::{AuthorOp, NamedValues, OwnerHistoryOp};
+pub use op::{AuthorOp, NamedValues, OwnerHistoryOp, PurgeOptions, RemoveProductOptions};
+pub use report::{KeepReason, KeptEntity, RemovalReport, RemovedEntity};
 pub use seed::fresh_seed;
 
 use overlay::Overlay;
@@ -106,6 +114,9 @@ pub struct StagedAuthoring {
     pub transaction: Transaction,
     /// Per operation, the id of the entity it produces.
     pub ids: Vec<Option<EntityId>>,
+    /// Per operation, what a [`AuthorOp::RemoveProduct`] or
+    /// [`AuthorOp::Purge`] would remove and keep: staging is the dry run.
+    pub reports: Vec<Option<RemovalReport>>,
 }
 
 /// What a committed batch did.
@@ -120,6 +131,9 @@ pub struct AuthoringOutcome {
     /// Entities removed, the targets and the relationships removed with
     /// them.
     pub removed: Vec<EntityId>,
+    /// Per operation, what a [`AuthorOp::RemoveProduct`] or
+    /// [`AuthorOp::Purge`] removed and kept, and why.
+    pub reports: Vec<Option<RemovalReport>>,
     /// The model revision after the commit.
     pub revision: u64,
 }
@@ -154,6 +168,7 @@ pub fn stage_authoring(
     }
     Ok(StagedAuthoring {
         ids: planner.ids,
+        reports: planner.reports,
         transaction: planner.view.into_transaction(),
     })
 }
@@ -180,6 +195,7 @@ pub fn apply_authoring(
         ids: staged.ids,
         created: applied.created,
         removed: applied.removed.into_iter().map(|(id, _)| id).collect(),
+        reports: staged.reports,
         revision: applied.revision,
     })
 }

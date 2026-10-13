@@ -26,6 +26,7 @@
 static char properties_path[4096];
 static char geometry_path[4096];
 static char relations_path[4096];
+static char cascade_path[4096];
 /* What the recipes print, so each test can check it. */
 static char out[16384];
 static size_t out_len;
@@ -662,6 +663,56 @@ static int recipe_global_ids(OpenbimIfcModel model) {
   return 0;
 }
 
+static int recipe_remove_product(OpenbimIfcModel model) {
+  out_len = 0;
+  out[0] = 0;
+  // docs:snippet cookbook-c-remove-product
+  /* Remove door #100 with what it alone owns: placement, representation,
+   * its filling and type relationships. A dry run reports and changes
+   * nothing; without the flag the same call applies it. A size query
+   * never applies a removal. */
+  size_t nodes = 0, strings = 0;
+  uint32_t flags = OPENBIM_IFC_REMOVE_DRY_RUN; /* | _REBASE_PLACEMENTS, _UNTYPE_OCCURRENCES */
+  openbim_ifc_v0_1_model_remove_product(model, 100, flags, NULL, 0, &nodes, NULL, 0, &strings);
+  Tape report = tape_alloc(nodes, strings);
+  if (openbim_ifc_v0_1_model_remove_product(model, 100, flags, report.nodes, nodes, &nodes,
+                                            report.strings, strings, &strings) !=
+      OPENBIM_IFC_STATUS_OK) {
+    print_error(model); /* e.g. STILL_REFERENCED: a placement others are relative to */
+    tape_free(&report);
+    return 1;
+  }
+  /* RemovalReport: removed, kept, detached, rebased, applied */
+  size_t removed = tape_field(&report, 0, 0), kept = tape_field(&report, 0, 1);
+  printf("removes %u entities\n", report.nodes[removed].child_count);
+  for (uint32_t k = 0, i = (uint32_t)kept + 1; k < report.nodes[kept].child_count;
+       k++, i = (uint32_t)tape_next(&report, i)) {
+    /* KeptEntity: id, type name, reason, users */
+    if (report.nodes[tape_field(&report, i, 2)].str_len == 6) { /* "shared" */
+      tape_print(&report, tape_field(&report, i, 0));
+      printf(" %.*s is shared with ", TAPE_STR(&report, tape_field(&report, i, 1)));
+      tape_print(&report, tape_field(&report, i, 3));
+      printf("\n");
+    }
+  }
+  tape_free(&report);
+  /* removes 11 entities
+   * #82 IFCLOCALPLACEMENT is shared with (#81)
+   * #112 IFCREPRESENTATIONMAP is shared with (#111) */
+
+  /* Then purge what nothing uses: no classes means every resource entity
+   * no IfcRoot reaches; name classes to purge only those. */
+  openbim_ifc_v0_1_model_purge(model, NULL, NULL, 0, OPENBIM_IFC_PURGE_DRY_RUN, NULL, 0, &nodes,
+                               NULL, 0, &strings);
+  // docs:end
+  CHECK(strcmp(out,
+               "removes 11 entities\n"
+               "#82 IFCLOCALPLACEMENT is shared with (#81)\n"
+               "#112 IFCREPRESENTATIONMAP is shared with (#111)\n") == 0,
+        out);
+  return 0;
+}
+
 int main(int argc, char **argv) {
   if (argc != 3) {
     fprintf(stderr, "usage: cookbook <test/fixtures directory> <scratch directory>\n");
@@ -718,6 +769,12 @@ int main(int argc, char **argv) {
   OK(openbim_ifc_v0_1_model_open((const uint8_t *)relations_path, strlen(relations_path), &model,
                                  NULL, 0));
   if (recipe_global_ids(model) != 0) return 1;
+  OK(openbim_ifc_v0_1_model_destroy(model));
+
+  snprintf(cascade_path, sizeof cascade_path, "%s/synthetic-relations/cascade_ifc4.ifc", argv[1]);
+  OK(openbim_ifc_v0_1_model_open((const uint8_t *)cascade_path, strlen(cascade_path), &model,
+                                 NULL, 0));
+  if (recipe_remove_product(model) != 0) return 1;
   OK(openbim_ifc_v0_1_model_destroy(model));
 
   if (recipe_create() != 0) return 1;

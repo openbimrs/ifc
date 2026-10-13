@@ -201,6 +201,56 @@ export interface AuthoringResult {
   removed: bigint[];
 }
 
+/** Options of `IfcModel.removeProduct`; every flag defaults to `false`. */
+export interface RemoveProductOptions {
+  /** Re-base placements relative to a removed placement onto its parent, composing the transforms, instead of refusing. */
+  rebasePlacements?: boolean;
+  /** Remove a type object's typing relationship, leaving its occurrences untyped, instead of refusing. */
+  untypeOccurrences?: boolean;
+  /** Report only; the model is unchanged. */
+  dryRun?: boolean;
+}
+
+/** Options of `IfcModel.purge`. */
+export interface PurgeOptions {
+  /** Entity types to purge, subtypes included; empty or absent for every resource entity no `IfcRoot` reaches. */
+  classes?: string[];
+  /** Also purge unreferenced `IfcRoot`s of `classes`. */
+  includeRoots?: boolean;
+  /** Also purge an unreferenced owner history with its actors. */
+  includeOwnerHistory?: boolean;
+  /** Report only; the model is unchanged. */
+  dryRun?: boolean;
+}
+
+/** An entity a removal or purge removed. */
+export interface RemovedEntity {
+  id: bigint;
+  /** Its type, upper case. */
+  typeName: string;
+}
+
+/** An entity a removal reached and kept. */
+export interface KeptEntity {
+  id: bigint;
+  typeName: string;
+  /** `shared` (`users` still need it), `related-object`, `definition` (only a purge removes it) or `protected` (a purge skipped it). */
+  reason: "shared" | "related-object" | "definition" | "protected";
+  users: bigint[];
+}
+
+/** What `IfcModel.removeProduct` or `IfcModel.purge` did, or, for a dry run, would do. */
+export interface RemovalReport {
+  removed: RemovedEntity[];
+  kept: KeptEntity[];
+  /** Relationships and layer assignments that lost a removed member and stay. */
+  detached: bigint[];
+  /** Placements re-based onto a kept ancestor. */
+  rebased: bigint[];
+  /** `false` for a dry run. */
+  applied: boolean;
+}
+
 /** The containment tree, from `IfcModel.spatialTree`. */
 export interface SpatialTree {
   /** The release containers were classified against, e.g. `IFC4_ADD2_TC1`. */

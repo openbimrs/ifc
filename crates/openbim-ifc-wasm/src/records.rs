@@ -252,3 +252,49 @@ fn camel_case(name: &str) -> String {
     }
     out
 }
+
+/// The boolean `key` of an options object; `false` when the object or the
+/// key is absent.
+pub(crate) fn flag(options: &JsValue, key: &str) -> Result<bool, BindingError> {
+    if options.is_undefined() || options.is_null() {
+        return Ok(false);
+    }
+    if !options.is_object() {
+        return Err(BindingError::InvalidValue(
+            "options must be an object".into(),
+        ));
+    }
+    let value = js_sys::Reflect::get(options, &key.into())
+        .map_err(|_| BindingError::InvalidValue(format!("cannot read `{key}`")))?;
+    if value.is_undefined() || value.is_null() {
+        return Ok(false);
+    }
+    value
+        .as_bool()
+        .ok_or_else(|| BindingError::InvalidValue(format!("`{key}` must be a boolean")))
+}
+
+/// The `classes` array of purge options; empty when absent.
+pub(crate) fn classes(options: &JsValue) -> Result<Vec<String>, BindingError> {
+    if options.is_undefined() || options.is_null() || !options.is_object() {
+        return Ok(Vec::new());
+    }
+    let value = js_sys::Reflect::get(options, &"classes".into())
+        .map_err(|_| BindingError::InvalidValue("cannot read `classes`".into()))?;
+    if value.is_undefined() || value.is_null() {
+        return Ok(Vec::new());
+    }
+    if !js_sys::Array::is_array(&value) {
+        return Err(BindingError::InvalidValue(
+            "`classes` must be an array of strings".into(),
+        ));
+    }
+    js_sys::Array::from(&value)
+        .iter()
+        .map(|class| {
+            class
+                .as_string()
+                .ok_or_else(|| BindingError::InvalidValue("`classes` must hold strings".into()))
+        })
+        .collect()
+}

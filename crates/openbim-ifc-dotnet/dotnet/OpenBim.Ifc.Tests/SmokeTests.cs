@@ -85,7 +85,7 @@ public class SmokeTests
         Assert.Equal(new Value.List(new Value.Real(1.5), new Value.Real(-2.0)), again.Attribute(3, 0));
         Assert.Equal("IFCCARTESIANPOINT", again.TypeOf(3));
 
-        again.Remove(3);
+        again.RemoveWithRelationships(3);
         Assert.Equal(2, again.Count);
         Assert.Empty(again.DanglingReferences());
     }
@@ -107,7 +107,7 @@ public class SmokeTests
         using var model = IfcModel.Parse(data);
         try
         {
-            model.Remove(99);
+            model.RemoveWithRelationships(99);
         }
         catch (IfcException error) when (error.Code == "missing-entity")
         {

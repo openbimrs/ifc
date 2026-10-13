@@ -313,6 +313,46 @@ them all. `IfcModel.NewGuid()` draws an RFC 9562 version-4 UUID from the
 operating system; `IfcModel.NameBasedGuid(parts)` is version 8, the same
 for the same parts in every binding. Both are IFC's 22-character form.
 
+## Remove a product and purge
+
+A door with what it alone owns, a wall whose openings place their fillings,
+then what nothing uses any more, from
+`test/fixtures/synthetic-relations/cascade_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-dotnet-remove-product -->
+
+```csharp
+// Door #100 with what it alone owns: placement, representation, its
+// filling and type relationships. A dry run changes nothing.
+RemovalReport report = model.RemoveProduct(100, dryRun: true);
+Print($"{report.Removed.Count} removed"); // 11 removed
+foreach (var kept in report.Kept.Where(kept => kept.Reason == "shared"))
+{
+    Print($"#{kept.Id} {kept.TypeName} used by {string.Join(", ", kept.Users)}");
+}
+// #82 IFCLOCALPLACEMENT used by 81       the opening's placement
+// #112 IFCREPRESENTATIONMAP used by 111  the door type's geometry
+
+model.RemoveProduct(100); // applied: one checked transaction
+// A wall whose openings place their fillings: re-base those
+// placements onto the storey so nothing moves, or it is refused.
+model.RemoveProduct(20, rebasePlacements: true);
+
+// Then purge what nothing uses any more: no classes means every
+// resource entity no IfcRoot reaches.
+RemovalReport purged = model.Purge(dryRun: true);
+```
+
+<!-- /SNIPPET -->
+
+`rebasePlacements: true` re-bases placements relative to a removed one onto
+its parent, composing the transforms; `untypeOccurrences: true` lets a type
+object with occurrences go. Without them those removals throw
+`still-referenced`. `Purge(new[] { "IfcPropertySet" }, includeRoots: true)`
+purges unreferenced entities of the named classes only. The
+[binding page](/bindings/dotnet#removing-products-and-purging) lists what
+the cascade removes and keeps.
+
 ## Create a model
 
 <!-- SNIPPET:cookbook-dotnet-create -->

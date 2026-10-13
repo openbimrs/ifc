@@ -127,7 +127,7 @@ model.SetAttributeByNamePlain(2, "NominalValue", new Value.Typed("IFCLABEL", new
 using var model = IfcModel.Parse(data);
 try
 {
-    model.Remove(99);
+    model.RemoveWithRelationships(99);
 }
 catch (IfcException error) when (error.Code == "missing-entity")
 {
@@ -473,6 +473,48 @@ is never invented: a builder writes the one it is given on every record it
 creates, and IFC2X3, which requires it, refuses a record without
 (`missing-attribute`).
 
+## Removing products and purging
+
+`model.RemoveProduct(id)` removes a product, or a type object, with
+everything it solely owns, as one checked transaction, and returns a
+`RemovalReport`: `Removed`, `Kept` (each `KeptEntity` with its `Reason` and
+`Users`), `Detached`, `Rebased` and `Applied`. With `dryRun: true` it only
+reports.
+
+The cascade decides "solely owned" by counting references within the
+same transaction: an entity reached from a removed one goes when nothing
+that stays needs it, a relationship that only loses a list member or a
+presentation layer assignment not counting. It removes the product's
+`ObjectPlacement`, its representation down to the items no one else uses,
+the property and quantity sets only it is defined by with their
+properties, its material usage (not the material definitions), its
+openings (each with the same cascade), its ports, and every relationship
+left without an end. It keeps, and reports with a reason, what other
+entities still use (`shared`, with the users: a property set another wall
+uses, a door type's representation maps, a style or point used elsewhere),
+objects of their own (`related-object`: the type, the container, the
+fillings of a removed opening) and definitions it never deletes
+(`definition`: material definitions, classification references, units,
+contexts, the owner history).
+
+It throws `still-referenced` while other placements that stay are relative
+to the product's placement; `rebasePlacements: true` re-bases them onto the
+removed placement's parent instead, composing the transforms so nothing
+moves. A type object that still types objects throws `still-referenced`
+unless `untypeOccurrences: true`.
+
+`model.Purge()` removes every resource entity no `IfcRoot` reaches, nor
+annotates something reached; `model.Purge(new[] { "IfcPropertySet" },
+includeRoots: true)` removes the unreferenced entities of the named classes
+instead. `IfcRoot`s and the owner history with its actors stay unless asked
+(`includeRoots`, `includeOwnerHistory`); `dryRun: true` reports without
+removing. The [cookbook](/cookbook/dotnet#remove-a-product-and-purge) has a
+recipe.
+
+`model.Remove(id)` is `[Obsolete]`: it leaves references dangling. Use
+`RemoveWithRelationships(id)` for one entity or `RemoveProduct(id)` for a
+product.
+
 ## How it is tested
 
 The package is tested as NuGet installs it: `check-dotnet.py` packs the
@@ -516,6 +558,8 @@ and `MeshedProduct` included, from its XML documentation comments.
 | `IReadOnlyList<ulong?> Author(IEnumerable<AuthorOp> ops)` | Apply authoring operations as one checked transaction against the release the header declares: every operation, in order, or none and the model unchanged. |
 | `ulong CreateEntity(string type, IEnumerable<KeyValuePair<string, Value>>? attributes = null)` | Create one entity of `type` from named attributes, checked against the declared release (`Author` with one `AuthorOp.Create`); returns its id. |
 | `void RemoveWithRelationships(ulong id)` | Remove entity `id` with the relationships that reference it, leaving nothing dangling; refused with `still-referenced` while an entity other than a relationship needs it. |
+| `RemovalReport RemoveProduct(ulong id, bool rebasePlacements = false, bool untypeOccurrences = false, bool dryRun = false)` | Remove product (or type object) `id` with everything it solely owns -- its placement, representation, own property and quantity sets, material usage, openings and ports, and the relationships left without an end -- as one checked transaction, keeping what is shared (a property set another object uses, a type's representation maps). With `dryRun` nothing changes. |
+| `RemovalReport Purge(IEnumerable<string>? classes = null, bool includeRoots = false, bool includeOwnerHistory = false, bool dryRun = false)` | Remove unreferenced entities as one checked transaction. Without `classes`, every resource entity no `IfcRoot` reaches (nor annotates something reached); with them, the entities of those classes (subtypes included) nothing references, an `IfcRoot` only with `includeRoots`. The owner history stays unless `includeOwnerHistory`. |
 | `ulong SetProperty(ulong obj, string set, string name, Value value, string? setType = null)` | Write one value (`SetProperties` with one edit); returns the id of the entity holding it. |
 | `void RemoveProperty(ulong obj, string set, string name)` | Remove one property from `obj`'s own set (`SetProperties` with one edit). |
 | `SpatialTree SpatialTree()` | The spatial containment tree: every container with its parent, sub-containers and contained elements. |

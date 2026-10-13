@@ -8,6 +8,22 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#478, cascading delete and purge)
+
+- `model.removeProduct(id, { rebasePlacements?, untypeOccurrences?,
+  dryRun? })` and `model.purge({ classes?, includeRoots?,
+  includeOwnerHistory?, dryRun? })`, returning a `RemovalReport`
+  (`RemovedEntity`, `KeptEntity`; `RemoveProductOptions`, `PurgeOptions`
+  in the declarations).
+
+### Deprecated (#478)
+
+- `model.remove(id)`, which leaves references dangling (`@deprecated` in
+  the declarations); use `removeWithRelationships` or `removeProduct`. It
+  keeps working.
+
+Semver: additive, a minor release while 0.x.
+
 ### Added (#450)
 
 - `model.writeIfcZip(inner?, profile?)`, and ifcZIP input to

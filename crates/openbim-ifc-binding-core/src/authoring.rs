@@ -35,8 +35,10 @@
 //! position.
 
 mod ops;
+mod removal;
 
 pub use ops::{op_spec, FieldKind, FieldSpec, OpSpec, OPS};
+pub use removal::{KeptEntity, PurgeOptions, RemovalReport, RemoveProductOptions, RemovedEntity};
 
 use crate::record::{Field, Record, ToRecord};
 use crate::value::Tagged;

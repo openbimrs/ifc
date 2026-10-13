@@ -534,6 +534,66 @@ none. `openbim_ifc_v0_1_new_guid` draws an RFC 9562 version-4 UUID from
 the operating system; `openbim_ifc_v0_1_name_based_guid` is version 8, the
 same for the same parts in every binding. Both need no model.
 
+## Remove a product and purge
+
+A door with what it alone owns, a wall whose openings place their fillings,
+then what nothing uses any more, from
+`test/fixtures/synthetic-relations/cascade_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-c-remove-product -->
+
+```c
+/* Remove door #100 with what it alone owns: placement, representation,
+ * its filling and type relationships. A dry run reports and changes
+ * nothing; without the flag the same call applies it. A size query
+ * never applies a removal. */
+size_t nodes = 0, strings = 0;
+uint32_t flags = OPENBIM_IFC_REMOVE_DRY_RUN; /* | _REBASE_PLACEMENTS, _UNTYPE_OCCURRENCES */
+openbim_ifc_v0_1_model_remove_product(model, 100, flags, NULL, 0, &nodes, NULL, 0, &strings);
+Tape report = tape_alloc(nodes, strings);
+if (openbim_ifc_v0_1_model_remove_product(model, 100, flags, report.nodes, nodes, &nodes,
+                                          report.strings, strings, &strings) !=
+    OPENBIM_IFC_STATUS_OK) {
+  print_error(model); /* e.g. STILL_REFERENCED: a placement others are relative to */
+  tape_free(&report);
+  return 1;
+}
+/* RemovalReport: removed, kept, detached, rebased, applied */
+size_t removed = tape_field(&report, 0, 0), kept = tape_field(&report, 0, 1);
+printf("removes %u entities\n", report.nodes[removed].child_count);
+for (uint32_t k = 0, i = (uint32_t)kept + 1; k < report.nodes[kept].child_count;
+     k++, i = (uint32_t)tape_next(&report, i)) {
+  /* KeptEntity: id, type name, reason, users */
+  if (report.nodes[tape_field(&report, i, 2)].str_len == 6) { /* "shared" */
+    tape_print(&report, tape_field(&report, i, 0));
+    printf(" %.*s is shared with ", TAPE_STR(&report, tape_field(&report, i, 1)));
+    tape_print(&report, tape_field(&report, i, 3));
+    printf("\n");
+  }
+}
+tape_free(&report);
+/* removes 11 entities
+ * #82 IFCLOCALPLACEMENT is shared with (#81)
+ * #112 IFCREPRESENTATIONMAP is shared with (#111) */
+
+/* Then purge what nothing uses: no classes means every resource entity
+ * no IfcRoot reaches; name classes to purge only those. */
+openbim_ifc_v0_1_model_purge(model, NULL, NULL, 0, OPENBIM_IFC_PURGE_DRY_RUN, NULL, 0, &nodes,
+                             NULL, 0, &strings);
+```
+
+<!-- /SNIPPET -->
+
+The flags combine: `OPENBIM_IFC_REMOVE_REBASE_PLACEMENTS` re-bases
+placements relative to a removed one onto its parent, composing the
+transforms; `OPENBIM_IFC_REMOVE_UNTYPE_OCCURRENCES` lets a type object
+with occurrences go. Without them those removals are
+`OPENBIM_IFC_STATUS_STILL_REFERENCED`. A size query never applies a
+removal; the same call with buffers large enough does, unless
+`OPENBIM_IFC_REMOVE_DRY_RUN`. The
+[binding page](/bindings/c#removing-products-and-purging) lists what the
+cascade removes and keeps.
+
 ## Create a model
 
 Values passed in are tapes too; this builder writes them:

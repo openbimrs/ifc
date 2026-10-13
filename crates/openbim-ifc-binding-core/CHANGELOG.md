@@ -8,6 +8,28 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#478, cascading delete and purge)
+
+- `IfcModel::remove_product(id, RemoveProductOptions)` and
+  `IfcModel::purge(PurgeOptions)`, each one checked transaction through
+  the facade's `AuthorOp::RemoveProduct` and `AuthorOp::Purge`, or, with
+  `dry_run`, only staged. Both return a `RemovalReport` record (`removed`
+  `RemovedEntity`s, `kept` `KeptEntity`s with `reason` and `users`,
+  `detached`, `rebased`, `applied`). `still-referenced` for dependent
+  placements, a type with occurrences or an entity that stays and needs
+  something removed; `unsupported` for a placement that cannot be
+  re-based; `wrong-entity-type`, `missing-entity`, `unsupported-schema`
+  (an undeclared purge class).
+
+### Deprecated (#478)
+
+- `IfcModel::remove`, which leaves references dangling, is deprecated in
+  every host in favour of `remove_with_relationships` and `remove_product`;
+  it keeps working.
+
+Semver: additive (internal crate, not published); a minor change of every
+binding.
+
 ### Added (#450)
 
 - ifcZIP (feature `zip`, default): `parse`, `parse_with`, `parse_owned`,

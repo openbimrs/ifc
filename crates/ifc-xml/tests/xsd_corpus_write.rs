@@ -93,6 +93,18 @@ const REFUSED: &[(&str, &str, &str)] = &[
         "as relations_ifc4.ifc, in IFC4X3",
     ),
     (
+        "synthetic-relations/cascade_ifc4.ifc",
+        "a second relationship in `IfcWall.HasOpenings`",
+        "Wall A is voided by a door opening and a window opening (#478); the \
+         XSD configuration nests one IfcRelVoidsElement under \
+         IfcWall.HasOpenings",
+    ),
+    (
+        "synthetic-relations/cascade_ifc4x3.ifc",
+        "a second relationship in `IfcWall.HasOpenings`",
+        "as cascade_ifc4.ifc, in IFC4X3",
+    ),
+    (
         "nurbs/invalid_abstract_base_splines.ifc",
         "`IfcBSplineCurve` is abstract",
         "instances of an abstract entity, which the XSD declares abstract",

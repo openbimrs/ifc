@@ -676,6 +676,49 @@ creates, and IFC2X3, which requires it, refuses a record without
 (`missing-attribute`). The ids the batch returns are the ones `model[id]`
 wraps as an `Entity`.
 
+## Removing products and purging
+
+`model.remove_product(id)` removes a product, or a type object, with
+everything it solely owns, as one checked transaction, and returns a
+`RemovalReport`: `removed`, `kept` (each `KeptEntity` with its `reason`
+and `users`), `detached`, `rebased` and `applied`. With `dry_run=True` it
+only reports.
+
+The cascade decides "solely owned" by counting references within the
+same transaction: an entity reached from a removed one goes when nothing
+that stays needs it, a relationship that only loses a list member or a
+presentation layer assignment not counting. It removes the product's
+`ObjectPlacement`, its representation down to the items no one else uses,
+the property and quantity sets only it is defined by with their
+properties, its material usage (not the material definitions), its
+openings (each with the same cascade), its ports, and every relationship
+left without an end. It keeps, and reports with a reason, what other
+entities still use (`shared`, with the users: a property set another wall
+uses, a door type's representation maps, a style or point used elsewhere),
+objects of their own (`related-object`: the type, the container, the
+fillings of a removed opening) and definitions it never deletes
+(`definition`: material definitions, classification references, units,
+contexts, the owner history).
+
+It raises `still-referenced` while other placements that stay are relative
+to the product's placement (a window placed relative to the opening of the
+wall being removed); `rebase_placements=True` re-bases them onto the
+removed placement's parent instead, composing the transforms so nothing
+moves. A type object that still types objects raises `still-referenced`
+unless `untype_occurrences=True`.
+
+`model.purge()` removes every resource entity no `IfcRoot` reaches, nor
+annotates something reached (a styled item, a layer assignment, a shape
+aspect); `model.purge(["IfcPropertySet"], include_roots=True)` removes the
+unreferenced entities of the named classes instead. `IfcRoot`s and the
+owner history with its actors stay unless asked (`include_roots`,
+`include_owner_history`); `dry_run=True` reports without removing. The
+[cookbook](/cookbook/python#remove-a-product-and-purge) has a recipe.
+
+`model.remove(id)` is deprecated: it leaves references dangling and warns
+with a `DeprecationWarning`. Use `remove_with_relationships(id)` for one
+entity or `remove_product(id)` for a product.
+
 ## API
 
 Generated from the `openbim_ifc` package source. The
@@ -738,6 +781,8 @@ class, record and function of the package with its docstring and types.
 | `model.author(ops: Iterable[AuthorOp]) -> AuthoringResult` | Apply authoring operations as one checked transaction against the release the header declares: every operation, in order, or none. |
 | `model.create_entity(type_name: str, attributes: Optional[Mapping[str, Value]] = None) -> int` | Create one entity of `type_name` from named attributes, checked against the declared release (:meth:`author` with one :meth:`AuthorOp.create`); returns its id. |
 | `model.remove_with_relationships(id: int) -> None` | Remove entity `id` with the relationships that reference it, leaving nothing dangling (:meth:`author` with one :meth:`AuthorOp.remove`). Raises `still-referenced` while an entity other than a relationship needs it. |
+| `model.remove_product(id: int, *, rebase_placements: bool = False, untype_occurrences: bool = False, dry_run: bool = False) -> RemovalReport` | Remove product (or type object) `id` with everything it solely owns -- its placement, representation, own property and quantity sets, material usage, openings and ports, and the relationships left without an end -- as one checked transaction. Shared data stays: a property set another object uses, a type's representation maps, a style used elsewhere. The report says what went and what stayed, and why; with `dry_run` nothing changes. |
+| `model.purge(classes: Sequence[str] = (), *, include_roots: bool = False, include_owner_history: bool = False, dry_run: bool = False) -> RemovalReport` | Remove unreferenced entities as one checked transaction; with `dry_run`, only report. |
 | `model.dangling_references() -> List[Tuple[int, int]]` | Every `(from, to)` pair where `to` does not exist. |
 | `model.by_id(id: int) -> Entity` | Entity `#id` as an :class:`Entity`; raises :class:`openbim_ifc.IfcError` (`missing-entity`) when absent. |
 | `model.by_guid(global_id: str) -> Optional[Entity]` | The entity whose `GlobalId` is `global_id` as an :class:`Entity`, or `None`: :meth:`IfcModel.id_by_guid`. |
