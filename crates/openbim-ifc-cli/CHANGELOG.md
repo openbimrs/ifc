@@ -11,6 +11,27 @@ documents) is this crate's public interface.
 
 ## [Unreleased]
 
+### Added (#450)
+
+- `convert` reads and writes ifcZIP: an input archive is recognized by its
+  ZIP signature on every command, and an output ending in `.ifczip`, or
+  `--to ifczip`, is written as one Deflate entry named after the output
+  file, STEP unless `--inner ifcxml` (with `--layout`) asks for ifcXML.
+  An archive without exactly one model, or whose entry is in another
+  format, is refused as `parse`; an encrypted entry or another compression
+  method as `unsupported`; an entry past the decompression budget as
+  `budget-exceeded`. `info` reports the format as `STEP in ifcZIP
+  (model.ifc)`.
+
+### Fixed
+
+- A native-layout ifcXML document whose attributes are named by position
+  (`a0`, as the bindings' `write_ifcxml` writes it) reads, with the
+  declared release's tables resolving both kinds of name; a strict read
+  refused it.
+
+Semver: minor (additive).
+
 ### Changed (#463)
 
 - An entity named by `GlobalId` is found with the facade's `by_guid`

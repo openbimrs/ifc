@@ -8,6 +8,15 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#450)
+
+- `IfcModel.write_ifczip(*, inner="step", xsd_profile=None)`, and ifcZIP
+  input to `IfcModel.parse` and `IfcModel.open`, recognized by the ZIP
+  signature and read within a decompression budget (`parse`,
+  `unsupported` or `budget-exceeded` otherwise).
+
+Semver: minor (additive).
+
 ### Added (#449)
 
 - `ProductMesh.colour` (`SurfaceColour`: `red`, `green`, `blue`,

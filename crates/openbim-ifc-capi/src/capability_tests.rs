@@ -351,3 +351,64 @@ fn unreachable_products_cross_as_a_tape() {
     assert_eq!(fields[2], Tagged::List(Vec::new()));
     assert_eq!(openbim_ifc_v0_1_model_destroy(model), OpenbimIfcStatus::Ok);
 }
+
+#[test]
+fn ifczip_is_written_and_parsed_back() {
+    let model = parse(FILE);
+    let mut need = 0;
+    // SAFETY: size query with null texts and a null buffer.
+    let status = unsafe {
+        openbim_ifc_v0_1_model_write_ifczip(model, null(), 0, null(), 0, null_mut(), 0, &mut need)
+    };
+    assert_eq!(status, OpenbimIfcStatus::BufferTooSmall);
+    let mut zipped = vec![0u8; need];
+    // SAFETY: buffer sized from the query.
+    let status = unsafe {
+        openbim_ifc_v0_1_model_write_ifczip(
+            model,
+            null(),
+            0,
+            null(),
+            0,
+            zipped.as_mut_ptr(),
+            zipped.len(),
+            &mut need,
+        )
+    };
+    assert_eq!(status, OpenbimIfcStatus::Ok);
+    assert!(zipped.starts_with(b"PK\x03\x04"));
+    let back = parse(&zipped);
+    let mut count = 0;
+    // SAFETY: valid out-pointer.
+    unsafe { openbim_ifc_v0_1_model_len(back, &mut count) };
+    assert_eq!(count, 2);
+
+    let inner = "json";
+    // SAFETY: valid text slice; size query.
+    let status = unsafe {
+        openbim_ifc_v0_1_model_write_ifczip(
+            model,
+            inner.as_ptr(),
+            inner.len(),
+            null(),
+            0,
+            null_mut(),
+            0,
+            &mut need,
+        )
+    };
+    assert_eq!(status, OpenbimIfcStatus::InvalidValue);
+    assert_eq!(last_code(model), "invalid-value");
+
+    let mut empty = [0u8; 22];
+    empty[..4].copy_from_slice(b"PK\x05\x06");
+    let mut refused = 0;
+    // SAFETY: valid slice and out-pointer.
+    let status = unsafe {
+        openbim_ifc_v0_1_model_parse(empty.as_ptr(), empty.len(), &mut refused, null_mut(), 0)
+    };
+    assert_eq!(status, OpenbimIfcStatus::Parse);
+    for handle in [model, back] {
+        assert_eq!(openbim_ifc_v0_1_model_destroy(handle), OpenbimIfcStatus::Ok);
+    }
+}

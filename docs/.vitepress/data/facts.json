@@ -430,7 +430,7 @@
       "version": "0.1.10"
     },
     "openbim-ifc-cli": {
-      "description": "The openbim-ifc command: validate, convert and inspect IFC files (STEP and ifcXML) from a shell or CI.",
+      "description": "The openbim-ifc command: validate, convert and inspect IFC files (STEP, ifcXML and ifcZIP) from a shell or CI.",
       "group": "tool",
       "registries": [
         {

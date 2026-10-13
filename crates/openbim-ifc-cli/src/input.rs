@@ -6,14 +6,20 @@
 //! an XSD-configuration document declares its release's namespace. A
 //! document that shows neither is refused rather than read in a guessed
 //! layout; `--input-layout` names it explicitly.
+//!
+//! An ifcZIP archive is recognized by its ZIP signature, whatever its
+//! extension; its one model entry is inflated within the library's default
+//! decompression budget and then read as any other input.
 
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
+use ifc::ifczip::{self, Budget, IfcZipError, InnerFormat};
 use ifc::schema::for_version;
+use ifc::xml_layout::DeclaredXmlLayout;
 use ifc::{Codec, EntityId, Model, ModelError, Schema, SchemaVersion, StepCodec, XmlCodec};
-use ifc::{XmlLayout, XmlProfile};
+use ifc::{SchemaReading, XmlLayout, XmlProfile};
 
 use crate::cli::InputLayout;
 use crate::error::{CliError, CliResult};
@@ -38,6 +44,24 @@ pub(crate) struct Loaded {
     pub(crate) source: Source,
     /// For a STEP file, the line each `#id=` record starts on.
     pub(crate) lines: Option<LineIndex>,
+    /// The model entry's name when the file is an ifcZIP archive.
+    pub(crate) archive_entry: Option<String>,
+}
+
+impl Loaded {
+    /// The format read, for reports: `STEP`, `ifcXML (native layout)`,
+    /// and `in ifcZIP` after either when it came from an archive.
+    pub(crate) fn format(&self) -> String {
+        let format = match self.source {
+            Source::Step => "STEP",
+            Source::IfcXml(XmlLayout::Xsd) => "ifcXML (XSD layout)",
+            Source::IfcXml(_) => "ifcXML (native layout)",
+        };
+        match &self.archive_entry {
+            Some(entry) => format!("{format} in ifcZIP ({entry})"),
+            None => format.to_owned(),
+        }
+    }
 }
 
 /// Read `path` as STEP or ifcXML.
@@ -47,11 +71,35 @@ pub(crate) fn read(path: &Path, layout: InputLayout) -> CliResult<Loaded> {
         path: shown.clone(),
         detail: error.to_string(),
     })?;
-    let extension = path
+    let mut extension = path
         .extension()
         .and_then(|extension| extension.to_str())
         .unwrap_or_default()
         .to_ascii_lowercase();
+    let (bytes, archive_entry) = if ifczip::is_zip(&bytes) {
+        let entry = ifczip::extract(&bytes, &Budget::DEFAULT).map_err(|error| match error {
+            IfcZipError::BudgetExceeded { .. } => {
+                CliError::BudgetExceeded(format!("{shown}: ifcZIP {error}"))
+            }
+            IfcZipError::Encrypted { .. } | IfcZipError::UnsupportedCompression { .. } => {
+                CliError::Unsupported(format!("{shown}: ifcZIP {error}"))
+            }
+            other => CliError::Parse {
+                path: shown.clone(),
+                detail: format!("ifcZIP {other}"),
+            },
+        })?;
+        // The entry's content decided its format; its extension stands in
+        // for the archive's in the checks below.
+        extension = match entry.format {
+            InnerFormat::Step => "ifc",
+            _ => "ifcxml",
+        }
+        .to_owned();
+        (entry.bytes, Some(entry.name))
+    } else {
+        (bytes, None)
+    };
     let xml = XmlCodec::default();
     let is_xml = xml.detect(&bytes);
     let is_step = !is_xml
@@ -74,6 +122,7 @@ pub(crate) fn read(path: &Path, layout: InputLayout) -> CliResult<Loaded> {
             path: shown,
             source: Source::Step,
             lines: Some(lines),
+            archive_entry,
         });
     }
     if !is_xml && !xml.extensions().contains(&extension.as_str()) {
@@ -96,20 +145,19 @@ pub(crate) fn read(path: &Path, layout: InputLayout) -> CliResult<Loaded> {
         path: shown,
         source,
         lines: None,
+        archive_entry,
     })
 }
 
 /// The ifcXML codec that reads this document in the layout asked for.
 fn xml_reader(bytes: &[u8], layout: InputLayout) -> CliResult<XmlCodec> {
-    let root = root_tag(bytes);
-    let profile = xsd_profile_of(&root);
-    let schema_attribute = attribute(&root, "schema");
-    let layout = match layout {
-        InputLayout::Native => XmlLayout::Native,
-        InputLayout::Xsd => XmlLayout::Xsd,
-        InputLayout::Auto if schema_attribute.is_some() => XmlLayout::Native,
-        InputLayout::Auto if profile.is_some() => XmlLayout::Xsd,
-        InputLayout::Auto => {
+    let declared = ifc::xml_layout::declared_xml_layout(bytes);
+    let layout = match (layout, &declared) {
+        (InputLayout::Native, _) => XmlLayout::Native,
+        (InputLayout::Xsd, _) => XmlLayout::Xsd,
+        (InputLayout::Auto, DeclaredXmlLayout::Native { .. }) => XmlLayout::Native,
+        (InputLayout::Auto, DeclaredXmlLayout::Xsd(_)) => XmlLayout::Xsd,
+        (InputLayout::Auto, _) => {
             return Err(CliError::Unsupported(
                 "cannot tell the ifcXML layout: the root element has no `schema` attribute \
                  (native layout) and no IFC4 or IFC4X3_ADD2 namespace (XSD layout); \
@@ -119,21 +167,30 @@ fn xml_reader(bytes: &[u8], layout: InputLayout) -> CliResult<XmlCodec> {
         }
     };
     if layout == XmlLayout::Xsd {
-        let profile = profile.ok_or_else(|| {
-            CliError::Unsupported(
+        let DeclaredXmlLayout::Xsd(profile) = declared else {
+            return Err(CliError::Unsupported(
                 "an XSD-layout document must declare the IFC4 ADD2 TC1 or IFC4X3 ADD2 namespace"
                     .to_owned(),
-            )
-        })?;
+            ));
+        };
         return Ok(XmlCodec::xsd(release_tables(profile.version())?, profile));
     }
     // Named attributes need the release's tables to find their slots; a
-    // document written without a schema reads without one.
-    let bundled = schema_attribute
-        .as_deref()
-        .and_then(SchemaVersion::from_header_token)
-        .and_then(|version| release_tables(version).ok());
-    Ok(bundled.map_or_else(XmlCodec::default, XmlCodec::with_schema))
+    // document written without a schema reads without one. One written
+    // without tables names attributes by position (`a0`), which a strict
+    // schema-aware read refuses and a lenient one resolves.
+    let DeclaredXmlLayout::Native { schema, positional } = declared else {
+        return Ok(XmlCodec::default());
+    };
+    let bundled =
+        SchemaVersion::from_header_token(&schema).and_then(|version| release_tables(version).ok());
+    Ok(match bundled {
+        Some(tables) if positional => {
+            XmlCodec::with_schema(tables).with_reading(SchemaReading::Lenient)
+        }
+        Some(tables) => XmlCodec::with_schema(tables),
+        None => XmlCodec::default(),
+    })
 }
 
 /// The release a profile writes, as the shared tables an XML codec takes.
@@ -145,71 +202,11 @@ fn release_tables(version: SchemaVersion) -> CliResult<Arc<Schema>> {
         })
 }
 
-/// The XSD profile whose namespace the root tag declares.
-fn xsd_profile_of(root: &str) -> Option<XmlProfile> {
-    [XmlProfile::Ifc4Add2Tc1, XmlProfile::Ifc4x3Add2]
-        .into_iter()
-        .find(|profile| {
-            profile
-                .namespaces()
-                .iter()
-                .any(|namespace| root.contains(&format!("\"{namespace}\"")))
-        })
-}
-
 /// The XSD profile of the release `version`, if the codec has one.
 pub(crate) fn xsd_profile_for(version: SchemaVersion) -> Option<XmlProfile> {
     [XmlProfile::Ifc4Add2Tc1, XmlProfile::Ifc4x3Add2]
         .into_iter()
         .find(|profile| profile.version() == version)
-}
-
-/// The text of the document's root start tag, from `<` to `>`.
-fn root_tag(bytes: &[u8]) -> String {
-    let head = String::from_utf8_lossy(&bytes[..bytes.len().min(64 * 1024)]);
-    let mut rest = head.as_ref();
-    while let Some(start) = rest.find('<') {
-        let after = &rest[start + 1..];
-        // Declarations, processing instructions and comments come first.
-        if after.starts_with('?') || after.starts_with('!') {
-            let end = if after.starts_with("!--") {
-                after.find("-->").map(|end| end + 3)
-            } else {
-                after.find('>').map(|end| end + 1)
-            };
-            match end {
-                Some(end) => rest = &after[end..],
-                None => return String::new(),
-            }
-            continue;
-        }
-        return after
-            .find('>')
-            .map_or(after, |end| &after[..end])
-            .to_owned();
-    }
-    String::new()
-}
-
-/// The value of attribute `name` in a start tag.
-fn attribute(tag: &str, name: &str) -> Option<String> {
-    let mut rest = tag;
-    while let Some(at) = rest.find(name) {
-        let before = rest[..at].chars().next_back();
-        let after = rest[at + name.len()..].trim_start();
-        if before.is_some_and(char::is_whitespace) {
-            if let Some(value) = after.strip_prefix('=') {
-                let value = value.trim_start();
-                let quote = value.chars().next()?;
-                if quote == '"' || quote == '\'' {
-                    let body = &value[1..];
-                    return body.find(quote).map(|end| body[..end].to_owned());
-                }
-            }
-        }
-        rest = &rest[at + name.len()..];
-    }
-    None
 }
 
 /// The bundled tables of the release the header declares.
@@ -305,15 +302,5 @@ mod tests {
         assert_eq!(index.line(1), Some(2));
         assert_eq!(index.line(20), Some(3));
         assert_eq!(index.line(3), None, "no `=`: not a record start");
-    }
-
-    #[test]
-    fn the_root_tag_skips_the_prolog() {
-        let tag =
-            root_tag(b"<?xml version=\"1.0\"?>\n<!-- c > d -->\n<ifcXML schema=\"IFC4\" a='b'>");
-        assert_eq!(tag, "ifcXML schema=\"IFC4\" a='b'");
-        assert_eq!(attribute(&tag, "schema").as_deref(), Some("IFC4"));
-        assert_eq!(attribute(&tag, "a").as_deref(), Some("b"));
-        assert_eq!(attribute("x xschema=\"1\"", "schema"), None);
     }
 }

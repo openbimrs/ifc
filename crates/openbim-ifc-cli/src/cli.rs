@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
-/// Validate, convert and inspect IFC files (STEP and ifcXML).
+/// Validate, convert and inspect IFC files (STEP, ifcXML and ifcZIP).
 ///
 /// Exit codes: 0 success, 1 findings (validate, lint), 2 usage error,
 /// unreadable input or a refusal.
@@ -32,7 +32,7 @@ pub(crate) struct Cli {
 pub(crate) enum Command {
     /// Validate against the schema each file declares (exit 1 on findings).
     Validate(ValidateArgs),
-    /// Convert between STEP and ifcXML (native or XSD layout).
+    /// Convert between STEP, ifcXML (native or XSD layout) and ifcZIP.
     Convert(ConvertArgs),
     /// Show the header, the declared schema and entity counts.
     Info(InfoArgs),
@@ -107,6 +107,18 @@ pub(crate) enum ModelFormat {
     Step,
     /// ISO 10303-28 (`.ifcxml`).
     Ifcxml,
+    /// ifcZIP (`.ifczip`): one STEP or ifcXML document (`--inner`) in a
+    /// ZIP archive.
+    Ifczip,
+}
+
+/// The document an ifcZIP archive holds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum InnerFormat {
+    /// ISO 10303-21, as `<name>.ifc`.
+    Step,
+    /// ISO 10303-28, as `<name>.ifcXML`, in `--layout`.
+    Ifcxml,
 }
 
 /// The ifcXML layout `convert` writes.
@@ -121,14 +133,17 @@ pub(crate) enum OutputLayout {
 /// `convert`.
 #[derive(Debug, Args)]
 pub(crate) struct ConvertArgs {
-    /// The file to read (STEP or ifcXML).
+    /// The file to read (STEP, ifcXML or ifcZIP).
     pub(crate) input: PathBuf,
     /// The file to write, or `-` for standard output (needs `--to`).
     pub(crate) output: PathBuf,
     /// The output format; by default from the output extension (`.ifc`,
-    /// `.step`, `.stp` or `.ifcxml`, `.xml`).
+    /// `.step`, `.stp`, `.ifcxml`, `.xml` or `.ifczip`).
     #[arg(long, value_enum)]
     pub(crate) to: Option<ModelFormat>,
+    /// The document an ifcZIP output holds [default: step].
+    #[arg(long, value_enum)]
+    pub(crate) inner: Option<InnerFormat>,
     /// The ifcXML layout to write [default: native].
     #[arg(long, value_enum)]
     pub(crate) layout: Option<OutputLayout>,

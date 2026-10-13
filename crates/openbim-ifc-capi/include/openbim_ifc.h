@@ -1106,7 +1106,8 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_material(OpenbimIfcModel model,
 
 /**
  * Read the STEP file at `path` (UTF-8, `path_len` bytes, no NUL needed)
- * into a model that owns its bytes, and write the new model's handle.
+ * into a model that owns its bytes, and write the new model's handle. An
+ * ifcZIP archive is read as `openbim_ifc_v0_1_model_parse` reads one.
  *
  * Errors as `openbim_ifc_v0_1_model_parse`, plus `Io` when the file cannot
  * be opened or read.
@@ -1170,6 +1171,12 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_open_with_options(const uint8_t *path,
 
 /**
  * Parse `len` bytes of STEP and write the new model's handle.
+ *
+ * An ifcZIP archive, recognized by its ZIP signature, is read too: its one
+ * STEP or ifcXML model, within a decompression budget. `Parse` for an
+ * archive with no model or several, `Unsupported` for an encrypted entry
+ * or a compression other than Stored and Deflate, `BudgetExceeded` for an
+ * entry that inflates past the budget.
  *
  * A parse failure has no model to hold its error, so the message is written
  * to the optional `error_buffer` (NUL-terminated, truncated to `capacity`).
@@ -1588,6 +1595,30 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_write(OpenbimIfcModel model,
  * `profile_len` reads.
  */
 OpenbimIfcStatus openbim_ifc_v0_1_model_write_ifcxml(OpenbimIfcModel model,
+                                                     const uint8_t *profile,
+                                                     size_t profile_len,
+                                                     uint8_t *buffer,
+                                                     size_t capacity,
+                                                     size_t *out_required);
+
+/**
+ * Serialize as an ifcZIP archive into a caller buffer; `out_required` gets
+ * the size.
+ *
+ * `inner` (UTF-8, `inner_len` bytes) is null with length 0 or `step` for
+ * STEP inside (`model.ifc`), or `ifcxml` (any case) for ifcXML
+ * (`model.ifcXML`) in the layout `profile` names as for
+ * `openbim_ifc_v0_1_model_write_ifcxml`. `InvalidValue` for another
+ * `inner` or a `profile` with STEP inside; otherwise as the inner write,
+ * and `FeatureDisabled` without the `zip` feature.
+ *
+ * # Safety
+ * As `openbim_ifc_v0_1_model_write`; `inner` and `profile`, if non-null,
+ * valid for `inner_len` and `profile_len` reads.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_write_ifczip(OpenbimIfcModel model,
+                                                     const uint8_t *inner,
+                                                     size_t inner_len,
                                                      const uint8_t *profile,
                                                      size_t profile_len,
                                                      uint8_t *buffer,

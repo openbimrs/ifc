@@ -38,7 +38,7 @@ public sealed unsafe class IfcModel : IDisposable
         handle = ModelHandle.Own(model);
     }
 
-    /// <summary>Parse a STEP (<c>.ifc</c>) file from its bytes; <paramref name="options"/> relaxes the strict read.</summary>
+    /// <summary>Parse a STEP (<c>.ifc</c>) file from its bytes, or an ifcZIP archive holding STEP or ifcXML, recognized by its ZIP signature and read within a decompression budget; <paramref name="options"/> relaxes the strict read.</summary>
     public static IfcModel Parse(byte[] data, ParseOptions? options = null)
     {
         if (data is null)
@@ -128,6 +128,27 @@ public sealed unsafe class IfcModel : IDisposable
             fixed (byte* name = profile)
             {
                 return NativeMethods.openbim_ifc_v0_1_model_write_ifcxml(m, name, (nuint)(profile?.Length ?? 0), buffer, capacity, required);
+            }
+        });
+    }
+
+    /// <summary>Serialize as ifcZIP bytes: one Deflate entry holding STEP (<c>model.ifc</c>), or with <paramref name="inner"/> <c>ifcxml</c> ifcXML (<c>model.ifcXML</c>) in the layout <paramref name="xsdProfile"/> names, as for <see cref="WriteIfcXml"/>; <see cref="Parse"/> reads it back. Refuses with <c>invalid-value</c> another <paramref name="inner"/>, or a profile with STEP inside.</summary>
+    public byte[] WriteIfcZip(string inner = "step", string? xsdProfile = null)
+    {
+        if (inner is null)
+        {
+            throw new ArgumentNullException(nameof(inner));
+        }
+        var format = Calls.Encode(inner);
+        var profile = xsdProfile is null ? null : Calls.Encode(xsdProfile);
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return Bytes(m, (buffer, capacity, required) =>
+        {
+            fixed (byte* text = format)
+            fixed (byte* name = profile)
+            {
+                return NativeMethods.openbim_ifc_v0_1_model_write_ifczip(m, text, (nuint)format.Length, name, (nuint)(profile?.Length ?? 0), buffer, capacity, required);
             }
         });
     }

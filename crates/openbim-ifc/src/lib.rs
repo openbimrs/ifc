@@ -31,6 +31,7 @@
 //! | `schema` | `ifc-schema` | Subtype queries, conformant XML names |
 //! | `material-templates` | `ifc-material` + template catalog | Material PSD applicability |
 //! | `cost`, `schedule`, ... | one domain crate each | Interpreting that domain |
+//! | `zip` | a ZIP reader and writer (Deflate only) | Reading/writing `.ifczip` |
 //! | `codecs` | both codecs | |
 //! | `domains` | every domain view | |
 //! | `full` | everything | |
@@ -351,6 +352,17 @@ pub use name_guid::{name_based_guid, new_guid, GuidError};
 
 mod feature_report;
 mod io;
+
+// ifcZIP (#450): a STEP or ifcXML model in a ZIP archive, `IfcZipCodec`
+// and its typed refusals. It wraps both codecs, siblings that never depend
+// on each other, so it lives in this orchestration layer. The signature
+// check is always compiled; the rest needs `zip`.
+pub mod ifczip;
+
+// The layout an ifcXML document declares, for readers handed a document
+// without its layout (an ifcZIP entry, the command line). The module gates
+// itself on `ifcxml` with an inner `#![cfg]`.
+pub mod xml_layout;
 
 pub use feature_report::compiled_features;
 pub use io::{codecs, read_path};

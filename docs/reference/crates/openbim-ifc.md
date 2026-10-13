@@ -36,7 +36,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `cost` |  | [`ifc-cost`](./ifc-cost): Cost semantics as a borrowed view over the IFC model. |
 | `domains` |  | Every domain view, plus authoring and spatial traversal. |
 | `element-type` |  | [`ifc-element-type`](./ifc-element-type): Element, resource, and process type definitions: the IfcTypeObject catalogue. |
-| `full` |  | Everything: codecs, schema tables, every domain, catalogues, geometry and meshes, georeferencing and alignment. |
+| `full` |  | Everything: codecs and ifcZIP, schema tables, every domain, catalogues, geometry and meshes, georeferencing and alignment. |
 | `geometry` |  | Representation selection plus lowering into the neutral geometry DAG. |
 | `geometry-select` |  | Representation selection only: contexts, plan/body choice, placements and units, with no geometry kernel. |
 | `geometry-wire` |  | Each product's Body as Axiolid's neutral geometry graph (`product_graphs`), exact and in world metres, encodable in Axiolid's versioned wire format (1.0; 1.1 where a station carries a seam-snapping window, 1.2 where a run's sections do, 1.3 where an offset run continues to a basis end the kernel measures) as JSON or CBOR (`ifc::geometry::wire`); a typed refusal per product. Computes nothing; adds the lowering and serde. |
@@ -66,6 +66,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `systems` |  | [`ifc-systems`](./ifc-systems): Distribution systems, ports, and connectivity between elements. |
 | `tabular` |  | [`ifc-tabular`](./ifc-tabular): Structured IFC value containers indexed by position or time. |
 | `validate` |  | [`ifc-validate`](./ifc-validate): Schema conformance: WHERE rules, cardinality, GUID and reference integrity. |
+| `zip` |  | ifcZIP (`ifc::ifczip`, `ifc::ifczip::IfcZipCodec`): read an archive holding one STEP or ifcXML model within a decompression budget, and write one; Stored and Deflate only, through the pure-Rust `zip` and `flate2` (miniz_oxide) crates. |
 
 ## Depends on
 

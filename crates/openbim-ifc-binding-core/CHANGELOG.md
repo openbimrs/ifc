@@ -8,6 +8,16 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#450)
+
+- ifcZIP (feature `zip`, default): `parse`, `parse_with`, `parse_owned`,
+  `open` and `open_mapped` recognize an archive by its ZIP signature and
+  read its one STEP (under the call's options) or ifcXML model within the
+  facade's default decompression budget; `write_ifczip(inner,
+  xsd_profile)` writes one. Refusals map to existing codes: `parse`,
+  `unsupported`, `budget-exceeded`, `invalid-value`, and
+  `feature-disabled` without the feature.
+
 ### Added (#449)
 
 - `ProductMesh` gains `colour` (`SurfaceColour`: `red`, `green`, `blue`,

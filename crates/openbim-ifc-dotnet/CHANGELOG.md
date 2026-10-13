@@ -9,6 +9,15 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#450)
+
+- `IfcModel.WriteIfcZip(inner = "step", xsdProfile = null)`, and ifcZIP
+  input to `IfcModel.Parse`, recognized by the ZIP signature and read
+  within a decompression budget (`parse`, `unsupported` or
+  `budget-exceeded` otherwise).
+
+Semver: minor (additive).
+
 ### Added (#449)
 
 - `ProductMesh` gains `Colour` (`SurfaceColour`: `Red`, `Green`, `Blue`,

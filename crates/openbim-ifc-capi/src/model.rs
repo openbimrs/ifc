@@ -95,6 +95,12 @@ pub unsafe extern "C" fn openbim_ifc_v0_1_model_create(
 
 /// Parse `len` bytes of STEP and write the new model's handle.
 ///
+/// An ifcZIP archive, recognized by its ZIP signature, is read too: its one
+/// STEP or ifcXML model, within a decompression budget. `Parse` for an
+/// archive with no model or several, `Unsupported` for an encrypted entry
+/// or a compression other than Stored and Deflate, `BudgetExceeded` for an
+/// entry that inflates past the budget.
+///
 /// A parse failure has no model to hold its error, so the message is written
 /// to the optional `error_buffer` (NUL-terminated, truncated to `capacity`).
 ///
