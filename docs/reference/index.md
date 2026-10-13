@@ -10,7 +10,7 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.31.0 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
+| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.32.0 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
 
 ## Model, codecs, schema, authoring and validation
 
@@ -38,10 +38,10 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 | [`ifc-properties`](./crates/ifc-properties) | <span class="status-implemented">Implemented</span> | 0.8.1 | Property sets, quantities, and unit resolution. No geometry. |
 | [`ifc-resource`](./crates/ifc-resource) | <span class="status-implemented">Implemented</span> | 0.4.0 | Construction resources: labour, equipment, material, crew, subcontract. |
 | [`ifc-schedule`](./crates/ifc-schedule) | <span class="status-implemented">Implemented</span> | 0.4.0 | IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage. |
-| [`ifc-spatial`](./crates/ifc-spatial) | <span class="status-implemented">Implemented</span> | 0.5.0 | IFC spatial containment and objectified relationship traversal: project, site, building, storey, element. |
+| [`ifc-spatial`](./crates/ifc-spatial) | <span class="status-implemented">Implemented</span> | 0.5.1 | IFC spatial containment and objectified relationship traversal: project, site, building, storey, element. |
 | [`ifc-structural`](./crates/ifc-structural) | <span class="status-implemented">Implemented</span> | 0.4.0 | Structural analysis model: members, connections, actions, reactions, loads. |
-| [`ifc-style`](./crates/ifc-style) | <span class="status-implemented">Implemented</span> | 0.4.0 | Presentation: styles, colours, textures, layers, annotation. |
-| [`ifc-systems`](./crates/ifc-systems) | <span class="status-implemented">Implemented</span> | 0.4.0 | Distribution systems, ports, and connectivity between elements. |
+| [`ifc-style`](./crates/ifc-style) | <span class="status-implemented">Implemented</span> | 0.5.0 | Presentation: styles, colours, textures, layers, annotation. |
+| [`ifc-systems`](./crates/ifc-systems) | <span class="status-implemented">Implemented</span> | 0.5.0 | Distribution systems, ports, and connectivity between elements. |
 | [`ifc-tabular`](./crates/ifc-tabular) | <span class="status-implemented">Implemented</span> | 0.3.0 | Structured IFC value containers indexed by position or time. |
 | [`ifc-template-catalog`](./crates/ifc-template-catalog) | <span class="status-implemented">Implemented</span> | 0.4.0 | Versioned IFC PSD/QTO catalog definitions and correction overlays |
 
@@ -49,22 +49,22 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`ifc-alignment`](./crates/ifc-alignment) | <span class="status-implemented">Implemented</span> | 0.8.1 | IFC4x3 linear positioning: alignments, referents, linear placement, spirals. |
-| [`ifc-geometry`](./crates/ifc-geometry) | <span class="status-partial">Partial</span> | 0.25.1 | IFC semantic views lowered into the format-neutral geometry DAG. |
-| [`ifc-georef`](./crates/ifc-georef) | <span class="status-implemented">Implemented</span> | 0.6.0 | Georeferencing: map conversion, coordinate reference systems, site placement. |
+| [`ifc-alignment`](./crates/ifc-alignment) | <span class="status-implemented">Implemented</span> | 0.9.0 | IFC4x3 linear positioning: alignments, referents, linear placement, spirals. |
+| [`ifc-geometry`](./crates/ifc-geometry) | <span class="status-partial">Partial</span> | 0.26.0 | IFC semantic views lowered into the format-neutral geometry DAG. |
+| [`ifc-georef`](./crates/ifc-georef) | <span class="status-implemented">Implemented</span> | 0.7.0 | Georeferencing: map conversion, coordinate reference systems, site placement. |
 
 ## Language bindings
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
 | [`openbim-ifc-binding-core`](./crates/openbim-ifc-binding-core) | <span class="status-implemented">Implemented</span> | not released | Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python). |
-| [`openbim-ifc-capi`](./crates/openbim-ifc-capi) | <span class="status-implemented">Implemented</span> | 0.1.10 | Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++. |
-| [`openbim-ifc-dotnet`](./crates/openbim-ifc-dotnet) | <span class="status-implemented">Implemented</span> | 0.5.0 | The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned C ABI. |
-| [`openbim-ifc-py`](./crates/openbim-ifc-py) | <span class="status-implemented">Implemented</span> | 0.8.0 | Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python. |
-| [`openbim-ifc-wasm`](./crates/openbim-ifc-wasm) | <span class="status-implemented">Implemented</span> | 0.8.0 | WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript. |
+| [`openbim-ifc-capi`](./crates/openbim-ifc-capi) | <span class="status-implemented">Implemented</span> | 0.1.11 | Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++. |
+| [`openbim-ifc-dotnet`](./crates/openbim-ifc-dotnet) | <span class="status-implemented">Implemented</span> | 0.6.0 | The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned C ABI. |
+| [`openbim-ifc-py`](./crates/openbim-ifc-py) | <span class="status-implemented">Implemented</span> | 0.9.0 | Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python. |
+| [`openbim-ifc-wasm`](./crates/openbim-ifc-wasm) | <span class="status-implemented">Implemented</span> | 0.9.0 | WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript. |
 
 ## Command-line tool
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`openbim-ifc-cli`](./crates/openbim-ifc-cli) | <span class="status-partial">Partial</span> | 0.1.0 | The openbim-ifc command: validate, convert and inspect IFC files (STEP, ifcXML and ifcZIP) from a shell or CI. |
+| [`openbim-ifc-cli`](./crates/openbim-ifc-cli) | <span class="status-partial">Partial</span> | 0.2.0 | The openbim-ifc command: validate, convert and inspect IFC files (STEP, ifcXML and ifcZIP) from a shell or CI. |

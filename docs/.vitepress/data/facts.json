@@ -10,10 +10,10 @@
           "url": "https://crates.io/crates/ifc-alignment"
         }
       ],
-      "released": "0.8.1",
-      "released_date": "2026-10-10",
+      "released": "0.9.0",
+      "released_date": "2026-10-13",
       "status": "implemented",
-      "version": "0.8.1"
+      "version": "0.9.0"
     },
     "ifc-approval": {
       "description": "Bounded IFC4 approval resource semantics.",
@@ -130,10 +130,10 @@
           "url": "https://crates.io/crates/ifc-geometry"
         }
       ],
-      "released": "0.25.1",
+      "released": "0.26.0",
       "released_date": "2026-10-13",
       "status": "partial",
-      "version": "0.25.1"
+      "version": "0.26.0"
     },
     "ifc-georef": {
       "description": "Georeferencing: map conversion, coordinate reference systems, site placement.",
@@ -145,10 +145,10 @@
           "url": "https://crates.io/crates/ifc-georef"
         }
       ],
-      "released": "0.6.0",
-      "released_date": "2026-10-03",
+      "released": "0.7.0",
+      "released_date": "2026-10-13",
       "status": "implemented",
-      "version": "0.6.0"
+      "version": "0.7.0"
     },
     "ifc-material": {
       "description": "Material definitions: layer sets, profile sets, constituents, usage.",
@@ -265,10 +265,10 @@
           "url": "https://crates.io/crates/ifc-spatial"
         }
       ],
-      "released": "0.5.0",
-      "released_date": "2026-10-03",
+      "released": "0.5.1",
+      "released_date": "2026-10-13",
       "status": "implemented",
-      "version": "0.5.0"
+      "version": "0.5.1"
     },
     "ifc-step": {
       "description": "STEP physical file (ISO 10303-21) codec for the IFC model.",
@@ -310,10 +310,10 @@
           "url": "https://crates.io/crates/ifc-style"
         }
       ],
-      "released": "0.4.0",
-      "released_date": "2026-09-29",
+      "released": "0.5.0",
+      "released_date": "2026-10-13",
       "status": "implemented",
-      "version": "0.4.0"
+      "version": "0.5.0"
     },
     "ifc-systems": {
       "description": "Distribution systems, ports, and connectivity between elements.",
@@ -325,10 +325,10 @@
           "url": "https://crates.io/crates/ifc-systems"
         }
       ],
-      "released": "0.4.0",
-      "released_date": "2026-10-03",
+      "released": "0.5.0",
+      "released_date": "2026-10-13",
       "status": "implemented",
-      "version": "0.4.0"
+      "version": "0.5.0"
     },
     "ifc-tabular": {
       "description": "Structured IFC value containers indexed by position or time.",
@@ -400,10 +400,10 @@
           "url": "https://crates.io/crates/openbim-ifc"
         }
       ],
-      "released": "0.31.0",
+      "released": "0.32.0",
       "released_date": "2026-10-13",
       "status": "implemented",
-      "version": "0.31.0"
+      "version": "0.32.0"
     },
     "openbim-ifc-binding-core": {
       "description": "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python).",
@@ -421,13 +421,13 @@
         {
           "package": "openbim_ifc",
           "registry": "GitHub release",
-          "url": "https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.10"
+          "url": "https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.11"
         }
       ],
-      "released": "0.1.10",
+      "released": "0.1.11",
       "released_date": "2026-10-13",
       "status": "implemented",
-      "version": "0.1.10"
+      "version": "0.1.11"
     },
     "openbim-ifc-cli": {
       "description": "The openbim-ifc command: validate, convert and inspect IFC files (STEP, ifcXML and ifcZIP) from a shell or CI.",
@@ -439,10 +439,10 @@
           "url": "https://crates.io/crates/openbim-ifc-cli"
         }
       ],
-      "released": "0.1.0",
-      "released_date": "2026-10-09",
+      "released": "0.2.0",
+      "released_date": "2026-10-13",
       "status": "partial",
-      "version": "0.1.0"
+      "version": "0.2.0"
     },
     "openbim-ifc-dotnet": {
       "description": "The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned C ABI.",
@@ -454,10 +454,10 @@
           "url": "https://www.nuget.org/packages/OpenBim.Ifc"
         }
       ],
-      "released": "0.5.0",
+      "released": "0.6.0",
       "released_date": "2026-10-13",
       "status": "implemented",
-      "version": "0.5.0"
+      "version": "0.6.0"
     },
     "openbim-ifc-py": {
       "description": "Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python.",
@@ -469,10 +469,10 @@
           "url": "https://pypi.org/project/openbim-ifc/"
         }
       ],
-      "released": "0.8.0",
+      "released": "0.9.0",
       "released_date": "2026-10-13",
       "status": "implemented",
-      "version": "0.8.0"
+      "version": "0.9.0"
     },
     "openbim-ifc-wasm": {
       "description": "WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript.",
@@ -484,10 +484,10 @@
           "url": "https://www.npmjs.com/package/@openbim/ifc"
         }
       ],
-      "released": "0.8.0",
+      "released": "0.9.0",
       "released_date": "2026-10-13",
       "status": "implemented",
-      "version": "0.8.0"
+      "version": "0.9.0"
     }
   },
   "crates": {

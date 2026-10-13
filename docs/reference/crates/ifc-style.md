@@ -11,7 +11,7 @@ Presentation: styles, colours, textures, layers, annotation.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.0 (2026-09-29) |
+| Latest release | 0.5.0 (2026-10-13) |
 | Registries | [crates.io `ifc-style`](https://crates.io/crates/ifc-style) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `style` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_style/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-style) |
@@ -34,45 +34,31 @@ IFC4, and IFC4X3 layout drift is explicit rather than guessed.
 
 ## Changes
 
-Latest release, 0.4.0 (2026-09-29):
+Latest release, 0.5.0 (2026-10-13):
 
-### Changed (breaking)
+### Added (#449)
 
-- `AppearanceSupport` is `#[non_exhaustive]`: a match needs a wildcard arm;
-  `AppearanceDeclaration` is `#[non_exhaustive]`.
-- Every authoring draft is `#[non_exhaustive]`, so a struct literal no
-  longer compiles outside the crate. Each gains `new(required…)` and one
-  builder setter per other field, named after the field and taking the
-  unwrapped value: `BlobTextureDraft::new(raster_format, raster_code)`,
-  `TextModelDraft::new()`, `LightSourceDraft::new(light_colour)`,
-  `AnnotationDraft::new(global_id)`,
-  `TextLiteralDraft::new(literal, placement, path)`,
-  `TextLiteralWithExtentDraft::new(literal, placement, path, extent,
-  box_alignment)`, `AnnotationFillAreaDraft::new(outer_boundary)`,
-  `CurveStyleDraft::new()`,
-  `PixelTextureDraft::new(width, height, colour_components, pixel)`,
-  `ColourRgbDraft::new(red, green, blue)`,
-  `SurfaceStyleShadingDraft::new(surface_colour)`,
-  `SurfaceStyleDraft::new(side, elements)`, `StyledItemDraft::new(styles)`,
-  `PresentationLayerDraft::new(name, assigned_items)`,
-  `SurfaceStyleRenderingDraft::new(surface_colour, reflectance_method)` and
-  `ImageTextureDraft::new(url_reference)`. Fields stay public.
+- `StyleIndex`: every `IfcStyledItem`, `IfcPresentationLayerAssignment`
+  and `IfcMaterialDefinitionRepresentation` of a model indexed once, with
+  `item_colour(item)` (the item's own `IfcStyledItem`, then its styled
+  presentation layers) and `material_colour(material)` (the item-less
+  `IfcStyledItem`s of the material's `IfcStyledRepresentation`s). Both
+  return a `SurfaceColour`: RGB, transparency (`None` when unstated),
+  the `IfcSurfaceStyle` and a `ColourSource` (`StyledItem`,
+  `PresentationLayer`, `Material`). The precedence, item over layer
+  over material, is documented and cited (IFC4 ADD2 TC1
+  `IfcPresentationLayerWithStyle`, `IfcStyledItem`,
+  `IfcMaterialDefinitionRepresentation`). It is applied per colour: a
+  level that states no surface colour does not hide the next. IFC2X3
+  reads its `IfcPresentationStyleAssignment` wrappers, and its
+  transparency from `IfcSurfaceStyleRendering`.
+- `StyleError::AmbiguousSurfaceColour`: one level stating two different
+  surface colours (two surface styles in one styled item, two styled
+  layers, a material whose styled representations disagree).
 
-### Added
+`resolve_item_style` is unchanged.
 
-- `StyleError::UnsupportedSchema`: `StyledItem::styles` refuses a
-  recognised release it is not verified for instead of applying the
-  IFC4X3 rule to it.
-
-### Changed
-
-- Links no bundled schema table itself: every entry point takes the
-  `Schema` from the caller. A consumer that used a table through this
-  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
-  `ifc-schema` dependency (default features bundle every release).
-- `StyledItem::styles` reads IFC4X1 and IFC4X2 like IFC4: both declare
-  `Styles` over `IfcStyleAssignmentSelect`, which still admits
-  `IfcPresentationStyleAssignment`; only IFC4X3 narrowed it. Pinned
-  against both bundled tables.
+Semver: additive (`StyleError` is `#[non_exhaustive]`), a minor release
+while 0.x.
 
 Full history: [`crates/ifc-style/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-style/CHANGELOG.md)

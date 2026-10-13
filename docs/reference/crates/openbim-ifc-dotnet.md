@@ -11,7 +11,7 @@ The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned 
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.5.0 (2026-10-13) |
+| Latest release | 0.6.0 (2026-10-13) |
 | Registries | [NuGet `OpenBim.Ifc`](https://www.nuget.org/packages/OpenBim.Ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_dotnet/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-dotnet/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-dotnet) |
@@ -44,20 +44,64 @@ The behaviour is tested from C# against the packed `.nupkg` by
 
 ## Changes
 
-Latest release, 0.5.0 (2026-10-13):
+Latest release, 0.6.0 (2026-10-13):
 
-### Changed (#433, wire format 1.3)
+### Added (#478, cascading delete and purge)
 
-- The geometry graph payload (#367) may be Axiolid's wire format 1.3
-  (`axiolid-model` 0.3.12), a minor version of the format (ADR 0021,
-  amended): an `IfcOffsetCurveByDistances` along an offset whose length is
-  a quadrature now lowers, continued to the basis's ends the kernel
-  measures. An envelope carries the lowest version its content needs, so
-  every other payload is unchanged: 1.0, 1.1 or 1.2. A reader on
-  `axiolid-model` 0.3.11 or older refuses 1.3.
-  `ProductGraph.FormatVersion` is `"1.3"`, the newest version the package
-  writes.
+- `model.RemoveProduct(id, rebasePlacements, untypeOccurrences, dryRun)`
+  and `model.Purge(classes, includeRoots, includeOwnerHistory, dryRun)`,
+  returning a `RemovalReport` (`RemovedEntity`, `KeptEntity`).
+- Requires the C ABI 0.1.12 (`openbim-ifc-capi` with #478).
 
-Semver: minor, as ADR 0021 states for a minor version of the wire format.
+### Deprecated (#478)
+
+- `model.Remove(id)` is `[Obsolete]`: it leaves references dangling. Use
+  `RemoveWithRelationships` or `RemoveProduct`. It keeps working; a caller
+  building with warnings as errors sees CS0618.
+
+Semver: additive, a minor release while 0.x.
+
+### Added (#450)
+
+- `IfcModel.WriteIfcZip(inner = "step", xsdProfile = null)`, and ifcZIP
+  input to `IfcModel.Parse`, recognized by the ZIP signature and read
+  within a decompression budget (`parse`, `unsupported` or
+  `budget-exceeded` otherwise).
+
+Semver: minor (additive).
+
+### Added (#449)
+
+- `ProductMesh` gains `Colour` (`SurfaceColour`: `Red`, `Green`, `Blue`,
+  `Transparency`, `Source` `item`/`layer`/`material`, `SourceEntity`,
+  `SurfaceStyle`) and `ColourRefusal` (a `GeometryRefusal`, code
+  `ambiguous` or a geometry code) as its last positional parameters, in a
+  native library built with `mesh`: the colour of the Body's item style,
+  else its presentation layer's, else its material's styled
+  representation.
+
+Semver: additive, a minor release while 0.x (a caller that constructs
+`ProductMesh` itself passes the two new parameters).
+
+### Added (#463, GlobalIds, types and openings)
+
+- `model.ByGuid(globalId)` (`ulong?`), through an index built on the first
+  lookup; a `GlobalId` several entities carry throws `invalid-model`, and
+  `model.DuplicateGlobalIds()` lists them (`DuplicateGlobalId`).
+- `model.TypeObject(id)`, `OccurrencesOf`, `OpeningsOf`, `FillingsOf` and
+  `VoidedElementOf`, in IFC2X3, IFC4 and IFC4X3.
+- `IfcModel.NewGuid()` and `IfcModel.NameBasedGuid(params string[])`.
+- Requires the C ABI 0.1.10 (`openbim-ifc-capi` with #463).
+
+Semver: additive, a minor release while 0.x.
+
+### Changed
+
+- `IfcModel.Georeferencing()` reads IFC2X3 files through their `ePSet_MapConversion` and
+  `ePSet_ProjectedCRS` property sets instead of refusing them as
+  `unsupported-schema` (#451); such a record's source kind is
+  `property-set`. Through `openbim-ifc-binding-core`.
+
+Semver: minor (ADR 0021).
 
 Full history: [`crates/openbim-ifc-dotnet/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-dotnet/CHANGELOG.md)

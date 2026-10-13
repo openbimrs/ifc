@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.31.0 (2026-10-13) |
+| Latest release | 0.32.0 (2026-10-13) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -99,13 +99,149 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.31.0 (2026-10-13):
+Latest release, 0.32.0 (2026-10-13):
+
+### Added (#478, cascading delete and purge)
+
+- `AuthorOp::RemoveProduct { product, options }` removes an `IfcProduct` or
+  `IfcTypeObject` with everything it solely owns: its `ObjectPlacement`,
+  its representation down to the items nothing else uses, the property and
+  quantity sets only it is defined by with their properties, its material
+  usage (not the material definitions), its openings (each with the same
+  cascade) and its ports (nested, or connected in IFC2X3), and every
+  relationship left without an end. "Solely owned" is a reference count
+  over the batch's view (the base model's `ReverseIndex`, corrected for
+  the batch's own changes), taken to a fixed point; a relationship that
+  only loses a list member and a presentation layer assignment do not
+  count, a styled item and a shape aspect go with what they attach to.
+  Shared data is kept: a property set another object uses, a type's
+  representation maps, a style or point used elsewhere; so are related
+  objects (the type, the container, the fillings of a removed opening) and
+  definitions (material definitions, classification references, units,
+  contexts, the owner history).
+- `RemoveProductOptions` (`#[non_exhaustive]`): `rebase_placements`
+  re-bases placements relative to a removed placement onto its nearest
+  kept ancestor with the composed `IfcAxis2Placement3D` transform, so
+  nothing moves; `untype_occurrences` lets a type object with occurrences
+  go, removing its `IfcRelDefinesByType`.
+- `AuthorOp::Purge(PurgeOptions)`: without classes, every resource entity
+  no `IfcRoot` reaches, nor annotates something reached (styled items,
+  layer assignments, shape aspects, resource relationships, coordinate
+  operations); with classes, the unreferenced entities of those classes.
+  `IfcRoot`s (`include_roots`; `IfcProject` only when named), the owner
+  history with its actors (`include_owner_history`) and, by default,
+  representation contexts are kept unless asked.
+- `RemovalReport` (`removed`, `kept` with a `KeepReason` and the `users`
+  of a shared entity, `detached`, `rebased`), `RemovedEntity`,
+  `KeptEntity`, `KeepReason` (`Shared`, `RelatedObject`, `Definition`,
+  `Protected`): `AuthoringOutcome::reports` and `StagedAuthoring::reports`
+  carry one per operation, so staging a batch is the dry run.
+- `AuthoringFailure::PlacementHasDependents`, `TypeHasOccurrences` and
+  `UnsupportedRebase`.
+
+### Changed (#478)
+
+- The authoring batch reads who references an entity from the base
+  model's `ReverseIndex`, built once per batch on the first removal,
+  instead of scanning the model per lookup.
+
+Semver: additive (new variants of `#[non_exhaustive]` enums, new fields of
+`#[non_exhaustive]` structs), a minor release while 0.x.
+
+### Added (#450)
+
+- ifcZIP, behind the new `zip` feature (on in `full`): `ifc::ifczip`
+  reads an archive holding one STEP or ifcXML model at its root
+  (buildingSMART implementation agreement CV-2x3-154), the inner format
+  and the ifcXML layout detected from the content, through the existing
+  codecs (`read`, `extract`, `read_entry`), and writes one Deflate entry
+  (`write`, `pack`), reproducibly. Refusals are typed
+  (`IfcZipError`): `Malformed`, `NoModel`, `SeveralModels`,
+  `UnknownInnerFormat`, `Encrypted`, `UnsupportedCompression` (anything
+  but Stored and Deflate), `BudgetExceeded` and `CodecNotCompiled`.
+  Decompression is bounded by a `Budget`, absolute (4 GiB) and as a ratio
+  to the compressed size (200, above 1 MiB), checked against the declared
+  size and again while inflating.
+- `ifczip::IfcZipCodec` puts ifcZIP behind the `Codec` interface: `codecs()` lists
+  it and `read_path` reads `.ifczip` (an archive is recognized by its ZIP
+  signature; without the feature it is refused as `WrongFormat` naming
+  the feature).
+- `xml_layout::declared_xml_layout` and `DeclaredXmlLayout` (feature
+  `ifcxml`): the
+  ifcXML layout a document's root declares, and whether its attributes
+  are named by position, for readers handed a document without its
+  layout.
+- Dependencies: `zip` 9 with every default off and Deflate alone, through
+  `flate2`'s pure-Rust miniz_oxide backend; only with `zip`.
+
+Semver: minor (additive; new feature and items).
+
+### Added (#449)
+
+- Feature `colour` (`geometry-select`, `style`, `material`):
+  `product_colours(model, products)` and `ColourResolver`
+  (`product_colour`, `item_colours`) resolve the surface colour of each
+  product's Body. Each item takes its own `IfcStyledItem`, then its styled
+  presentation layer (a boolean result its `FirstOperand`'s, a mapped item
+  its enclosing `IfcMappedItem`'s), then the
+  `IfcMaterialDefinitionRepresentation` of the material the product, or
+  its type, is made of. An `IfcMaterial`, a layer or profile and its
+  material, layer and profile sets and their usages naming one material,
+  IFC2X3's `IfcMaterialList` of one material, and constituent sets by
+  item (the constituent whose `IfcShapeAspect` names the item) resolve. A
+  set of several materials is `ColourError::AmbiguousMaterial`, never its
+  first member; Body items that differ are `ColourError::ItemsDiffer`. The
+  colour carries its source (`ColourSource`: styled item, layer,
+  material).
+- `ProductMesh::colour` (`mesh` now implies `colour`): each mesh's colour,
+  or its typed `ColourError`, which never refuses the mesh. Positions and
+  indices are unchanged.
+
+Semver: additive (`ProductMesh` is `#[non_exhaustive]`), a minor release
+while 0.x.
+
+### Added (#463, GlobalIds, types and openings)
+
+- `GlobalIdIndex::build(&model, schema)`: every `IfcRoot` by `GlobalId`,
+  read once (O(n), only `IfcRoot`s decoded; the slot looked up by name in
+  the release's table). `get(&Guid)` is `Ok(Some(id))`, `Ok(None)`, or
+  `Err(DuplicateGlobalId { global_id, entities })` naming every holder in
+  file order: a duplicated `GlobalId` is never answered with one of them.
+  `duplicates()` lists them all and `invalid()` the `IfcRoot`s whose
+  `GlobalId` is unset or malformed. `by_guid(&model, schema, &guid)` answers
+  one lookup by a single scan. Behind `schema-api`.
+- `type_of(model, schema, occurrence)`, `occurrences_of(.., type_object)`,
+  `openings_of(.., element)`, `fillings_of(.., opening)` and
+  `voided_element_of(.., opening)`, read forward from
+  `IfcRelDefinesByType` (in IFC2X3 too, whose `IsDefinedBy` mixes it with
+  property sets), `IfcRelVoidsElement` and `IfcRelFillsElement`, slots by
+  attribute name. Each refuses with `ObjectRelationError`
+  (`#[non_exhaustive]`): `MissingEntity`, `WrongEntityType`, `Malformed`,
+  `MissingReference`, and `Ambiguous` for two types of one object or two
+  hosts of one opening, where the schema allows one. Behind `schema-api`.
+- `new_guid()`: a random RFC 9562 version-4 `GlobalId` from the operating
+  system (`getrandom` 0.3, already linked natively through `ahash`), or
+  `GuidError` (`#[non_exhaustive]`). On `wasm32-unknown-unknown` the new
+  `js-random` feature links getrandom's JavaScript backend
+  (`crypto.getRandomValues`, no `RUSTFLAGS` needed); without it there the
+  call refuses with `GuidError::NoRandomSource`. `name_based_guid(parts)`,
+  the version-8 name-based `GlobalId` the property edit and authoring
+  already derived theirs with, is public; its output is unchanged and
+  pinned by a test. `Guid` is re-exported at the root.
+
+Semver: additive, a minor release while 0.x.
 
 ### Changed
 
-- Requires `ifc-geometry` 0.25: stations on IfcOffsetCurveByDistances
-  bases that lower to OffsetsAtStations lower with seam windows, and an
-  offset of an offset is refused by its own name (#443, part). Semver:
-  minor, following the dependency.
+- `georeferencing` reads IFC2X3 (#451): the `ePSet_MapConversion` and
+  `ePSet_ProjectedCRS` property sets of the project (or else of each site)
+  resolve with the project length unit to the same `ProjectToMap` as
+  IFC4's entities. An IFC2X3 file used to be refused with
+  `UnsupportedSchema`; without the sets it now has an empty list, and a
+  malformed or incomplete set is refused with the new `GeorefError`
+  variants. Property sets of those names in an IFC4 or IFC4X3 file are not
+  read. Requires `ifc-georef` with #451.
+
+Semver: minor. A release that was refused now resolves.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

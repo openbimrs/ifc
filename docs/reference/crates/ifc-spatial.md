@@ -11,7 +11,7 @@ IFC spatial containment and objectified relationship traversal: project, site, b
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.5.0 (2026-10-03) |
+| Latest release | 0.5.1 (2026-10-13) |
 | Registries | [crates.io `ifc-spatial`](https://crates.io/crates/ifc-spatial) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `spatial` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_spatial/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-spatial) |
@@ -38,29 +38,14 @@ IFC spatial containment and objectified relationship traversal: project, site, b
 
 ## Changes
 
-Latest release, 0.5.0 (2026-10-03):
+Latest release, 0.5.1 (2026-10-13):
 
-### Changed (breaking)
+### Documentation
 
-- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
-  default, forward to `ifc-schema`, which this crate now depends on without
-  its default features (#306). Each links one release's table, so a
-  single-release build carries only that table. The default build links
-  every release, as before. Container classification needs IFC2X3, IFC4 or
-  IFC4X3: a build naming none of them would classify nothing as a
-  container, so it fails to compile with a message naming the features.
-  A build without default features therefore has to name a release; under
-  0.x, a minor release.
-- A file declaring a verified release the build leaves out binds none
-  (`SpatialTree::release` is `None`) and is classified against every
-  release the build bundles, as an IFC4X1 or IFC4X2 file already was,
-  rather than against an empty table that would make every entity an
-  element.
+- `contain`, `contain_with_owner_history`, `serve_buildings` and
+  `serve_buildings_with_owner_history` are documented as the canonical
+  writers; the `ifc-systems` duplicates are deprecated (#492).
 
-### Changed
-
-- The relationship attribute names authoring writes are constants instead
-  of IFC4X3 table lookups, so authoring links no table; the unit test pins
-  all 29 against the IFC4 and IFC4X3 tables.
+Semver: patch. Documentation only.
 
 Full history: [`crates/ifc-spatial/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-spatial/CHANGELOG.md)

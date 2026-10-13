@@ -11,7 +11,7 @@ IFC4x3 linear positioning: alignments, referents, linear placement, spirals.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.8.1 (2026-10-10) |
+| Latest release | 0.9.0 (2026-10-13) |
 | Registries | [crates.io `ifc-alignment`](https://crates.io/crates/ifc-alignment) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `alignment` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_alignment/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-alignment) |
@@ -33,16 +33,18 @@ consumers should never compile spiral curve laws.
 
 ## Changes
 
-Latest release, 0.8.1 (2026-10-10):
+Latest release, 0.9.0 (2026-10-13):
 
-Semver: a patch release. No public item or behaviour changes; the
-dependency floors rise with the workspace (ifc-geometry #418, #414).
+### Fixed
 
-### Changed
+- The writers' GlobalId check is `ifc_model::guid::Guid::parse` (#492):
+  22 characters were counted, so a text outside the IFC base-64 alphabet
+  or with a leading digit above `3` was staged. Both are now refused with
+  `AlignmentError::Invalid` naming `GlobalId`, before anything is staged.
+- The `authoring::layout` docs no longer claim `ifc-author` owns an
+  `IfcRelNests` writer; they say how to stage the nesting (#492).
 
-- Requires `axiolid-curve` 0.3.6 (and `axiolid-evaluate` 0.3.10 for the
-  tests), the releases that add the neutral `CurvePath` (axiolid/kernel#290)
-  and measure stations along offsets (axiolid/kernel#289). Nothing here
-  builds either; every test passes unchanged against them.
+Semver: minor. A writer now refuses GlobalIds it accepted; a well-formed
+GlobalId behaves as before.
 
 Full history: [`crates/ifc-alignment/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-alignment/CHANGELOG.md)

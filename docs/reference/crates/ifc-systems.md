@@ -11,7 +11,7 @@ Distribution systems, ports, and connectivity between elements.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.0 (2026-10-03) |
+| Latest release | 0.5.0 (2026-10-13) |
 | Registries | [crates.io `ifc-systems`](https://crates.io/crates/ifc-systems) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `systems` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_systems/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-systems) |
@@ -42,21 +42,20 @@ that can be traced -- the basis of any MEP analysis.
 
 ## Changes
 
-Latest release, 0.4.0 (2026-10-03):
+Latest release, 0.5.0 (2026-10-13):
 
-### Changed (breaking)
+### Deprecated
 
-- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
-  default, forward to `ifc-schema`, which this crate now depends on without
-  its default features (#306). Each links one release's table, so a
-  single-release build carries only that table: an IFC4-only browser
-  module with systems shrinks from 1,423,611 to 831,006 bytes. The default
-  build links every release, as before.
-- Authoring refuses a release the build leaves out with
-  `SystemAuthoringError::UnsupportedSchema` instead of panicking; reads
-  already refused it. A build without default features therefore has to
-  name the releases it reads.
+- `contain_in_spatial_structure` and
+  `contain_in_spatial_structure_with_owner_history` in favour of
+  `ifc_spatial::contain` and `ifc_spatial::contain_with_owner_history`,
+  and `serve_buildings` and `serve_buildings_with_owner_history` in favour
+  of the `ifc_spatial` functions of the same names (#492). Each pair wrote
+  the same relationship with the same rules; `ifc-spatial` keeps the
+  canonical writer. The deprecated functions keep their bodies (sibling
+  domain crates do not depend on one another) and behave as before.
 
-Under 0.x, a minor release.
+Semver: minor. A deprecation is a compatible change: callers get a
+warning, not an error.
 
 Full history: [`crates/ifc-systems/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-systems/CHANGELOG.md)
