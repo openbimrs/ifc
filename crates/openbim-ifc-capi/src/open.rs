@@ -13,7 +13,8 @@ use crate::model::{finish_load, OpenbimIfcModel};
 use crate::status::{boundary, OpenbimIfcStatus};
 
 /// Read the STEP file at `path` (UTF-8, `path_len` bytes, no NUL needed)
-/// into a model that owns its bytes, and write the new model's handle.
+/// into a model that owns its bytes, and write the new model's handle. An
+/// ifcZIP archive is read as `openbim_ifc_v0_1_model_parse` reads one.
 ///
 /// Errors as `openbim_ifc_v0_1_model_parse`, plus `Io` when the file cannot
 /// be opened or read.

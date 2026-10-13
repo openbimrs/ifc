@@ -14,7 +14,7 @@ use crate::status::{boundary, OpenbimIfcStatus};
 ///
 /// # Safety
 /// As `buffer::text`.
-unsafe fn profile<'a>(
+pub(crate) unsafe fn profile<'a>(
     profile: *const u8,
     profile_len: usize,
 ) -> Result<Option<&'a str>, OpenbimIfcStatus> {

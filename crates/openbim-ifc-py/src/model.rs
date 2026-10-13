@@ -141,6 +141,22 @@ impl NativeModel {
         Ok(PyBytes::new(py, &bytes))
     }
 
+    /// Serialize as ifcZIP bytes: STEP inside, or ifcXML with
+    /// `inner="ifcxml"` in the layout `xsd_profile` names.
+    #[pyo3(signature = (inner = None, xsd_profile = None))]
+    fn write_ifczip<'py>(
+        &self,
+        py: Python<'py>,
+        inner: Option<&str>,
+        xsd_profile: Option<&str>,
+    ) -> PyResult<Bound<'py, PyBytes>> {
+        let bytes = self
+            .inner
+            .write_ifczip(inner, xsd_profile)
+            .map_err(py_err)?;
+        Ok(PyBytes::new(py, &bytes))
+    }
+
     /// The STEP header as a dict.
     fn header<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
         records::header_to_py(py, &self.inner.header())

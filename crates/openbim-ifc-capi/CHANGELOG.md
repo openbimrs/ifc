@@ -34,6 +34,17 @@ Semver: additive, released on the 0.1 line: the C package keeps 0.1.x while
 the `v0_1` ABI is unchanged, because CMake's `find_package(openbim_ifc 0.1)`
 does not accept 0.2.
 
+### Added (#450)
+
+- `openbim_ifc_v0_1_model_write_ifczip`, and ifcZIP input to
+  `openbim_ifc_v0_1_model_parse` and `_model_open`, recognized by the ZIP
+  signature: one STEP or ifcXML model, read within a decompression budget
+  (`PARSE`, `UNSUPPORTED` or `BUDGET_EXCEEDED` otherwise). No existing
+  symbol changed.
+
+Semver: minor, released on the 0.1 line: the `v0_1` ABI only gains a
+symbol.
+
 ### Added (#449)
 
 - The `ProductMesh` records of `openbim_ifc_v0_1_meshes_records` gain two

@@ -10,7 +10,7 @@ use ifc::{Header, SchemaVersion};
 
 use crate::cli::{InfoArgs, TextFormat};
 use crate::error::{CliError, CliResult, Outcome};
-use crate::input::{self, Source};
+use crate::input;
 use crate::json::Json;
 
 /// How many entity types the default listing shows.
@@ -30,11 +30,7 @@ pub(crate) fn run(args: &InfoArgs, out: &mut impl Write) -> CliResult<Outcome> {
     } else {
         histogram.len().min(TOP_TYPES)
     };
-    let format = match loaded.source {
-        Source::Step => "STEP",
-        Source::IfcXml(ifc::XmlLayout::Xsd) => "ifcXML (XSD layout)",
-        Source::IfcXml(_) => "ifcXML (native layout)",
-    };
+    let format = loaded.format();
     let diagnostics: Vec<String> = model
         .diagnostics()
         .iter()
@@ -50,7 +46,7 @@ pub(crate) fn run(args: &InfoArgs, out: &mut impl Write) -> CliResult<Outcome> {
                 }
             };
             line("File", &loaded.path);
-            line("Format", format);
+            line("Format", &format);
             line(
                 "Schema",
                 &match (release, bundled) {

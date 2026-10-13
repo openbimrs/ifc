@@ -2,7 +2,7 @@
 
 mod support;
 
-use support::{fixture, run, scratch};
+use support::{fixture, root, run, scratch};
 
 const CLEAN: &str = "synthetic-bindings/binding_geometry.ifc";
 const DUPLICATE_GUIDS: &str = "ifcopenshell-validate/fail-duplicated-guids-ifc4.ifc";
@@ -246,6 +246,105 @@ fn convert_writes_standard_output_and_refuses_what_it_cannot_do() {
     let again = run(&["convert", &source, target]);
     assert_eq!(again.code, 2, "an existing output needs --force");
     assert!(again.stderr.contains("--force"));
+}
+
+/// An archive of `(name, contents)` entries, Deflate-compressed.
+fn zip_archive(entries: &[(&str, &[u8])]) -> Vec<u8> {
+    use std::io::Write;
+    let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+    for (name, contents) in entries {
+        writer.start_file(*name, options).unwrap();
+        writer.write_all(contents).unwrap();
+    }
+    writer.finish().unwrap().into_inner()
+}
+
+#[test]
+fn convert_reads_and_writes_ifczip() {
+    let dir = scratch("ifczip");
+    let source = fixture(CLEAN);
+    let step = run(&["convert", &source, "-", "--to", "step"]).stdout;
+
+    // By extension: STEP inside, named after the archive.
+    let zipped = dir.join("model-450.ifczip");
+    let zipped = zipped.to_str().unwrap();
+    let out = run(&["convert", "--force", &source, zipped]);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    assert!(std::fs::read(zipped).unwrap().starts_with(b"PK\x03\x04"));
+    let info = run(&["info", "--format", "json", zipped]).json();
+    assert_eq!(info["format"], "STEP in ifcZIP (model-450.ifc)");
+    // Back to STEP, byte for byte.
+    let back = run(&["convert", zipped, "-", "--to", "step"]);
+    assert_eq!(back.code, 0, "{}", back.stderr);
+    assert_eq!(back.stdout, step);
+
+    // `--to ifczip` with ifcXML inside, in either layout.
+    let expected = census(&source);
+    for layout in ["native", "xsd"] {
+        let target = dir.join(format!("{layout}.zip"));
+        let target = target.to_str().unwrap();
+        let out = run(&[
+            "convert", "--force", &source, target, "--to", "ifczip", "--inner", "ifcxml",
+            "--layout", layout,
+        ]);
+        assert_eq!(out.code, 0, "{layout}: {}", out.stderr);
+        let info = run(&["info", "--format", "json", target]).json();
+        let shown = if layout == "xsd" { "XSD" } else { "native" };
+        assert_eq!(
+            info["format"],
+            format!("ifcXML ({shown} layout) in ifcZIP ({layout}.ifcXML)")
+        );
+        assert_eq!(census(target), expected, "via ifcXML ({layout}) in ifcZIP");
+    }
+
+    for (args, needle) in [
+        (
+            vec!["convert", source.as_str(), "x.ifc", "--inner", "step"],
+            "--inner applies to ifcZIP output only",
+        ),
+        (
+            vec!["convert", source.as_str(), "x.ifczip", "--layout", "xsd"],
+            "ifcXML output only",
+        ),
+    ] {
+        let out = run(&args);
+        assert_eq!(out.code, 2, "{args:?}");
+        assert!(out.stderr.contains(needle), "{args:?}: {}", out.stderr);
+    }
+}
+
+#[test]
+fn an_ifczip_archive_is_refused_by_the_kind_of_its_problem() {
+    let dir = scratch("ifczip-refusals");
+    let model = std::fs::read(root().join(fixture(CLEAN))).unwrap();
+    let mut bomb = b"ISO-10303-21;\n".to_vec();
+    bomb.resize(64 << 20, b' ');
+    for (name, entries, needle) in [
+        ("empty.ifczip", vec![], "parse:"),
+        (
+            "two.ifczip",
+            vec![("a.ifc", model.as_slice()), ("b.ifc", model.as_slice())],
+            "several model entries",
+        ),
+        (
+            "json.ifczip",
+            vec![("model.ifc", b"{}".as_slice())],
+            "neither a STEP physical file nor an ifcXML document",
+        ),
+        (
+            "bomb.ifczip",
+            vec![("model.ifc", bomb.as_slice())],
+            "budget-exceeded: ",
+        ),
+    ] {
+        let path = dir.join(name);
+        std::fs::write(&path, zip_archive(&entries)).unwrap();
+        let out = run(&["info", path.to_str().unwrap()]);
+        assert_eq!(out.code, 2, "{name}");
+        assert!(out.stderr.contains(needle), "{name}: {}", out.stderr);
+    }
 }
 
 #[test]

@@ -59,6 +59,34 @@ everything released before per-crate changelogs began.
 Semver: additive (new variants of `#[non_exhaustive]` enums, new fields of
 `#[non_exhaustive]` structs), a minor release while 0.x.
 
+### Added (#450)
+
+- ifcZIP, behind the new `zip` feature (on in `full`): `ifc::ifczip`
+  reads an archive holding one STEP or ifcXML model at its root
+  (buildingSMART implementation agreement CV-2x3-154), the inner format
+  and the ifcXML layout detected from the content, through the existing
+  codecs (`read`, `extract`, `read_entry`), and writes one Deflate entry
+  (`write`, `pack`), reproducibly. Refusals are typed
+  (`IfcZipError`): `Malformed`, `NoModel`, `SeveralModels`,
+  `UnknownInnerFormat`, `Encrypted`, `UnsupportedCompression` (anything
+  but Stored and Deflate), `BudgetExceeded` and `CodecNotCompiled`.
+  Decompression is bounded by a `Budget`, absolute (4 GiB) and as a ratio
+  to the compressed size (200, above 1 MiB), checked against the declared
+  size and again while inflating.
+- `ifczip::IfcZipCodec` puts ifcZIP behind the `Codec` interface: `codecs()` lists
+  it and `read_path` reads `.ifczip` (an archive is recognized by its ZIP
+  signature; without the feature it is refused as `WrongFormat` naming
+  the feature).
+- `xml_layout::declared_xml_layout` and `DeclaredXmlLayout` (feature
+  `ifcxml`): the
+  ifcXML layout a document's root declares, and whether its attributes
+  are named by position, for readers handed a document without its
+  layout.
+- Dependencies: `zip` 9 with every default off and Deflate alone, through
+  `flate2`'s pure-Rust miniz_oxide backend; only with `zip`.
+
+Semver: minor (additive; new feature and items).
+
 ### Added (#449)
 
 - Feature `colour` (`geometry-select`, `style`, `material`):

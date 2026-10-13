@@ -179,6 +179,14 @@ using var fromXml = IfcModel.ParseIfcXml(xml);
   library's lossless layout; `xsdProfile: "IFC4"` or `"IFC4X3_ADD2"`
   selects the buildingSMART XSD layout, which refuses with `write` what it
   cannot carry exactly.
+- **ifcZIP.** `IfcModel.Parse` reads an ifcZIP archive, recognized by its
+  ZIP signature: its one STEP or ifcXML model (either layout), within a
+  decompression budget. `WriteIfcZip()` writes STEP inside as `model.ifc`;
+  `WriteIfcZip("ifcxml", xsdProfile)` writes ifcXML as `model.ifcXML`. An
+  archive is refused with `parse` when it holds no `.ifc` or `.ifcXML`
+  entry at its root or several, `unsupported` for an encrypted entry or a
+  compression other than Stored and Deflate, and `budget-exceeded` for an
+  entry that would inflate past 4 GiB or 200 times its compressed size.
 - **Reachability.** `UnreachableProducts()` lists products no viewer will
   draw as `UnreachableProduct`s with a stable `Reason`.
 
@@ -529,11 +537,12 @@ and `MeshedProduct` included, from its XML documentation comments.
 | Member | Description |
 | --- | --- |
 | `new IfcModel()` | An empty model. |
-| `static IfcModel Parse(byte[] data, ParseOptions? options = null)` | Parse a STEP (`.ifc`) file from its bytes; `options` relaxes the strict read. |
+| `static IfcModel Parse(byte[] data, ParseOptions? options = null)` | Parse a STEP (`.ifc`) file from its bytes, or an ifcZIP archive holding STEP or ifcXML, recognized by its ZIP signature and read within a decompression budget; `options` relaxes the strict read. |
 | `static IfcModel ParseIfcXml(byte[] data, string? xsdProfile = null)` | Parse an ifcXML document: this library's lossless layout, or with `xsdProfile` (`IFC4` or `IFC4X3_ADD2`) the buildingSMART XSD layout of that release. |
 | `static IfcModel Open(string path, bool mapped = false, ParseOptions? options = null)` | Read a STEP file from disk, once, straight into the model; `io` when it cannot be read. |
 | `byte[] Write()` | Serialize as STEP bytes. |
 | `byte[] WriteIfcXml(string? xsdProfile = null)` | Serialize as ifcXML bytes, in the layout `ParseIfcXml` reads; an XSD-layout write refuses with `write` what the layout cannot carry. |
+| `byte[] WriteIfcZip(string inner = "step", string? xsdProfile = null)` | Serialize as ifcZIP bytes: one Deflate entry holding STEP (`model.ifc`), or with `inner` `ifcxml` ifcXML (`model.ifcXML`) in the layout `xsdProfile` names, as for `WriteIfcXml`; `Parse` reads it back. Refuses with `invalid-value` another `inner`, or a profile with STEP inside. |
 | `Header Header { get; set; }` | The STEP file header; assign a changed copy (`with`) to replace it. |
 | `ValidationReport Validate(int? maxFindings = null)` | Validate against the schema the header declares; findings sorted by severity, rule, entity and slot. `maxFindings` caps the report (default 10,000). |
 | `IReadOnlyList<UnreachableProduct> UnreachableProducts()` | Products no viewer will draw, with a stable reason, in id order. |

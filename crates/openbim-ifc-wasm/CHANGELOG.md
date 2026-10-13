@@ -24,6 +24,15 @@ a release here does not imply a release of any other crate in the family.
 
 Semver: additive, a minor release while 0.x.
 
+### Added (#450)
+
+- `model.writeIfcZip(inner?, profile?)`, and ifcZIP input to
+  `IfcModel.parse`, recognized by the ZIP signature and read within a
+  decompression budget (`parse`, `unsupported` or `budget-exceeded`
+  otherwise). The `zip` cargo feature, on by default, carries it.
+
+Semver: minor (additive).
+
 ### Added (#449)
 
 - `ProductMesh.colour` (`SurfaceColour`: `red`, `green`, `blue`,

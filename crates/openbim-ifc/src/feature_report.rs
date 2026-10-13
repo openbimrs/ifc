@@ -13,6 +13,8 @@ pub fn compiled_features() -> Vec<&'static str> {
     features.push("step");
     #[cfg(feature = "ifcxml")]
     features.push("ifcxml");
+    #[cfg(feature = "zip")]
+    features.push("zip");
     #[cfg(feature = "schema")]
     features.push("schema");
     #[cfg(feature = "schema-api")]
