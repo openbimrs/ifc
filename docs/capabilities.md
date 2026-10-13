@@ -114,6 +114,7 @@ Every concrete `IfcRepresentationItem` subtype in IFC4 ADD2 TC1 and IFC4X3 ADD2 
 | Bounded graph traversal with cycle reports | <span class="status-implemented">Implemented</span> | `ifc-model::{depth_first, breadth_first, find_cycle}` with `Budget`/`Stop` |
 | Dangling-reference detection | <span class="status-implemented">Implemented</span> | `Model::dangling_references` |
 | **Schema-checked entity construction (authoring)** | <span class="status-implemented">Implemented</span> | `ifc-author::EntityBuilder`; facade feature `author`. See below. |
+| Delete a product with its owned data; purge orphans | <span class="status-implemented">Implemented</span> | `openbim-ifc::AuthorOp::RemoveProduct` removes a product or type object with what it solely owns (placement, representation, own property sets, material usage, openings, ports, relationships left without an end), decided by reference counts within the batch's one transaction, and reports what it kept as shared and why; dependent placements are refused or re-based with the composed transform, a type with occurrences refused or untyped. `AuthorOp::Purge` removes resource entities no `IfcRoot` reaches, or unreferenced entities of named classes; staging the batch is the dry run. In every binding (`remove_product`, `purge`); the raw binding `remove` is deprecated. IFC2X3, IFC4, IFC4X3: `crates/openbim-ifc/tests/cascade_delete.rs`. |
 
 ### Authoring
 

@@ -583,6 +583,58 @@ public sealed unsafe class IfcModel : IDisposable
         Calls.Check(lease.Model, NativeMethods.openbim_ifc_v0_1_entity_remove_with_relationships(lease.Model, id));
     }
 
+    /// <summary>Remove product (or type object) <paramref name="id"/> with everything it solely owns -- its placement, representation, own property and quantity sets, material usage, openings and ports, and the relationships left without an end -- as one checked transaction, keeping what is shared (a property set another object uses, a type's representation maps). With <paramref name="dryRun"/> nothing changes.</summary>
+    /// <param name="id">The <c>IfcProduct</c> or <c>IfcTypeObject</c>.</param>
+    /// <param name="rebasePlacements">Re-base placements relative to a removed placement onto its parent, composing the transforms, instead of refusing with <c>still-referenced</c>.</param>
+    /// <param name="untypeOccurrences">Remove a type object's typing relationship, leaving its occurrences untyped, instead of refusing with <c>still-referenced</c>.</param>
+    /// <param name="dryRun">Report only.</param>
+    /// <returns>What went, what stayed and why.</returns>
+    public RemovalReport RemoveProduct(ulong id, bool rebasePlacements = false, bool untypeOccurrences = false, bool dryRun = false)
+    {
+        uint flags = (rebasePlacements ? 1u : 0u) | (untypeOccurrences ? 2u : 0u) | (dryRun ? 4u : 0u);
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return RecordDecoder.Decode<RemovalReport>(Tape(m, (n, nc, nr, s, sc, sr) => NativeMethods.openbim_ifc_v0_1_model_remove_product(m, id, flags, n, nc, nr, s, sc, sr)).One());
+    }
+
+    /// <summary>Remove unreferenced entities as one checked transaction. Without <paramref name="classes"/>, every resource entity no <c>IfcRoot</c> reaches (nor annotates something reached); with them, the entities of those classes (subtypes included) nothing references, an <c>IfcRoot</c> only with <paramref name="includeRoots"/>. The owner history stays unless <paramref name="includeOwnerHistory"/>.</summary>
+    /// <param name="classes">The entity types to purge, any case; null or empty for the default purge.</param>
+    /// <param name="includeRoots">Also purge unreferenced <c>IfcRoot</c>s of <paramref name="classes"/>.</param>
+    /// <param name="includeOwnerHistory">Also purge an unreferenced owner history with its actors.</param>
+    /// <param name="dryRun">Report only.</param>
+    /// <returns>What went and what was skipped.</returns>
+    public RemovalReport Purge(IEnumerable<string>? classes = null, bool includeRoots = false, bool includeOwnerHistory = false, bool dryRun = false)
+    {
+        uint flags = (includeRoots ? 1u : 0u) | (includeOwnerHistory ? 2u : 0u) | (dryRun ? 4u : 0u);
+        var encoded = (classes ?? Array.Empty<string>()).Select(Calls.Encode).ToArray();
+        var joined = new byte[encoded.Sum(part => part.Length) + 1];
+        var lengths = new nuint[encoded.Length + 1];
+        var offsets = new int[encoded.Length];
+        for (int i = 0, at = 0; i < encoded.Length; at += encoded[i].Length, i++)
+        {
+            Buffer.BlockCopy(encoded[i], 0, joined, at, encoded[i].Length);
+            offsets[i] = at;
+            lengths[i] = (nuint)encoded[i].Length;
+        }
+        var pointers = new IntPtr[encoded.Length + 1];
+        var count = (nuint)encoded.Length;
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return RecordDecoder.Decode<RemovalReport>(Tape(m, (n, nc, nr, s, sc, sr) =>
+        {
+            fixed (byte* start = joined)
+            fixed (nuint* sizes = lengths)
+            fixed (IntPtr* table = pointers)
+            {
+                for (var i = 0; i < offsets.Length; i++)
+                {
+                    pointers[i] = (IntPtr)(start + offsets[i]);
+                }
+                return NativeMethods.openbim_ifc_v0_1_model_purge(m, (byte**)table, sizes, count, flags, n, nc, nr, s, sc, sr);
+            }
+        }).One());
+    }
+
     /// <summary>Write one value (<see cref="SetProperties"/> with one edit); returns the id of the entity holding it.</summary>
     public ulong SetProperty(ulong obj, string set, string name, Value value, string? setType = null)
     {
@@ -1063,6 +1115,8 @@ public sealed unsafe class IfcModel : IDisposable
     }
 
     /// <summary>Remove entity <paramref name="id"/>, leaving references to it dangling.</summary>
+    /// <remarks>Deprecated (#478): a file with dangling references parses and is wrong. Use <see cref="RemoveWithRelationships"/> for one entity, or <see cref="RemoveProduct"/> for a product with what it solely owns. It keeps working.</remarks>
+    [Obsolete("Remove leaves references dangling; use RemoveWithRelationships or RemoveProduct.")]
     public void Remove(ulong id)
     {
         using var lease = handle.Acquire();

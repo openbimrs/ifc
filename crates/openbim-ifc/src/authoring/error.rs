@@ -110,6 +110,34 @@ pub enum AuthoringFailure {
         /// The entity referencing it.
         by: EntityId,
     },
+    /// A product's placement cannot go: other placements, which stay, are
+    /// relative to it. Re-base them
+    /// ([`RemoveProductOptions::rebase_placements`](super::RemoveProductOptions::rebase_placements))
+    /// or remove their products first.
+    PlacementHasDependents {
+        /// The placement.
+        placement: EntityId,
+        /// The placements relative to it that stay.
+        dependents: Vec<EntityId>,
+    },
+    /// A type object still types objects. Untype them
+    /// ([`RemoveProductOptions::untype_occurrences`](super::RemoveProductOptions::untype_occurrences))
+    /// or remove them first.
+    TypeHasOccurrences {
+        /// The type object.
+        type_object: EntityId,
+        /// The objects it types.
+        occurrences: Vec<EntityId>,
+    },
+    /// A dependent placement cannot be re-based: a placement on the way is
+    /// not an `IfcLocalPlacement` over an `IfcAxis2Placement3D` with
+    /// Cartesian points and directions.
+    UnsupportedRebase {
+        /// The placement that could not be read or composed.
+        placement: EntityId,
+        /// What it is instead.
+        detail: String,
+    },
     /// A handle names an operation that has not run yet or produced no
     /// entity.
     InvalidHandle {
@@ -197,6 +225,26 @@ impl fmt::Display for AuthoringFailure {
                 "{id} is still referenced by {by}, which is not a relationship; \
                  remove or edit it first"
             ),
+            Self::PlacementHasDependents {
+                placement,
+                dependents,
+            } => write!(
+                f,
+                "placement {placement} has placements relative to it that stay ({}); \
+                 re-base them or remove their products first",
+                ids(dependents)
+            ),
+            Self::TypeHasOccurrences {
+                type_object,
+                occurrences,
+            } => write!(
+                f,
+                "type {type_object} still types {}; untype them or remove them first",
+                ids(occurrences)
+            ),
+            Self::UnsupportedRebase { placement, detail } => {
+                write!(f, "cannot re-base onto placement {placement}: {detail}")
+            }
             Self::InvalidHandle { handle, detail } => {
                 write!(f, "handle {handle}: {detail}")
             }
@@ -212,6 +260,13 @@ impl fmt::Display for AuthoringFailure {
             ),
         }
     }
+}
+
+fn ids(ids: &[EntityId]) -> String {
+    ids.iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 impl fmt::Display for AuthoringError {

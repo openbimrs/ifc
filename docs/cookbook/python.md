@@ -297,6 +297,45 @@ them all. `new_guid()` draws an RFC 9562 version-4 UUID from the operating
 system; `name_based_guid(*parts)` is version 8, the same for the same parts
 in every binding. Both are IFC's 22-character form.
 
+## Remove a product and purge
+
+A door with what it alone owns, a wall whose openings place their fillings,
+then what nothing uses any more, from
+`test/fixtures/synthetic-relations/cascade_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-py-remove-product -->
+
+```python
+# Door #100 with what it alone owns: placement, representation, its
+# filling and type relationships. A dry run changes nothing.
+report = model.remove_product(100, dry_run=True)
+print(len(report.removed))  # 11
+for kept in report.kept:
+    if kept.reason == "shared":  # still used by something that stays
+        print((kept.id, kept.type_name, kept.users))
+# (82, 'IFCLOCALPLACEMENT', (81,))     the opening's placement
+# (112, 'IFCREPRESENTATIONMAP', (111,))  the door type's geometry
+
+model.remove_product(100)  # applied: one checked transaction
+# A wall whose openings place their fillings: re-base those
+# placements onto the storey so nothing moves, or it is refused.
+model.remove_product(20, rebase_placements=True)
+
+# Then purge what nothing uses any more: no classes means every
+# resource entity no IfcRoot reaches.
+print([entity.type_name for entity in model.purge(dry_run=True).removed][:3])
+```
+
+<!-- /SNIPPET -->
+
+`rebase_placements=True` re-bases placements relative to a removed one onto
+its parent, composing the transforms; `untype_occurrences=True` lets a type
+object with occurrences go. Without them those removals raise
+`still-referenced`. `purge(["IfcPropertySet"], include_roots=True)` purges
+unreferenced entities of the named classes only. The
+[binding page](/bindings/python#removing-products-and-purging) lists what
+the cascade removes and keeps.
+
 ## Create a model
 
 <!-- SNIPPET:cookbook-py-create -->

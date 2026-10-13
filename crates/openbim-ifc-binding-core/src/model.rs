@@ -245,6 +245,11 @@ impl IfcModel {
 
     /// Remove entity `id`. References to it are left dangling, as in the
     /// model; find them with [`Self::dangling_references`].
+    ///
+    /// Deprecated in every host (#478): a file with dangling references
+    /// parses and is wrong. Use [`Self::remove_with_relationships`] for one
+    /// entity, or [`Self::remove_product`] for a product with what it
+    /// solely owns. It keeps working.
     pub fn remove(&mut self, id: u64) -> Result<(), BindingError> {
         self.inner
             .remove(EntityId(id))

@@ -736,6 +736,45 @@ class AuthoringResult:
     removed: Tuple[int, ...]
 
 
+@dataclass(frozen=True)
+class RemovedEntity:
+    """An entity :meth:`IfcModel.remove_product` or :meth:`IfcModel.purge`
+    removed: its id and upper-case type."""
+
+    id: int
+    type_name: str
+
+
+@dataclass(frozen=True)
+class KeptEntity:
+    """An entity a removal reached and kept.
+
+    ``reason`` is ``shared`` (``users`` still need it), ``related-object``
+    (a type, container or filling: an object of its own), ``definition`` (a
+    material, classification reference, unit, context or owner history,
+    which only a purge removes) or ``protected`` (a purge skipped it: an
+    ``IfcRoot`` or the owner history, unless asked).
+    """
+
+    id: int
+    type_name: str
+    reason: str
+    users: Tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class RemovalReport:
+    """What :meth:`IfcModel.remove_product` or :meth:`IfcModel.purge` did,
+    or, for a dry run (``applied`` false), would do. Every list is in id
+    order."""
+
+    removed: Tuple[RemovedEntity, ...]
+    kept: Tuple[KeptEntity, ...]
+    detached: Tuple[int, ...]
+    rebased: Tuple[int, ...]
+    applied: bool
+
+
 _RECORDS = {
     cls.__name__: cls
     for cls in (
@@ -775,6 +814,9 @@ _RECORDS = {
         PropertyEditResult,
         AttributeInfo,
         AuthoringResult,
+        RemovedEntity,
+        KeptEntity,
+        RemovalReport,
     )
 }
 

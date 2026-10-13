@@ -21,6 +21,7 @@ const fixtures = path.resolve(here, "../../../../test/fixtures");
 const PROPERTIES = path.join(fixtures, "synthetic-properties/synthetic_properties.ifc");
 const GEOMETRY = path.join(fixtures, "synthetic-bindings/binding_geometry.ifc");
 const RELATIONS = path.join(fixtures, "synthetic-relations/relations_ifc4.ifc");
+const CASCADE = path.join(fixtures, "synthetic-relations/cascade_ifc4.ifc");
 
 // docs:snippet cookbook-js-plain
 // A tagged IfcValue as a plain JavaScript value: typed wrappers unwrapped,
@@ -306,6 +307,39 @@ test("find entities by GlobalId, types, openings and fillings", () => {
   assert.deepEqual(printed[3], [[]]);
   assert.match(printed[4][0], /^[0-3][0-9A-Za-z_$]{21}$/);
   assert.equal(printed[5][0], IfcModel.nameBasedGuid(["my-exporter", "wall", "42"]));
+});
+
+test("remove a product with what it owns, then purge", () => {
+  const model = IfcModel.parse(readFileSync(CASCADE));
+  const printed = [];
+  const log = (...values) => printed.push(values);
+  // docs:snippet cookbook-js-remove-product
+  // Door #100 with what it alone owns: placement, representation, its
+  // filling and type relationships. A dry run changes nothing.
+  const report = model.removeProduct(100n, { dryRun: true });
+  log(report.removed.length); // 11
+  for (const kept of report.kept) {
+    if (kept.reason === "shared") log(kept.id, kept.typeName, kept.users);
+  }
+  // 82n "IFCLOCALPLACEMENT" [81n]       the opening's placement
+  // 112n "IFCREPRESENTATIONMAP" [111n]  the door type's geometry
+
+  model.removeProduct(100n); // applied: one checked transaction
+  // A wall whose openings place their fillings: re-base those placements
+  // onto the storey so nothing moves, or it is refused.
+  model.removeProduct(20n, { rebasePlacements: true });
+
+  // Then purge what nothing uses any more: no classes means every resource
+  // entity no IfcRoot reaches.
+  log(model.purge({ dryRun: true }).removed.length > 0);
+  // docs:end
+  assert.deepEqual(printed[0], [11]);
+  assert.deepEqual(printed.slice(1, 3), [
+    [82n, "IFCLOCALPLACEMENT", [81n]],
+    [112n, "IFCREPRESENTATIONMAP", [111n]],
+  ]);
+  assert.deepEqual(printed[3], [true]);
+  assert.deepEqual(model.danglingReferences(), []);
 });
 
 test("create a model from nothing", () => {

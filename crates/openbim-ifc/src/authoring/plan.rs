@@ -8,6 +8,7 @@ use ifc_schema::Schema;
 
 use super::check::{build, recheck, relations};
 use super::overlay::Overlay;
+use super::report::RemovalReport;
 use super::{AuthorOp, AuthoringFailure as F, NamedValues};
 use crate::name_guid::name_based_guid;
 
@@ -18,6 +19,10 @@ pub(super) struct Planner<'m, 's> {
     seed: u128,
     /// Per operation run so far, the entity it produced.
     pub(super) ids: Vec<Option<EntityId>>,
+    /// Per operation run so far, the report of a removal or purge.
+    pub(super) reports: Vec<Option<RemovalReport>>,
+    /// The report of the operation running now.
+    report: Option<RemovalReport>,
     /// `GlobalId`s of the base model, read on first need.
     base_global_ids: Option<HashMap<Arc<str>, EntityId>>,
     /// `GlobalId`s the batch wrote.
@@ -34,13 +39,23 @@ impl<'m, 's> Planner<'m, 's> {
             view,
             seed,
             ids: Vec::new(),
+            reports: Vec::new(),
+            report: None,
             base_global_ids: None,
             batch_global_ids: HashMap::new(),
         }
     }
 
-    /// Run one operation, returning the entity it produced.
+    /// Run one operation, returning the entity it produced; its report,
+    /// if it makes one, is pushed on [`Self::reports`].
     pub(super) fn run(&mut self, op: AuthorOp) -> Result<Option<EntityId>, F> {
+        let produced = self.run_op(op)?;
+        let report = self.report.take();
+        self.reports.push(report);
+        Ok(produced)
+    }
+
+    fn run_op(&mut self, op: AuthorOp) -> Result<Option<EntityId>, F> {
         Ok(match op {
             AuthorOp::Create {
                 type_name,
@@ -49,6 +64,14 @@ impl<'m, 's> Planner<'m, 's> {
             AuthorOp::Edit { entity, attributes } => Some(self.edit(entity, attributes)?),
             AuthorOp::Remove { entity } => {
                 self.remove(entity)?;
+                None
+            }
+            AuthorOp::RemoveProduct { product, options } => {
+                self.report = Some(self.remove_product(product, options)?);
+                None
+            }
+            AuthorOp::Purge(options) => {
+                self.report = Some(self.purge(&options)?);
                 None
             }
             AuthorOp::Project {
@@ -147,7 +170,7 @@ impl<'m, 's> Planner<'m, 's> {
     }
 
     /// Replace named attributes of `id`, then check the whole record.
-    fn edit(&mut self, id: EntityId, attributes: NamedValues) -> Result<EntityId, F> {
+    pub(super) fn edit(&mut self, id: EntityId, attributes: NamedValues) -> Result<EntityId, F> {
         let mut entity = self.view.get(id).cloned().ok_or(F::MissingEntity(id))?;
         let slots = crate::attribute_slots(self.schema, &entity.type_name).map_err(|_| {
             F::UnknownEntity {

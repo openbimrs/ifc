@@ -89,7 +89,10 @@ pub mod value;
 mod xml;
 
 pub use attribute::AttributeInfo;
-pub use authoring::{AuthorOp, AuthoringResult};
+pub use authoring::{
+    AuthorOp, AuthoringResult, KeptEntity, PurgeOptions, RemovalReport, RemoveProductOptions,
+    RemovedEntity,
+};
 pub use coerce::Plain;
 pub use error::BindingError;
 pub use geometry::graph::{

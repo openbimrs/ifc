@@ -12,6 +12,53 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#478, cascading delete and purge)
+
+- `AuthorOp::RemoveProduct { product, options }` removes an `IfcProduct` or
+  `IfcTypeObject` with everything it solely owns: its `ObjectPlacement`,
+  its representation down to the items nothing else uses, the property and
+  quantity sets only it is defined by with their properties, its material
+  usage (not the material definitions), its openings (each with the same
+  cascade) and its ports (nested, or connected in IFC2X3), and every
+  relationship left without an end. "Solely owned" is a reference count
+  over the batch's view (the base model's `ReverseIndex`, corrected for
+  the batch's own changes), taken to a fixed point; a relationship that
+  only loses a list member and a presentation layer assignment do not
+  count, a styled item and a shape aspect go with what they attach to.
+  Shared data is kept: a property set another object uses, a type's
+  representation maps, a style or point used elsewhere; so are related
+  objects (the type, the container, the fillings of a removed opening) and
+  definitions (material definitions, classification references, units,
+  contexts, the owner history).
+- `RemoveProductOptions` (`#[non_exhaustive]`): `rebase_placements`
+  re-bases placements relative to a removed placement onto its nearest
+  kept ancestor with the composed `IfcAxis2Placement3D` transform, so
+  nothing moves; `untype_occurrences` lets a type object with occurrences
+  go, removing its `IfcRelDefinesByType`.
+- `AuthorOp::Purge(PurgeOptions)`: without classes, every resource entity
+  no `IfcRoot` reaches, nor annotates something reached (styled items,
+  layer assignments, shape aspects, resource relationships, coordinate
+  operations); with classes, the unreferenced entities of those classes.
+  `IfcRoot`s (`include_roots`; `IfcProject` only when named), the owner
+  history with its actors (`include_owner_history`) and, by default,
+  representation contexts are kept unless asked.
+- `RemovalReport` (`removed`, `kept` with a `KeepReason` and the `users`
+  of a shared entity, `detached`, `rebased`), `RemovedEntity`,
+  `KeptEntity`, `KeepReason` (`Shared`, `RelatedObject`, `Definition`,
+  `Protected`): `AuthoringOutcome::reports` and `StagedAuthoring::reports`
+  carry one per operation, so staging a batch is the dry run.
+- `AuthoringFailure::PlacementHasDependents`, `TypeHasOccurrences` and
+  `UnsupportedRebase`.
+
+### Changed (#478)
+
+- The authoring batch reads who references an entity from the base
+  model's `ReverseIndex`, built once per batch on the first removal,
+  instead of scanning the model per lookup.
+
+Semver: additive (new variants of `#[non_exhaustive]` enums, new fields of
+`#[non_exhaustive]` structs), a minor release while 0.x.
+
 ### Added (#450)
 
 - ifcZIP, behind the new `zip` feature (on in `full`): `ifc::ifczip`

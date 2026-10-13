@@ -12,7 +12,7 @@ use crate::status::{boundary, OpenbimIfcStatus, OpenbimIfcVersion};
 use crate::tape::{OpenbimIfcValueNode, Reader, Tape};
 
 /// ABI version implemented by this crate; also the `v0_1` symbol prefix.
-const ABI: (u16, u16, u16) = (0, 1, 11);
+const ABI: (u16, u16, u16) = (0, 1, 12);
 
 /// Opaque model handle. Zero is never a valid handle.
 pub type OpenbimIfcModel = u64;
@@ -548,6 +548,11 @@ pub unsafe extern "C" fn openbim_ifc_v0_1_entity_add(
 }
 
 /// Remove entity `id`; references to it are left dangling.
+///
+/// Deprecated (#478): a file with dangling references parses and is wrong.
+/// Use `openbim_ifc_v0_1_entity_remove_with_relationships` for one entity,
+/// or `openbim_ifc_v0_1_model_remove_product` for a product with what it
+/// solely owns. It keeps working for the life of the `v0_1` ABI.
 #[no_mangle]
 pub extern "C" fn openbim_ifc_v0_1_entity_remove(
     model: OpenbimIfcModel,
