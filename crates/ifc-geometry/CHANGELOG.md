@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-10-13
+
 ### Changed (#443, stations along offset runs continued to their basis's ends)
 
 Semver: minor (0.x). Stations that were refused now lower, a refusal kind
@@ -1975,7 +1977,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.24.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.25.0...HEAD
+[0.25.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.25.0
 [0.24.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.24.0
 [0.23.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.23.0
 [0.22.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.22.1

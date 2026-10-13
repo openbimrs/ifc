@@ -12,6 +12,15 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-10-13
+
+### Changed
+
+- Requires `ifc-geometry` 0.25: stations on IfcOffsetCurveByDistances
+  bases that lower to OffsetsAtStations lower with seam windows, and an
+  offset of an offset is refused by its own name (#443, part). Semver:
+  minor, following the dependency.
+
 ## [0.30.0] - 2026-10-13
 
 ### Changed (#433)
@@ -669,7 +678,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.30.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.31.0...HEAD
+[0.31.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.31.0
 [0.30.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.30.0
 [0.29.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.29.0
 [0.28.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.28.1
