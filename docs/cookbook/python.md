@@ -264,6 +264,39 @@ Each `payload` is the envelope `{"format": "axiolid-geometry-graph",
 `encoding="cbor"` gives it as `bytes`. The
 [binding page](/bindings/python#geometry) describes it.
 
+## Find entities by GlobalId, types and openings
+
+An entity by its `GlobalId`, an occurrence's type object and the type's
+other occurrences, and a wall's openings with what fills them, read from
+`test/fixtures/synthetic-relations/relations_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-py-global-ids -->
+
+```python
+wall = model.by_guid("0LwOtle8vEaxZPGHkxQdYT")  # an Entity, or None
+# The first lookup indexes every GlobalId once; the rest reuse it.
+
+wall_type = model.type_object(wall.id)  # IfcRelDefinesByType
+print((model[wall_type].Name, model.occurrences_of(wall_type)))  # ('WT-200', [17, 18])
+for opening in model.openings_of(wall.id):  # IfcRelVoidsElement
+    fillings = [model[id].Name for id in model.fillings_of(opening)]
+    print((model[opening].Name, fillings))
+# ('Door opening', ['Door 1'])
+# ('Recess', [])
+
+print(model.duplicate_global_ids())  # [] -- a copied GlobalId is listed here
+print(openbim_ifc.new_guid())  # random, e.g. '2Vq9nF0yL5yQ$1x_4kZb3T'
+print(openbim_ifc.name_based_guid("my-exporter", "wall", "42"))  # same every run
+```
+
+<!-- /SNIPPET -->
+
+A `GlobalId` that several entities carry raises `IfcError` with `code`
+`invalid-model` naming every holder; `model.duplicate_global_ids()` lists
+them all. `new_guid()` draws an RFC 9562 version-4 UUID from the operating
+system; `name_based_guid(*parts)` is version 8, the same for the same parts
+in every binding. Both are IFC's 22-character form.
+
 ## Create a model
 
 <!-- SNIPPET:cookbook-py-create -->

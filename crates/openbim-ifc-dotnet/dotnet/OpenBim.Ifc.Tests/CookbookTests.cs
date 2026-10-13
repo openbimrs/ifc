@@ -381,6 +381,36 @@ public class CookbookTests
     }
 
     [Fact]
+    public void GlobalIdsTypesAndOpenings()
+    {
+        using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.RelationsIfc4));
+        var printed = new List<string>();
+        void Print(string line) => printed.Add(line);
+        // docs:snippet cookbook-dotnet-global-ids
+        string? Name(ulong id) => (model.AttributeByName(id, "Name") as Value.Text)?.Value;
+        // The first lookup indexes every GlobalId once; the rest reuse it.
+        ulong wall = model.ByGuid("0LwOtle8vEaxZPGHkxQdYT") ?? throw new KeyNotFoundException();
+
+        ulong wallType = model.TypeObject(wall)!.Value; // IfcRelDefinesByType
+        Print($"{Name(wallType)}: {string.Join(", ", model.OccurrencesOf(wallType))}"); // WT-200: 17, 18
+        foreach (var opening in model.OpeningsOf(wall)) // IfcRelVoidsElement
+        {
+            Print($"{Name(opening)}: [{string.Join(", ", model.FillingsOf(opening).Select(Name))}]");
+        }
+        // Door opening: [Door 1]
+        // Recess: []
+
+        var duplicates = model.DuplicateGlobalIds(); // empty; a copied GlobalId is listed here
+        string fresh = IfcModel.NewGuid(); // random, version 4
+        string named = IfcModel.NameBasedGuid("my-exporter", "wall", "42"); // same every run
+        // docs:end
+        Assert.Equal(new[] { "WT-200: 17, 18", "Door opening: [Door 1]", "Recess: []" }, printed);
+        Assert.Empty(duplicates);
+        Assert.Equal(22, fresh.Length);
+        Assert.Equal(named, IfcModel.NameBasedGuid("my-exporter", "wall", "42"));
+    }
+
+    [Fact]
     public void CreateAModelFromNothing()
     {
         // docs:snippet cookbook-dotnet-create

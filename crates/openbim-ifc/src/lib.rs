@@ -97,17 +97,26 @@ pub use ifc_schema as schema;
 // the declared release (#326), and the declared type of that attribute,
 // which the bindings coerce plain host values against (#342). The modules
 // gate themselves on `schema-api` with an inner `#![cfg]`.
+// Entities by `GlobalId`, an object's type, a type's occurrences and the
+// openings and fillings of elements (#463) join the model with the
+// schema's `IfcRoot`, `IfcObject` and relationship tables in the same way.
 mod declared_type;
+mod global_id;
 mod identity;
 mod named_attribute;
+mod object_relations;
 mod subtype_query;
 #[cfg(feature = "schema-api")]
 pub use self::{
     declared_type::{attribute_type, declared_type, DeclaredType, SimpleType},
+    global_id::{by_guid, DuplicateGlobalId, GlobalIdIndex},
     identity::{root_identity, RootIdentity},
     named_attribute::{
         attribute_by_name, attribute_slot, attribute_slots, set_attribute_by_name, AttributeSlot,
         NamedAttributeError,
+    },
+    object_relations::{
+        fillings_of, occurrences_of, openings_of, type_of, voided_element_of, ObjectRelationError,
     },
     subtype_query::ids_of_type_including_subtypes,
 };
@@ -332,8 +341,12 @@ pub use georeference::{georeferencing, GeoreferencingError};
 // `property-catalog` or `property-catalog-runtime` too.
 mod property_edit;
 
-// Name-based `GlobalId`s, shared by the property edit and authoring.
+// New `GlobalId`s (#463): random version 4 through the OS generator, and
+// the name-based version 8 the property edit and authoring derive theirs
+// with. Available in every build.
 mod name_guid;
+pub use ifc_model::guid::Guid;
+pub use name_guid::{name_based_guid, new_guid, GuidError};
 
 mod feature_report;
 mod io;

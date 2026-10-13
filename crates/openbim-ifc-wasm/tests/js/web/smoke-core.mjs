@@ -75,6 +75,13 @@ export async function smoke(IfcModel) {
   const lenient = IfcModel.parseWithOptions(damaged, { onMalformed: "skip" });
   check(lenient.size === 3 && lenient.diagnostics().length === 1, "lenient read");
 
+  // GlobalIds (#463): a lookup, and a random one drawn from this host's
+  // crypto.getRandomValues, which each packaged target reaches its own way.
+  check(model.byGuid("1YvctVUKr0kugbFTf53O9L") === 5n, "byGuid");
+  const drawn = IfcModel.newGuid();
+  check(/^[0-3][0-9A-Za-z_$]{21}$/.test(drawn), `newGuid ${drawn}`);
+  check(drawn !== IfcModel.newGuid(), "newGuid draws a new one");
+
   // The domain views (#123) are compiled into every packaged target.
   check(model.propertySets(5n).length === 0, "propertySets");
   check(model.spatialTree().nodes.length === 1, "spatialTree");

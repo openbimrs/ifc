@@ -8,6 +8,23 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#463, GlobalIds, types and openings)
+
+- `openbim_ifc_v0_1_model_by_guid` (`out_id`, `NoValue` when absent,
+  `InvalidModel` when several entities carry it) and
+  `openbim_ifc_v0_1_model_duplicate_global_ids` (a tape of `LIST`s: the
+  `GlobalId` and its holders).
+- `openbim_ifc_v0_1_entity_type_object`, `_entity_occurrences`,
+  `_entity_openings`, `_entity_fillings` and `_entity_voided_element`: an
+  optional id to `out_id` or `NoValue`, a list through the buffer protocol.
+- `openbim_ifc_v0_1_new_guid` and `openbim_ifc_v0_1_name_based_guid`,
+  which need no model. The header is regenerated.
+- ABI version 0.1.10; every export above is new, no `v0_1` symbol changed.
+
+Semver: additive, released on the 0.1 line: the C package keeps 0.1.x while
+the `v0_1` ABI is unchanged, because CMake's `find_package(openbim_ifc 0.1)`
+does not accept 0.2.
+
 ## [0.1.10] - 2026-10-13
 
 ### Changed (#433, wire format 1.3)
