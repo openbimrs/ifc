@@ -98,7 +98,7 @@ pub(crate) use offset::{OffsetPiece, COLLAPSE, OFFSET_OF_OFFSET, PLANAR_3D};
 /// Why a relation basis's joints are unknown here: a piece's length is a
 /// quadrature. A station along it carries the kernel's seam-snapping window
 /// (#423), and so does each section of a run along it (#429); an offset
-/// run along it (#433) is refused. A derived placement on it reads such a
+/// run along it continues to the end the kernel measures (#433). A derived placement on it reads such a
 /// piece as an open-ended path piece (#427) or one bounded at a parameter
 /// or a point (#436, [`relation_pieces`]); [`relation_pieces`] itself
 /// refuses with this reason only a span whose ends no path piece states (a

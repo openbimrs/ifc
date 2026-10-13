@@ -1,6 +1,7 @@
 //! `IfcOffsetCurveByDistances` (IFC4.3 ADD2 8.9.3.42) onto
 //! `CurveRelation::OffsetByStations`, or `OffsetsAtStations` where its
-//! stations carry the kernel's seam-snapping window.
+//! stations carry the kernel's seam-snapping window or stand at a basis end
+//! the kernel measures.
 //!
 //! Each `OffsetValues` member is a station along `BasisCurve`; the curve
 //! runs through the offsets. Two readings need stating:
@@ -18,10 +19,22 @@
 //!   data, not extrapolation: a station at the start and one at the end with
 //!   the same offsets carry it exactly, and they are added when the basis
 //!   states its length ([`super::seams::stated_length`], or a relation's
-//!   pieces summed, [`super::relation`]). Without one (an unbounded line, a
-//!   B-spline, a relation with an ellipse or a B-spline piece) the curve is
-//!   refused by name:
-//!   Axiolid's curve stops at its last station and does not extend.
+//!   pieces summed, [`super::relation`]). Where the basis is bounded but its
+//!   length is a quadrature (an offset beside a gradient curve, a spiral, a
+//!   B-spline or an ellipse, a relation with an ellipse or a B-spline piece,
+//!   a B-spline or an ellipse itself), this crate cannot state that number
+//!   (ADR 0004), and the kernel measures it instead (#433, `axiolid-model`
+//!   0.3.12, axiolid/kernel#303): the tail is `RunStation::at_basis_end`
+//!   with the last offsets, which the kernel resolves to the basis's length
+//!   by its own measure, and the head, where the first offset stops short
+//!   of the start, `RunStation::at_basis_start` with the first. Such a run
+//!   is wire format 1.3; a basis whose length is stated keeps its stated
+//!   stations and its graph. A stated station at or past the end the
+//!   kernel measures leaves the run no strictly increasing distances, which
+//!   the kernel refuses by name (`SeamWindowRefusal::PastBasisEnd`). An
+//!   unbounded line has no end to continue to, so a run along it that stops
+//!   short is refused by name ([`NO_LENGTH`]): Axiolid's curve stops at its
+//!   last station and does not extend.
 //!
 //! - **Across a tangent discontinuity** (#346). The offset curve would
 //!   have a gap or a loop there, and 8.9.3.42 states no join. The sweeps
@@ -34,14 +47,14 @@
 //!   are snapped to it (`super`'s module documentation); a seam where the
 //!   basis turns back on itself is refused by name.
 //! - **Along a basis whose seams are quadratures** (#429). Its stations
-//!   would carry the kernel's seam-snapping window, as `RunStation`s of
+//!   carry the kernel's seam-snapping window, as `RunStation`s of
 //!   `CurveRelation::OffsetsAtStations` (`axiolid-model` 0.3.11,
 //!   axiolid/kernel#301), the general form of `OffsetByStations`, which
-//!   stays the form of every window-free run, so those graphs are
-//!   unchanged. Such a basis's length is a quadrature too, which this
-//!   crate does not state, so the continuation to its tail cannot be
-//!   placed and the curve is refused by name ([`NO_QUADRATURE_LENGTH`],
-//!   #433) until the kernel can continue a run to the basis's end.
+//!   stays the form of every run whose stations carry neither a window nor
+//!   a basis end, so those graphs are unchanged. The kernel snaps a station
+//!   onto the one seam within its window after it has resolved the
+//!   basis's ends. The end station carries no window: it is the basis's
+//!   end, not a station near a seam.
 //!
 //! `OffsetLongitudinal` exists to reach a point past a tangent
 //! discontinuity (8.9.3.48.3); IFC states nothing about carrying it along a
@@ -49,7 +62,7 @@
 //! and changes no shape.
 
 use axiolid_model::{
-    CurveRelation, GeometryNode, NodeId, RunStation, SeamSide, Station, StationFrame,
+    BasisEnd, CurveRelation, GeometryNode, NodeId, RunStation, SeamSide, Station, StationFrame,
     StationOffsets,
 };
 use ifc_model::EntityId;
@@ -79,19 +92,11 @@ const LONGITUDINAL: &str =
 const OTHER_BASIS: &str =
     "an OffsetValues member is measured along another BasisCurve than the offset curve's own";
 
-/// Why offsets that stop short of an unbounded or unstated end are refused.
+/// Why offsets that stop short of an unbounded end are refused.
 const NO_LENGTH: &str =
     "the offsets stop short of the basis curve's ends, where IFC4.3 ADD2 (8.9.3.42.3) \
-     continues them unchanged, and the basis states no length to continue them to; the \
-     neutral offset curve stops at its last station";
-
-/// Why offsets along a basis whose length is a quadrature are refused.
-// TODO(#433): continue the run to the basis's end once the kernel can.
-pub(crate) const NO_QUADRATURE_LENGTH: &str =
-    "the offsets run along a basis whose seams and length are arc-length integrals (an offset \
-     beside a gradient curve, a spiral, a B-spline or an ellipse, or a B-spline corner knot); \
-     IFC4.3 ADD2 (8.9.3.42.3) continues them unchanged to the basis's end, whose distance this \
-     crate does not compute, and the neutral offset curve stops at its last station (#433)";
+     continues them unchanged, and the basis is unbounded, so it has no end to continue them \
+     to; the neutral offset curve stops at its last station";
 
 /// Lower an `IfcOffsetCurveByDistances` to `OffsetByStations`.
 pub(crate) fn offset_curve_by_distances(
@@ -142,29 +147,34 @@ pub(crate) fn offset_curve_by_distances(
     let first = stations[0].station;
     let last = stations[stations.len() - 1].station;
     let head = first.distance > basis.tolerance(first.distance);
-    let tail = match basis.length {
-        Some(length) => last.distance < length - basis.tolerance(length),
-        None => true,
-    };
-    if head || tail {
-        let Some(length) = basis.length else {
-            let windowed = stations.iter().any(|station| station.seam_window > 0.0);
-            let reason = if windowed {
-                NO_QUADRATURE_LENGTH
-            } else {
-                NO_LENGTH
-            };
-            return Err(session.unsupported(id, TYPE, reason));
-        };
-        if head {
-            stations.insert(0, Station::new(0.0, carried(first.offsets)).into());
+    match basis.length {
+        Some(length) => {
+            if head {
+                stations.insert(0, Station::new(0.0, carried(first.offsets)).into());
+            }
+            if last.distance < length - basis.tolerance(length) {
+                stations.push(Station::new(length, carried(last.offsets)).into());
+            }
         }
-        if tail {
-            stations.push(Station::new(length, carried(last.offsets)).into());
+        // The length is a quadrature: the kernel measures the end (#433).
+        // Whether the last station stops short of it is not known here, so
+        // the tail is always added; one at or past it is refused by the
+        // kernel by name.
+        None if basis.measured_end => {
+            if head {
+                stations.insert(0, RunStation::at_basis_start(carried(first.offsets)));
+            }
+            stations.push(RunStation::at_basis_end(carried(last.offsets)));
         }
+        None => return Err(session.unsupported(id, TYPE, NO_LENGTH)),
     }
     let from = stations[0].station.distance;
-    let to = stations[stations.len() - 1].station.distance;
+    // The kernel's end lies past every stated station, or the kernel
+    // refuses the run's order.
+    let to = match stations[stations.len() - 1].basis_end {
+        Some(BasisEnd::End) => f64::INFINITY,
+        _ => stations[stations.len() - 1].station.distance,
+    };
     if stations.len() < 2 || to <= from {
         return Err(session.degenerate(
             id,
@@ -174,7 +184,10 @@ pub(crate) fn offset_curve_by_distances(
     }
     basis.check_run(session, id, TYPE, from, to)?;
 
-    if stations.iter().any(|station| station.seam_window > 0.0) {
+    if stations
+        .iter()
+        .any(|station| station.seam_window > 0.0 || station.basis_end.is_some())
+    {
         session.record_seam_window_run(id);
     }
     session.node_for(
@@ -195,8 +208,9 @@ fn windowed(station: Station, window: Option<f64>) -> RunStation {
 }
 
 /// The offset curve through `stations`: `OffsetByStations` while none
-/// carries a window or a side, so a window-free graph is the one it always
-/// was (wire format 1.0); `OffsetsAtStations` otherwise (format 1.2).
+/// carries a window, a side or a basis end, so such a graph is the one it
+/// always was (wire format 1.0); `OffsetsAtStations` otherwise (format 1.2,
+/// or 1.3 with a station at the basis's end, #433).
 fn offset_relation(basis: NodeId, stations: Vec<RunStation>) -> CurveRelation {
     let plain = stations
         .iter()
@@ -312,6 +326,40 @@ mod tests {
                 json.contains(&format!("\"version\":\"{version}\"")),
                 "{json}"
             );
+            let read = GeometryGraph::from_json(&json).expect("reads back");
+            assert_eq!(read.to_json().expect("writes"), json);
+        }
+    }
+
+    /// A run continued to the basis's ends the kernel measures takes the
+    /// general form and writes wire format 1.3, with or without windows
+    /// (#433); it reads back to itself.
+    #[cfg(feature = "wire")]
+    #[test]
+    fn a_run_to_the_basis_end_writes_wire_format_1_3() {
+        use axiolid_model::GeometryGraph;
+
+        let offsets = StationOffsets::new(1.0, 0.0, 0.0);
+        for window in [Some(1e-5), None] {
+            let (mut builder, basis) = line();
+            let run = offset_relation(
+                basis,
+                vec![
+                    RunStation::at_basis_start(offsets),
+                    windowed(station(5.0), window),
+                    RunStation::at_basis_end(offsets),
+                ],
+            );
+            assert!(
+                matches!(run, CurveRelation::OffsetsAtStations { .. }),
+                "{run:?}"
+            );
+            let node = builder
+                .push(GeometryNode::CurveRelation(run))
+                .expect("pushes");
+            let graph = builder.finish(vec![node]).expect("a graph");
+            let json = graph.to_json().expect("writes");
+            assert!(json.contains("\"version\":\"1.3\""), "{json}");
             let read = GeometryGraph::from_json(&json).expect("reads back");
             assert_eq!(read.to_json().expect("writes"), json);
         }

@@ -473,8 +473,9 @@ pub fn product_bounds_with<B: MeshCompiler>(
 }
 
 /// The backend's refusal of `entity`'s graph, in IFC terms: a refusal of a
-/// seam-snapping window names the runs (#429) or else the stations (#423)
-/// lowered with one (`provenance`), anything else is
+/// seam-snapping window, or of a run's order once snapped or once its
+/// basis's end is resolved (#433), names the runs (#429) or else the
+/// stations (#423) lowered with one (`provenance`), anything else is
 /// [`GeometryError::CompilationRefused`].
 fn refused(
     entity: EntityId,
@@ -492,7 +493,12 @@ fn refused(
                 refusal,
             };
         }
-        if !stations.is_empty() && refusal != SeamWindowRefusal::NotIncreasing {
+        // Only a run's stations have an order to refuse.
+        let of_a_run = matches!(
+            refusal,
+            SeamWindowRefusal::NotIncreasing | SeamWindowRefusal::PastBasisEnd
+        );
+        if !stations.is_empty() && !of_a_run {
             return GeometryError::StationSeamWindowRefused {
                 product: entity,
                 stations,

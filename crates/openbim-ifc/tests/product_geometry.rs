@@ -149,7 +149,9 @@ fn graphs_round_trip_through_the_wire_format_and_are_refused_per_product() {
 /// carries a seam-snapping window (#423), so its payload is wire format
 /// 1.1, the lowest version that holds it (axiolid/kernel#297). A run of
 /// sections along the offset carries windows on its sections (#429), so
-/// its payload is 1.2.
+/// its payload is 1.2. A tube along an offset run beside the offset,
+/// continued to the ends the kernel measures (#433), holds stations at its
+/// basis's ends, so its payload is 1.3.
 #[cfg(feature = "geometry-wire")]
 #[test]
 fn a_body_with_a_seam_window_is_labelled_wire_format_1_1() {
@@ -180,4 +182,13 @@ fn a_body_with_a_seam_window_is_labelled_wire_format_1_1() {
         let back = GeometryGraph::from_json(&text).expect("reads back");
         assert_eq!(back.to_json().unwrap(), text);
     }
+    // GUTTER, the tube along the offset run.
+    let graphs = ifc::product_graphs(&model, Some(&[EntityId(337)]));
+    let (_, graph) = graphs.into_iter().next().expect("GUTTER");
+    let graph = graph.expect("lowers").graph.expect("a Body");
+    let text = graph.to_json().expect("encodes");
+    let envelope: serde_json::Value = serde_json::from_str(&text).expect("JSON");
+    assert_eq!(envelope["version"], "1.3", "{text}");
+    assert!(text.contains("\"basis_end\":\"End\""), "{text}");
+    GeometryGraph::from_json(&text).expect("reads back");
 }

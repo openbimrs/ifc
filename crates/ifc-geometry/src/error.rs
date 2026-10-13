@@ -453,7 +453,11 @@ pub enum GeometryError {
     /// refused, so with several, each is a candidate. Besides the window's
     /// own refusals, `refusal` may be
     /// [`SeamWindowRefusal::NotIncreasing`](crate::compile::SeamWindowRefusal):
-    /// two positions snapped onto one seam, or one past its neighbour.
+    /// two positions snapped onto one seam, or one past its neighbour; and,
+    /// for an `IfcOffsetCurveByDistances` continued to a basis end the
+    /// kernel measures (#433),
+    /// [`SeamWindowRefusal::PastBasisEnd`](crate::compile::SeamWindowRefusal):
+    /// a stated station at or past that end.
     #[cfg(feature = "compile")]
     #[error(
         "{product}: the kernel refused the seam-snapping windows of run {}: {refusal}",

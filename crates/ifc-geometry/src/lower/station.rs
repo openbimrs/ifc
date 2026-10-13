@@ -144,8 +144,9 @@
 //! along a basis whose seams are stored data keeps the snapping above and
 //! carries no window, so its graph is unchanged (wire format 1.0 content);
 //! only the runs that used to be refused carry windows (format 1.2). An
-//! `IfcOffsetCurveByDistances` along such a basis stays refused by name:
-//! its offsets continue to the basis's end, a quadrature (`offset`, #433).
+//! `IfcOffsetCurveByDistances` along such a basis continues its offsets to
+//! the basis's end, a quadrature, which the kernel measures (`offset`,
+//! #433, `RunStation::at_basis_end`, axiolid/kernel#303; format 1.3).
 //!
 //! # Frames
 //!
@@ -195,6 +196,11 @@ pub(crate) struct Basis {
     /// Its length, when stated by its data; `None` when unbounded or not
     /// stated.
     pub length: Option<f64>,
+    /// Whether it is bounded but its length is not stated, an arc-length
+    /// integral the kernel measures (an ellipse, a B-spline, a relation
+    /// with a piece measured by quadrature): a run along it is continued
+    /// to the kernel's end (#433, `offset`).
+    pub measured_end: bool,
     /// The model's precision in metres; see [`Basis::tolerance`].
     precision: f64,
 }
@@ -213,11 +219,17 @@ impl Basis {
         }
         let precision = seams::precision(session, owner, owner_type)?;
         let node = lower_curve_node(session, curve, frame)?;
-        let (seams, length) = match session.atomic_curve(node) {
-            Some(curve) => (seams::tangent_seams(curve), seams::stated_length(curve)),
+        let (seams, length, measured) = match session.atomic_curve(node) {
+            Some(curve) => (
+                seams::tangent_seams(curve),
+                seams::stated_length(curve),
+                seams::measured_length(curve),
+            ),
             None => match relation::relation_seams(session, node) {
-                Ok((seams, length)) => (Ok(seams), Some(length)),
-                Err(reason) => (Err(reason), None),
+                Ok((seams, length)) => (Ok(seams), Some(length), false),
+                // A relation's length is stated unless a piece's is a
+                // quadrature, the reasons its stations carry a window.
+                Err(reason) => (Err(reason), None, WINDOWED.contains(&reason)),
             },
         };
         if let Err(reason) = seams {
@@ -241,6 +253,7 @@ impl Basis {
             node,
             seams,
             length,
+            measured_end: length.is_none() && measured,
             precision,
         })
     }

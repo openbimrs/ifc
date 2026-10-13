@@ -8,6 +8,19 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#433, wire format 1.3)
+
+- `GEOMETRY_FORMAT_VERSION` is `"1.3"`, the newest version a build writes
+  (`axiolid-model` 0.3.12: run stations at their basis's ends,
+  axiolid/kernel#303). An envelope still carries the lowest version its
+  content needs: 1.3 only when an offset run continues to a basis end the
+  kernel measures. A reader on `axiolid-model` 0.3.11 or older refuses
+  1.3. Tests hold such a payload to 1.3 and the others to their old
+  versions.
+
+Semver: additive (internal crate, not published); a minor change of every
+binding (ADR 0021).
+
 ### Changed (#429, wire format 1.2)
 
 - `GEOMETRY_FORMAT_VERSION` is `"1.2"`, the newest version a build writes

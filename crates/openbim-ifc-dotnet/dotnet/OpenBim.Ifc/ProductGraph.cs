@@ -15,7 +15,7 @@ public enum GeometryEncoding
 /// The payload is Axiolid's versioned wire format:
 /// <c>{"format":"axiolid-geometry-graph","version":"1.0","graph":{"nodes":[...],"roots":[...]}}</c>,
 /// exact, in world coordinates, metres. Its <c>version</c> is the lowest the content needs:
-/// <c>1.0</c>; <c>1.1</c> when a station carries a seam-snapping window (#423), <c>1.2</c> when a run's sections do (#429).
+/// <c>1.0</c>; <c>1.1</c> when a station carries a seam-snapping window (#423), <c>1.2</c> when a run's sections do (#429), <c>1.3</c> when an offset run continues to a basis end the kernel measures (#433).
 /// The bytes are a copy the caller owns.
 /// </remarks>
 public sealed class ProductGraph
@@ -27,7 +27,7 @@ public sealed class ProductGraph
     /// The newest wire format version this build writes. An envelope's <c>version</c> is this or an
     /// older minor of the same major: the lowest the payload's content needs.
     /// </summary>
-    public const string FormatVersion = "1.2";
+    public const string FormatVersion = "1.3";
 
     internal ProductGraph(ProductGeometry geometry, byte[] payload)
     {

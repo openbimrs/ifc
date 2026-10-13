@@ -364,7 +364,8 @@ impl<'a> LoweringSession<'a> {
     }
 
     /// Record that the run `run`'s stations carry the kernel's
-    /// seam-snapping window (#429).
+    /// seam-snapping window (#429) or stand at a basis end it measures
+    /// (#433).
     pub(crate) fn record_seam_window_run(&mut self, run: EntityId) {
         self.provenance.record_seam_window_run(run);
     }

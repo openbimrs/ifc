@@ -563,10 +563,13 @@ transform already applied. These exports make the ABI version 0.1.9; no
 station carries a seam-snapping window
 ([#423](https://github.com/openbimrs/ifc/issues/423)), then `1.1`, or a
 run's sections do ([#429](https://github.com/openbimrs/ifc/issues/429),
-a sectioned solid or surface along such an offset), then `1.2`
-(axiolid/kernel#297, #301). A reader on `axiolid-model` 0.3.8 or older
-reads a `1.0` payload and refuses `1.1`; one on 0.3.10 or older refuses
-`1.2`. A major version of the wire format would
+a sectioned solid or surface along such an offset), then `1.2`, or an
+offset run continues to a basis end the kernel measures
+([#433](https://github.com/openbimrs/ifc/issues/433), an
+`IfcOffsetCurveByDistances` along such an offset), then `1.3`
+(axiolid/kernel#297, #301, #303). A reader on `axiolid-model` 0.3.8 or
+older reads a `1.0` payload and refuses `1.1`; one on 0.3.10 or older
+refuses `1.2`, one on 0.3.11 or older `1.3`. A major version of the wire format would
 be a breaking change of the ABI (ADR 0021).
 
 ## Creating entities
