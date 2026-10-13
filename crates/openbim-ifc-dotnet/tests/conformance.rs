@@ -63,7 +63,8 @@ fn declarations(text: &str, prefix: &str) -> BTreeMap<String, Vec<String>> {
 
 /// The C# spelling of a C parameter type, as `NativeMethods.cs` declares it.
 fn csharp_type(c_param: &str) -> String {
-    let pointer = c_param.contains('*');
+    // `const uint8_t *const *parts` is `byte**`: one `*` per indirection.
+    let pointers = c_param.matches('*').count();
     let base = c_param
         .replace("const ", "")
         .replace('*', " ")
@@ -82,7 +83,7 @@ fn csharp_type(c_param: &str) -> String {
         "OpenbimIfcVersion" => "NativeVersion",
         other => panic!("no C# type for the C type `{other}`; extend this table"),
     };
-    format!("{mapped}{}", if pointer { "*" } else { "" })
+    format!("{mapped}{}", "*".repeat(pointers))
 }
 
 #[test]

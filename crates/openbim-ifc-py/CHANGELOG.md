@@ -18,6 +18,16 @@ a release here does not imply a release of any other crate in the family.
   presentation layer's, else its material's styled representation.
   `SurfaceColour` is exported from `openbim_ifc`.
 
+### Added (#463, GlobalIds, types and openings)
+
+- `model.by_guid(global_id)` (an `Entity` or `None`) and
+  `model.id_by_guid(global_id)`, through an index built on the first lookup;
+  a `GlobalId` several entities carry raises `IfcError` (`invalid-model`),
+  and `model.duplicate_global_ids()` lists them as `DuplicateGlobalId`.
+- `model.type_object(id)`, `occurrences_of`, `openings_of`, `fillings_of`
+  and `voided_element_of`, in IFC2X3, IFC4 and IFC4X3.
+- `openbim_ifc.new_guid()` and `openbim_ifc.name_based_guid(*parts)`.
+
 Semver: additive, a minor release while 0.x.
 
 ## [0.8.0] - 2026-10-13

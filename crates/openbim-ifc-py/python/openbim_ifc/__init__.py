@@ -20,7 +20,7 @@ Python values (``wall.Name``), and ``wall.psets`` maps property sets
 import os as _os
 from typing import Optional as _Optional, Union as _Union
 
-from ._native import IfcError
+from ._native import IfcError, name_based_guid as _name_based_guid, new_guid as _new_guid
 from .geometry import (
     GEOMETRY_FORMAT,
     GEOMETRY_FORMAT_VERSION,
@@ -76,6 +76,7 @@ from .domains import (
 from .entity import Assignable, Entity, PlainValue, PropertyValue
 from .model import IfcModel
 from .records import (
+    DuplicateGlobalId,
     Header,
     ParseOptions,
     UnreachableProduct,
@@ -110,8 +111,25 @@ def open(
     return IfcModel.open(path, mapped=mapped, options=options)
 
 
+def new_guid() -> str:
+    """A new random ``GlobalId``: an RFC 9562 version-4 UUID from the
+    operating system's generator, in IFC's 22-character form."""
+    return _new_guid()
+
+
+def name_based_guid(*parts: str) -> str:
+    """The ``GlobalId`` named by ``parts`` (RFC 9562 version 8): the same
+    parts give the same ``GlobalId`` in every binding and release, for a
+    reproducible export. Choose parts unique together, such as a tool name
+    and a stable key."""
+    return _name_based_guid(list(parts))
+
+
 __all__ = [
     "open",
+    "new_guid",
+    "name_based_guid",
+    "DuplicateGlobalId",
     "IfcError",
     "IfcModel",
     "Entity",

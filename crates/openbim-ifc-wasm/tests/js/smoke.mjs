@@ -826,3 +826,66 @@ test("authoring refusals carry the shared codes", () => {
   throwsCode(() => emptyModel("IFC2X3").author([{ op: "project" }]), "missing-attribute");
   throwsCode(() => new IfcModel().author([{ op: "project" }]), "unsupported-schema");
 });
+
+// --- GlobalIds, types, openings and fillings (#463) -------------------------
+
+const RELEASES = ["relations_ifc2x3.ifc", "relations_ifc4.ifc", "relations_ifc4x3.ifc"];
+const relations = (name) => openFixture(path.join("synthetic-relations", name));
+const globalIdOf = (model, id) => model.attribute(id, 0).value;
+
+test("an entity is found by its GlobalId in every release", () => {
+  for (const name of RELEASES) {
+    const model = relations(name);
+    assert.equal(model.byGuid(globalIdOf(model, 17n)), 17n, name);
+    assert.equal(model.byGuid("3MtNd0Uaz8Ix2OPtRq_3Kk"), undefined, name);
+    assert.deepEqual(model.duplicateGlobalIds(), [], name);
+  }
+  const model = relations("relations_ifc4.ifc");
+  throwsCode(() => model.byGuid("not a GlobalId"), "invalid-value");
+  throwsCode(() => model.byGuid("4000000000000000000000"), "invalid-value");
+});
+
+test("a copied GlobalId is refused and listed with both holders", () => {
+  const model = relations("relations_ifc4.ifc");
+  const guid = globalIdOf(model, 17n);
+  assert.equal(model.byGuid(guid), 17n);
+  const copy = model.add(model.typeOf(17n), model.attributes(17n));
+  throwsCode(() => model.byGuid(guid), "invalid-model");
+  assert.deepEqual(model.duplicateGlobalIds(), [{ globalId: guid, ids: [17n, copy] }]);
+  model.remove(copy);
+  assert.equal(model.byGuid(guid), 17n);
+});
+
+test("new GlobalIds are valid and unique; name-based ones reproducible", () => {
+  const model = relations("relations_ifc4.ifc");
+  const drawn = new Set();
+  for (let i = 0; i < 1000; i++) drawn.add(IfcModel.newGuid());
+  assert.equal(drawn.size, 1000);
+  for (const guid of [...drawn].slice(0, 20)) {
+    assert.match(guid, /^[0-3][0-9A-Za-z_$]{21}$/);
+    assert.equal(model.byGuid(guid), undefined, "parses as a GlobalId");
+  }
+  const named = IfcModel.nameBasedGuid(["my-exporter", "wall", "42"]);
+  assert.equal(named, IfcModel.nameBasedGuid(["my-exporter", "wall", "42"]));
+  assert.notEqual(named, IfcModel.nameBasedGuid(["my-exporter", "wall", "43"]));
+  // Pinned in the facade: every binding derives the same GlobalId.
+  assert.equal(IfcModel.nameBasedGuid(["openbim-ifc", "example"]), "347eFU5Y69bPY9V9tumQuV");
+});
+
+test("types, openings and fillings follow the relationships in every release", () => {
+  for (const name of RELEASES) {
+    const model = relations(name);
+    assert.equal(model.typeObject(17n), 16n, name);
+    assert.equal(model.typeObject(19n), undefined, name);
+    assert.deepEqual(model.occurrencesOf(16n), [17n, 18n], name);
+    assert.equal(model.typeObject(28n), 27n, name);
+    assert.deepEqual(model.openingsOf(17n), [21n, 23n], name);
+    assert.deepEqual(model.fillingsOf(21n), [28n], name);
+    assert.deepEqual(model.fillingsOf(23n), [], name);
+    assert.equal(model.voidedElementOf(22n), 18n, name);
+  }
+  const model = relations("relations_ifc2x3.ifc");
+  throwsCode(() => model.typeObject(999n), "missing-entity");
+  throwsCode(() => model.typeObject(8n), "wrong-entity-type");
+  throwsCode(() => model.occurrencesOf(17n), "wrong-entity-type");
+});

@@ -292,6 +292,20 @@ library embeds; the refusals are those of the other bindings
 Not bound yet: checked multi-edit transactions over arbitrary entities.
 Use the Rust crates for those.
 
+## GlobalIds, types and openings
+
+`model.ByGuid(globalId)` finds an entity by `GlobalId` through an index
+built on the first lookup and kept until the model changes; a `GlobalId`
+several entities carry throws `invalid-model` naming them all, and
+`DuplicateGlobalIds()` lists every one. `TypeObject(id)` and
+`OccurrencesOf(type)` read `IfcRelDefinesByType` in every release;
+`OpeningsOf`, `FillingsOf` and `VoidedElementOf` read `IfcRelVoidsElement`
+and `IfcRelFillsElement`. `IfcModel.NewGuid()` draws a random version-4
+`GlobalId` and `IfcModel.NameBasedGuid(parts)` derives a reproducible
+version-8 one. The
+[cookbook](/cookbook/dotnet#find-entities-by-globalid-types-and-openings)
+has a recipe.
+
 ## Geometry
 
 Geometry crosses at three levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)):
@@ -507,6 +521,15 @@ and `MeshedProduct` included, from its XML documentation comments.
 | `IReadOnlyList<ulong> Ids()` | Every entity id, in file order. |
 | `IReadOnlyList<ulong> IdsOfType(string typeName)` | Ids of every entity of exactly `typeName` (case-insensitive); subtypes are not included. |
 | `IReadOnlyList<ulong> IdsOfTypeIncludingSubtypes(string typeName)` | Ids of `typeName` or any subtype, per the file's schema; `unsupported-schema` when it is not bundled. |
+| `ulong? ByGuid(string globalId)` | The entity whose `GlobalId` is `globalId`, or null (#463). |
+| `IReadOnlyList<DuplicateGlobalId> DuplicateGlobalIds()` | Every `GlobalId` several entities carry, with its holders in file order; empty for a conformant file. |
+| `ulong? TypeObject(ulong id)` | The type object of occurrence `id` (`IfcRelDefinesByType`), or null. |
+| `IReadOnlyList<ulong> OccurrencesOf(ulong id)` | Every object type object `id` types, in file order. |
+| `IReadOnlyList<ulong> OpeningsOf(ulong id)` | Every opening voiding element `id` (`IfcRelVoidsElement`), in file order. |
+| `IReadOnlyList<ulong> FillingsOf(ulong id)` | Every element filling opening `id` (`IfcRelFillsElement`), in file order. |
+| `ulong? VoidedElementOf(ulong id)` | The element opening `id` voids (`IfcRelVoidsElement`), or null. |
+| `static string NewGuid()` | A new random `GlobalId`: an RFC 9562 version-4 UUID from the operating system's generator, in IFC's 22-character form (#463). |
+| `static string NameBasedGuid(params string[] parts)` | The `GlobalId` named by `parts` (RFC 9562 version 8): the same parts give the same `GlobalId` in every binding and release, for a reproducible export. Choose parts unique together, such as a tool name and a stable key. |
 | `string TypeOf(ulong id)` | The upper-case type name of entity `id`. |
 | `IReadOnlyList<Value> Attributes(ulong id)` | Every attribute of entity `id`, in declaration order. |
 | `Value Attribute(ulong id, int index)` | Attribute `index` of entity `id`; `Value.Null` past the end. |

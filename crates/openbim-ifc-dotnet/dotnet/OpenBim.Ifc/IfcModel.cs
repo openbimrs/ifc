@@ -742,6 +742,150 @@ public sealed unsafe class IfcModel : IDisposable
         });
     }
 
+    /// <summary>The entity whose <c>GlobalId</c> is <paramref name="globalId"/>, or null (#463).</summary>
+    /// <remarks>The first lookup indexes every <c>GlobalId</c> once; later ones reuse the index
+    /// until the model changes. Throws <c>invalid-value</c> for text that is not a <c>GlobalId</c>
+    /// and <c>invalid-model</c> when several entities carry it (<see cref="DuplicateGlobalIds"/>
+    /// lists them).</remarks>
+    public ulong? ByGuid(string globalId)
+    {
+        var text = Calls.Encode(globalId);
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        ulong id = 0;
+        IfcStatus status;
+        fixed (byte* pointer = text)
+        {
+            status = NativeMethods.openbim_ifc_v0_1_model_by_guid(m, pointer, (nuint)text.Length, &id);
+        }
+        return Optional(m, status, id);
+    }
+
+    /// <summary>Every <c>GlobalId</c> several entities carry, with its holders in file order; empty for a conformant file.</summary>
+    public IReadOnlyList<DuplicateGlobalId> DuplicateGlobalIds()
+    {
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return RecordDecoder.DecodeList<DuplicateGlobalId>(Tape(m, (n, nc, nr, s, sc, sr) =>
+        {
+            nuint count;
+            return NativeMethods.openbim_ifc_v0_1_model_duplicate_global_ids(m, &count, n, nc, nr, s, sc, sr);
+        }).One());
+    }
+
+    /// <summary>The type object of occurrence <paramref name="id"/> (<c>IfcRelDefinesByType</c>), or null.</summary>
+    /// <remarks>Throws <c>wrong-entity-type</c> for an entity that is not an <c>IfcObject</c> and <c>invalid-model</c> when the file states two types.</remarks>
+    public ulong? TypeObject(ulong id)
+    {
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        ulong found = 0;
+        var status = NativeMethods.openbim_ifc_v0_1_entity_type_object(m, id, &found);
+        return Optional(m, status, found);
+    }
+
+    /// <summary>Every object type object <paramref name="id"/> types, in file order.</summary>
+    public IReadOnlyList<ulong> OccurrencesOf(ulong id)
+    {
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return Ids(m, (buffer, capacity, required) => NativeMethods.openbim_ifc_v0_1_entity_occurrences(m, id, buffer, capacity, required));
+    }
+
+    /// <summary>Every opening voiding element <paramref name="id"/> (<c>IfcRelVoidsElement</c>), in file order.</summary>
+    public IReadOnlyList<ulong> OpeningsOf(ulong id)
+    {
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return Ids(m, (buffer, capacity, required) => NativeMethods.openbim_ifc_v0_1_entity_openings(m, id, buffer, capacity, required));
+    }
+
+    /// <summary>Every element filling opening <paramref name="id"/> (<c>IfcRelFillsElement</c>), in file order.</summary>
+    public IReadOnlyList<ulong> FillingsOf(ulong id)
+    {
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return Ids(m, (buffer, capacity, required) => NativeMethods.openbim_ifc_v0_1_entity_fillings(m, id, buffer, capacity, required));
+    }
+
+    /// <summary>The element opening <paramref name="id"/> voids (<c>IfcRelVoidsElement</c>), or null.</summary>
+    public ulong? VoidedElementOf(ulong id)
+    {
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        ulong found = 0;
+        var status = NativeMethods.openbim_ifc_v0_1_entity_voided_element(m, id, &found);
+        return Optional(m, status, found);
+    }
+
+    /// <summary>A new random <c>GlobalId</c>: an RFC 9562 version-4 UUID from the operating
+    /// system's generator, in IFC's 22-character form (#463).</summary>
+    public static string NewGuid()
+    {
+        byte* buffer = stackalloc byte[GuidBytes];
+        nuint required = 0;
+        return GuidText(NativeMethods.openbim_ifc_v0_1_new_guid(buffer, GuidBytes, &required), buffer);
+    }
+
+    /// <summary>The <c>GlobalId</c> named by <paramref name="parts"/> (RFC 9562 version 8): the
+    /// same parts give the same <c>GlobalId</c> in every binding and release, for a reproducible
+    /// export. Choose parts unique together, such as a tool name and a stable key.</summary>
+    public static string NameBasedGuid(params string[] parts)
+    {
+        if (parts is null)
+        {
+            throw new ArgumentNullException(nameof(parts));
+        }
+        var encoded = parts.Select(Calls.Encode).ToArray();
+        var joined = new byte[encoded.Sum(part => part.Length)];
+        var lengths = new nuint[encoded.Length];
+        var offsets = new int[encoded.Length];
+        for (int i = 0, at = 0; i < encoded.Length; at += encoded[i].Length, i++)
+        {
+            Buffer.BlockCopy(encoded[i], 0, joined, at, encoded[i].Length);
+            offsets[i] = at;
+            lengths[i] = (nuint)encoded[i].Length;
+        }
+        var pointers = new IntPtr[encoded.Length];
+        byte* buffer = stackalloc byte[GuidBytes];
+        nuint required = 0;
+        IfcStatus status;
+        fixed (byte* start = joined)
+        fixed (nuint* sizes = lengths)
+        fixed (IntPtr* table = pointers)
+        {
+            for (var i = 0; i < pointers.Length; i++)
+            {
+                pointers[i] = (IntPtr)(start + offsets[i]);
+            }
+            status = NativeMethods.openbim_ifc_v0_1_name_based_guid((byte**)table, sizes, (nuint)pointers.Length, buffer, GuidBytes, &required);
+        }
+        return GuidText(status, buffer);
+    }
+
+    /// <summary>A <c>GlobalId</c>'s 22 characters and the NUL.</summary>
+    private const int GuidBytes = 23;
+
+    private static string GuidText(IfcStatus status, byte* buffer)
+    {
+        if (status != IfcStatus.Ok)
+        {
+            throw Calls.Error(status, null);
+        }
+        return Calls.Utf8.GetString(buffer, GuidBytes - 1);
+    }
+
+    /// <summary>An optional id: <see cref="IfcStatus.NoValue"/> is none, any other failure throws.</summary>
+    private static ulong? Optional(ulong model, IfcStatus status, ulong id)
+    {
+        if (status == IfcStatus.NoValue)
+        {
+            return null;
+        }
+        Calls.Check(model, status);
+        return id;
+    }
+
     /// <summary>The upper-case type name of entity <paramref name="id"/>.</summary>
     public string TypeOf(ulong id)
     {

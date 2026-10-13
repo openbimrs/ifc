@@ -48,6 +48,7 @@ ifc4 = "The schema API with the bundled IFC4 ADD2 TC1 table."
 ifc4x1 = "The schema API with the bundled IFC4X1 FINAL table."
 ifc4x2 = "The schema API with the bundled IFC4X2 FINAL table."
 ifc4x3 = "The schema API with the bundled IFC4X3 ADD2 table."
+js-random = "Random `GlobalId`s (`new_guid`) on `wasm32-unknown-unknown` from the JavaScript host's `crypto.getRandomValues`; native targets always have them."
 properties = "Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry; together with `spatial`, element properties by spatial container."
 
 [lib]
@@ -92,6 +93,19 @@ ifc-geometry = { workspace = true, optional = true, default-features = false }
 # `transform` was the georef default before #306 turned defaults off.
 ifc-georef = { workspace = true, optional = true, features = ["transform"] }
 ifc-alignment = { workspace = true, optional = true }
+
+# Random version-4 `GlobalId`s (`new_guid`, #463) from the operating
+# system's generator. Natively it is always linked (ahash already links
+# it). `wasm32-unknown-unknown` has no generator of its own: there it is
+# linked only by `js-random`, which draws from the JavaScript host's
+# `crypto.getRandomValues`; without it `new_guid` refuses with
+# `GuidError::NoRandomSource`. getrandom 0.3.4 needs no `RUSTFLAGS` for that
+# backend, only the feature.
+[target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
+getrandom = "0.3.4"
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+getrandom = { version = "0.3.4", optional = true, features = ["wasm_js"] }
 
 [features]
 # Reading STEP is what almost everyone wants; nothing else is assumed.
@@ -190,6 +204,11 @@ mesh = ["geometry", "ifc-geometry?/compile-reference-backend", "colour"]
 colour = ["geometry-select", "style", "material", "schema-api"]
 georef = ["dep:ifc-georef"]
 alignment = ["dep:ifc-alignment"]
+# Random `GlobalId`s on `wasm32-unknown-unknown` through the JavaScript
+# host's `crypto.getRandomValues` (browsers, Node 19 and later). Only a
+# build that runs under JavaScript should name it, as the npm package does;
+# it changes nothing on any other target.
+js-random = ["dep:getrandom"]
 
 # Convenience bundles.
 codecs = ["step", "ifcxml"]
@@ -213,7 +232,7 @@ domains = [
     "author",
     "spatial",
 ]
-full = ["codecs", "schema", "domains", "property-catalog", "material-templates", "geometry", "geometry-wire", "mesh", "georef", "alignment"]
+full = ["codecs", "schema", "domains", "property-catalog", "material-templates", "geometry", "geometry-wire", "mesh", "georef", "alignment", "js-random"]
 
 [dev-dependencies]
 # `Schema::from_express` for the documented authoring example; production

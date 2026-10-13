@@ -497,6 +497,48 @@ OpenbimIfcStatus openbim_ifc_v0_1_entity_attributes(OpenbimIfcModel model,
                                                     size_t *out_strings_required);
 
 /**
+ * Every element filling opening `id` (`IfcRelFillsElement`), in file
+ * order. Refusals as for [`openbim_ifc_v0_1_entity_type_object`]
+ * (`WrongEntityType`: not an `IfcOpeningElement`).
+ *
+ * # Safety
+ * As for `openbim_ifc_v0_1_model_ids`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_entity_fillings(OpenbimIfcModel model,
+                                                  uint64_t id,
+                                                  uint64_t *buffer,
+                                                  size_t capacity,
+                                                  size_t *out_required);
+
+/**
+ * Every object type object `id` types, in file order. Refusals as for
+ * [`openbim_ifc_v0_1_entity_type_object`] (`WrongEntityType`: not an
+ * `IfcTypeObject`).
+ *
+ * # Safety
+ * As for `openbim_ifc_v0_1_model_ids`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_entity_occurrences(OpenbimIfcModel model,
+                                                     uint64_t id,
+                                                     uint64_t *buffer,
+                                                     size_t capacity,
+                                                     size_t *out_required);
+
+/**
+ * Every opening voiding element `id` (`IfcRelVoidsElement`), in file
+ * order. Refusals as for [`openbim_ifc_v0_1_entity_type_object`]
+ * (`WrongEntityType`: not an `IfcElement`).
+ *
+ * # Safety
+ * As for `openbim_ifc_v0_1_model_ids`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_entity_openings(OpenbimIfcModel model,
+                                                  uint64_t id,
+                                                  uint64_t *buffer,
+                                                  size_t capacity,
+                                                  size_t *out_required);
+
+/**
  * Remove entity `id`; references to it are left dangling.
  */
 OpenbimIfcStatus openbim_ifc_v0_1_entity_remove(OpenbimIfcModel model, uint64_t id);
@@ -593,6 +635,32 @@ OpenbimIfcStatus openbim_ifc_v0_1_entity_type(OpenbimIfcModel model,
                                               uint8_t *buffer,
                                               size_t capacity,
                                               size_t *out_required);
+
+/**
+ * The type object of occurrence `id` (`IfcRelDefinesByType`), written to
+ * `out_id`; `NoValue` when it has none. `MissingEntity`,
+ * `WrongEntityType` (not an `IfcObject`), `InvalidModel` (two types, or a
+ * malformed relationship), `MissingReference`, `UnsupportedSchema`.
+ *
+ * # Safety
+ * `out_id` valid for one write.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_entity_type_object(OpenbimIfcModel model,
+                                                     uint64_t id,
+                                                     uint64_t *out_id);
+
+/**
+ * The element opening `id` voids (`IfcRelVoidsElement`), written to
+ * `out_id`; `NoValue` when it voids none. Refusals as for
+ * [`openbim_ifc_v0_1_entity_type_object`] (`WrongEntityType`: not an
+ * `IfcFeatureElementSubtraction`; `InvalidModel`: two hosts).
+ *
+ * # Safety
+ * `out_id` valid for one write.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_entity_voided_element(OpenbimIfcModel model,
+                                                        uint64_t id,
+                                                        uint64_t *out_id);
 
 /**
  * Destroy a graph set. A stale or repeated handle is `InvalidHandle`.
@@ -774,6 +842,23 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_author(OpenbimIfcModel model,
                                                size_t *out_count);
 
 /**
+ * The entity whose `GlobalId` is `global_id` (UTF-8, `global_len` bytes),
+ * written to `out_id`; `NoValue` when none carries it.
+ *
+ * The first lookup indexes every `GlobalId` once; later ones reuse the
+ * index until the model changes. `InvalidValue` for text that is not a
+ * `GlobalId`, `InvalidModel` when several entities carry it (the last
+ * error names them), `UnsupportedSchema`.
+ *
+ * # Safety
+ * `global_id` valid for `global_len` reads; `out_id` valid for one write.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_by_guid(OpenbimIfcModel model,
+                                                const uint8_t *global_id,
+                                                size_t global_len,
+                                                uint64_t *out_id);
+
+/**
  * The classifications of `object`: a `LIST` of `Classification` records,
  * its own then its type object's; `out_count` gets their number.
  * `Classification`: relationship (`REF`), global id, source, type object,
@@ -881,6 +966,25 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_diagnostic(OpenbimIfcModel model,
  * `out_count` must be null or valid for one write.
  */
 OpenbimIfcStatus openbim_ifc_v0_1_model_diagnostic_count(OpenbimIfcModel model, size_t *out_count);
+
+/**
+ * Every `GlobalId` several entities carry, in `GlobalId` order, and how
+ * many. The tape is a `LIST`; each item a `LIST` of the `GlobalId`
+ * (`TEXT`) and its holders in file order (`LIST` of `REF`). Empty for a
+ * conformant file. `UnsupportedSchema`.
+ *
+ * # Safety
+ * `out_count` valid for one write; otherwise as for
+ * `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_duplicate_global_ids(OpenbimIfcModel model,
+                                                             size_t *out_count,
+                                                             OpenbimIfcValueNode *nodes,
+                                                             size_t node_capacity,
+                                                             size_t *out_nodes_required,
+                                                             uint8_t *strings,
+                                                             size_t string_capacity,
+                                                             size_t *out_strings_required);
 
 /**
  * Every coordinate operation, resolved: a `LIST` of `MapConversion`
@@ -1485,6 +1589,36 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_write_ifcxml(OpenbimIfcModel model,
                                                      uint8_t *buffer,
                                                      size_t capacity,
                                                      size_t *out_required);
+
+/**
+ * The `GlobalId` named by `parts` (RFC 9562 version 8), NUL-terminated:
+ * the same parts give the same `GlobalId` in every binding and release.
+ * `parts` holds `part_count` UTF-8 strings of `part_lengths[i]` bytes
+ * each. Needs no model; `InvalidArgument` for a part that is not UTF-8.
+ *
+ * # Safety
+ * `parts` and `part_lengths` null (with `part_count` 0) or valid for
+ * `part_count` reads, each part valid for its length; `buffer` and
+ * `out_required` as for [`openbim_ifc_v0_1_new_guid`].
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_name_based_guid(const uint8_t *const *parts,
+                                                  const size_t *part_lengths,
+                                                  size_t part_count,
+                                                  uint8_t *buffer,
+                                                  size_t capacity,
+                                                  size_t *out_required);
+
+/**
+ * A new random `GlobalId` (RFC 9562 version 4, from the operating
+ * system's generator) in IFC's 22-character form, NUL-terminated: 23
+ * bytes. Needs no model. `Unsupported` when the system has no random
+ * source.
+ *
+ * # Safety
+ * `buffer` null (with `capacity` 0) or valid for `capacity` writes;
+ * `out_required` valid for one write.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_new_guid(uint8_t *buffer, size_t capacity, size_t *out_required);
 
 /**
  * Write the ABI and crate versions.

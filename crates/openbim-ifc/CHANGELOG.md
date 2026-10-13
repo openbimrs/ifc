@@ -36,6 +36,37 @@ everything released before per-crate changelogs began.
 Semver: additive (`ProductMesh` is `#[non_exhaustive]`), a minor release
 while 0.x.
 
+### Added (#463, GlobalIds, types and openings)
+
+- `GlobalIdIndex::build(&model, schema)`: every `IfcRoot` by `GlobalId`,
+  read once (O(n), only `IfcRoot`s decoded; the slot looked up by name in
+  the release's table). `get(&Guid)` is `Ok(Some(id))`, `Ok(None)`, or
+  `Err(DuplicateGlobalId { global_id, entities })` naming every holder in
+  file order: a duplicated `GlobalId` is never answered with one of them.
+  `duplicates()` lists them all and `invalid()` the `IfcRoot`s whose
+  `GlobalId` is unset or malformed. `by_guid(&model, schema, &guid)` answers
+  one lookup by a single scan. Behind `schema-api`.
+- `type_of(model, schema, occurrence)`, `occurrences_of(.., type_object)`,
+  `openings_of(.., element)`, `fillings_of(.., opening)` and
+  `voided_element_of(.., opening)`, read forward from
+  `IfcRelDefinesByType` (in IFC2X3 too, whose `IsDefinedBy` mixes it with
+  property sets), `IfcRelVoidsElement` and `IfcRelFillsElement`, slots by
+  attribute name. Each refuses with `ObjectRelationError`
+  (`#[non_exhaustive]`): `MissingEntity`, `WrongEntityType`, `Malformed`,
+  `MissingReference`, and `Ambiguous` for two types of one object or two
+  hosts of one opening, where the schema allows one. Behind `schema-api`.
+- `new_guid()`: a random RFC 9562 version-4 `GlobalId` from the operating
+  system (`getrandom` 0.3, already linked natively through `ahash`), or
+  `GuidError` (`#[non_exhaustive]`). On `wasm32-unknown-unknown` the new
+  `js-random` feature links getrandom's JavaScript backend
+  (`crypto.getRandomValues`, no `RUSTFLAGS` needed); without it there the
+  call refuses with `GuidError::NoRandomSource`. `name_based_guid(parts)`,
+  the version-8 name-based `GlobalId` the property edit and authoring
+  already derived theirs with, is public; its output is unchanged and
+  pinned by a test. `Guid` is re-exported at the root.
+
+Semver: additive, a minor release while 0.x.
+
 ## [0.31.0] - 2026-10-13
 
 ### Changed

@@ -346,6 +346,13 @@ class ModelAccess:
         model.type_of(id)
         return Entity(model, id)
 
+    def by_guid(self, global_id: str) -> Optional[Entity]:
+        """The entity whose ``GlobalId`` is ``global_id`` as an
+        :class:`Entity`, or ``None``: :meth:`IfcModel.id_by_guid`."""
+        model = self._as_model()
+        id = model.id_by_guid(global_id)
+        return None if id is None else Entity(model, id)
+
     def __getitem__(self, id: int) -> Entity:
         """``model[id]``: :meth:`by_id`, raising ``KeyError`` when absent."""
         if not self.__contains__(id):
