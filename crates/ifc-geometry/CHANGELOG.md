@@ -12,6 +12,41 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#439, stations on B-splines trimmed by points resolve in the kernel)
+
+Semver: patch. No public item or lowering changes; only the dependency
+floors of the opt-in `compile` feature rise. Every product (1230) and
+every solid, surface and sweep item (2179) of the committed fixtures and
+`references/competitor` compiles to the same mesh, bit for bit, or to the
+same refusal under the old and the new releases.
+
+- Requires `axiolid-mesh-compile` 0.3.24, `axiolid-construct` 0.3.18 and
+  `axiolid-mesh-boolean-boolmesh` 0.3.5 (and `axiolid-evaluate` 0.3.14 for
+  the tests).
+- A station on an `IfcTrimmedCurve` over an `IfcBSplineCurveWithKnots`
+  trimmed by Cartesian points now resolves through the reference kernel
+  (axiolid/kernel#306). Before, the kernel refused it: its point inversion
+  had no B-spline arm. It now uses the same inversion as
+  `PathBound::Point`. A derived `IfcLinearPlacement` on such a trim is the
+  lowered station's frame, bit for bit, so lowering and derivation agree
+  (#436 already derived it).
+  - A trim point off the B-spline, or one it passes through twice, is
+    refused by the kernel as `PATH_POINT_OFF_CURVE` or
+    `PATH_POINT_AMBIGUOUS`. These are the names the derivation reports as
+    `GeometryError::PathPointOffCurve` and `PathPointAmbiguous`.
+  - The kernel still refuses a polyline trimmed by points as a station
+    basis (an upstream follow-up). No committed fixture uses one.
+- The kernel's deviation report for runs of sections at stations
+  (`IfcSectionedSolidHorizontal`, `IfcSectionedSurface`) is `Certified`
+  where the frame law along the basis is bounded (axiolid/kernel#247).
+  This crate does not read that report. Of the eight such items that
+  compile in the committed fixtures, one now reports `Certified`; the
+  other seven stay `Unbounded` and now name their numerically framed
+  basis. Their meshes are unchanged, as are the three refusals.
+- Swept disks are mitred at corners beside arcs, and closed polylines
+  sweep as loops (axiolid/kernel#248). No committed fixture was refused
+  for either before.
+
 ## [0.25.0] - 2026-10-13
 
 ### Changed (#443, stations along offset runs continued to their basis's ends)
