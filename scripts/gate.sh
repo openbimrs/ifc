@@ -289,7 +289,9 @@ gate_features() {
     # wasm32-unknown-unknown with its default and widest pure-Rust feature
     # sets; a native-only dependency (getrandom via ahash was the first)
     # breaks every JS consumer silently.
-    for features in "" "--features schema,ifcxml,zip,author,domains,spatial" "--no-default-features --features step,ifc4"; do
+    # `js-random` links getrandom's JavaScript backend for `new_guid`
+    # (#463); without it the facade links no random source there.
+    for features in "" "--features schema,ifcxml,zip,author,domains,spatial" "--no-default-features --features step,ifc4" "--features js-random"; do
         # shellcheck disable=SC2086
         cargo build -p openbim-ifc --target wasm32-unknown-unknown $features
     done

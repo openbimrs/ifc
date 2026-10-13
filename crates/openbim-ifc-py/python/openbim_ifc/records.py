@@ -127,6 +127,18 @@ class ValidationReport:
 
 
 @dataclass(frozen=True)
+class DuplicateGlobalId:
+    """A ``GlobalId`` several entities carry, which the schema forbids:
+    ``ids`` are its holders in file order (:meth:`IfcModel.duplicate_global_ids`)."""
+
+    global_id: str
+    ids: Tuple[int, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "ids", tuple(self.ids))
+
+
+@dataclass(frozen=True)
 class UnreachableProduct:
     """A product no viewer will draw.
 

@@ -54,6 +54,15 @@
 //! npm package's choice, where a write before loading refuses with
 //! `catalog-not-loaded`.
 
+//! Entities are found by `GlobalId` ([`IfcModel::by_guid`], #463) through
+//! an index built on the first lookup and rebuilt only after an edit; a
+//! `GlobalId` several entities carry is refused with `invalid-model`, never
+//! answered with one. [`new_guid`] draws a random `GlobalId` and
+//! [`name_based_guid`] derives a reproducible one. An object's type, a
+//! type's occurrences, an element's openings and an opening's fillings
+//! and host ([`IfcModel::type_object`] and its siblings) read the
+//! relationships the declared release states.
+
 mod attribute;
 pub mod authoring;
 pub mod catalog;
@@ -71,6 +80,7 @@ mod options;
 pub mod properties;
 pub mod property_edit;
 pub mod record;
+pub mod relations;
 pub mod spatial;
 pub mod systems;
 pub mod unreachable;
@@ -89,5 +99,6 @@ pub use geometry::{GeometryRefusal, ProductMesh, ProductPlacement, SelectedRepre
 pub use model::IfcModel;
 pub use options::{OnMalformed, ParseOptions};
 pub use record::{Field, Record, ToRecord};
+pub use relations::{name_based_guid, new_guid, DuplicateGlobalId};
 pub use unreachable::UnreachableProduct;
 pub use validation::{ValidationFinding, ValidationReport, ValidationSummary};

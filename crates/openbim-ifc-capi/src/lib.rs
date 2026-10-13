@@ -50,6 +50,7 @@ mod model;
 mod open;
 mod options;
 mod registry;
+mod relations;
 mod status;
 pub mod tape;
 mod xml;
@@ -67,6 +68,7 @@ pub use ifczip::*;
 pub use model::*;
 pub use open::*;
 pub use options::*;
+pub use relations::*;
 pub use status::{OpenbimIfcStatus, OpenbimIfcVersion};
 pub use tape::OpenbimIfcValueNode;
 pub use xml::*;
@@ -85,6 +87,8 @@ mod geometry_tests;
 mod graph_tests;
 #[cfg(test)]
 mod plain_tests;
+#[cfg(test)]
+mod relations_tests;
 
 #[cfg(feature = "rusty_alloc")]
 #[global_allocator]

@@ -24,10 +24,24 @@ use pyo3::prelude::*;
 #[global_allocator]
 static ALLOCATOR: rusty_alloc_api::RustyAlloc = rusty_alloc_api::RustyAlloc;
 
+/// A new random `GlobalId` (RFC 9562 version 4), #463.
+#[pyfunction]
+fn new_guid() -> PyResult<String> {
+    openbim_ifc_binding_core::new_guid().map_err(error::py_err)
+}
+
+/// The reproducible `GlobalId` named by `parts` (RFC 9562 version 8).
+#[pyfunction]
+fn name_based_guid(parts: Vec<String>) -> String {
+    openbim_ifc_binding_core::name_based_guid(&parts)
+}
+
 /// The `openbim_ifc._native` extension module.
 #[pymodule]
 fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<model::NativeModel>()?;
+    module.add_function(wrap_pyfunction!(new_guid, module)?)?;
+    module.add_function(wrap_pyfunction!(name_based_guid, module)?)?;
     module.add("IfcError", module.py().get_type::<error::IfcError>())?;
     Ok(())
 }

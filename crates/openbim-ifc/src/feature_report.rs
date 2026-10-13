@@ -85,5 +85,7 @@ pub fn compiled_features() -> Vec<&'static str> {
     features.push("georef");
     #[cfg(feature = "alignment")]
     features.push("alignment");
+    #[cfg(feature = "js-random")]
+    features.push("js-random");
     features
 }

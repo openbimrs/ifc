@@ -18,6 +18,18 @@ a release here does not imply a release of any other crate in the family.
 
 Semver: minor (additive).
 
+### Added (#463, GlobalIds, types and openings)
+
+- `model.ByGuid(globalId)` (`ulong?`), through an index built on the first
+  lookup; a `GlobalId` several entities carry throws `invalid-model`, and
+  `model.DuplicateGlobalIds()` lists them (`DuplicateGlobalId`).
+- `model.TypeObject(id)`, `OccurrencesOf`, `OpeningsOf`, `FillingsOf` and
+  `VoidedElementOf`, in IFC2X3, IFC4 and IFC4X3.
+- `IfcModel.NewGuid()` and `IfcModel.NameBasedGuid(params string[])`.
+- Requires the C ABI 0.1.10 (`openbim-ifc-capi` with #463).
+
+Semver: additive, a minor release while 0.x.
+
 ## [0.5.0] - 2026-10-13
 
 ### Changed (#433, wire format 1.3)

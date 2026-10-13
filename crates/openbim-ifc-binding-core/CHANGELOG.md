@@ -18,6 +18,20 @@ a release here does not imply a release of any other crate in the family.
   `unsupported`, `budget-exceeded`, `invalid-value`, and
   `feature-disabled` without the feature.
 
+### Added (#463, GlobalIds, types and openings)
+
+- `IfcModel::by_guid` through the facade's `GlobalIdIndex`, kept beside
+  the model and rebuilt only when its revision or declared release
+  changes; `invalid-value` for text that is not a `GlobalId`,
+  `invalid-model` for one several entities carry. `duplicate_global_ids`
+  (`DuplicateGlobalId { global_id, ids }`, and `duplicates_to_tagged` for
+  the C tape).
+- `type_object`, `occurrences_of`, `openings_of`, `fillings_of`,
+  `voided_element_of`, refusing with the shared codes (`missing-entity`,
+  `wrong-entity-type`, `invalid-model`, `missing-reference`).
+- `new_guid()` (`unsupported` without a random source) and
+  `name_based_guid(parts)`. Feature `js-random` forwards the facade's.
+
 Semver: additive (internal crate, not published); a minor change of every
 binding.
 

@@ -32,6 +32,16 @@ documents) is this crate's public interface.
 
 Semver: minor (additive).
 
+### Changed (#463)
+
+- An entity named by `GlobalId` is found with the facade's `by_guid`
+  instead of the command's own scan. A `GlobalId` several entities carry
+  still exits 2 naming every holder (previously the first two), and a
+  22-character reference outside IFC's `GlobalId` alphabet or range is a
+  usage error rather than a lookup that finds nothing.
+
+Semver: patch.
+
 ## [0.1.0] - 2026-10-09
 
 ### Added (#329, the first part)

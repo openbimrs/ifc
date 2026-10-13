@@ -28,7 +28,10 @@ pub(crate) fn load(bytes: &[u8], options: ParseOptions) -> Result<IfcModel, Bind
             crate::model::reader(options).read_owned(entry.bytes),
         ),
         _ => ifczip::read_entry(entry)
-            .map(|inner| IfcModel { inner })
+            .map(|inner| IfcModel {
+                inner,
+                guid_index: Default::default(),
+            })
             .map_err(refusal),
     }
 }

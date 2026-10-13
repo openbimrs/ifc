@@ -27,6 +27,7 @@ pub(super) fn derived_global_id(
         &next_id.to_string(),
         &serial.to_string(),
     ])
+    .to_string()
 }
 
 #[cfg(test)]

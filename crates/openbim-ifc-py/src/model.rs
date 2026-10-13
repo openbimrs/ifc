@@ -399,6 +399,40 @@ impl NativeModel {
             .map_err(py_err)
     }
 
+    fn by_guid(&self, global_id: &str) -> PyResult<Option<u64>> {
+        self.inner.by_guid(global_id).map_err(py_err)
+    }
+
+    fn duplicate_global_ids(&self) -> PyResult<Vec<(String, Vec<u64>)>> {
+        Ok(self
+            .inner
+            .duplicate_global_ids()
+            .map_err(py_err)?
+            .into_iter()
+            .map(|duplicate| (duplicate.global_id, duplicate.ids))
+            .collect())
+    }
+
+    fn type_object(&self, id: u64) -> PyResult<Option<u64>> {
+        self.inner.type_object(id).map_err(py_err)
+    }
+
+    fn occurrences_of(&self, id: u64) -> PyResult<Vec<u64>> {
+        self.inner.occurrences_of(id).map_err(py_err)
+    }
+
+    fn openings_of(&self, id: u64) -> PyResult<Vec<u64>> {
+        self.inner.openings_of(id).map_err(py_err)
+    }
+
+    fn fillings_of(&self, id: u64) -> PyResult<Vec<u64>> {
+        self.inner.fillings_of(id).map_err(py_err)
+    }
+
+    fn voided_element_of(&self, id: u64) -> PyResult<Option<u64>> {
+        self.inner.voided_element_of(id).map_err(py_err)
+    }
+
     fn type_of(&self, id: u64) -> PyResult<String> {
         self.inner.type_of(id).map(str::to_owned).map_err(py_err)
     }
