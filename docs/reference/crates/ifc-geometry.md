@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.23.0 (2026-10-12) |
+| Latest release | 0.24.0 (2026-10-13) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -43,92 +43,98 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.23.0 (2026-10-12):
+Latest release, 0.24.0 (2026-10-13):
 
-### Changed (#429, runs of sections along bases with quadrature joints)
+### Fixed
 
-- An `IfcSectionedSolidHorizontal` or `IfcSectionedSurface` along a
-  directrix whose seams lie at arc-length integrals (an offset beside a
-  gradient curve, a spiral, a B-spline or an ellipse, a relation with an
-  ellipse or a B-spline piece, a B-spline corner knot) now lowers instead
-  of being refused with the former `RUN_UNLOCATED` reason. Each section
-  stays at its own distance and carries the model's precision as Axiolid's
-  seam-snapping window, reading `SeamSide::Incoming`
-  (`SectionAtStation::with_seam_window` / `with_seam_side`, `axiolid-model`
-  0.3.11, axiolid/kernel#301). The kernel snaps it onto the seam and mitres
-  there at half angle (8.8.3.35.1); such a graph is wire format 1.2. Runs
-  along bases whose seams are stored data keep their exact snapping and
-  emit the identical graph (wire 1.0), as checked on the committed and
-  reference corpora.
-- `GeometryError::RunSeamWindowRefused { product, runs, stations,
-  refusal }` (feature `compile`) names the run when the kernel refuses its
-  windows: two seams in a window, a seam on its edge, a length it cannot
-  certify, or the new `SeamWindowRefusal::NotIncreasing` (positions that no
-  longer increase strictly once snapped).
-  `ProvenanceMap::seam_window_runs` lists the windowed runs.
-- An `IfcOffsetCurveByDistances` along such a basis is still refused, now
-  by a reason naming #433: IFC continues its offsets to the basis's end,
-  whose distance is a quadrature this crate does not compute. Its stations
-  are built as `RunStation`s; with a window they would lower to
-  `CurveRelation::OffsetsAtStations`, and without one they still lower to
-  `OffsetByStations`, unchanged.
-- A reversal at a quadrature seam within a run is refused by the kernel's
-  mitre, which this crate cannot see.
-- Requires `axiolid-model` 0.3.11, `axiolid-curve` 0.3.8,
-  `axiolid-evaluate` 0.3.12, `axiolid-curve-evaluate-contract` 0.3.6,
-  `axiolid-reference` 0.3.8 and `axiolid-mesh-compile` 0.3.22.
+- Requires `axiolid-model` 0.3.13: geometry graphs written as wire JSON
+  (feature `wire`) read back bit for bit. 0.3.12 and older parsed about a
+  quarter of doubles one ulp off; payloads already written are unchanged
+  and now read back exactly.
 
-Semver: minor. Refused runs now lower, an error variant and a refusal kind
-are added, and the dependency floors rise.
+### Changed (#436, derived placements on spans inside quadrature-measured curves)
 
-### Changed (#427, derived placements on offsets whose length is a quadrature)
+- With `compile`, a derived `IfcLinearPlacement` on a trim of an ellipse
+  or a B-spline at an interior parameter, at a point, or at an arc length
+  in its sense from a parameter `0` where its measure starts (the CUBIC
+  transition's `IfcPolynomialCurve` segment) now derives instead of being
+  refused with `PathPieceLengthUnstated`. Such a trim reaches the
+  evaluator as a bounded `PathPiece` (`PathBound::Parameter` or
+  `PathBound::Point` in the curve's own coordinates, a stated distance
+  for the arc length; axiolid/kernel#304), which it resolves as the
+  compiler resolves the trim: inside the path it reads bit for bit as the
+  one `station::curve_path` flattens the lowered basis into, a closed
+  conic's span running across its parameter seam as the compiler's
+  periodic trim does. The derived frame equals the lowered station's,
+  resolved by the reference kernel. A B-spline trimmed by points derives
+  although the reference compiler, which inverts no point on a B-spline,
+  refuses that station; the frame equals its station on the trim by the
+  parameters the points name.
+- A span between distances along a relation (a trim of a composite by
+  parameters) may now reach a piece whose length is a quadrature when it
+  is the relation's last piece and every piece before it is stated: the
+  span is stated, so a derived placement reads it and the station
+  lowering snaps onto its joints exactly, with no window, where before it
+  carried the kernel's seam-snapping window.
+- New `GeometryError` variants (feature `compile`): `PathPointOffCurve` and
+  `PathPointAmbiguous` for a trim point the evaluator refuses
+  (`PATH_POINT_OFF_CURVE`, `PATH_POINT_AMBIGUOUS`), and
+  `CurvePathBoundUnsupported` for an evaluator that reads no piece bounds
+  (`PATH_PIECE_BOUND_UNSUPPORTED`), each naming the placement and its
+  basis. `PathPieceLengthUnstated` now names only what has neither an open
+  nor a bounded form: a span between distances along a relation reaching
+  a quadrature piece other than its last, an arc-length trim of an
+  ellipse or a B-spline against its sense, a varying offset of such a
+  piece, and a trim of a relation by a Cartesian point.
+- The joints of a path with an open or bounded piece are certified only
+  near the placement (`CurveEvaluator::path_joint_distances_within`,
+  axiolid/kernel#305): every piece before the window, none after it. A
+  piece the evaluator cannot certify after the placement no longer
+  refuses it; one before it still does, as `PlacementSeamWindowRefused`
+  with `UncertifiedLength`. The kernel's station resolution also
+  certifies the piece holding the station, so a placement inside such a
+  piece (5 m along a tilted `IfcOffsetCurve3D`, formerly refused) now
+  derives while its lowered station is refused.
+- The station lowering is otherwise unchanged: it hands the kernel the
+  relation, never a path, and links no evaluator to resolve a bounded
+  piece, so a basis holding one keeps the kernel's seam-snapping window.
+- Requires `axiolid-curve` 0.3.9, `axiolid-model` 0.3.12,
+  `axiolid-evaluate` 0.3.13, `axiolid-curve-evaluate-contract` 0.3.7 and
+  `axiolid-mesh-compile` 0.3.23.
 
-- With `compile`, a derived `IfcLinearPlacement` on an offset whose length
-  is a quadrature now derives instead of being refused: an
-  `IfcOffsetCurveByDistances` beside an `IfcGradientCurve` (a kerb beside
-  an alignment), an offset beside a clothoid or another spiral, offsets of
-  B-splines and ellipses, a variable offset of a circle, and a relation
-  with a whole ellipse or B-spline piece. Such a piece reaches the
-  evaluator as an open-ended `PathPiece` (`PathPiece::whole`,
-  axiolid/kernel#298), its end resolved to the evaluator's own length, so
-  the path reads bit for bit as the stated path the kernel flattens the
-  same relation into. The offset's base is split at every seam of its curve
-  the kernel splits it at (chain joins, curvature seams, every profile
-  break), so the pieces are the kernel's. `basis_curve_path` returns such
-  a path.
-- The joints after an open piece are located by the evaluator's
-  `path_joint_distances`, certified to a thousandth of the window the
-  station lowering hands the kernel (the model's precision, capped at
-  1 mm, or rounding). A `DistanceAlong` whose window holds exactly one
-  joint (or a stated piece's seam after one) reads it from the incoming
-  piece (IFC4.3 ADD2 8.9.3.48.3, #409), at the evaluator's own point of
-  the joint; the result equals the lowered station's frame resolved by the
-  reference kernel, and `CachedPositionPolicy::Verify` compares a cache
-  against it. A segment of a basis placed at a windowed station along such
-  a basis is read the same way, within the station's own window.
-- `GeometryError::PathPieceLengthUnstated` now names only spans that start
-  inside a curve whose measure is a quadrature (a trim of an ellipse or a
-  B-spline at an interior parameter, by an arc length or a point, a span
-  between stations along a relation with such a piece), which no open
-  piece expresses. Its message no longer cites #427.
-- The same `axiolid` floors as #429 above; with feature `wire`,
-  `wire::FORMAT_VERSION` is 1.2. A derived placement writes no graph.
+Semver: minor. Refused placements now derive, error variants are added,
+one station lowering now snaps exactly, and the dependency floors rise.
 
-### Added (#427)
+### Changed (#433, offset runs to a basis end with quadrature length)
 
-- With `compile`: `GeometryError::CurvePathOpenEndUnsupported { placement,
-  basis }`, an evaluator that reads stated spans only refusing an open
-  piece (`OPEN_PATH_END_UNSUPPORTED`); `GeometryError::PathJointDistancesUnsupported
-  { placement, basis }`, an evaluator that does not certify joints
-  (`PATH_JOINT_DISTANCES_UNSUPPORTED`); and
-  `GeometryError::PlacementSeamWindowRefused { placement, basis, distance,
-  refusal }`, the placement's window holding two seams, a seam straddling
-  its edge, or a joint the evaluator cannot certify
-  (`SeamWindowRefusal::Ambiguous`, `Straddled`, `UncertifiedLength`), as
-  the kernel refuses the same station. Each is typed; nothing falls back to
-  an estimate.
+- An `IfcOffsetCurveByDistances` whose basis is bounded but has no stated
+  length (an offset beside a gradient curve, a spiral, a B-spline or an
+  ellipse, a relation with an ellipse or a B-spline piece, a B-spline or an
+  ellipse itself) now lowers instead of being refused with the former
+  `NO_QUADRATURE_LENGTH` reason or "states no length". IFC4.3 ADD2
+  8.9.3.42.3 continues its first and last offsets unchanged to the basis's
+  ends: the run is `CurveRelation::OffsetsAtStations` ending in
+  `RunStation::at_basis_end` with the last offsets and, where the first
+  offset stops short of the start, starting with
+  `RunStation::at_basis_start` (`axiolid-model` 0.3.12,
+  axiolid/kernel#303). The kernel resolves the end to the basis's length
+  by its own measure. Stations along a basis whose seams are quadratures
+  keep their #429 seam-snapping windows. Such a graph is wire format 1.3.
+  Bases with a stated length keep their stated continuation and emit the
+  identical graph: every representation item of the committed fixtures and
+  the reference corpus lowers to the same wire bytes as before.
+- `SeamWindowRefusal::PastBasisEnd` (feature `compile`): the kernel refuses
+  a run that states a station at or past the end it measures, reported as
+  `GeometryError::RunSeamWindowRefused` naming the run, which
+  `ProvenanceMap::seam_window_runs` now also lists for runs continued to
+  such an end.
+- Offsets that stop short of an unbounded basis (a line) stay refused,
+  now with a reason naming the unbounded basis.
+- Requires `axiolid-model` 0.3.12, `axiolid-curve` 0.3.9,
+  `axiolid-evaluate` 0.3.13, `axiolid-curve-evaluate-contract` 0.3.7 and
+  `axiolid-mesh-compile` 0.3.23.
 
-Semver: minor while 0.x: placements that were refused now derive, a
-refusal narrows and error variants are added.
+Semver: minor. Refused offset runs now lower, a refusal kind is added, and
+the dependency floors rise.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)

@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.29.0 (2026-10-12) |
+| Latest release | 0.30.0 (2026-10-13) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -96,22 +96,15 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.29.0 (2026-10-12):
+Latest release, 0.30.0 (2026-10-13):
 
-### Changed (#429)
+### Changed (#433)
 
-- Requires `ifc-geometry` with #429: sectioned solids and surfaces along
-  offsets whose length is a quadrature lower with seam-snapping windows on
-  their sections, and `product_graphs` labels those payloads wire format
-  1.2 (`axiolid-model` 0.3.11, axiolid/kernel#301). Every other payload
-  keeps its version and bytes: 1.0, or 1.1 when a station carries a window.
-
-### Changed (#427)
-
-- Requires `ifc-geometry` with #427: with an evaluator, a linear placement
-  on an offset whose length is a quadrature (a kerb beside an alignment, an
-  offset beside a clothoid) derives, reading a joint within the model's
-  precision from the incoming piece.
+- Requires `ifc-geometry` with #433: an `IfcOffsetCurveByDistances` along a
+  bounded basis whose length is a quadrature lowers, continued to the
+  basis's ends the kernel measures, and `product_graphs` labels such a
+  payload wire format 1.3 (`axiolid-model` 0.3.12, axiolid/kernel#303).
+  Every other payload keeps its version and bytes.
 
 Semver: minor, following the dependency.
 
