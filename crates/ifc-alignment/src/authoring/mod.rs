@@ -29,6 +29,7 @@ pub use segment::{
     VerticalSegmentDraft,
 };
 
+use ifc_model::guid::Guid;
 use ifc_model::Value;
 
 use crate::error::AlignmentError;
@@ -64,14 +65,19 @@ pub(crate) fn finite(
     }
 }
 
-/// A 22-character IFC GUID, checked for length only -- the alphabet is the
-/// caller's business, but a wrong length is always malformed.
+/// An IFC GlobalId, checked by [`Guid::parse`]: 22 characters of the IFC
+/// base-64 alphabet whose leading digit is `0`-`3`, so the text names a
+/// 128-bit UUID. A wrong length, an alphabet the encoding does not use and
+/// an out-of-range leading digit are all malformed.
 pub(crate) fn guid(type_name: &'static str, value: &str) -> Result<Value, AlignmentError> {
-    if value.chars().count() != 22 {
+    if Guid::parse(value).is_none() {
         return Err(invalid(
             type_name,
             "GlobalId",
-            format!("expected 22 characters, got {}", value.chars().count()),
+            format!(
+                "{value:?} is not a compressed IFC GlobalId (22 characters of \
+                 0-9 A-Z a-z _ $, the first 0-3)"
+            ),
         ));
     }
     Ok(Value::Text(value.into()))

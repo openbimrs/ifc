@@ -61,6 +61,32 @@ fn a_malformed_global_id_is_refused() {
     assert!(linear_positioning_element(&mut tx, "short", None, placement).is_err(),);
 }
 
+/// The GlobalId check is `Guid::parse` (#492), not a length count: 22
+/// characters outside the IFC base-64 alphabet, or with a leading digit
+/// above `3` (more than the 128 bits of a UUID), are refused too, and
+/// nothing is staged for them.
+#[test]
+fn a_global_id_of_the_right_length_but_not_a_guid_is_refused() {
+    let model = Model::default();
+    let mut tx = Transaction::new(&model);
+    for malformed in [
+        "1hqA$QMHj8nB$JURcqgIm!",      // `!` is not in the alphabet
+        "1hqA-QMHj8nB$JURcqgIm7",      // nor is `-` (RFC 4648 base64url)
+        "1hqA$QMHj8nB$JURcqgIm+",      // nor `+` (RFC 4648 base64)
+        "4hqA$QMHj8nB$JURcqgIm7",      // leading digit above 3
+        "1hqA$QMHj8nB$JURcqgIm\u{e9}", // 22 characters, 23 bytes
+    ] {
+        assert_eq!(malformed.chars().count(), 22, "{malformed}");
+        let refused = linear_element(&mut tx, malformed, None, None).expect_err("not a GlobalId");
+        assert!(refused.to_string().contains("GlobalId"), "{refused}");
+    }
+    assert!(
+        tx.edits().is_empty(),
+        "nothing staged for a refused GlobalId"
+    );
+    linear_element(&mut tx, GUID, None, None).expect("a well-formed GlobalId is accepted");
+}
+
 /// Both entities are IFC4X3 additions: IFC4 declares neither.
 ///
 /// The hardcoded arity 7 is only safe because it matches the
