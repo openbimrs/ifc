@@ -47,7 +47,7 @@ required-features = ["properties"]
 # capabilities it ships (see openbim-ifc-wasm).
 default = [
     "ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3",
-    "ifcxml", "validate", "unreachable",
+    "ifcxml", "zip", "validate", "unreachable",
     "properties", "properties-write", "property-catalog",
     "spatial", "classification", "material", "systems", "cost", "georef",
     "author", "placements",
@@ -62,6 +62,10 @@ ifc4x3 = ["openbim-ifc/ifc4x3"]
 # The ifcXML codec: the native layout, and the XSD layout of the bundled
 # IFC4 / IFC4X3 releases.
 ifcxml = ["openbim-ifc/ifcxml"]
+# ifcZIP (#450): reads recognize an archive by its signature, and
+# `write_ifczip` writes one. Pure Rust (the `zip` crate, Deflate through
+# miniz_oxide), so it builds for the browser package too.
+zip = ["openbim-ifc/zip"]
 # Schema validation, against the tables of the releases enabled above
 # (#306).
 validate = ["openbim-ifc/validate"]

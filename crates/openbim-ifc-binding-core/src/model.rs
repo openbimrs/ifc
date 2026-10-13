@@ -22,7 +22,9 @@ impl IfcModel {
         Self::default()
     }
 
-    /// Parse a STEP (`.ifc`) file.
+    /// Parse a STEP (`.ifc`) file, or an ifcZIP archive holding STEP or
+    /// ifcXML, recognized by its ZIP signature (feature `zip`, see
+    /// [`crate::ifczip`]).
     ///
     /// Non-fatal problems do not fail the parse; they are reported by
     /// [`Self::diagnostics`], so a caller can tell a complete read from a
@@ -32,6 +34,9 @@ impl IfcModel {
     /// entity on first access, so `bytes` is copied once;
     /// [`Self::parse_owned`] hands a buffer over instead.
     pub fn parse(bytes: &[u8]) -> Result<Self, BindingError> {
+        if ifc::ifczip::is_zip(bytes) {
+            return crate::ifczip::load(bytes, ParseOptions::strict());
+        }
         Self::loaded(StepCodec.read_bytes(bytes))
     }
 
@@ -39,34 +44,45 @@ impl IfcModel {
     /// skips malformed records and reports each one in
     /// [`Self::diagnostics`] instead of failing.
     pub fn parse_with(bytes: &[u8], options: ParseOptions) -> Result<Self, BindingError> {
+        if ifc::ifczip::is_zip(bytes) {
+            return crate::ifczip::load(bytes, options);
+        }
         Self::loaded(reader(options).read_bytes(bytes))
     }
 
     /// [`Self::parse`] from a buffer the model keeps, without copying it.
     pub fn parse_owned(bytes: Vec<u8>) -> Result<Self, BindingError> {
-        Self::loaded(StepCodec.read_owned(bytes))
+        Self::parse_owned_with(bytes, ParseOptions::strict())
     }
 
     /// [`Self::parse_owned`] under explicit [`ParseOptions`].
     pub fn parse_owned_with(bytes: Vec<u8>, options: ParseOptions) -> Result<Self, BindingError> {
+        if ifc::ifczip::is_zip(&bytes) {
+            return crate::ifczip::load(&bytes, options);
+        }
         Self::loaded(reader(options).read_owned(bytes))
     }
 
-    /// Read a STEP file from disk into a buffer the model owns.
+    /// Read a STEP file, or an ifcZIP archive (as [`Self::parse`]), from
+    /// disk into a buffer the model owns.
     ///
     /// Cheaper than reading the file in the host and passing its bytes: the
     /// file is read once, straight into the model's source.
     pub fn open(path: &Path) -> Result<Self, BindingError> {
-        Self::loaded(StepCodec.read_path(path))
+        Self::open_with(path, ParseOptions::strict())
     }
 
     /// [`Self::open`] under explicit [`ParseOptions`].
     pub fn open_with(path: &Path, options: ParseOptions) -> Result<Self, BindingError> {
-        Self::loaded(reader(options).read_path(path))
+        let bytes = std::fs::read(path).map_err(|error| BindingError::Io(error.to_string()))?;
+        Self::parse_owned_with(bytes, options)
     }
 
     /// Read a memory-mapped STEP file: no copy, and the pages belong to the
     /// page cache rather than the process heap.
+    ///
+    /// An ifcZIP archive is read as [`Self::open`] reads it: its model is
+    /// inflated into the heap, and nothing stays mapped.
     ///
     /// # Safety
     ///
@@ -88,6 +104,9 @@ impl IfcModel {
         path: &Path,
         options: ParseOptions,
     ) -> Result<Self, BindingError> {
+        if starts_like_zip(path)? {
+            return Self::open_with(path, options);
+        }
         // SAFETY: forwarded caller contract.
         Self::loaded(unsafe { reader(options).read_path_mapped(path) })
     }
@@ -290,7 +309,17 @@ pub(crate) struct Identity {
 }
 
 /// A STEP reader applying `options`.
-fn reader(options: ParseOptions) -> StepReader {
+/// Does the file at `path` start with a ZIP signature?
+fn starts_like_zip(path: &Path) -> Result<bool, BindingError> {
+    use std::io::Read;
+    let mut head = Vec::with_capacity(4);
+    std::fs::File::open(path)
+        .and_then(|file| file.take(4).read_to_end(&mut head))
+        .map_err(|error| BindingError::Io(error.to_string()))?;
+    Ok(ifc::ifczip::is_zip(&head))
+}
+
+pub(crate) fn reader(options: ParseOptions) -> StepReader {
     StepReader::new(options.to_facade())
 }
 

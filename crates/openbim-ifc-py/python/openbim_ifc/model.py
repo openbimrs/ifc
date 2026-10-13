@@ -62,6 +62,13 @@ class IfcModel(ModelAccess):
     def parse(cls, data: bytes, *, options: Optional[ParseOptions] = None) -> "IfcModel":
         """Parse a STEP (``.ifc``) file from its bytes.
 
+        An ifcZIP archive (``.ifczip``) is recognized by its ZIP signature
+        and its one model entry read, STEP or ifcXML in either layout,
+        within a decompression budget: an archive with no model or several
+        raises ``parse``, an encrypted entry or a compression other than
+        Stored and Deflate ``unsupported``, and one that inflates past the
+        budget ``budget-exceeded``.
+
         ``options`` relaxes the strict read, e.g. ``ParseOptions.lenient()``
         skips damaged records; each one skipped is listed by
         :meth:`diagnostics`.
@@ -90,7 +97,8 @@ class IfcModel(ModelAccess):
         mapped: bool = False,
         options: Optional[ParseOptions] = None,
     ) -> "IfcModel":
-        """Read a STEP (``.ifc``) file from disk.
+        """Read a STEP (``.ifc``) file, or an ifcZIP archive as :meth:`parse`
+        reads one, from disk.
 
         Cheaper than ``IfcModel.parse(Path(path).read_bytes())``: the file is
         read once, straight into the model, with the GIL released.
@@ -123,6 +131,17 @@ class IfcModel(ModelAccess):
         and refuses with ``write`` what the layout cannot carry.
         """
         return self._native.write_ifcxml(xsd_profile)
+
+    def write_ifczip(self, *, inner: str = "step", xsd_profile: Optional[str] = None) -> bytes:
+        """Serialize as ifcZIP bytes: one Deflate entry holding STEP
+        (``model.ifc``), or, with ``inner="ifcxml"``, ifcXML
+        (``model.ifcXML``) in the layout ``xsd_profile`` names, as for
+        :meth:`write_ifcxml`. :meth:`parse` and :meth:`open` read it back.
+
+        Raises ``invalid-value`` for another ``inner``, or an
+        ``xsd_profile`` with STEP inside.
+        """
+        return self._native.write_ifczip(inner, xsd_profile)
 
     @property
     def header(self) -> Header:

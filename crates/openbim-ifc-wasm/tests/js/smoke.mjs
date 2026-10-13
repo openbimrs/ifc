@@ -355,6 +355,23 @@ test("ifcXML round-trips in both layouts", () => {
   throwsCode(() => IfcModel.parseIfcXml(new TextEncoder().encode("<a><b></a>")), "parse");
 });
 
+test("ifcZIP is read by parse and written by writeIfcZip", () => {
+  const model = parse();
+  const zipped = model.writeIfcZip();
+  assert.deepEqual([...zipped.slice(0, 4)], [0x50, 0x4b, 0x03, 0x04]);
+  assert.deepEqual(IfcModel.parse(zipped).write(), model.write());
+  const xml = IfcModel.parse(model.writeIfcZip("ifcxml"));
+  assert.deepEqual(xml.ids(), model.ids());
+  for (const id of model.ids()) {
+    assert.deepEqual(xml.attributes(id), model.attributes(id), `#${id}`);
+  }
+  throwsCode(() => model.writeIfcZip("json"), "invalid-value");
+  throwsCode(() => model.writeIfcZip(undefined, "IFC4"), "invalid-value");
+  const empty = new Uint8Array(22);
+  empty.set([0x50, 0x4b, 0x05, 0x06]);
+  throwsCode(() => IfcModel.parse(empty), "parse");
+});
+
 test("unreachable products carry a stable reason", () => {
   const file = FILE.replace(
     "#5=IFCWALL('1YvctVUKr0kugbFTf53O9L',$,'Wall',$,$,$,$,$,.STANDARD.);",

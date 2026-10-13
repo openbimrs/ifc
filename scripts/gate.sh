@@ -268,7 +268,7 @@ gate_features() {
     # links the IFC4 table alone. `cargo tree -e normal` leaves out the
     # dev-dependencies, whose `ifc-schema/default` would bundle every release
     # into test builds and hide a leak.
-    all_bound="ifc4,ifcxml,validate,unreachable,properties,spatial,classification,material,systems,cost,georef,author,placements"
+    all_bound="ifc4,ifcxml,zip,validate,unreachable,properties,spatial,classification,material,systems,cost,georef,author,placements"
     for crate in ifc-validate ifc-spatial ifc-geometry ifc-properties ifc-classification \
         ifc-material ifc-systems ifc-cost ifc-georef; do
         cargo test -p "$crate" --no-default-features --features ifc4 --lib
@@ -289,7 +289,7 @@ gate_features() {
     # wasm32-unknown-unknown with its default and widest pure-Rust feature
     # sets; a native-only dependency (getrandom via ahash was the first)
     # breaks every JS consumer silently.
-    for features in "" "--features schema,ifcxml,author,domains,spatial" "--no-default-features --features step,ifc4"; do
+    for features in "" "--features schema,ifcxml,zip,author,domains,spatial" "--no-default-features --features step,ifc4"; do
         # shellcheck disable=SC2086
         cargo build -p openbim-ifc --target wasm32-unknown-unknown $features
     done

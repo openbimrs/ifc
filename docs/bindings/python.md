@@ -262,7 +262,7 @@ to this package.
 
 | IfcOpenShell | openbim_ifc | Differences |
 | --- | --- | --- |
-| `ifcopenshell.open(path)` | `openbim_ifc.open(path)` | STEP only; ifcXML is `IfcModel.parse_ifcxml(data)` |
+| `ifcopenshell.open(path)` | `openbim_ifc.open(path)` | STEP and ifcZIP; ifcXML is `IfcModel.parse_ifcxml(data)` |
 | `model.by_type("IfcWall")` | `model.by_type("IfcWall")` | Both include subtypes; this returns a list, and `[]` for a type the schema lacks, where IfcOpenShell raises |
 | `model.by_type("IfcWall", include_subtypes=False)` | the same | |
 | `model.by_id(42)` | `model.by_id(42)` or `model[42]` | An absent id raises `IfcError` (`missing-entity`) or `KeyError`, not `RuntimeError` |
@@ -314,6 +314,15 @@ from_xml = IfcModel.parse_ifcxml(xml)
   library's lossless layout; `xsd_profile="IFC4"` or `"IFC4X3_ADD2"`
   selects the buildingSMART XSD layout, which refuses with `write` what it
   cannot carry exactly.
+- **ifcZIP.** `IfcModel.parse` and `IfcModel.open` read an ifcZIP archive,
+  recognized by its ZIP signature: its one STEP or ifcXML model (either
+  layout), within a decompression budget. `write_ifczip()` writes STEP
+  inside as `model.ifc`; `inner="ifcxml"` writes ifcXML as `model.ifcXML`,
+  in the layout `xsd_profile` names. An archive is refused with `parse`
+  when it holds no `.ifc` or `.ifcXML` entry at its root or several,
+  `unsupported` for an encrypted entry or a compression other than Stored
+  and Deflate, and `budget-exceeded` for an entry that would inflate past
+  4 GiB or 200 times its compressed size.
 - **Reachability.** `unreachable_products()` lists products no viewer will
   draw as `UnreachableProduct`s with a stable `reason`.
 
@@ -644,9 +653,10 @@ class, record and function of the package with its docstring and types.
 | `IfcModel()` | An empty model. |
 | `IfcModel.parse(data: bytes, *, options: Optional[ParseOptions] = None) -> IfcModel` | Parse a STEP (`.ifc`) file from its bytes. |
 | `IfcModel.parse_ifcxml(data: bytes, *, xsd_profile: Optional[str] = None) -> IfcModel` | Parse an ifcXML document. |
-| `IfcModel.open(path: Union[str, os.PathLike[str]], *, mapped: bool = False, options: Optional[ParseOptions] = None) -> IfcModel` | Read a STEP (`.ifc`) file from disk. |
+| `IfcModel.open(path: Union[str, os.PathLike[str]], *, mapped: bool = False, options: Optional[ParseOptions] = None) -> IfcModel` | Read a STEP (`.ifc`) file, or an ifcZIP archive as :meth:`parse` reads one, from disk. |
 | `model.write() -> bytes` | Serialize as STEP bytes. |
 | `model.write_ifcxml(*, xsd_profile: Optional[str] = None) -> bytes` | Serialize as ifcXML bytes, in the layout `parse_ifcxml` reads. |
+| `model.write_ifczip(*, inner: str = 'step', xsd_profile: Optional[str] = None) -> bytes` | Serialize as ifcZIP bytes: one Deflate entry holding STEP (`model.ifc`), or, with `inner="ifcxml"`, ifcXML (`model.ifcXML`) in the layout `xsd_profile` names, as for :meth:`write_ifcxml`. :meth:`parse` and :meth:`open` read it back. |
 | `model.header: Header` | The STEP file header: description, name, time stamp, author, ... |
 | `model.set_header(header: Header) -> None` | Replace the STEP file header, e.g. with `dataclasses.replace`. |
 | `model.validate(max_findings: Optional[int] = None) -> ValidationReport` | Validate against the schema the header declares. |

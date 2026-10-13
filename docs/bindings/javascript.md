@@ -173,6 +173,15 @@ const fromXml = IfcModel.parseIfcXml(xml);
   library's lossless layout; pass `"IFC4"` or `"IFC4X3_ADD2"` for the
   buildingSMART XSD layout of that release, which refuses with `write`
   what it cannot carry exactly.
+- **ifcZIP.** `IfcModel.parse` reads an ifcZIP archive, recognized by its
+  ZIP signature: its one STEP or ifcXML model (either layout), within a
+  decompression budget. `writeIfcZip()` writes STEP inside as `model.ifc`;
+  `writeIfcZip("ifcxml", profile)` writes ifcXML as `model.ifcXML`. An
+  archive is refused with `parse` when it holds no `.ifc` or `.ifcXML`
+  entry at its root or several, `unsupported` for an encrypted entry or a
+  compression other than Stored and Deflate, and `budget-exceeded` for an
+  entry that would inflate past 4 GiB or 200 times its compressed size.
+  The `zip` cargo feature, on by default, carries it.
 - **Reachability.** `unreachableProducts()` lists products no viewer will
   draw, each with a stable `reason`.
 
@@ -832,11 +841,12 @@ class, interface and type the package's `.d.ts` declares.
 | Member | Throws `IfcError` | Description |
 | --- | --- | --- |
 | `new IfcModel()` |  | An empty model. |
-| `IfcModel.parse(bytes: Uint8Array): IfcModel` | yes | Parse a STEP (`.ifc`) file from its bytes. |
+| `IfcModel.parse(bytes: Uint8Array): IfcModel` | yes | Parse a STEP (`.ifc`) file from its bytes, or an ifcZIP archive holding STEP or ifcXML, recognized by its ZIP signature and read within a decompression budget (`budget-exceeded` past it). |
 | `IfcModel.parseWithOptions(bytes: Uint8Array, options: ParseOptions): IfcModel` | yes | Parse a STEP file under explicit read options. With `onMalformed: "skip"` a damaged record is dropped and reported by `diagnostics()` instead of failing the read; omitted options are strict. |
 | `IfcModel.parseIfcXml(bytes: Uint8Array, profile: string \| undefined): IfcModel` | yes | Parse an ifcXML document: the library's lossless layout without a profile, or the buildingSMART XSD layout of `"IFC4"` or `"IFC4X3_ADD2"`. |
 | `model.write(): Uint8Array` | yes | Serialize as STEP bytes. |
 | `model.writeIfcXml(profile: string \| undefined): Uint8Array` | yes | Serialize as ifcXML bytes, in the layout `parseIfcXml` reads. |
+| `model.writeIfcZip(inner: string \| undefined, profile: string \| undefined): Uint8Array` | yes | Serialize as ifcZIP bytes: one Deflate entry holding STEP (`model.ifc`), or with `inner` `"ifcxml"` ifcXML (`model.ifcXML`) in the layout `profile` names, as for `writeIfcXml`. `parse` reads it back. |
 | `model.header(): IfcHeader` |  | The STEP file header: description, name, time stamp, author, organization, preprocessor, originating system, authorization and schema tokens. |
 | `model.setHeader(header: IfcHeader): void` | yes | Replace the STEP file header; every field is required. |
 | `model.validate(maxFindings: number \| undefined): ValidationReport` | yes | Validate against the schema the header declares; findings are sorted by severity, rule, entity and slot. `maxFindings` caps the report (default 10,000) and sets `truncated` when reached. |

@@ -8,6 +8,15 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#450)
+
+- `model.writeIfcZip(inner?, profile?)`, and ifcZIP input to
+  `IfcModel.parse`, recognized by the ZIP signature and read within a
+  decompression budget (`parse`, `unsupported` or `budget-exceeded`
+  otherwise). The `zip` cargo feature, on by default, carries it.
+
+Semver: minor (additive).
+
 ## [0.8.0] - 2026-10-13
 
 ### Changed (#433, wire format 1.3)

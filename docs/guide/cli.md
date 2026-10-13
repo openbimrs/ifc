@@ -128,14 +128,15 @@ and `.github/workflows/nix.yml` builds the flake.
 | Command | Answers | Formats |
 | --- | --- | --- |
 | `validate FILE...` | Is each file legal against the schema its header declares? | `human`, `json`, `sarif` |
-| `convert IN OUT` | The model in STEP or ifcXML, native or XSD layout | from the extension, or `--to` |
+| `convert IN OUT` | The model in STEP, ifcXML (native or XSD layout) or ifcZIP | from the extension, or `--to` |
 | `info FILE` | Header, declared schema, entity and type counts | `human`, `json` |
 | `psets FILE ENTITY` | Property and quantity sets of one object or type object | `table`, `json`, `csv` |
 | `tree FILE` | Project, site, building, storey and space, with their elements | `human`, `json` |
 | `lint FILE...` | Products with geometry that no model viewer will draw | `human`, `json`, `sarif` |
 
 `openbim-ifc <command> --help` lists every option. Each command reads STEP or
-ifcXML, chosen by content first and extension second.
+ifcXML, chosen by content first and extension second, and an ifcZIP archive
+holding either, recognized by its ZIP signature.
 
 ### validate
 
@@ -174,6 +175,24 @@ reason and nothing is written. On reading, the layout is detected from the
 root element (the native layout carries a `schema` attribute, the XSD layout
 declares its release's namespace); `--input-layout` names it when neither is
 present. An existing output is replaced only with `--force`.
+
+```bash
+openbim-ifc convert model.ifc model.ifczip                          # STEP inside, as model.ifc
+openbim-ifc convert model.ifc out.zip --to ifczip --inner ifcxml --layout xsd
+openbim-ifc convert model.ifczip model.ifc
+```
+
+An ifcZIP archive holds one STEP or ifcXML document at its root, as the
+buildingSMART implementation agreement CV-2x3-154 fixes it; `convert`
+writes one Deflate entry named after the output file, STEP unless `--inner
+ifcxml` asks for ifcXML (whose layout `--layout` chooses). On reading, an
+archive with no `.ifc` or `.ifcXML` entry at its root, with several, or
+with an entry that is neither STEP nor ifcXML is refused as `parse`; an
+encrypted entry or a compression method other than Stored and Deflate as
+`unsupported`; and an entry that would inflate past 4 GiB, or past 200
+times its compressed size once larger than 1 MiB, as `budget-exceeded`,
+before it is held in memory. `info` names the format as, for example,
+`STEP in ifcZIP (model.ifc)`.
 
 ### info, psets, tree
 
@@ -223,14 +242,14 @@ is never turned into an empty or guessed answer:
 | --- | --- |
 | `usage` | The arguments contradict each other or the input |
 | `io` | A file could not be read or written |
-| `parse` | Not a STEP or ifcXML file, or it does not parse |
+| `parse` | Not a STEP or ifcXML file, or it does not parse; an ifcZIP archive without exactly one model |
 | `unsupported-schema` | No schema declared, or one this build bundles no tables for |
 | `unsupported` | Something this tool or the library does not support for this input |
 | `missing-entity` | No entity with that id or `GlobalId` |
 | `wrong-entity-type` | The entity cannot carry what was asked for |
 | `missing-reference` | A reference names an entity the file lacks |
 | `invalid-model` | The file is malformed or ambiguous where an exact answer is needed |
-| `budget-exceeded` | A traversal hit its bound before it could answer |
+| `budget-exceeded` | A traversal hit its bound before it could answer, or an ifcZIP entry would inflate past its budget |
 | `write` | The output format refused the model |
 
 `validate` and `lint` take several files; one that cannot be checked is

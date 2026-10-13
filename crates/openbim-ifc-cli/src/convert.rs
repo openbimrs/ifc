@@ -1,10 +1,14 @@
-//! `convert`: STEP to ifcXML and back, in either ifcXML layout.
+//! `convert`: STEP to ifcXML and back, in either ifcXML layout, and either
+//! of them in an ifcZIP archive.
 //!
 //! The native layout carries any model losslessly; with the declared
 //! release's tables it names attributes after the schema. The XSD layout is
 //! the buildingSMART configuration of IFC4 ADD2 TC1 and IFC4X3 ADD2: a
 //! model it cannot carry exactly is refused by the codec with a typed
 //! error, never written differently, and nothing is written.
+//!
+//! An ifcZIP output holds STEP unless `--inner ifcxml` asks for ifcXML; its
+//! entry is named after the output file (`out.ifczip` holds `out.ifc`).
 
 use std::io::Write;
 use std::path::Path;
@@ -12,9 +16,9 @@ use std::sync::Arc;
 
 use ifc::{Codec, Model, SchemaVersion, StepCodec, XmlCodec};
 
-use crate::cli::{ConvertArgs, ModelFormat, OutputLayout};
+use crate::cli::{ConvertArgs, InnerFormat, ModelFormat, OutputLayout};
 use crate::error::{CliError, CliResult, Outcome};
-use crate::input::{self, Source};
+use crate::input;
 
 /// Run `convert`.
 pub(crate) fn run(args: &ConvertArgs, out: &mut impl Write) -> CliResult<Outcome> {
@@ -23,14 +27,25 @@ pub(crate) fn run(args: &ConvertArgs, out: &mut impl Write) -> CliResult<Outcome
         Some(format) => format,
         None if to_stdout => {
             return Err(CliError::Usage(
-                "writing to standard output needs --to step or --to ifcxml".to_owned(),
+                "writing to standard output needs --to step, ifcxml or ifczip".to_owned(),
             ))
         }
         None => format_of(&args.output)?,
     };
-    if format == ModelFormat::Step && args.layout.is_some() {
+    if format != ModelFormat::Ifczip && args.inner.is_some() {
         return Err(CliError::Usage(
-            "--layout applies to ifcXML output only".to_owned(),
+            "--inner applies to ifcZIP output only".to_owned(),
+        ));
+    }
+    // The document written: the format itself, or what the archive holds.
+    let document = match (format, args.inner) {
+        (ModelFormat::Ifczip, Some(InnerFormat::Ifcxml)) => ModelFormat::Ifcxml,
+        (ModelFormat::Ifczip, _) => ModelFormat::Step,
+        (other, _) => other,
+    };
+    if document == ModelFormat::Step && args.layout.is_some() {
+        return Err(CliError::Usage(
+            "--layout applies to ifcXML output only (for ifcZIP, with --inner ifcxml)".to_owned(),
         ));
     }
     if !to_stdout && !args.force && args.output.exists() {
@@ -42,11 +57,16 @@ pub(crate) fn run(args: &ConvertArgs, out: &mut impl Write) -> CliResult<Outcome
 
     let loaded = input::read(&args.input, args.input_options.input_layout)?;
     let layout = args.layout.unwrap_or(OutputLayout::Native);
-    let bytes = match format {
-        ModelFormat::Step => StepCodec.write_bytes(&loaded.model),
+    let mut bytes = match document {
         ModelFormat::Ifcxml => xml_writer(&loaded.model, layout)?.write_bytes(&loaded.model),
+        _ => StepCodec.write_bytes(&loaded.model),
     }
     .map_err(|error| CliError::Write(error.to_string()))?;
+    let entry = (format == ModelFormat::Ifczip).then(|| entry_name(&args.output, document));
+    if let Some(entry) = &entry {
+        bytes = ifc::ifczip::pack(entry, &bytes)
+            .map_err(|error| CliError::Write(format!("ifcZIP: {error}")))?;
+    }
 
     let written = if to_stdout {
         out.write_all(&bytes)
@@ -59,12 +79,8 @@ pub(crate) fn run(args: &ConvertArgs, out: &mut impl Write) -> CliResult<Outcome
         })?;
         args.output.display().to_string()
     };
-    let from = match loaded.source {
-        Source::Step => "STEP".to_owned(),
-        Source::IfcXml(layout) => format!("ifcXML ({})", layout_name(layout)),
-    };
-    let to = match format {
-        ModelFormat::Step => "STEP".to_owned(),
+    let from = loaded.format();
+    let mut to = match document {
         ModelFormat::Ifcxml => format!(
             "ifcXML ({})",
             match layout {
@@ -72,7 +88,11 @@ pub(crate) fn run(args: &ConvertArgs, out: &mut impl Write) -> CliResult<Outcome
                 OutputLayout::Xsd => "XSD layout",
             }
         ),
+        _ => "STEP".to_owned(),
     };
+    if let Some(entry) = entry {
+        to = format!("{to} in ifcZIP ({entry})");
+    }
     eprintln!(
         "openbim-ifc: {} entities: {} ({from}) -> {written} ({to})",
         loaded.model.len(),
@@ -81,10 +101,17 @@ pub(crate) fn run(args: &ConvertArgs, out: &mut impl Write) -> CliResult<Outcome
     Ok(Outcome::Clean)
 }
 
-fn layout_name(layout: ifc::XmlLayout) -> &'static str {
-    match layout {
-        ifc::XmlLayout::Xsd => "XSD layout",
-        _ => "native layout",
+/// The ifcZIP entry for `document`, named after the output file:
+/// `out.ifczip` holds `out.ifc` or `out.ifcXML`, standard output `model.*`.
+fn entry_name(output: &Path, document: ModelFormat) -> String {
+    let stem = output
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .filter(|stem| !stem.is_empty() && *stem != "-")
+        .unwrap_or("model");
+    match document {
+        ModelFormat::Ifcxml => format!("{stem}.ifcXML"),
+        _ => format!("{stem}.ifc"),
     }
 }
 
@@ -102,9 +129,11 @@ fn format_of(path: &Path) -> CliResult<ModelFormat> {
         .contains(&extension.as_str())
     {
         Ok(ModelFormat::Ifcxml)
+    } else if extension == "ifczip" {
+        Ok(ModelFormat::Ifczip)
     } else {
         Err(CliError::Usage(format!(
-            "cannot tell the output format from {}; name it with --to step or --to ifcxml",
+            "cannot tell the output format from {}; name it with --to step, ifcxml or ifczip",
             path.display()
         )))
     }

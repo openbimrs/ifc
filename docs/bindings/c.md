@@ -283,6 +283,15 @@ openbim_ifc_v0_1_model_destroy(model);
 - **ifcXML.** `openbim_ifc_v0_1_model_write_ifcxml` and
   `_model_parse_ifcxml` take a profile name: `NULL, 0` for this library's
   lossless layout, `IFC4` or `IFC4X3_ADD2` for that release's XSD layout.
+- **ifcZIP.** `openbim_ifc_v0_1_model_parse` and `_model_open` read an
+  ifcZIP archive, recognized by its ZIP signature: its one STEP or ifcXML
+  model (either layout), within a decompression budget.
+  `openbim_ifc_v0_1_model_write_ifczip` takes the inner format (`NULL, 0`
+  or `step`, or `ifcxml`) and a profile as for ifcXML. An archive is
+  refused with `PARSE` when it holds no `.ifc` or `.ifcXML` entry at its
+  root or several, `UNSUPPORTED` for an encrypted entry or a compression
+  other than Stored and Deflate, and `BUDGET_EXCEEDED` for an entry that
+  would inflate past 4 GiB or 200 times its compressed size.
 - **Reachability.** `openbim_ifc_v0_1_model_unreachable_products` returns a
   tape of products no viewer will draw, each with a stable reason.
 
