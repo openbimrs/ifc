@@ -103,10 +103,8 @@ fn offset_runs_along_the_kerb_continue_to_its_ends() {
 
 /// A graph holding a station at its basis's end is wire format 1.3
 /// (Axiolid ADR 0085, axiolid/kernel#303), the gutter's curve and its
-/// tube alike, and reads back to a graph of the same version and ends.
-/// (Its text is not compared: `axiolid-model` 0.3.12 reads JSON numbers
-/// without `serde_json`'s `float_roundtrip`, so a distance such as
-/// 10.003124511871276 reads back one ulp off.)
+/// tube alike, and reads back byte for byte: `axiolid-model` 0.3.13 reads
+/// every JSON real back exactly (`serde_json` `float_roundtrip`).
 #[cfg(feature = "wire")]
 #[test]
 fn an_offset_run_to_the_basis_end_writes_wire_format_1_3() {
@@ -122,13 +120,7 @@ fn an_offset_run_to_the_basis_end_writes_wire_format_1_3() {
         assert!(json.contains("\"basis_end\":\"Start\""), "{what}: {json}");
         let read = GeometryGraph::from_json(&json).expect("reads back");
         assert_eq!(read.len(), lowered.graph.len(), "{what}");
-        let again = read.to_json().expect("writes");
-        assert!(again.contains("\"version\":\"1.3\""), "{what}");
-        assert_eq!(
-            again.matches("basis_end").count(),
-            json.matches("basis_end").count(),
-            "{what}"
-        );
+        assert_eq!(read.to_json().expect("writes"), json, "{what}");
     }
 }
 
