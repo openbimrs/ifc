@@ -130,10 +130,10 @@
           "url": "https://crates.io/crates/ifc-geometry"
         }
       ],
-      "released": "0.25.0",
+      "released": "0.25.1",
       "released_date": "2026-10-13",
       "status": "partial",
-      "version": "0.25.0"
+      "version": "0.25.1"
     },
     "ifc-georef": {
       "description": "Georeferencing: map conversion, coordinate reference systems, site placement.",

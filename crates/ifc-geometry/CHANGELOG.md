@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.25.1] - 2026-10-13
+
 ### Changed (#439, stations on B-splines trimmed by points resolve in the kernel)
 
 Semver: patch. No public item or lowering changes; only the dependency
@@ -2012,7 +2014,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.25.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.25.1...HEAD
+[0.25.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.25.1
 [0.25.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.25.0
 [0.24.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.24.0
 [0.23.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.23.0
