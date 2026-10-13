@@ -1,6 +1,12 @@
 //! Authoring `IfcRelServicesBuildings`: the structures a system serves
 //! (#230).
 //!
+//! Deprecated (#492): `ifc_spatial::serve_buildings` and
+//! `ifc_spatial::serve_buildings_with_owner_history` are the canonical
+//! writers of this relationship, with the same rules. These stay, with
+//! their own error type, for compatibility; sibling domain crates do not
+//! depend on one another, so they keep their bodies rather than forward.
+//!
 //! Both writers bind the model's declared release and check, against that
 //! release's own table, that the relating end is an `IfcSystem` and every
 //! served end is what `RelatedBuildings` admits there
@@ -45,6 +51,10 @@ const ENTITY: &str = "IFCRELSERVICESBUILDINGS";
 /// [`WrongReferenceType`](SystemAuthoringError::WrongReferenceType) for a
 /// system that is not an `IfcSystem`, or a building the release's
 /// `RelatedBuildings` does not admit. Nothing is staged on an error.
+#[deprecated(
+    since = "0.5.0",
+    note = "use ifc_spatial::serve_buildings, the canonical IfcRelServicesBuildings writer (#492)"
+)]
 pub fn serve_buildings(
     tx: &mut Transaction,
     model: &Model,
@@ -65,6 +75,10 @@ pub fn serve_buildings(
 /// [`WrongReferenceType`](SystemAuthoringError::WrongReferenceType) for an
 /// `owner_history` that is absent or not an `IfcOwnerHistory`. Nothing is
 /// staged on an error.
+#[deprecated(
+    since = "0.5.0",
+    note = "use ifc_spatial::serve_buildings_with_owner_history, the canonical IfcRelServicesBuildings writer (#492)"
+)]
 pub fn serve_buildings_with_owner_history(
     tx: &mut Transaction,
     model: &Model,

@@ -3,6 +3,10 @@
 //! Asserting through ports().unwrap(), systems().unwrap() and the connection graph
 //! proves the authored slots are the ones those readers resolve.
 
+// The deprecated `ifc_systems` containment and services writers (#492)
+// stay covered here until they are removed.
+#![allow(deprecated)]
+
 use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 use ifc_systems::{
     assign_to_group, connect_port_to_element, connect_ports, contain_in_spatial_structure,

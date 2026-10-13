@@ -12,6 +12,20 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Deprecated
+
+- `contain_in_spatial_structure` and
+  `contain_in_spatial_structure_with_owner_history` in favour of
+  `ifc_spatial::contain` and `ifc_spatial::contain_with_owner_history`,
+  and `serve_buildings` and `serve_buildings_with_owner_history` in favour
+  of the `ifc_spatial` functions of the same names (#492). Each pair wrote
+  the same relationship with the same rules; `ifc-spatial` keeps the
+  canonical writer. The deprecated functions keep their bodies (sibling
+  domain crates do not depend on one another) and behave as before.
+
+Semver: minor. A deprecation is a compatible change: callers get a
+warning, not an error.
+
 ## [0.4.0] - 2026-10-03
 
 ### Changed (breaking)

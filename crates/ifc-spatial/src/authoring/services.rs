@@ -19,10 +19,11 @@
 //! model or staged on the transaction. Every check runs before anything is
 //! staged.
 //!
-//! `ifc-systems` authors the same relationship with the same rules
-//! (`ifc_systems::serve_buildings`, #277). Sibling domain crates do not
-//! depend on one another, so the rules are stated here from the schema
-//! sources rather than shared; `tests/services_buildings.rs` checks every
+//! These are the canonical writers of the relationship (#492).
+//! `ifc_systems::serve_buildings` and its owner-history variant (#277)
+//! apply the same rules and are deprecated in favour of these; sibling
+//! domain crates do not depend on one another, so they keep their own
+//! bodies until removed. `tests/services_buildings.rs` checks every
 //! refusal in each release.
 
 use std::collections::BTreeSet;

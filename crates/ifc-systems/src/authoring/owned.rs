@@ -203,12 +203,19 @@ pub fn connect_ports_with_owner_history(
 /// [`contain_in_spatial_structure`](super::contain_in_spatial_structure) in
 /// `model`'s declared release, with a caller-supplied `IfcOwnerHistory`.
 ///
+/// Deprecated (#492): `ifc_spatial::contain_with_owner_history` is the
+/// canonical writer.
+///
 /// # Errors
 ///
 /// Those of
 /// [`contain_in_spatial_structure`](super::contain_in_spatial_structure),
 /// and the release and owner-history refusals of
 /// [`create_system_with_owner_history`].
+#[deprecated(
+    since = "0.5.0",
+    note = "use ifc_spatial::contain_with_owner_history, the canonical IfcRelContainedInSpatialStructure writer (#492)"
+)]
 pub fn contain_in_spatial_structure_with_owner_history(
     tx: &mut Transaction,
     model: &Model,

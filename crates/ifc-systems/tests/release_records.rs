@@ -3,6 +3,10 @@
 //! `*_with_owner_history` variant writes the same record with the owner
 //! history in `IfcRoot.OwnerHistory` (slot 1).
 
+// The deprecated `ifc_systems` containment and services writers (#492)
+// stay covered here until they are removed.
+#![allow(deprecated)]
+
 use ifc_model::{Codec, Edit, Entity, EntityId, Model, Transaction, Value};
 use ifc_schema::for_version;
 use ifc_step::StepCodec;

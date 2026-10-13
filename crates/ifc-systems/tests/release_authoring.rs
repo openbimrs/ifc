@@ -8,6 +8,10 @@
 //! IFC4X3 only. Every relationship these writers stage has the same
 //! attribute names in all three.
 
+// The deprecated `ifc_systems` containment and services writers (#492)
+// stay covered here until they are removed.
+#![allow(deprecated)]
+
 use ifc_model::{Codec, EntityId, Model, Transaction, Value};
 use ifc_schema::for_version;
 use ifc_step::StepCodec;
