@@ -11,7 +11,7 @@ Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.7.0 (2026-10-12) |
+| Latest release | 0.8.0 (2026-10-13) |
 | Registries | [PyPI `openbim-ifc`](https://pypi.org/project/openbim-ifc/) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_py/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-py/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-py) |
@@ -42,17 +42,19 @@ This crate adds calling-convention glue only. IFC behaviour belongs in
 
 ## Changes
 
-Latest release, 0.7.0 (2026-10-12):
+Latest release, 0.8.0 (2026-10-13):
 
-### Changed (#429, wire format 1.2)
+### Changed (#433, wire format 1.3)
 
-- The geometry graph payload (#367) may be Axiolid's wire format 1.2
-  (`axiolid-model` 0.3.11), a minor version of the format (ADR 0021,
-  amended): a sectioned solid or surface along an offset whose length is a
-  quadrature now lowers, its sections carrying seam-snapping windows.
-  An envelope carries the lowest version its content needs, so every other
-  payload is unchanged: 1.0, or 1.1 when a station carries a window. A
-  reader on `axiolid-model` 0.3.10 or older refuses 1.2. `GEOMETRY_FORMAT_VERSION` is `"1.2"`, the newest version the wheel writes.
+- The geometry graph payload (#367) may be Axiolid's wire format 1.3
+  (`axiolid-model` 0.3.12), a minor version of the format (ADR 0021,
+  amended): an `IfcOffsetCurveByDistances` along an offset whose length is
+  a quadrature now lowers, continued to the basis's ends the kernel
+  measures. An envelope carries the lowest version its content needs, so
+  every other payload is unchanged: 1.0, 1.1 or 1.2. A reader on
+  `axiolid-model` 0.3.11 or older refuses 1.3.
+  `GEOMETRY_FORMAT_VERSION` is `"1.3"`, the newest version the wheel
+  writes.
 
 Semver: minor, as ADR 0021 states for a minor version of the wire format.
 
