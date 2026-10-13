@@ -45,7 +45,9 @@ public class RelationTests
         var duplicate = Assert.Single(model.DuplicateGlobalIds());
         Assert.Equal(guid, duplicate.GlobalId);
         Assert.Equal(new[] { 17UL, copy }, duplicate.Ids);
+#pragma warning disable CS0618 // Remove is deprecated (#478); this is its own test.
         model.Remove(copy);
+#pragma warning restore CS0618
         Assert.Equal(17UL, model.ByGuid(guid));
     }
 

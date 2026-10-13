@@ -411,6 +411,38 @@ public class CookbookTests
     }
 
     [Fact]
+    public void RemoveAProductAndPurge()
+    {
+        using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.CascadeIfc4));
+        var printed = new List<string>();
+        void Print(string line) => printed.Add(line);
+        // docs:snippet cookbook-dotnet-remove-product
+        // Door #100 with what it alone owns: placement, representation, its
+        // filling and type relationships. A dry run changes nothing.
+        RemovalReport report = model.RemoveProduct(100, dryRun: true);
+        Print($"{report.Removed.Count} removed"); // 11 removed
+        foreach (var kept in report.Kept.Where(kept => kept.Reason == "shared"))
+        {
+            Print($"#{kept.Id} {kept.TypeName} used by {string.Join(", ", kept.Users)}");
+        }
+        // #82 IFCLOCALPLACEMENT used by 81       the opening's placement
+        // #112 IFCREPRESENTATIONMAP used by 111  the door type's geometry
+
+        model.RemoveProduct(100); // applied: one checked transaction
+        // A wall whose openings place their fillings: re-base those
+        // placements onto the storey so nothing moves, or it is refused.
+        model.RemoveProduct(20, rebasePlacements: true);
+
+        // Then purge what nothing uses any more: no classes means every
+        // resource entity no IfcRoot reaches.
+        RemovalReport purged = model.Purge(dryRun: true);
+        // docs:end
+        Assert.Equal(new[] { "11 removed", "#82 IFCLOCALPLACEMENT used by 81", "#112 IFCREPRESENTATIONMAP used by 111" }, printed);
+        Assert.NotEmpty(purged.Removed);
+        Assert.Empty(model.DanglingReferences());
+    }
+
+    [Fact]
     public void CreateAModelFromNothing()
     {
         // docs:snippet cookbook-dotnet-create

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from typing import Iterable, List, Mapping, Optional, Tuple, Union
+import warnings
+from typing import Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 
 from ._native import NativeModel
 from . import domains, geometry
@@ -11,6 +12,7 @@ from .domains import (
     AttributeInfo,
     AuthorOp,
     AuthoringResult,
+    RemovalReport,
     Classification,
     Cost,
     MapConversion,
@@ -412,7 +414,20 @@ class IfcModel(ModelAccess):
         return self._native.add(type_name, [to_wire(value) for value in attributes])
 
     def remove(self, id: int) -> None:
-        """Remove entity ``id``, leaving references to it dangling."""
+        """Remove entity ``id``, leaving references to it dangling.
+
+        .. deprecated:: 0.9
+           A file with dangling references parses and is wrong. Use
+           :meth:`remove_with_relationships` for one entity, or
+           :meth:`remove_product` for a product with what it solely owns.
+           It keeps working, with a :class:`DeprecationWarning`.
+        """
+        warnings.warn(
+            "IfcModel.remove leaves references dangling; use "
+            "remove_with_relationships or remove_product",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self._native.remove(id)
 
     def author(self, ops: Iterable[AuthorOp]) -> AuthoringResult:
@@ -444,6 +459,67 @@ class IfcModel(ModelAccess):
         :meth:`AuthorOp.remove`). Raises ``still-referenced`` while an
         entity other than a relationship needs it."""
         self._native.remove_with_relationships(id)
+
+    def remove_product(
+        self,
+        id: int,
+        *,
+        rebase_placements: bool = False,
+        untype_occurrences: bool = False,
+        dry_run: bool = False,
+    ) -> RemovalReport:
+        """Remove product (or type object) ``id`` with everything it solely
+        owns -- its placement, representation, own property and quantity
+        sets, material usage, openings and ports, and the relationships
+        left without an end -- as one checked transaction. Shared data
+        stays: a property set another object uses, a type's representation
+        maps, a style used elsewhere. The report says what went and what
+        stayed, and why; with ``dry_run`` nothing changes.
+
+        Raises ``still-referenced`` while other placements are relative to
+        its placement (``rebase_placements`` re-bases them, composing the
+        transforms so nothing moves) or while a type object types objects
+        (``untype_occurrences`` unassigns the type), ``wrong-entity-type``
+        for an entity that is neither an ``IfcProduct`` nor an
+        ``IfcTypeObject``, and ``unsupported`` for a placement that cannot
+        be re-based.
+        """
+        return domains._from_wire(
+            self._native.remove_product(
+                id,
+                rebase_placements=rebase_placements,
+                untype_occurrences=untype_occurrences,
+                dry_run=dry_run,
+            )
+        )
+
+    def purge(
+        self,
+        classes: Sequence[str] = (),
+        *,
+        include_roots: bool = False,
+        include_owner_history: bool = False,
+        dry_run: bool = False,
+    ) -> RemovalReport:
+        """Remove unreferenced entities as one checked transaction; with
+        ``dry_run``, only report.
+
+        Without ``classes``: every resource entity no ``IfcRoot`` reaches
+        (nor annotates something reached, as a styled item does). With
+        ``classes`` (subtypes included, any case): the entities of those
+        classes nothing references; an ``IfcRoot`` among them only with
+        ``include_roots``. The owner history with its actors stays unless
+        ``include_owner_history``. Raises ``unsupported-schema`` for a
+        class the release does not declare.
+        """
+        return domains._from_wire(
+            self._native.purge(
+                list(classes),
+                include_roots=include_roots,
+                include_owner_history=include_owner_history,
+                dry_run=dry_run,
+            )
+        )
 
     def dangling_references(self) -> List[Tuple[int, int]]:
         """Every ``(from, to)`` pair where ``to`` does not exist."""

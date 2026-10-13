@@ -9,6 +9,21 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#478, cascading delete and purge)
+
+- `model.RemoveProduct(id, rebasePlacements, untypeOccurrences, dryRun)`
+  and `model.Purge(classes, includeRoots, includeOwnerHistory, dryRun)`,
+  returning a `RemovalReport` (`RemovedEntity`, `KeptEntity`).
+- Requires the C ABI 0.1.11 (`openbim-ifc-capi` with #478).
+
+### Deprecated (#478)
+
+- `model.Remove(id)` is `[Obsolete]`: it leaves references dangling. Use
+  `RemoveWithRelationships` or `RemoveProduct`. It keeps working; a caller
+  building with warnings as errors sees CS0618.
+
+Semver: additive, a minor release while 0.x.
+
 ### Added (#463, GlobalIds, types and openings)
 
 - `model.ByGuid(globalId)` (`ulong?`), through an index built on the first

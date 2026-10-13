@@ -18,6 +18,7 @@ FIXTURES = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "test
 PROPERTIES = os.path.join(FIXTURES, "synthetic-properties", "synthetic_properties.ifc")
 GEOMETRY = os.path.join(FIXTURES, "synthetic-bindings", "binding_geometry.ifc")
 RELATIONS = os.path.join(FIXTURES, "synthetic-relations", "relations_ifc4.ifc")
+CASCADE = os.path.join(FIXTURES, "synthetic-relations", "cascade_ifc4.ifc")
 MESH = os.environ.get("OPENBIM_IFC_MESH") == "1"
 
 
@@ -270,6 +271,38 @@ class Cookbook(unittest.TestCase):
         self.assertEqual(len(printed[4]), 22)
         self.assertEqual(printed[5], openbim_ifc.name_based_guid("my-exporter", "wall", "42"))
         self.assertIsNone(model.by_guid("3MtNd0Uaz8Ix2OPtRq_3Kk"))
+
+    def test_remove_product_and_purge(self) -> None:
+        model = openbim_ifc.open(CASCADE)
+        printed: List[Any] = []
+        print = printed.append  # noqa: A001
+        # docs:snippet cookbook-py-remove-product
+        # Door #100 with what it alone owns: placement, representation, its
+        # filling and type relationships. A dry run changes nothing.
+        report = model.remove_product(100, dry_run=True)
+        print(len(report.removed))  # 11
+        for kept in report.kept:
+            if kept.reason == "shared":  # still used by something that stays
+                print((kept.id, kept.type_name, kept.users))
+        # (82, 'IFCLOCALPLACEMENT', (81,))     the opening's placement
+        # (112, 'IFCREPRESENTATIONMAP', (111,))  the door type's geometry
+
+        model.remove_product(100)  # applied: one checked transaction
+        # A wall whose openings place their fillings: re-base those
+        # placements onto the storey so nothing moves, or it is refused.
+        model.remove_product(20, rebase_placements=True)
+
+        # Then purge what nothing uses any more: no classes means every
+        # resource entity no IfcRoot reaches.
+        print([entity.type_name for entity in model.purge(dry_run=True).removed][:3])
+        # docs:end
+        self.assertEqual(printed[0], 11)
+        self.assertEqual(
+            printed[1:3],
+            [(82, "IFCLOCALPLACEMENT", (81,)), (112, "IFCREPRESENTATIONMAP", (111,))],
+        )
+        self.assertEqual(model.dangling_references(), [])
+        self.assertEqual(len(printed[3]), 3)
 
     def test_create(self) -> None:
         # docs:snippet cookbook-py-create

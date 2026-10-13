@@ -8,6 +8,21 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#478, cascading delete and purge)
+
+- `model.remove_product(id, *, rebase_placements=False,
+  untype_occurrences=False, dry_run=False)` and `model.purge(classes=(),
+  *, include_roots=False, include_owner_history=False, dry_run=False)`,
+  returning a `RemovalReport` (`RemovedEntity`, `KeptEntity`).
+
+### Deprecated (#478)
+
+- `model.remove(id)` leaves references dangling and now warns with a
+  `DeprecationWarning`; use `remove_with_relationships` or
+  `remove_product`. It keeps working.
+
+Semver: additive, a minor release while 0.x.
+
 ### Added (#463, GlobalIds, types and openings)
 
 - `model.by_guid(global_id)` (an `Entity` or `None`) and

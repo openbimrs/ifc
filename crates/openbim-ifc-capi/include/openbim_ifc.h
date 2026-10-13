@@ -123,6 +123,40 @@
 #define OPENBIM_IFC_PARSE_SKIP_MALFORMED 1
 
 /**
+ * `openbim_ifc_v0_1_model_purge` flag: report only.
+ */
+#define OPENBIM_IFC_PURGE_DRY_RUN 4
+
+/**
+ * `openbim_ifc_v0_1_model_purge` flag: also purge an unreferenced owner
+ * history with its actors.
+ */
+#define OPENBIM_IFC_PURGE_INCLUDE_OWNER_HISTORY 2
+
+/**
+ * `openbim_ifc_v0_1_model_purge` flag: also purge unreferenced `IfcRoot`s of
+ * the classes.
+ */
+#define OPENBIM_IFC_PURGE_INCLUDE_ROOTS 1
+
+/**
+ * `openbim_ifc_v0_1_model_remove_product` flag: report only.
+ */
+#define OPENBIM_IFC_REMOVE_DRY_RUN 4
+
+/**
+ * `openbim_ifc_v0_1_model_remove_product` flag: re-base placements relative
+ * to a removed placement instead of refusing.
+ */
+#define OPENBIM_IFC_REMOVE_REBASE_PLACEMENTS 1
+
+/**
+ * `openbim_ifc_v0_1_model_remove_product` flag: untype a type object's
+ * occurrences instead of refusing.
+ */
+#define OPENBIM_IFC_REMOVE_UNTYPE_OCCURRENCES 2
+
+/**
  * Result of every ABI call. `Ok` is zero; every failure is non-zero.
  *
  * The values from `Parse` to `FeatureDisabled`, `InvalidModel`, and
@@ -540,6 +574,11 @@ OpenbimIfcStatus openbim_ifc_v0_1_entity_openings(OpenbimIfcModel model,
 
 /**
  * Remove entity `id`; references to it are left dangling.
+ *
+ * Deprecated (#478): a file with dangling references parses and is wrong.
+ * Use `openbim_ifc_v0_1_entity_remove_with_relationships` for one entity,
+ * or `openbim_ifc_v0_1_model_remove_product` for a product with what it
+ * solely owns. It keeps working for the life of the `v0_1` ABI.
  */
 OpenbimIfcStatus openbim_ifc_v0_1_entity_remove(OpenbimIfcModel model, uint64_t id);
 
@@ -1341,6 +1380,78 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_property_sets_many(OpenbimIfcModel model
                                                            uint8_t *strings,
                                                            size_t string_capacity,
                                                            size_t *out_strings_required);
+
+/**
+ * Purge unreferenced entities as one checked transaction. With
+ * `class_count` 0, every resource entity no `IfcRoot` reaches (nor
+ * annotates something reached); otherwise entities of the `class_count`
+ * classes (UTF-8 names of `class_lengths[i]` bytes, any case, subtypes
+ * included) that nothing references. `flags`:
+ * `OPENBIM_IFC_PURGE_INCLUDE_ROOTS`,
+ * `OPENBIM_IFC_PURGE_INCLUDE_OWNER_HISTORY`, `OPENBIM_IFC_PURGE_DRY_RUN`.
+ * The answer is a `RemovalReport` tape: removed (`LIST` of
+ * `RemovedEntity`: id `REF`, type name `TEXT`), kept (`LIST` of
+ * `KeptEntity`: id, type name, reason `TEXT` -- `shared`,
+ * `related-object`, `definition`, `protected` -- users `LIST` of `REF`),
+ * detached and rebased (`LIST`s of `REF`), applied (`BOOL`, false for a
+ * dry run). A size query or a short buffer plans the removal and answers
+ * `BufferTooSmall` without applying it.
+ *
+ * `UnsupportedSchema` for a class the release does not declare;
+ * `InvalidArgument` for a class that is not UTF-8 or an unknown flag;
+ * `FeatureDisabled`.
+ *
+ * # Safety
+ * `classes` and `class_lengths` null (with `class_count` 0) or valid for
+ * `class_count` reads, each class valid for its length; the buffers as
+ * for `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_purge(OpenbimIfcModel model,
+                                              const uint8_t *const *classes,
+                                              const size_t *class_lengths,
+                                              size_t class_count,
+                                              uint32_t flags,
+                                              OpenbimIfcValueNode *nodes,
+                                              size_t node_capacity,
+                                              size_t *out_nodes_required,
+                                              uint8_t *strings,
+                                              size_t string_capacity,
+                                              size_t *out_strings_required);
+
+/**
+ * Remove product (or type object) `product` with everything it solely
+ * owns -- its placement, representation, own property and quantity sets,
+ * material usage, openings and ports, and relationships left without an
+ * end -- keeping what is shared, as one checked transaction. `flags`:
+ * `OPENBIM_IFC_REMOVE_REBASE_PLACEMENTS`,
+ * `OPENBIM_IFC_REMOVE_UNTYPE_OCCURRENCES`, `OPENBIM_IFC_REMOVE_DRY_RUN`.
+ * The answer is a `RemovalReport` tape: removed (`LIST` of
+ * `RemovedEntity`: id `REF`, type name `TEXT`), kept (`LIST` of
+ * `KeptEntity`: id, type name, reason `TEXT` -- `shared`,
+ * `related-object`, `definition`, `protected` -- users `LIST` of `REF`),
+ * detached and rebased (`LIST`s of `REF`), applied (`BOOL`, false for a
+ * dry run). A size query or a short buffer plans the removal and answers
+ * `BufferTooSmall` without applying it.
+ *
+ * `MissingEntity`; `WrongEntityType` for an entity that is neither an
+ * `IfcProduct` nor an `IfcTypeObject`; `StillReferenced` for a placement
+ * other placements are relative to, a type that still types objects, or
+ * an entity that stays and needs something removed; `Unsupported` for a
+ * placement that cannot be re-based; `InvalidArgument` for an unknown
+ * flag; `FeatureDisabled`.
+ *
+ * # Safety
+ * As for `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_remove_product(OpenbimIfcModel model,
+                                                       uint64_t product,
+                                                       uint32_t flags,
+                                                       OpenbimIfcValueNode *nodes,
+                                                       size_t node_capacity,
+                                                       size_t *out_nodes_required,
+                                                       uint8_t *strings,
+                                                       size_t string_capacity,
+                                                       size_t *out_strings_required);
 
 /**
  * Remove one property from `object`'s own set:

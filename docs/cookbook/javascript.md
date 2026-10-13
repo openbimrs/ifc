@@ -368,6 +368,45 @@ all. `IfcModel.newGuid()` draws an RFC 9562 version-4 UUID from the host's
 Node 18); `IfcModel.nameBasedGuid(parts)` is version 8, the same for the
 same parts in every binding. Both are IFC's 22-character form.
 
+## Remove a product and purge
+
+A door with what it alone owns, a wall whose openings place their fillings,
+then what nothing uses any more, from
+`test/fixtures/synthetic-relations/cascade_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-js-remove-product -->
+
+```js
+// Door #100 with what it alone owns: placement, representation, its
+// filling and type relationships. A dry run changes nothing.
+const report = model.removeProduct(100n, { dryRun: true });
+log(report.removed.length); // 11
+for (const kept of report.kept) {
+  if (kept.reason === "shared") log(kept.id, kept.typeName, kept.users);
+}
+// 82n "IFCLOCALPLACEMENT" [81n]       the opening's placement
+// 112n "IFCREPRESENTATIONMAP" [111n]  the door type's geometry
+
+model.removeProduct(100n); // applied: one checked transaction
+// A wall whose openings place their fillings: re-base those placements
+// onto the storey so nothing moves, or it is refused.
+model.removeProduct(20n, { rebasePlacements: true });
+
+// Then purge what nothing uses any more: no classes means every resource
+// entity no IfcRoot reaches.
+log(model.purge({ dryRun: true }).removed.length > 0);
+```
+
+<!-- /SNIPPET -->
+
+`{ rebasePlacements: true }` re-bases placements relative to a removed one
+onto its parent, composing the transforms; `{ untypeOccurrences: true }`
+lets a type object with occurrences go. Without them those removals throw
+`still-referenced`. `purge({ classes: ["IfcPropertySet"], includeRoots:
+true })` purges unreferenced entities of the named classes only. The
+[binding page](/bindings/javascript#removing-products-and-purging) lists
+what the cascade removes and keeps.
+
 ## Create a model
 
 <!-- SNIPPET:cookbook-js-create -->

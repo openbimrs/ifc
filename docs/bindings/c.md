@@ -665,6 +665,54 @@ three `REAL`s, attributes a `LIST` of `LIST(TEXT name, value)` pairs; a
 removal), and an id buffer shorter than the batch is `BUFFER_TOO_SMALL`
 before anything is written.
 
+## Removing products and purging
+
+`openbim_ifc_v0_1_model_remove_product(model, id, flags, ...)` removes a
+product, or a type object, with everything it solely owns, as one checked
+transaction, and answers a `RemovalReport` tape: removed (`LIST` of
+`RemovedEntity`: id, type name), kept (`LIST` of `KeptEntity`: id, type
+name, reason, users), detached, rebased (`LIST`s of `REF`) and applied
+(`BOOL`). `OPENBIM_IFC_REMOVE_DRY_RUN` only reports. The buffer protocol
+never applies a removal it cannot report: a size query or a short buffer
+plans it, answers `BUFFER_TOO_SMALL` with the sizes and leaves the model
+unchanged.
+
+The cascade decides "solely owned" by counting references within the
+same transaction: an entity reached from a removed one goes when nothing
+that stays needs it, a relationship that only loses a list member or a
+presentation layer assignment not counting. It removes the product's
+`ObjectPlacement`, its representation down to the items no one else uses,
+the property and quantity sets only it is defined by with their
+properties, its material usage (not the material definitions), its
+openings (each with the same cascade), its ports, and every relationship
+left without an end. It keeps, and reports with a reason, what other
+entities still use (`shared`, with the users: a property set another wall
+uses, a door type's representation maps, a style or point used elsewhere),
+objects of their own (`related-object`: the type, the container, the
+fillings of a removed opening) and definitions it never deletes
+(`definition`: material definitions, classification references, units,
+contexts, the owner history).
+
+It is `STILL_REFERENCED` while other placements that stay are relative to
+the product's placement; `OPENBIM_IFC_REMOVE_REBASE_PLACEMENTS` re-bases
+them onto the removed placement's parent instead, composing the transforms
+so nothing moves. A type object that still types objects is
+`STILL_REFERENCED` unless `OPENBIM_IFC_REMOVE_UNTYPE_OCCURRENCES`.
+
+`openbim_ifc_v0_1_model_purge(model, classes, class_lengths, class_count,
+flags, ...)` with no classes removes every resource entity no `IfcRoot`
+reaches, nor annotates something reached; with classes, the unreferenced
+entities of those classes. `IfcRoot`s and the owner history with its
+actors stay unless asked (`OPENBIM_IFC_PURGE_INCLUDE_ROOTS`,
+`OPENBIM_IFC_PURGE_INCLUDE_OWNER_HISTORY`); `OPENBIM_IFC_PURGE_DRY_RUN`
+reports without removing. The
+[cookbook](/cookbook/c#remove-a-product-and-purge) has a recipe.
+
+`openbim_ifc_v0_1_entity_remove` is deprecated: it leaves references
+dangling. It keeps working for the life of the `v0_1` ABI; use
+`openbim_ifc_v0_1_entity_remove_with_relationships` for one entity or
+`openbim_ifc_v0_1_model_remove_product` for a product.
+
 ## API
 
 The [C API reference](/api/c) lists every type, constant, function and

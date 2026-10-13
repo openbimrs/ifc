@@ -6,7 +6,9 @@
 use js_sys::{Array, BigInt, Uint8Array};
 use openbim_ifc_binding_core::record::to_records;
 use openbim_ifc_binding_core::value::Tagged;
-use openbim_ifc_binding_core::{BindingError, IfcModel as Core, ToRecord};
+use openbim_ifc_binding_core::{
+    BindingError, IfcModel as Core, PurgeOptions, RemoveProductOptions, ToRecord,
+};
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
 
@@ -624,6 +626,11 @@ impl IfcModel {
     }
 
     /// Remove entity `id`, leaving references to it dangling.
+    ///
+    /// @deprecated A file with dangling references parses and is wrong
+    /// (#478). Use `removeWithRelationships` for one entity, or
+    /// `removeProduct` for a product with what it solely owns. It keeps
+    /// working.
     #[wasm_bindgen(js_name = remove)]
     pub fn remove_js(&mut self, id: u64) -> Result<(), JsValue> {
         self.0.remove(id).map_err(js_error)
@@ -689,6 +696,54 @@ impl IfcModel {
         self.0.remove_with_relationships(id).map_err(js_error)
     }
 
+    /// Remove product (or type object) `id` with everything it solely owns
+    /// -- its placement, representation, own property and quantity sets,
+    /// material usage, openings and ports, and the relationships left
+    /// without an end -- as one checked transaction, keeping what is shared
+    /// (a property set another object uses, a type's representation maps).
+    /// The report says what went, what stayed and why; with `dryRun`
+    /// nothing changes. Refused with `still-referenced` while other
+    /// placements are relative to its placement (unless
+    /// `rebasePlacements`) or a type object types objects (unless
+    /// `untypeOccurrences`), `wrong-entity-type` for neither a product nor
+    /// a type object, `unsupported` for a placement that cannot be
+    /// re-based.
+    #[wasm_bindgen(js_name = removeProduct, unchecked_return_type = "RemovalReport")]
+    pub fn remove_product_js(
+        &mut self,
+        id: u64,
+        #[wasm_bindgen(unchecked_param_type = "RemoveProductOptions | undefined")]
+        options: &JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let mut parsed = RemoveProductOptions::new();
+        parsed.rebase_placements = flag(options, "rebasePlacements").map_err(js_error)?;
+        parsed.untype_occurrences = flag(options, "untypeOccurrences").map_err(js_error)?;
+        parsed.dry_run = flag(options, "dryRun").map_err(js_error)?;
+        let report = self.0.remove_product(id, parsed).map_err(js_error)?;
+        Ok(records::record_to_js(&report.to_record()))
+    }
+
+    /// Remove unreferenced entities as one checked transaction; with
+    /// `dryRun`, only report. Without `classes`, every resource entity no
+    /// `IfcRoot` reaches (nor annotates something reached); with them, the
+    /// entities of those classes nothing references, an `IfcRoot` only
+    /// with `includeRoots`. The owner history stays unless
+    /// `includeOwnerHistory`. Refused with `unsupported-schema` for a class
+    /// the release does not declare.
+    #[wasm_bindgen(js_name = purge, unchecked_return_type = "RemovalReport")]
+    pub fn purge_js(
+        &mut self,
+        #[wasm_bindgen(unchecked_param_type = "PurgeOptions | undefined")] options: &JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let mut parsed = PurgeOptions::new();
+        parsed.classes = classes(options).map_err(js_error)?;
+        parsed.include_roots = flag(options, "includeRoots").map_err(js_error)?;
+        parsed.include_owner_history = flag(options, "includeOwnerHistory").map_err(js_error)?;
+        parsed.dry_run = flag(options, "dryRun").map_err(js_error)?;
+        let report = self.0.purge(parsed).map_err(js_error)?;
+        Ok(records::record_to_js(&report.to_record()))
+    }
+
     /// The handle of the entity operation `index` of an `author` batch
     /// produces, usable wherever a later operation takes an id (`bigint`).
     #[wasm_bindgen(js_name = handle)]
@@ -708,4 +763,50 @@ impl IfcModel {
             .map(|(from, to)| Array::of2(&big(from), &big(to)))
             .collect()
     }
+}
+
+/// The boolean `key` of an options object; `false` when the object or the
+/// key is absent.
+fn flag(options: &JsValue, key: &str) -> Result<bool, BindingError> {
+    if options.is_undefined() || options.is_null() {
+        return Ok(false);
+    }
+    if !options.is_object() {
+        return Err(BindingError::InvalidValue(
+            "options must be an object".into(),
+        ));
+    }
+    let value = js_sys::Reflect::get(options, &key.into())
+        .map_err(|_| BindingError::InvalidValue(format!("cannot read `{key}`")))?;
+    if value.is_undefined() || value.is_null() {
+        return Ok(false);
+    }
+    value
+        .as_bool()
+        .ok_or_else(|| BindingError::InvalidValue(format!("`{key}` must be a boolean")))
+}
+
+/// The `classes` array of purge options; empty when absent.
+fn classes(options: &JsValue) -> Result<Vec<String>, BindingError> {
+    if options.is_undefined() || options.is_null() || !options.is_object() {
+        return Ok(Vec::new());
+    }
+    let value = js_sys::Reflect::get(options, &"classes".into())
+        .map_err(|_| BindingError::InvalidValue("cannot read `classes`".into()))?;
+    if value.is_undefined() || value.is_null() {
+        return Ok(Vec::new());
+    }
+    if !js_sys::Array::is_array(&value) {
+        return Err(BindingError::InvalidValue(
+            "`classes` must be an array of strings".into(),
+        ));
+    }
+    js_sys::Array::from(&value)
+        .iter()
+        .map(|class| {
+            class
+                .as_string()
+                .ok_or_else(|| BindingError::InvalidValue("`classes` must hold strings".into()))
+        })
+        .collect()
 }

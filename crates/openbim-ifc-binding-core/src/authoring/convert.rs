@@ -181,7 +181,10 @@ pub(super) fn error(error: AuthoringError) -> BindingError {
         },
         F::MissingEntity(id) => BindingError::MissingEntity(id.0),
         F::MissingReference { .. } => BindingError::MissingReference(detail),
-        F::StillReferenced { .. } => BindingError::StillReferenced(detail),
+        F::StillReferenced { .. }
+        | F::PlacementHasDependents { .. }
+        | F::TypeHasOccurrences { .. } => BindingError::StillReferenced(detail),
+        F::UnsupportedRebase { .. } => BindingError::Unsupported(detail),
         F::AlreadyRelated { .. } | F::Conflict(_) => BindingError::InvalidModel(detail),
         F::IdRangeExhausted { .. } => BindingError::OutOfRange(detail),
         F::Cardinality { .. }

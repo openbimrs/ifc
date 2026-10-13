@@ -889,3 +889,51 @@ test("types, openings and fillings follow the relationships in every release", (
   throwsCode(() => model.typeObject(8n), "wrong-entity-type");
   throwsCode(() => model.occurrencesOf(17n), "wrong-entity-type");
 });
+
+// --- Removing a product with what it owns, and purging (#478) ---------------
+
+const CASCADES = ["cascade_ifc2x3.ifc", "cascade_ifc4.ifc", "cascade_ifc4x3.ifc"];
+const cascade = (name) => openFixture(path.join("synthetic-relations", name));
+
+test("removeProduct reports, applies and refuses with stable codes", () => {
+  for (const name of CASCADES) {
+    const model = cascade(name);
+    const before = model.size;
+    const dry = model.removeProduct(100n, { dryRun: true });
+    assert.equal(dry.applied, false, name);
+    assert.equal(model.size, before, name);
+    assert.deepEqual(dry.removed[0], { id: 100n, typeName: "IFCDOOR" }, name);
+    assert.deepEqual(
+      dry.kept.find((kept) => kept.id === 112n),
+      { id: 112n, typeName: "IFCREPRESENTATIONMAP", reason: "shared", users: [111n] },
+      name,
+    );
+    const done = model.removeProduct(100n);
+    assert.equal(done.applied, true, name);
+    assert.equal(model.size, before - 11, name);
+    assert.deepEqual(model.danglingReferences(), [], name);
+
+    throwsCode(() => model.removeProduct(20n), "still-referenced");
+    throwsCode(() => model.removeProduct(66n), "still-referenced");
+    throwsCode(() => model.removeProduct(61n), "wrong-entity-type");
+    throwsCode(() => model.removeProduct(20n, { dryRun: "yes" }), "invalid-value");
+    assert.deepEqual(model.removeProduct(20n, { rebasePlacements: true }).rebased, [131n], name);
+    assert.equal(model.removeProduct(66n, { untypeOccurrences: true }).removed.length, 4, name);
+  }
+});
+
+test("purge by class, then by default", () => {
+  for (const name of CASCADES) {
+    const model = cascade(name);
+    const skipped = model.purge({ classes: ["IfcPropertySet"], dryRun: true });
+    assert.deepEqual(skipped.removed, [], name);
+    assert.equal(skipped.kept[0].reason, "protected", name);
+    assert.deepEqual(
+      model.purge({ classes: ["IfcPropertySet"], includeRoots: true }).removed.map((e) => e.id),
+      [173n],
+      name,
+    );
+    assert.deepEqual(model.purge().removed.map((e) => e.id), [170n, 171n, 172n, 174n], name);
+  }
+  throwsCode(() => cascade("cascade_ifc4.ifc").purge({ classes: ["IfcNoSuchThing"] }), "unsupported-schema");
+});

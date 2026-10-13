@@ -8,6 +8,31 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#478, cascading delete and purge)
+
+- `openbim_ifc_v0_1_model_remove_product(model, product, flags, ...)` and
+  `openbim_ifc_v0_1_model_purge(model, classes, class_lengths,
+  class_count, flags, ...)`, answering a `RemovalReport` record tape.
+  Flags `OPENBIM_IFC_REMOVE_REBASE_PLACEMENTS`,
+  `OPENBIM_IFC_REMOVE_UNTYPE_OCCURRENCES`, `OPENBIM_IFC_REMOVE_DRY_RUN`,
+  `OPENBIM_IFC_PURGE_INCLUDE_ROOTS`,
+  `OPENBIM_IFC_PURGE_INCLUDE_OWNER_HISTORY`, `OPENBIM_IFC_PURGE_DRY_RUN`;
+  an unknown flag is `InvalidArgument`. A size query or a short buffer
+  plans the removal and answers `BufferTooSmall` without applying it. The
+  header is regenerated.
+- ABI version 0.1.11; every export above is new, no `v0_1` symbol changed.
+
+### Deprecated (#478)
+
+- `openbim_ifc_v0_1_entity_remove`, which leaves references dangling (a
+  header note); use `openbim_ifc_v0_1_entity_remove_with_relationships` or
+  `openbim_ifc_v0_1_model_remove_product`. It keeps working for the life of
+  the `v0_1` ABI.
+
+Semver: additive, released on the 0.1 line: the C package keeps 0.1.x while
+the `v0_1` ABI is unchanged, because CMake's `find_package(openbim_ifc 0.1)`
+does not accept 0.2.
+
 ### Added (#463, GlobalIds, types and openings)
 
 - `openbim_ifc_v0_1_model_by_guid` (`out_id`, `NoValue` when absent,

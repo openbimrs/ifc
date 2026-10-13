@@ -71,7 +71,9 @@ class Smoke(unittest.TestCase):
 
     def test_removal_reports_dangling_references(self):
         self.assertEqual(self.model.dangling_references(), [(5, 9)])
-        self.model.remove(1)
+        # Deprecated (#478): it still works, and says what to use instead.
+        with self.assertWarnsRegex(DeprecationWarning, "remove_product"):
+            self.model.remove(1)
         self.assertEqual(sorted(self.model.dangling_references()), [(5, 1), (5, 9)])
 
 

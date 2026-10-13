@@ -659,6 +659,49 @@ creates, and IFC2X3, which requires it, refuses a record without
 fresh `GlobalId`s derive from is drawn from `Math.random`; the TypeScript
 declarations type every operation as `AuthorOp`.
 
+## Removing products and purging
+
+`model.removeProduct(id, options?)` removes a product, or a type object,
+with everything it solely owns, as one checked transaction, and returns a
+`RemovalReport`: `removed`, `kept` (each with its `reason` and `users`),
+`detached`, `rebased` and `applied`. With `{ dryRun: true }` it only
+reports.
+
+The cascade decides "solely owned" by counting references within the
+same transaction: an entity reached from a removed one goes when nothing
+that stays needs it, a relationship that only loses a list member or a
+presentation layer assignment not counting. It removes the product's
+`ObjectPlacement`, its representation down to the items no one else uses,
+the property and quantity sets only it is defined by with their
+properties, its material usage (not the material definitions), its
+openings (each with the same cascade), its ports, and every relationship
+left without an end. It keeps, and reports with a reason, what other
+entities still use (`shared`, with the users: a property set another wall
+uses, a door type's representation maps, a style or point used elsewhere),
+objects of their own (`related-object`: the type, the container, the
+fillings of a removed opening) and definitions it never deletes
+(`definition`: material definitions, classification references, units,
+contexts, the owner history).
+
+It throws `still-referenced` while other placements that stay are relative
+to the product's placement (a window placed relative to the opening of the
+wall being removed); `{ rebasePlacements: true }` re-bases them onto the
+removed placement's parent instead, composing the transforms so nothing
+moves. A type object that still types objects throws `still-referenced`
+unless `{ untypeOccurrences: true }`.
+
+`model.purge()` removes every resource entity no `IfcRoot` reaches, nor
+annotates something reached (a styled item, a layer assignment, a shape
+aspect); `model.purge({ classes: ["IfcPropertySet"], includeRoots: true })`
+removes the unreferenced entities of the named classes instead. `IfcRoot`s
+and the owner history with its actors stay unless asked (`includeRoots`,
+`includeOwnerHistory`); `dryRun` reports without removing. The
+[cookbook](/cookbook/javascript#remove-a-product-and-purge) has a recipe.
+
+`model.remove(id)` is deprecated (`@deprecated` in the declarations): it
+leaves references dangling. Use `removeWithRelationships(id)` for one
+entity or `removeProduct(id)` for a product.
+
 ## Module size
 
 Size of the module after `wasm-bindgen` (0.2.128), without `wasm-opt`,
@@ -901,6 +944,8 @@ class, interface and type the package's `.d.ts` declares.
 | `model.author(ops: AuthorOp[]): AuthoringResult` | yes | Apply authoring operations as one checked transaction against the release the header declares: every operation, in order, or none, and a refused batch leaves the model unchanged. An operation names the entity an earlier one produced by `IfcModel.handle(index)`. `result.ids` holds, per operation, the id of the entity it produced. |
 | `model.createEntity(typeName: string, attributes: Record<string, IfcValue>): bigint` | yes | Create one entity of `typeName` from named attributes, checked against the declared release (`author` with one `create`); an `IfcRoot` without a `GlobalId` gets one. Returns its id (`bigint`). |
 | `model.removeWithRelationships(id: bigint): void` | yes | Remove entity `id` with its relationships, leaving nothing dangling (`author` with one `remove`); refused with `still-referenced` while an entity other than a relationship needs it. |
+| `model.removeProduct(id: bigint, options: RemoveProductOptions \| undefined): RemovalReport` | yes | Remove product (or type object) `id` with everything it solely owns -- its placement, representation, own property and quantity sets, material usage, openings and ports, and the relationships left without an end -- as one checked transaction, keeping what is shared (a property set another object uses, a type's representation maps). The report says what went, what stayed and why; with `dryRun` nothing changes. Refused with `still-referenced` while other placements are relative to its placement (unless `rebasePlacements`) or a type object types objects (unless `untypeOccurrences`), `wrong-entity-type` for neither a product nor a type object, `unsupported` for a placement that cannot be re-based. |
+| `model.purge(options: PurgeOptions \| undefined): RemovalReport` | yes | Remove unreferenced entities as one checked transaction; with `dryRun`, only report. Without `classes`, every resource entity no `IfcRoot` reaches (nor annotates something reached); with them, the entities of those classes nothing references, an `IfcRoot` only with `includeRoots`. The owner history stays unless `includeOwnerHistory`. Refused with `unsupported-schema` for a class the release does not declare. |
 | `IfcModel.handle(index: number): bigint` |  | The handle of the entity operation `index` of an `author` batch produces, usable wherever a later operation takes an id (`bigint`). |
 | `model.danglingReferences(): [bigint, bigint][]` |  | Every `[from, to]` pair (`bigint`s) where `to` does not exist. |
 
