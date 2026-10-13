@@ -201,9 +201,7 @@ fn the_binding_geometry_fixture_has_no_colour() {
         env!("CARGO_MANIFEST_DIR"),
         "/../../test/fixtures/synthetic-bindings/binding_geometry.ifc"
     );
-    let model = StepCodec
-        .read_bytes(&std::fs::read(path).unwrap())
-        .unwrap();
+    let model = StepCodec.read_bytes(&std::fs::read(path).unwrap()).unwrap();
     for (product, colour) in product_colours(&model, None) {
         assert_eq!(colour, Ok(None), "{product}");
     }
@@ -226,7 +224,13 @@ fn meshes_carry_their_colour() {
     let only = product(&model, "MATERIAL");
     let (_, mesh) = &ifc::product_meshes(&model, Some(&[only]))[0];
     assert_colour(
-        mesh.as_ref().unwrap().colour.as_ref().unwrap().as_ref().unwrap(),
+        mesh.as_ref()
+            .unwrap()
+            .colour
+            .as_ref()
+            .unwrap()
+            .as_ref()
+            .unwrap(),
         RED,
     );
 }
