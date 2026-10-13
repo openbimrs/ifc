@@ -132,8 +132,12 @@ public class DomainTests
     [Fact]
     public void ViewsRefuseWithTheSharedCodes()
     {
+        // IFC2X3 is read through ePSet_MapConversion (#451): none here, so
+        // an empty list. IFC4X1 has no verified layout and stays refused.
         using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.Ifc2x3));
-        var error = Assert.Throws<IfcException>(() => model.Georeferencing());
+        Assert.Empty(model.Georeferencing());
+        using var ifc4x1 = IfcModel.Parse(Fixtures.Bytes(Fixtures.Ifc2x3.Replace("'IFC2X3'", "'IFC4X1'")));
+        var error = Assert.Throws<IfcException>(() => ifc4x1.Georeferencing());
         Assert.Equal("unsupported-schema", error.Code);
         Assert.Equal(IfcStatus.UnsupportedSchema, error.Status);
         Assert.Equal("missing-entity", Assert.Throws<IfcException>(() => model.PropertySets(99)).Code);

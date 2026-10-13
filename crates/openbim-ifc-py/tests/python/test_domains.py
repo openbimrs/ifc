@@ -173,9 +173,11 @@ class Domains(unittest.TestCase):
     def test_domain_refusals_carry_the_shared_codes(self):
         model = IfcModel.parse(CLASSIFIED)
         self.assertCode("missing-entity", model.property_sets, 999)
+        # IFC2X3 is read through ePSet_MapConversion (#451): none here.
         ifc2x3 = IfcModel.parse(CLASSIFIED.replace(b"'IFC4'", b"'IFC2X3'"))
-        self.assertCode("unsupported-schema", ifc2x3.georeferencing)
+        self.assertEqual(ifc2x3.georeferencing(), [])
         ifc4x1 = IfcModel.parse(CLASSIFIED.replace(b"'IFC4'", b"'IFC4X1'"))
+        self.assertCode("unsupported-schema", ifc4x1.georeferencing)
         self.assertCode("unsupported-schema", ifc4x1.property_sets, 3)
 
 

@@ -879,8 +879,12 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_diagnostic_count(OpenbimIfcModel model, 
  * and map unit (`[name, metres per unit]`), map unit declared (`BOOL`),
  * linear (three columns of three `REAL`s), translation (three `REAL`s).
  *
- * `UnsupportedSchema` (anything but IFC4 and IFC4X3), `Unsupported`,
- * `InvalidModel`, `MissingReference`, `FeatureDisabled`.
+ * IFC2X3 is read from the `ePSet_MapConversion` and `ePSet_ProjectedCRS`
+ * property sets: source kind `property-set`, source the `IfcProject` or
+ * `IfcSite` carrying them.
+ *
+ * `UnsupportedSchema` (anything but IFC2X3, IFC4 and IFC4X3),
+ * `Unsupported`, `InvalidModel`, `MissingReference`, `FeatureDisabled`.
  *
  * # Safety
  * As for `openbim_ifc_v0_1_model_property_sets`.

@@ -551,10 +551,12 @@ test("domain refusals carry the shared codes", () => {
   const ifc2x3 = IfcModel.parse(
     new TextEncoder().encode(CLASSIFIED.replace("'IFC4'", "'IFC2X3'")),
   );
-  throwsCode(() => ifc2x3.georeferencing(), "unsupported-schema");
+  // IFC2X3 is read through ePSet_MapConversion (#451): none here.
+  assert.deepEqual(ifc2x3.georeferencing(), []);
   const ifc4x1 = IfcModel.parse(
     new TextEncoder().encode(CLASSIFIED.replace("'IFC4'", "'IFC4X1'")),
   );
+  throwsCode(() => ifc4x1.georeferencing(), "unsupported-schema");
   throwsCode(() => ifc4x1.propertySets(3n), "unsupported-schema");
 });
 

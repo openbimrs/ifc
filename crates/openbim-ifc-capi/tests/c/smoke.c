@@ -275,20 +275,31 @@ static int domains(void) {
   CHECK(count == 2, "the wall type and the wall");
   OK(openbim_ifc_v0_1_model_destroy(model));
 
-  /* The same refusal as every host: IFC2X3 has no georeferencing. */
+  /* The same refusal as every host: IFC4X1 has no verified georeferencing
+     layout. IFC2X3 is read through ePSet_MapConversion (#451): none here. */
+  static const char IFC4X1[] =
+      "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n"
+      "FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('IFC4X1'));\nENDSEC;\nDATA;\n"
+      "#1=IFCWALL('0abc',$,'Wall',$,$,$,$,$,$);\nENDSEC;\nEND-ISO-10303-21;\n";
+  OK(openbim_ifc_v0_1_model_parse((const uint8_t *)IFC4X1, strlen(IFC4X1), &model, NULL, 0));
+  CHECK(openbim_ifc_v0_1_model_georeferencing(model, &count, nodes, 256, &node_count,
+                                              strings, sizeof strings, &string_len) ==
+            OPENBIM_IFC_STATUS_UNSUPPORTED_SCHEMA,
+        "georeferencing refuses IFC4X1");
+  char code[32];
+  size_t need = 0;
+  OK(openbim_ifc_v0_1_last_error_code(model, (uint8_t *)code, sizeof code, &need));
+  CHECK(strcmp(code, "unsupported-schema") == 0, "the shared code");
+  OK(openbim_ifc_v0_1_model_destroy(model));
+
   static const char IFC2X3[] =
       "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n"
       "FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('IFC2X3'));\nENDSEC;\nDATA;\n"
       "#1=IFCWALL('0abc',$,'Wall',$,$,$,$,$);\nENDSEC;\nEND-ISO-10303-21;\n";
   OK(openbim_ifc_v0_1_model_parse((const uint8_t *)IFC2X3, strlen(IFC2X3), &model, NULL, 0));
-  CHECK(openbim_ifc_v0_1_model_georeferencing(model, &count, nodes, 256, &node_count,
-                                              strings, sizeof strings, &string_len) ==
-            OPENBIM_IFC_STATUS_UNSUPPORTED_SCHEMA,
-        "georeferencing refuses IFC2X3");
-  char code[32];
-  size_t need = 0;
-  OK(openbim_ifc_v0_1_last_error_code(model, (uint8_t *)code, sizeof code, &need));
-  CHECK(strcmp(code, "unsupported-schema") == 0, "the shared code");
+  OK(openbim_ifc_v0_1_model_georeferencing(model, &count, nodes, 256, &node_count, strings,
+                                           sizeof strings, &string_len));
+  CHECK(count == 0, "IFC2X3 without ePSet_MapConversion has no operation");
   CHECK(openbim_ifc_v0_1_model_property_sets(model, 99, &count, nodes, 256, &node_count,
                                              strings, sizeof strings, &string_len) ==
             OPENBIM_IFC_STATUS_MISSING_ENTITY,
