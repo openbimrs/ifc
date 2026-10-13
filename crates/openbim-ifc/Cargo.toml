@@ -31,8 +31,9 @@ group = "facade"
 author = "Schema-checked authoring (`authoring`) with every bundled release (`schema`)."
 authoring = "Schema-checked authoring (`ifc-author`) and the checked authoring batch (`apply_authoring`), against the releases the build names."
 codecs = "Both codecs: STEP and ifcXML."
+zip = "ifcZIP (`ifc::ifczip`, `ifc::ifczip::IfcZipCodec`): read an archive holding one STEP or ifcXML model within a decompression budget, and write one; Stored and Deflate only, through the pure-Rust `zip` and `flate2` (miniz_oxide) crates."
 domains = "Every domain view, plus authoring and spatial traversal."
-full = "Everything: codecs, schema tables, every domain, catalogues, geometry and meshes, georeferencing and alignment."
+full = "Everything: codecs and ifcZIP, schema tables, every domain, catalogues, geometry and meshes, georeferencing and alignment."
 geometry = "Representation selection plus lowering into the neutral geometry DAG."
 geometry-wire = "Each product's Body as Axiolid's neutral geometry graph (`product_graphs`), exact and in world metres, encodable in Axiolid's versioned wire format (1.0; 1.1 where a station carries a seam-snapping window, 1.2 where a run's sections do, 1.3 where an offset run continues to a basis end the kernel measures) as JSON or CBOR (`ifc::geometry::wire`); a typed refusal per product. Computes nothing; adds the lowering and serde."
 mesh = "Triangle meshes per product (`product_meshes`) through `ifc-geometry`'s reference compile backend: positions relative to each product's world placement, its surface colour (`colour`), a typed refusal per product. Opt-in; links an execution provider (ADR 0004, ADR 0012)."
@@ -61,6 +62,14 @@ ifc-model.workspace = true
 # --- serialization backends ---
 ifc-step = { workspace = true, optional = true }
 ifc-xml = { workspace = true, optional = true }
+# ifcZIP (#450): the `zip` crate, the maintained pure-Rust ZIP reader and
+# writer, with every default off and Deflate alone, through flate2's
+# miniz_oxide backend (pure Rust, builds for wasm32). No encryption, no
+# Deflate64, bzip2, LZMA or zstd: ifcZIP (CV-2x3-154) is PKZIP 2.04g, and
+# an entry using any of them is refused by name. `flate2` is named only to
+# choose its backend.
+zip = { version = "9.0", optional = true, default-features = false, features = ["deflate-flate2"] }
+flate2 = { version = "1.1", optional = true, default-features = false, features = ["rust_backend"] }
 
 # --- schema (optional: needed for conformant ifcXML names and subtype queries) ---
 ifc-schema = { workspace = true, optional = true }
@@ -116,6 +125,8 @@ default = ["step"]
 # --- codecs ---
 step = ["dep:ifc-step"]
 ifcxml = ["dep:ifc-xml"]
+# ifcZIP (#450), reading whichever codecs the build names.
+zip = ["dep:zip", "dep:flate2"]
 
 # --- schema ---
 # The schema API with every bundled release: the meaning `schema` always had.
@@ -232,7 +243,7 @@ domains = [
     "author",
     "spatial",
 ]
-full = ["codecs", "schema", "domains", "property-catalog", "material-templates", "geometry", "geometry-wire", "mesh", "georef", "alignment", "js-random"]
+full = ["codecs", "zip", "schema", "domains", "property-catalog", "material-templates", "geometry", "geometry-wire", "mesh", "georef", "alignment", "js-random"]
 
 [dev-dependencies]
 # `Schema::from_express` for the documented authoring example; production
@@ -240,6 +251,11 @@ full = ["codecs", "schema", "domains", "property-catalog", "material-templates",
 ifc-schema = { workspace = true, features = ["default", "express"] }
 # Reading the wire envelope's `format` and `version` entries (#367).
 serde_json = "1.0"
+# Building the ifcZIP refusal fixtures (#450): empty, several entries,
+# Stored entries whose headers a test then patches. `flate2` chooses the
+# Deflate backend for builds that leave the `zip` feature out.
+zip = { version = "9.0", default-features = false, features = ["deflate-flate2"] }
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
 
 [lints]
 workspace = true

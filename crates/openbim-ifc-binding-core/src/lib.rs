@@ -18,6 +18,10 @@
 //! operation whose feature is off still exists, so every host keeps one
 //! surface, and refuses with `feature-disabled`.
 //!
+//! Every read recognizes an ifcZIP archive by its ZIP signature and reads
+//! the STEP or ifcXML model it holds within a decompression budget
+//! ([`ifczip`], feature `zip`); [`IfcModel::write_ifczip`] writes one.
+//!
 //! Attributes are read and written by position or by name
 //! ([`IfcModel::attribute_by_name`]); a name resolves against the release
 //! the header declares, inherited attributes included, and is refused with
@@ -69,6 +73,7 @@ mod error;
 pub mod geometry;
 pub mod georef;
 pub mod header;
+pub mod ifczip;
 pub mod material;
 mod model;
 mod options;

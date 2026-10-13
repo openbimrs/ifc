@@ -176,7 +176,7 @@ gate_features() {
 
     # `spatial` and `properties` need a release to read through (#306), so
     # their combinations name one; both crates refuse to compile without.
-    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,ifc4" "--features step,schema-api" "--features step,geometry-select" "--features step,ifc4,validate" "--features step,ifc4,spatial,geometry-select" "--features step,ifc4,properties,geometry-select" "--features step,ifc4,spatial,properties" "--features step,ifc4,georef,properties" "--features step,ifc4,properties,property-catalog-runtime" "--features step,ifc4,authoring" "--features step,ifc4,geometry-wire" "--all-features"; do
+    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,ifc4" "--features step,schema-api" "--features step,geometry-select" "--features step,ifc4,validate" "--features step,ifc4,spatial,geometry-select" "--features step,ifc4,properties,geometry-select" "--features step,ifc4,spatial,properties" "--features step,ifc4,georef,properties" "--features step,ifc4,properties,property-catalog-runtime" "--features step,ifc4,authoring" "--features step,ifc4,geometry-wire" "--features zip" "--features ifcxml,zip" "--all-features"; do
         # shellcheck disable=SC2086
         cargo build -p openbim-ifc $features
         # shellcheck disable=SC2086
@@ -268,7 +268,7 @@ gate_features() {
     # links the IFC4 table alone. `cargo tree -e normal` leaves out the
     # dev-dependencies, whose `ifc-schema/default` would bundle every release
     # into test builds and hide a leak.
-    all_bound="ifc4,ifcxml,validate,unreachable,properties,spatial,classification,material,systems,cost,georef,author,placements"
+    all_bound="ifc4,ifcxml,zip,validate,unreachable,properties,spatial,classification,material,systems,cost,georef,author,placements"
     for crate in ifc-validate ifc-spatial ifc-geometry ifc-properties ifc-classification \
         ifc-material ifc-systems ifc-cost ifc-georef; do
         cargo test -p "$crate" --no-default-features --features ifc4 --lib
@@ -291,7 +291,7 @@ gate_features() {
     # breaks every JS consumer silently.
     # `js-random` links getrandom's JavaScript backend for `new_guid`
     # (#463); without it the facade links no random source there.
-    for features in "" "--features schema,ifcxml,author,domains,spatial" "--no-default-features --features step,ifc4" "--features js-random"; do
+    for features in "" "--features schema,ifcxml,zip,author,domains,spatial" "--no-default-features --features step,ifc4" "--features js-random"; do
         # shellcheck disable=SC2086
         cargo build -p openbim-ifc --target wasm32-unknown-unknown $features
     done

@@ -2,6 +2,8 @@
 ifcXML and unreachable products. Run by scripts/check-python.sh."""
 
 import dataclasses
+import os
+import tempfile
 import unittest
 
 from openbim_ifc import (
@@ -108,6 +110,27 @@ class Capabilities(unittest.TestCase):
         )
         self.assertCode("unsupported-profile", model.write_ifcxml, xsd_profile="IFC2X3")
         self.assertCode("parse", IfcModel.parse_ifcxml, b"<a><b></a>")
+
+    def test_ifczip_reads_and_writes(self):
+        model = IfcModel.parse(FILE, options=LENIENT)
+        zipped = model.write_ifczip()
+        self.assertEqual(zipped[:4], b"PK\x03\x04")
+        back = IfcModel.parse(zipped, options=LENIENT)
+        self.assertEqual(back.write(), model.write())
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "model.ifczip")
+            with open(path, "wb") as file:
+                file.write(zipped)
+            self.assertEqual(IfcModel.open(path, options=LENIENT).write(), model.write())
+
+        xml = IfcModel.parse(model.write_ifczip(inner="ifcxml"))
+        self.assertEqual(xml.ids(), model.ids())
+        for id in model.ids():
+            self.assertEqual(xml.attributes(id), model.attributes(id))
+
+        self.assertCode("invalid-value", model.write_ifczip, inner="json")
+        self.assertCode("invalid-value", model.write_ifczip, xsd_profile="IFC4")
+        self.assertCode("parse", IfcModel.parse, b"PK\x05\x06" + bytes(18))
 
     def test_unreachable_products_carry_a_stable_reason(self):
         uncontained = FILE.split(b"DATA;")[0] + (

@@ -91,6 +91,23 @@ public class CapabilityTests
     }
 
     [Fact]
+    public void IfcZipRoundTripsAndRefusesByCode()
+    {
+        using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.File));
+        var zipped = model.WriteIfcZip();
+        Assert.True(zipped.Length > 4 && zipped[0] == 0x50 && zipped[1] == 0x4b && zipped[2] == 0x03 && zipped[3] == 0x04);
+        using var back = IfcModel.Parse(zipped);
+        Assert.Equal(model.Write(), back.Write());
+        using var fromXml = IfcModel.Parse(model.WriteIfcZip("ifcxml"));
+        Assert.Equal(model.Attributes(1), fromXml.Attributes(1));
+
+        Assert.Equal("invalid-value", Assert.Throws<IfcException>(() => model.WriteIfcZip("json")).Code);
+        var empty = new byte[22];
+        new byte[] { 0x50, 0x4b, 0x05, 0x06 }.CopyTo(empty, 0);
+        Assert.Equal("parse", Assert.Throws<IfcException>(() => IfcModel.Parse(empty)).Code);
+    }
+
+    [Fact]
     public void AWallWithoutRepresentationIsNotUnreachable()
     {
         using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.File));

@@ -26,6 +26,17 @@ pub fn codecs() -> Vec<Box<dyn Codec>> {
     out.push(Box::new(ifc_step::StepCodec));
     #[cfg(feature = "ifcxml")]
     out.push(Box::new(ifc_xml::XmlCodec::default()));
+    // ifcZIP writes STEP when the build has it, else ifcXML.
+    #[cfg(all(feature = "zip", feature = "step"))]
+    out.push(Box::new(crate::ifczip::IfcZipCodec::default()));
+    #[cfg(all(feature = "zip", not(feature = "step"), feature = "ifcxml"))]
+    out.push(Box::new(
+        crate::ifczip::IfcZipCodec::wrapping(
+            ifc_xml::XmlCodec::default(),
+            crate::ifczip::InnerFormat::IfcXml.default_entry_name(),
+        )
+        .expect("the default entry name is a model entry"),
+    ));
     out
 }
 
@@ -35,11 +46,23 @@ pub fn codecs() -> Vec<Box<dyn Codec>> {
 /// lazily loaded model decodes from it for its whole lifetime. The mapped
 /// read is `ifc_step::StepReader::read_path_mapped`, an `unsafe` opt-in.
 ///
+/// An ifcZIP archive (feature `zip`) is recognized by its signature and
+/// read within the default [`Budget`](crate::ifczip::Budget); its typed
+/// refusals arrive as [`ModelError::WrongFormat`] naming ifcZIP
+/// ([`ifczip::read`](crate::ifczip::read) returns them typed).
+///
 /// Returns [`ModelError::WrongFormat`] when no compiled-in codec recognizes the
 /// input, which is a more useful failure than a syntax error from the wrong
 /// parser.
 pub fn read_path(path: &std::path::Path) -> Result<Model, ModelError> {
     let bytes = std::fs::read(path).map_err(|e| ModelError::Io(e.to_string()))?;
+    #[cfg(not(feature = "zip"))]
+    if crate::ifczip::is_zip(&bytes) {
+        return Err(ModelError::WrongFormat {
+            expected: "IFC",
+            detail: "an ifcZIP archive, and this build leaves out the `zip` feature".to_owned(),
+        });
+    }
     let extension = path
         .extension()
         .and_then(|e| e.to_str())

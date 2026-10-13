@@ -59,7 +59,9 @@ impl IfcModel {
         IfcModel(Core::empty())
     }
 
-    /// Parse a STEP (`.ifc`) file from its bytes.
+    /// Parse a STEP (`.ifc`) file from its bytes, or an ifcZIP archive
+    /// holding STEP or ifcXML, recognized by its ZIP signature and read
+    /// within a decompression budget (`budget-exceeded` past it).
     #[wasm_bindgen(js_name = parse)]
     pub fn parse_js(bytes: &[u8]) -> Result<IfcModel, JsValue> {
         Core::parse(bytes).map(IfcModel).map_err(js_error)
@@ -103,6 +105,24 @@ impl IfcModel {
         Ok(Uint8Array::from(
             self.0
                 .write_ifcxml(profile.as_deref())
+                .map_err(js_error)?
+                .as_slice(),
+        ))
+    }
+
+    /// Serialize as ifcZIP bytes: one Deflate entry holding STEP
+    /// (`model.ifc`), or with `inner` `"ifcxml"` ifcXML (`model.ifcXML`)
+    /// in the layout `profile` names, as for `writeIfcXml`. `parse` reads
+    /// it back.
+    #[wasm_bindgen(js_name = writeIfcZip)]
+    pub fn write_ifczip_js(
+        &self,
+        inner: Option<String>,
+        profile: Option<String>,
+    ) -> Result<Uint8Array, JsValue> {
+        Ok(Uint8Array::from(
+            self.0
+                .write_ifczip(inner.as_deref(), profile.as_deref())
                 .map_err(js_error)?
                 .as_slice(),
         ))
