@@ -37,7 +37,7 @@ use ifc_geometry::{
 };
 use ifc_model::{EntityId, Model};
 
-use crate::product_colour::{ColourError, ColourResolver, SurfaceColour};
+use super::colour::{ColourError, ColourResolver, SurfaceColour};
 
 /// One product's Body as triangles.
 #[derive(Debug, Clone, PartialEq)]

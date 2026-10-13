@@ -250,20 +250,12 @@ pub use ifc_geometry::{product_world_transform, products_world_transforms};
 // Each product's world placement and selected Body representation, as one
 // answer per product, and, with `mesh`, its triangles through the
 // reference backend (#328, ADR 0021): the language bindings' geometry. The
-// module gates itself on `geometry-select` with an inner `#![cfg]`, and
-// its `mesh` submodule on `mesh` (it links an execution provider, ADR 0004).
+// module gates itself on `geometry-select` with an inner `#![cfg]`, its
+// `mesh` submodule on `mesh` (it links an execution provider, ADR 0004),
+// and its `colour` submodule (#449) on `colour`.
 mod product_geometry;
 #[cfg(feature = "geometry-select")]
 pub use product_geometry::*;
-
-// The surface colour of each product's Body (#449): item style, then
-// presentation layer, then the material's styled representation. The
-// module gates itself on `colour` with an inner `#![cfg]`.
-mod product_colour;
-#[cfg(feature = "colour")]
-pub use product_colour::{
-    product_colours, ColourError, ColourResolver, ColourSource, SurfaceColour,
-};
 
 /// How a product's body is modelled: its representation kind and, for swept
 /// solids, the profile parameters, direction and depth in SI and world

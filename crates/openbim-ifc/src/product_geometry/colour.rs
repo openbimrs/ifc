@@ -51,7 +51,7 @@
 //!
 //! # One colour per product
 //!
-//! A mesh is one triangle soup per product ([`crate::product_meshes`]), so
+//! A mesh is one triangle soup per product (`product_meshes`), so
 //! the product's colour is the colour its items agree on.
 //! [`ColourResolver::item_colours`] gives every item's; items that differ
 //! (one painted, one not, or two colours) are
