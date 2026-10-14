@@ -594,6 +594,64 @@ removal; the same call with buffers large enough does, unless
 [binding page](/bindings/c#removing-products-and-purging) lists what the
 cascade removes and keeps.
 
+## Assign a type and propagate it
+
+Door 1 typed again by its door type, with the type's representation map
+mapped onto it, and Wall B moved into the building, from
+`test/fixtures/synthetic-relations/cascade_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-c-assign-type -->
+
+```c
+/* Door 1 (#100) typed again by D-90 (#111) with replace: what the old
+ * assignment mapped is taken back, the type's representation map is
+ * mapped afresh, and PredefinedType is left to the type. Wall B (#40)
+ * moves into the building (#13). One batch: both, or neither. */
+static Builder b;
+memset(&b, 0, sizeof b);
+b_list(&b, 2);
+b_op(&b, "ASSIGN_TYPE", 5);
+b_text(&b, "type_object");
+b_ref(&b, 111);
+b_text(&b, "objects");
+b_list(&b, 1);
+b_ref(&b, 100);
+b_text(&b, "map_representations"); /* also: material_usage, mapping_target */
+b_bool(&b, 1);
+b_text(&b, "predefined_type"); /* "ignore" (default), "validate" or "sync" */
+b_text(&b, "sync");
+b_text(&b, "replace");
+b_bool(&b, 1);
+b_op(&b, "CONTAIN", 3);
+b_text(&b, "structure");
+b_ref(&b, 13);
+b_text(&b, "elements");
+b_list(&b, 1);
+b_ref(&b, 40);
+b_text(&b, "replace");
+b_bool(&b, 1);
+uint64_t ids[2];
+size_t count = 0;
+if (openbim_ifc_v0_1_model_author(model, b.nodes, b.count, (const uint8_t *)b.strings, b.len, ids,
+                                  2, &count) != OPENBIM_IFC_STATUS_OK) {
+  print_error(model); /* without replace: INVALID_MODEL, both are related already */
+  return 1;
+}
+```
+
+<!-- /SNIPPET -->
+
+The type assignment takes `map_representations`, `mapping_target`, `material_usage`, `layer_set_direction`, `predefined_type` and `replace` (flags are `BOOL` nodes). Every option is off by default: the
+operation then writes only the `IfcRelDefinesByType` and refuses an object
+that already has a type (`invalid-model`). With `replace` set the previous
+type is unassigned and the representations and material usage it
+propagated are removed with what only they use; `CONTAIN` and `AGGREGATE` take the
+same flag. `material_usage` derives an `IfcMaterialLayerSetUsage` (walls
+`AXIS2`, slabs and plates `AXIS3`, `POSITIVE`, offset 0) or an
+`IfcMaterialProfileSetUsage` from the type's set; `predefined_type` `"validate"` refuses an
+object whose own `PredefinedType` contradicts the type's. The
+[binding page](/bindings/c#assigning-types) lists the rules.
+
 ## Create a model
 
 Values passed in are tapes too; this builder writes them:
@@ -629,6 +687,7 @@ static void b_text(Builder *b, const char *s) { b_node(b, OPENBIM_IFC_KIND_TEXT,
 static void b_enum(Builder *b, const char *s) { b_node(b, OPENBIM_IFC_KIND_ENUM, 0, 0, 0, s); }
 static void b_ref(Builder *b, uint64_t id) { b_node(b, OPENBIM_IFC_KIND_REF, 0, (int64_t)id, 0, NULL); }
 static void b_real(Builder *b, double v) { b_node(b, OPENBIM_IFC_KIND_REAL, 0, 0, v, NULL); }
+static void b_bool(Builder *b, int v) { b_node(b, OPENBIM_IFC_KIND_BOOL, 0, v != 0, 0, NULL); }
 /* An authoring operation: a LIST of its ENUM name, then `fields` (TEXT name, value) pairs. */
 static void b_op(Builder *b, const char *op, uint32_t fields) {
   b_list(b, 1 + 2 * fields);

@@ -122,6 +122,12 @@ fn field_value(kind: FieldKind, value: &Bound<'_, PyAny>) -> Result<Tagged, Stri
                 .collect::<Result<_, _>>()?,
         ),
         FieldKind::Integer => Tagged::Integer(integer(value)?),
+        FieldKind::Bool => Tagged::Bool(
+            value
+                .cast::<PyBool>()
+                .map(|flag| flag.is_true())
+                .map_err(|_| "must be a bool")?,
+        ),
         FieldKind::Attributes => attributes(value).map_err(|error| error.to_string())?,
         _ => return Err("is of a kind this build does not read".into()),
     })

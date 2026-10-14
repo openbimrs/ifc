@@ -304,6 +304,38 @@ class Cookbook(unittest.TestCase):
         self.assertEqual(model.dangling_references(), [])
         self.assertEqual(len(printed[3]), 3)
 
+    def test_assign_type_with_propagation(self) -> None:
+        model = openbim_ifc.open(CASCADE)
+        printed: List[Any] = []
+        print = printed.append  # noqa: A001
+        # docs:snippet cookbook-py-assign-type
+        from openbim_ifc import AuthorOp, Text, handle
+
+        # Door 1 (#100) typed again by D-90 (#111) with replace: what the
+        # old assignment mapped is taken back, the type's representation
+        # map is mapped afresh, and PredefinedType is left to the type.
+        model.author([
+            AuthorOp.assign_type(
+                111, [100], map_representations=True, predefined_type="sync", replace=True
+            )
+        ])
+        # A new door, typed the same way in the batch that creates it.
+        result = model.author([
+            AuthorOp.product("IfcDoor", {"Name": Text("Door 2")}, container=14),
+            AuthorOp.assign_type(111, [handle(0)], map_representations=True),
+        ])
+        body = model[result.ids[0]].Representation.Representations[0]
+        print(body.RepresentationType)  # 'MappedRepresentation'
+        # Wall B (#40) moves into the building (#13); without replace the
+        # second containment is refused with invalid-model.
+        model.author([AuthorOp.contain(13, [40], replace=True)])
+        # docs:end
+        self.assertEqual(printed, ["MappedRepresentation"])
+        self.assertIsNone(model[100].PredefinedType)
+        self.assertEqual(model.dangling_references(), [])
+        report = model.validate()
+        self.assertEqual(report.errors, 0, report.findings)
+
     def test_create(self) -> None:
         # docs:snippet cookbook-py-create
         from openbim_ifc import AuthorOp, Header, Text, handle

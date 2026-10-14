@@ -678,25 +678,80 @@ class AuthorOp:
 
     @classmethod
     def assign_type(
-        cls, type_object: int, objects: Sequence[int], *, owner_history: Optional[int] = None
+        cls,
+        type_object: int,
+        objects: Sequence[int],
+        *,
+        owner_history: Optional[int] = None,
+        map_representations: bool = False,
+        mapping_target: Optional[int] = None,
+        material_usage: bool = False,
+        layer_set_direction: Optional[str] = None,
+        predefined_type: Optional[str] = None,
+        replace: bool = False,
     ) -> "AuthorOp":
-        """``IfcRelDefinesByType``; an object already typed is refused."""
-        return cls._of("assign_type", type_object=type_object, objects=list(objects), owner_history=owner_history)
+        """``IfcRelDefinesByType``; an object already typed is refused
+        unless ``replace``.
+
+        With ``map_representations`` the type's ``RepresentationMaps`` are
+        mapped onto each object (``IfcMappedItem`` through
+        ``mapping_target`` or an identity operator); with
+        ``material_usage`` a layer or profile set usage is derived from the
+        type's set (``layer_set_direction`` ``"AXIS1"``..``"AXIS3"``
+        overrides the class default); ``predefined_type`` is ``"ignore"``
+        (default), ``"validate"`` or ``"sync"``. ``replace`` unassigns the
+        previous type and removes what it propagated (#480)."""
+        return cls._of(
+            "assign_type",
+            type_object=type_object,
+            objects=list(objects),
+            owner_history=owner_history,
+            map_representations=map_representations,
+            mapping_target=mapping_target,
+            material_usage=material_usage,
+            layer_set_direction=layer_set_direction,
+            predefined_type=predefined_type,
+            replace=replace,
+        )
 
     @classmethod
     def contain(
-        cls, structure: int, elements: Sequence[int], *, owner_history: Optional[int] = None
+        cls,
+        structure: int,
+        elements: Sequence[int],
+        *,
+        owner_history: Optional[int] = None,
+        replace: bool = False,
     ) -> "AuthorOp":
         """``IfcRelContainedInSpatialStructure``; an element already
-        contained is refused."""
-        return cls._of("contain", structure=structure, elements=list(elements), owner_history=owner_history)
+        contained is refused unless ``replace``, which moves it out of
+        its previous container."""
+        return cls._of(
+            "contain",
+            structure=structure,
+            elements=list(elements),
+            owner_history=owner_history,
+            replace=replace,
+        )
 
     @classmethod
     def aggregate(
-        cls, parent: int, parts: Sequence[int], *, owner_history: Optional[int] = None
+        cls,
+        parent: int,
+        parts: Sequence[int],
+        *,
+        owner_history: Optional[int] = None,
+        replace: bool = False,
     ) -> "AuthorOp":
-        """``IfcRelAggregates``; a part already aggregated is refused."""
-        return cls._of("aggregate", parent=parent, parts=list(parts), owner_history=owner_history)
+        """``IfcRelAggregates``; a part already aggregated is refused
+        unless ``replace``, which moves it out of its previous whole."""
+        return cls._of(
+            "aggregate",
+            parent=parent,
+            parts=list(parts),
+            owner_history=owner_history,
+            replace=replace,
+        )
 
     @classmethod
     def placement(

@@ -82,6 +82,8 @@ pub use xml::*;
 /// no Rust allocation crosses the ABI, so the host never frees one. See
 /// #49 for the measurements.
 #[cfg(test)]
+mod authoring_tests;
+#[cfg(test)]
 mod capability_tests;
 #[cfg(test)]
 mod domain_tests;

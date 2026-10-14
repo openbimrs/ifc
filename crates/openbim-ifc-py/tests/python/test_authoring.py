@@ -192,5 +192,77 @@ class Authoring(unittest.TestCase):
             handle(-1)
 
 
+    def test_assign_type_propagates_and_replaces(self):
+        # #480: map the type's representation, derive the layer set usage,
+        # sync PredefinedType, replace the previous type and container.
+        model = empty_model()
+        ids = building(model)
+        context, building_id, storey, wall_type, wall = ids[4], ids[9], ids[11], ids[12], ids[14]
+        h = handle
+        ops = [
+            AuthorOp.create("IfcCartesianPoint", {"Coordinates": reals(0.0, 0.0, 0.0)}),  # 0
+            AuthorOp.create("IfcAxis2Placement3D", {"Location": Ref(h(0))}),  # 1
+            AuthorOp.create(
+                "IfcBoundingBox",
+                {"Corner": Ref(h(0)), "XDim": Real(5.0), "YDim": Real(0.2), "ZDim": Real(3.0)},
+            ),  # 2
+            AuthorOp.create(
+                "IfcShapeRepresentation",
+                {
+                    "ContextOfItems": Ref(context),
+                    "RepresentationIdentifier": Text("Body"),
+                    "RepresentationType": Text("BoundingBox"),
+                    "Items": List((Ref(h(2)),)),
+                },
+            ),  # 3
+            AuthorOp.create(
+                "IfcRepresentationMap", {"MappingOrigin": Ref(h(1)), "MappedRepresentation": Ref(h(3))}
+            ),  # 4
+            AuthorOp.create("IfcMaterial", {"Name": Text("Concrete")}),  # 5
+            AuthorOp.create("IfcMaterialLayer", {"Material": Ref(h(5)), "LayerThickness": Real(0.2)}),  # 6
+            AuthorOp.create("IfcMaterialLayerSet", {"MaterialLayers": List((Ref(h(6)),))}),  # 7
+            AuthorOp.type_object(
+                "IfcWallType",
+                {"PredefinedType": Enum("SOLIDWALL"), "RepresentationMaps": List((Ref(h(4)),))},
+            ),  # 8
+            AuthorOp.create(
+                "IfcRelAssociatesMaterial",
+                {"RelatedObjects": List((Ref(h(8)),)), "RelatingMaterial": Ref(h(7))},
+            ),  # 9
+            AuthorOp.spatial("IfcBuildingStorey", building_id, {"Name": Text("Level 1")}),  # 10
+        ]
+        added = model.author(ops).ids
+        new_type, level_1 = added[8], added[10]
+        # Refused by default: the wall is already typed and contained.
+        self.assert_code("invalid-model", model.author, [AuthorOp.assign_type(new_type, [wall])])
+        self.assert_code("invalid-model", model.author, [AuthorOp.contain(level_1, [wall])])
+        self.assert_code(
+            "invalid-value",
+            model.author,
+            [AuthorOp.assign_type(new_type, [wall], replace=True, predefined_type="always")],
+        )
+        model.author(
+            [
+                AuthorOp.assign_type(
+                    new_type,
+                    [wall],
+                    map_representations=True,
+                    material_usage=True,
+                    predefined_type="sync",
+                    replace=True,
+                ),
+                AuthorOp.contain(level_1, [wall], replace=True),
+            ]
+        )
+        self.assertEqual(model.type_object(wall), new_type)
+        self.assertNotEqual(wall_type, new_type)
+        representation = model[wall].Representation.Representations[0]
+        self.assertEqual(representation.RepresentationType, "MappedRepresentation")
+        self.assertEqual(representation.Items[0].MappingSource.id, added[4])
+        report = model.validate()
+        self.assertEqual(report.errors + report.evaluation_errors, 0, report.findings)
+        self.assertNotEqual(storey, level_1)
+
+
 if __name__ == "__main__":
     unittest.main()
