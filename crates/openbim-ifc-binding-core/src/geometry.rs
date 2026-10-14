@@ -218,7 +218,7 @@ impl IfcModel {
 }
 
 /// The selector purpose a host names, or `invalid-value`.
-#[cfg(feature = "placements")]
+#[cfg(feature = "mesh")]
 fn purpose(name: &str) -> Result<ifc::RepresentationPurpose, BindingError> {
     ifc::RepresentationPurpose::from_name(name).ok_or_else(|| {
         BindingError::InvalidValue(format!(

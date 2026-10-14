@@ -24,10 +24,8 @@ Documentation: [JavaScript guide](https://openbimrs.github.io/ifc/bindings/javas
   replace the STEP header, validate against the declared schema, read and
   write ifcXML (lossless or the buildingSMART XSD layout), list products
   no viewer will draw, and place each product (`productPlacements`).
-- Mesh each product (`productMeshes`), read its curves as polylines with
-  a certified chord bound (`productCurves`, #458) or its exact Axiolid
-  graph (`productGeometry`, #367) from the mesh entry, `@openbim/ifc/mesh`
-  (#369).
+- Mesh (`productMeshes`), polyline (`productCurves`, #458) or read the exact
+  graph (`productGeometry`, #367) of each product from `@openbim/ifc/mesh`.
 - Read the domain views as snapshot objects: property sets and quantities
   with type inheritance (`propertySets`, `resolveUnit`), the spatial tree,
   classifications, materials, systems, cost and georeferencing (#123).
