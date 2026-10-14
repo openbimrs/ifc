@@ -11,7 +11,7 @@ Schema-checked IFC authoring: construct entities by attribute name with arity an
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.1 (2026-10-04) |
+| Latest release | 0.3.2 (2026-10-14) |
 | Registries | [crates.io `ifc-author`](https://crates.io/crates/ifc-author) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `authoring` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_author/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-author) |
@@ -28,15 +28,17 @@ Schema-checked IFC authoring: construct entities by attribute name with arity an
 
 ## Changes
 
-Latest release, 0.3.1 (2026-10-04):
+Latest release, 0.3.2 (2026-10-14):
 
-### Fixed (#330)
+### Fixed (#481)
 
-- A built-in type with a width (`STRING(255)`, `STRING(22) FIXED`,
-  `BINARY(32)`) is the shape of its keyword. IFC4 and IFC4X3 declare
-  `IfcLabel = STRING(255)`, so a number set as an `IfcLabel` was accepted
-  as unresolvable; it is now refused with `TypeMismatch`, as a number
-  where a bare `STRING` is declared always was. A bug fix: a patch
-  release.
+- `EntityBuilder` checks a nested aggregate (`LIST [1:?] OF LIST [3:3] OF
+  IfcLengthMeasure`, as `IfcCartesianPointList3D.CoordList` and
+  `IfcTriangulatedFaceSet.CoordIndex` declare) at its elements, level by
+  level, instead of refusing the inner lists as values of the element
+  type; a level that should hold aggregates and holds a scalar is
+  `AggregateMismatch`.
+
+Semver: patch.
 
 Full history: [`crates/ifc-author/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-author/CHANGELOG.md)
