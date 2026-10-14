@@ -242,12 +242,27 @@ pub(crate) fn check_value(
     //
     // The first refused item is the one reported; a wrong type is reported
     // before a wrong form, since rewrapping would not fix it.
+    //
+    // A nested aggregate (`LIST [1:?] OF LIST [3:3] OF IfcLengthMeasure`) is
+    // walked level by level down to its elements; a level that should hold
+    // aggregates and holds a scalar is a shape mismatch.
     let element_type = aliased.as_deref().unwrap_or(&attribute.type_name);
     let verdicts: Vec<(Verdict, &Value)> = match value {
-        Value::List(items) => items
-            .iter()
-            .map(|item| (judge_value(schema, element_type, item), item))
-            .collect(),
+        Value::List(_) => {
+            let mut elements = Vec::new();
+            let levels = attribute.aggregation.len().max(1);
+            if !elements_at(value, levels, &mut elements) {
+                return Err(AuthorError::AggregateMismatch {
+                    entity: entity.to_owned(),
+                    attribute: attribute.name.clone(),
+                    expected_aggregate: true,
+                });
+            }
+            elements
+                .into_iter()
+                .map(|item| (judge_value(schema, element_type, item), item))
+                .collect()
+        }
         scalar => vec![(judge_value(schema, &attribute.type_name, scalar), scalar)],
     };
     if verdicts
@@ -274,4 +289,19 @@ pub(crate) fn check_value(
         });
     }
     Ok(())
+}
+
+/// Collect the elements of `value`, an aggregate of `levels` nested levels;
+/// `false` when a level that should hold aggregates holds a scalar.
+fn elements_at<'v>(value: &'v Value, levels: usize, out: &mut Vec<&'v Value>) -> bool {
+    match value {
+        Value::List(items) if levels > 0 => {
+            items.iter().all(|item| elements_at(item, levels - 1, out))
+        }
+        _ if levels == 0 => {
+            out.push(value);
+            true
+        }
+        _ => false,
+    }
 }
