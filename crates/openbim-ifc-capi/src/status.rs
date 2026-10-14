@@ -257,6 +257,8 @@ mod tests {
                     span: (0, 0),
                 },
                 OpenbimIfcStatus::InvalidSelector,
+            ),
+            (
                 BindingError::InverseAttribute(String::new()),
                 OpenbimIfcStatus::InverseAttribute,
             ),
