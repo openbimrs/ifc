@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.26.1] - 2026-10-14
+
 ### Changed (#443, stations along offset runs compile through the reference kernel)
 
 Semver: patch. No public item, refusal kind, refusal text or lowered graph
@@ -2060,7 +2062,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.26.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.26.1...HEAD
+[0.26.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.26.1
 [0.26.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.26.0
 [0.25.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.25.1
 [0.25.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.25.0
