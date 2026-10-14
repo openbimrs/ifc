@@ -31,6 +31,8 @@ pub fn compiled_features() -> Vec<&'static str> {
     features.push("ifc4x3");
     #[cfg(feature = "properties")]
     features.push("properties");
+    #[cfg(feature = "selector")]
+    features.push("selector");
     #[cfg(feature = "property-catalog")]
     features.push("property-catalog");
     #[cfg(feature = "property-catalog-runtime")]
