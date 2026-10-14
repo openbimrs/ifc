@@ -371,6 +371,48 @@ test("assign a type with propagation, and move an element", () => {
   assert.equal(model.validate().errors, 0);
 });
 
+test("assemble, assign, copy and remove representations", () => {
+  const model = IfcModel.parse(readFileSync(CASCADE));
+  const printed = [];
+  const log = (...values) => printed.push(values);
+  // docs:snippet cookbook-js-representation
+  const h = IfcModel.handle; // h(i): the entity operation i of the batch produces
+  const ref = (id) => ({ kind: "ref", id });
+  const real = (value) => ({ kind: "real", value });
+  const result = model.author([
+    // The items first: a profile swept 1 m up, through the generic create.
+    { op: "create", type: "IfcCartesianPoint", attributes: { Coordinates: { kind: "list", items: [real(0.6), real(0.05)] } } },
+    { op: "create", type: "IfcAxis2Placement2D", attributes: { Location: ref(h(0)) } },
+    {
+      op: "create",
+      type: "IfcRectangleProfileDef",
+      attributes: { ProfileType: { kind: "enum", value: "AREA" }, Position: ref(h(1)), XDim: real(1.2), YDim: real(0.1) },
+    },
+    {
+      op: "create",
+      type: "IfcExtrudedAreaSolid",
+      attributes: { SweptArea: ref(h(2)), Position: ref(9n), ExtrudedDirection: ref(31n), Depth: real(1) },
+    },
+    // Context #11 is the 'Body' sub-context: the identifier is 'Body', and
+    // the type is inferred from the item.
+    { op: "shapeRepresentation", context: 11n, items: [h(3)] }, // 4
+    { op: "assignRepresentation", representation: h(4), to: 130n }, // 5: window #130's shape
+    // Wall #20's body swapped for a copy of wall #40's.
+    { op: "copyRepresentation", representation: 45n }, // 6
+    { op: "unassignRepresentation", representation: 25n, from: 20n },
+    { op: "removeRepresentation", representation: 25n },
+    { op: "assignRepresentation", representation: h(6), to: 20n },
+  ]);
+  log(model.attributeByName(result.ids[4], "RepresentationType").value); // "SweptSolid"
+  // One alone, with a report of what went and what stayed:
+  const report = model.removeRepresentation(105n, { dryRun: true }); // the door's body
+  log(report.removed.map((entity) => entity.id)); // [104n, 105n, 106n, 107n, 108n]
+  // docs:end
+  assert.deepEqual(printed[0], ["SweptSolid"]);
+  assert.deepEqual(printed[1], [[104n, 105n, 106n, 107n, 108n]]);
+  assert.deepEqual(model.danglingReferences(), []);
+});
+
 test("create a model from nothing", () => {
   // docs:snippet cookbook-js-create
   const model = new IfcModel();

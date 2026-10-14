@@ -202,6 +202,64 @@ pub enum AuthoringFailure {
     },
     /// The planned transaction failed its preflight.
     Conflict(Vec<Conflict>),
+    /// Items a shape representation's `RepresentationType` does not admit,
+    /// by the declared release's `IfcShapeRepresentationTypes`
+    /// (`CorrectItemsForType`, IFC2X3 `WR24`).
+    RepresentationTypeMismatch {
+        /// The type as given.
+        representation_type: String,
+        /// The items it does not admit; every item for a `BoundingBox`
+        /// of more than one.
+        items: Vec<EntityId>,
+        /// What the type admits.
+        expected: String,
+    },
+    /// No `RepresentationType` the declared release lists admits every
+    /// item, so none can be inferred; name one, or split the items.
+    NoRepresentationType {
+        /// The items.
+        items: Vec<EntityId>,
+    },
+    /// Checking the items against the `RepresentationType` needs a
+    /// dimension (`IfcCurve.Dim`) the release derives in a way the batch
+    /// does not read; refused rather than assumed.
+    UndecidableRepresentationType {
+        /// The type as given.
+        representation_type: String,
+        /// The item whose dimension is not known.
+        item: EntityId,
+    },
+    /// IFC4 and later require a shape representation's
+    /// `RepresentationIdentifier` (`HasRepresentationIdentifier`), and none
+    /// was given nor does the context carry a `ContextIdentifier`.
+    MissingRepresentationIdentifier {
+        /// The representation context.
+        context: EntityId,
+    },
+    /// An item a shape representation cannot hold: a topological item
+    /// other than a vertex point, edge curve or face surface
+    /// (`NoTopologicalItem`).
+    InvalidRepresentationItem {
+        /// The item.
+        item: EntityId,
+        /// What is wrong.
+        detail: String,
+    },
+    /// The product's `IfcProductDefinitionShape` is shared with other
+    /// products; changing it would change their shape too.
+    SharedProductShape {
+        /// The product definition shape.
+        shape: EntityId,
+        /// Every product it is the shape of.
+        products: Vec<EntityId>,
+    },
+    /// The representation is not assigned to that product or type.
+    NotAssigned {
+        /// The representation.
+        representation: EntityId,
+        /// The product or type.
+        to: EntityId,
+    },
 }
 
 impl AuthoringError {
@@ -323,6 +381,46 @@ impl fmt::Display for AuthoringFailure {
                 f,
                 "the planned transaction failed its preflight: {conflicts:?}"
             ),
+            Self::RepresentationTypeMismatch {
+                representation_type,
+                items,
+                expected,
+            } => write!(
+                f,
+                "RepresentationType '{representation_type}' does not admit {} \
+                 (CorrectItemsForType); it admits {expected}",
+                ids(items)
+            ),
+            Self::NoRepresentationType { items } => write!(
+                f,
+                "no RepresentationType of the release admits every item ({}); name one",
+                ids(items)
+            ),
+            Self::UndecidableRepresentationType {
+                representation_type,
+                item,
+            } => write!(
+                f,
+                "cannot check RepresentationType '{representation_type}': \
+                 the dimension of {item} is not derivable here"
+            ),
+            Self::MissingRepresentationIdentifier { context } => write!(
+                f,
+                "a shape representation needs a RepresentationIdentifier \
+                 (HasRepresentationIdentifier), and context {context} has no ContextIdentifier"
+            ),
+            Self::InvalidRepresentationItem { item, detail } => {
+                write!(f, "representation item {item}: {detail}")
+            }
+            Self::SharedProductShape { shape, products } => write!(
+                f,
+                "product definition shape {shape} is shared by {}; \
+                 changing it would change them all",
+                ids(products)
+            ),
+            Self::NotAssigned { representation, to } => {
+                write!(f, "representation {representation} is not assigned to {to}")
+            }
         }
     }
 }

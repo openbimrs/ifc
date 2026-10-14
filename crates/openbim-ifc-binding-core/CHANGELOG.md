@@ -8,6 +8,21 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#481, shape representations)
+
+- Batch operations `shape_representation` (`context`, `items`,
+  `identifier`, `representation_type`), `assign_representation`
+  (`representation`, `to`), `unassign_representation` (`representation`,
+  `from`), `copy_representation` and `remove_representation`
+  (`representation`) in `OPS`, read into the facade's operations.
+- `IfcModel::remove_representation(id, dry_run)` returning the
+  `RemovalReport` record.
+- Refusal codes: `invalid-value` for a representation type the items do not
+  fit, items no type fits, a missing identifier or a topological item;
+  `invalid-model` for a representation already used, a shared product shape
+  or a representation not assigned where it is unassigned from;
+  `unsupported` for a type check needing an underivable curve dimension.
+
 ### Added (#464, selectors and values by path)
 
 - `IfcModel::select(query)`, `select_from(query, base)`,

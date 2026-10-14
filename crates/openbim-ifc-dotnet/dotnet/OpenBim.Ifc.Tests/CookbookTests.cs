@@ -497,6 +497,51 @@ public class CookbookTests
     }
 
     [Fact]
+    public void AssembleAssignCopyAndRemoveRepresentations()
+    {
+        using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.CascadeIfc4));
+        // docs:snippet cookbook-dotnet-representation
+        static ulong H(int index) => IfcModel.Handle(index); // the entity operation i of the batch produces
+        var ids = model.Author(new[]
+        {
+            // The items first: a profile swept 1 m up, through the generic create.
+            AuthorOp.Create("IfcCartesianPoint", new Dictionary<string, Value> { ["Coordinates"] = new Value.List(new Value.Real(0.6), new Value.Real(0.05)) }),
+            AuthorOp.Create("IfcAxis2Placement2D", new Dictionary<string, Value> { ["Location"] = new Value.Ref(H(0)) }),
+            AuthorOp.Create("IfcRectangleProfileDef", new Dictionary<string, Value>
+            {
+                ["ProfileType"] = new Value.Enum("AREA"),
+                ["Position"] = new Value.Ref(H(1)),
+                ["XDim"] = new Value.Real(1.2),
+                ["YDim"] = new Value.Real(0.1),
+            }),
+            AuthorOp.Create("IfcExtrudedAreaSolid", new Dictionary<string, Value>
+            {
+                ["SweptArea"] = new Value.Ref(H(2)),
+                ["Position"] = new Value.Ref(9),
+                ["ExtrudedDirection"] = new Value.Ref(31),
+                ["Depth"] = new Value.Real(1.0),
+            }),
+            // Context #11 is the 'Body' sub-context: the identifier is 'Body',
+            // and the type is inferred from the item.
+            AuthorOp.ShapeRepresentation(11, new[] { H(3) }), // 4
+            AuthorOp.AssignRepresentation(H(4), 130), // 5: window #130's shape
+            // Wall #20's body swapped for a copy of wall #40's.
+            AuthorOp.CopyRepresentation(45), // 6
+            AuthorOp.UnassignRepresentation(25, 20),
+            AuthorOp.RemoveRepresentation(25),
+            AuthorOp.AssignRepresentation(H(6), 20),
+        });
+        var type = model.AttributeByName(ids[4]!.Value, "RepresentationType"); // SweptSolid
+        // One alone, with a report of what went and what stayed:
+        RemovalReport report = model.RemoveRepresentation(105, dryRun: true); // the door's body
+        var removed = report.Removed.Select(entity => entity.Id); // 104, 105, 106, 107, 108
+        // docs:end
+        Assert.Equal(new Value.Text("SweptSolid"), type);
+        Assert.Equal(new[] { 104UL, 105UL, 106UL, 107UL, 108UL }, removed);
+        Assert.Empty(model.DanglingReferences());
+    }
+
+    [Fact]
     public void CreateAModelFromNothing()
     {
         // docs:snippet cookbook-dotnet-create

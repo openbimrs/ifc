@@ -769,6 +769,53 @@ class AuthorOp:
             last_modified_date=last_modified_date,
         )
 
+    @classmethod
+    def shape_representation(
+        cls,
+        context: int,
+        items: Sequence[int],
+        *,
+        identifier: Optional[str] = None,
+        representation_type: Optional[str] = None,
+    ) -> "AuthorOp":
+        """An ``IfcShapeRepresentation`` of ``items`` in ``context``,
+        unassigned. ``representation_type`` is checked against the items by
+        the release's ``CorrectItemsForType`` rule, or inferred (the most
+        specific type admitting them all); ``identifier`` defaults to the
+        context's ``ContextIdentifier``."""
+        return cls._of(
+            "shape_representation",
+            context=context,
+            items=list(items),
+            identifier=identifier,
+            representation_type=representation_type,
+        )
+
+    @classmethod
+    def assign_representation(cls, representation: int, to: int) -> "AuthorOp":
+        """Assign a shape representation to a product (its
+        ``IfcProductDefinitionShape``, created when missing) or to a type
+        (as a new ``IfcRepresentationMap``). A representation already used
+        is refused."""
+        return cls._of("assign_representation", representation=representation, to=to)
+
+    @classmethod
+    def unassign_representation(cls, representation: int, from_: int) -> "AuthorOp":
+        """Take a shape representation off a product or type; it stays,
+        unassigned, for the batch to assign elsewhere or remove."""
+        return cls._of("unassign_representation", representation=representation, **{"from": from_})
+
+    @classmethod
+    def copy_representation(cls, representation: int) -> "AuthorOp":
+        """A copy of a shape representation with copies of its items,
+        sharing its context, styles and mapped type geometry."""
+        return cls._of("copy_representation", representation=representation)
+
+    @classmethod
+    def remove_representation(cls, representation: int) -> "AuthorOp":
+        """Remove a shape representation with what only it uses."""
+        return cls._of("remove_representation", representation=representation)
+
     def _to_wire(self) -> Dict[str, Any]:
         wire: Dict[str, Any] = {"op": self.op}
         for key, value in self.fields:

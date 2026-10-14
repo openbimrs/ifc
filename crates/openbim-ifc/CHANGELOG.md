@@ -12,6 +12,47 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#481, shape representations)
+
+- `AuthorOp::ShapeRepresentation { context, items, identifier,
+  representation_type }` assembles an `IfcShapeRepresentation` of existing
+  items in a geometric representation context. A given
+  `RepresentationType` is checked against the items by the declared
+  release's `IfcShapeRepresentationTypes` (`CorrectItemsForType`, IFC2X3
+  `WR24`), transcribed per release family (IFC2X3; IFC4, IFC4X1, IFC4X2;
+  IFC4X3), with `IfcCurve.Dim` derived as `IfcCurveDim` does; without one,
+  the most specific listed type admitting every item is inferred. A label
+  the release does not list is written as given (its rule returns `?`).
+  The identifier defaults to the context's `ContextIdentifier` and is
+  required from IFC4 on (`HasRepresentationIdentifier`); `CorrectContext`
+  and `NoTopologicalItem` are checked.
+- `AuthorOp::AssignRepresentation { representation, to }`: to an
+  `IfcProduct`, appended to its `IfcProductDefinitionShape` (created when
+  missing; produces it); to an `IfcTypeProduct`, wrapped in a new
+  `IfcRepresentationMap` at the origin and appended to `RepresentationMaps`
+  (produces the map). A representation already in a product shape,
+  representation map or shape aspect is refused (`IfcShapeModel.WR11`).
+- `AuthorOp::UnassignRepresentation { representation, from }`: off the
+  product shape (an emptied one goes, with its shape aspects, and the
+  product's `Representation` is unset) or the type (its map goes with its
+  origin); the representation stays, unassigned. Reports what went.
+- `AuthorOp::CopyRepresentation { representation }`: a copy of every
+  representation item and profile definition it reaches, and of the styled
+  items and colour or texture maps attached to them; the context, styles,
+  presentation items, the type maps mapped items map and every other
+  resource are shared. The copy joins the original's layers.
+- `AuthorOp::RemoveRepresentation { representation }`: taken off its uses,
+  then removed by the #478 cascade, shared items, profiles, points and
+  styles kept and reported. `AuthoringOutcome::reports` and
+  `StagedAuthoring::reports` carry the report of an unassignment or a
+  representation removal.
+- `AuthoringFailure::RepresentationTypeMismatch`, `NoRepresentationType`,
+  `UndecidableRepresentationType`, `MissingRepresentationIdentifier`,
+  `InvalidRepresentationItem`, `SharedProductShape` and `NotAssigned`.
+
+Semver: additive (`AuthorOp` and `AuthoringFailure` are
+`#[non_exhaustive]`): minor.
+
 ### Added (#464, selector query language)
 
 - `ifc::selector` (feature `selector`; in `full`): a selector grammar,

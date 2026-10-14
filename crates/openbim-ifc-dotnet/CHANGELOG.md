@@ -9,6 +9,17 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#481, shape representations)
+
+- `AuthorOp.ShapeRepresentation(context, items, identifier, representationType)`,
+  `AuthorOp.AssignRepresentation(representation, to)`,
+  `AuthorOp.UnassignRepresentation(representation, from)`,
+  `AuthorOp.CopyRepresentation(representation)` and
+  `AuthorOp.RemoveRepresentation(representation)` for `IfcModel.Author`.
+- `IfcModel.RemoveRepresentation(id, dryRun)`, returning a
+  `RemovalReport`.
+- Requires the C ABI 0.1.15 (`openbim-ifc-capi` with #481).
+
 ### Added (#464, selectors and values by path)
 
 - `model.Select(query)`, `model.Select(query, baseIds)`,

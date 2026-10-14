@@ -33,6 +33,9 @@ END_ENTITY;
 ENTITY IfcPolyline;
   Points : LIST [2:?] OF IfcCartesianPoint;
 END_ENTITY;
+ENTITY IfcCartesianPointList3D;
+  CoordList : LIST [1:?] OF LIST [3:3] OF IfcLengthMeasure;
+END_ENTITY;
 END_SCHEMA;
 ";
 
@@ -181,6 +184,46 @@ fn a_scalar_where_an_aggregate_is_declared_is_refused() {
             ..
         }
     ));
+}
+
+/// `LIST OF LIST`: the elements are checked at the innermost level, and a
+/// level that should hold aggregates may not hold scalars.
+#[test]
+fn nested_aggregates_are_checked_at_their_elements() {
+    let schema = schema();
+    let reals = |values: &[f64]| Value::List(values.iter().copied().map(Value::Real).collect());
+    EntityBuilder::new(&schema, "IfcCartesianPointList3D")
+        .set(
+            "CoordList",
+            Value::List(vec![reals(&[0.0, 0.0, 0.0]), reals(&[1.0, 0.0, 0.0])]),
+        )
+        .build()
+        .expect("a list of coordinate triples builds");
+    let error = EntityBuilder::new(&schema, "IfcCartesianPointList3D")
+        .set("CoordList", reals(&[0.0, 0.0, 0.0]))
+        .build()
+        .expect_err("a flat list is one level short");
+    assert!(
+        matches!(
+            error,
+            AuthorError::AggregateMismatch {
+                expected_aggregate: true,
+                ..
+            }
+        ),
+        "{error:?}"
+    );
+    let error = EntityBuilder::new(&schema, "IfcCartesianPointList3D")
+        .set(
+            "CoordList",
+            Value::List(vec![Value::List(vec![Value::Text("x".into())])]),
+        )
+        .build()
+        .expect_err("a string is no length");
+    assert!(
+        matches!(error, AuthorError::TypeMismatch { .. }),
+        "{error:?}"
+    );
 }
 
 #[test]

@@ -673,6 +673,9 @@ from nothing needs a header naming its release first (`set_header`).
 | `assign_type`, `contain`, `aggregate` | one relationship; an object already related is refused unless `replace` (see [Assigning types](#assigning-types)) |
 | `placement` | an `Ifc_local_placement` over an `Ifc_axis2Placement3D` at `location`, relative to `relative_to`; `axis` and `ref_direction` both or neither |
 | `owner_history` | an `Ifc_owner_history` with its person, organization and application |
+| `shape_representation` | an `IfcShapeRepresentation` of `items` in `context`, its type checked or inferred ([below](#shape-representations)) |
+| `assign_representation`, `unassign_representation` | a shape representation on or off a product (its `IfcProductDefinitionShape`) or a type (an `IfcRepresentationMap`) |
+| `copy_representation`, `remove_representation` | a copy of a shape representation; its removal with what only it uses |
 
 Every record is built by attribute name through `ifc-author` against the
 declared release, and refused with the shared codes: a type the release does
@@ -748,6 +751,42 @@ model.author([AuthorOp.contain(13, [40], replace=True)])
 ```
 
 <!-- /SNIPPET -->
+
+## Shape representations
+
+`AuthorOp.shape_representation(context, items)` assembles an
+`IfcShapeRepresentation` of existing items (built in the same batch with
+`create`) in a geometric representation context or sub-context. Its
+`representation_type` is checked against the items by the release's
+`IfcShapeRepresentationTypes` (`CorrectItemsForType`): a mismatch, items no
+listed type admits, a topological item other than a vertex point, edge curve
+or face surface, and a missing identifier are `invalid-value`; a label the
+release does not list is written as given. Without a type the most specific
+one admitting every item is inferred: `SweptSolid` for extrusions and
+revolutions, `AdvancedSweptSolid` for other sweeps, `Brep`, `Clipping`,
+`CSG`, `Tessellation`, `Curve2D` or `Curve3D` (by the curve's dimension),
+`MappedRepresentation`, and so on (IFC2X3 lists fewer types). The
+`identifier` defaults to the context's `ContextIdentifier` (`Body` for a
+`Body` sub-context); IFC4 and IFC4X3 require one.
+
+A shape representation belongs to exactly one product definition shape,
+representation map or shape aspect (`IfcShapeModel.WR11`):
+
+- `assign_representation(representation, to)` adds it to a product's
+  `IfcProductDefinitionShape` (created when missing; one several products
+  share is refused) or wraps it in a new `IfcRepresentationMap` of a type,
+  at the origin. One already used is refused with `invalid-model`.
+- `unassign_representation(representation, from_)` takes it off again; an
+  emptied product shape, or the type's map with its origin, goes. The
+  representation stays for the batch to assign elsewhere or remove.
+- `copy_representation(representation)` copies it with every item, profile,
+  point, direction and placement it reaches, and the styled items of the
+  copied items; the context, styles, colours and the type map a mapped item
+  maps are shared. The copy joins the layers of the original.
+- `remove_representation(representation)`, and `model.remove_representation(id,
+  dry_run=False)` with its `RemovalReport`, take it off what uses it and
+  remove it with its items down to what nothing else uses, by the rules
+  below; a type map an occurrence still maps is `still-referenced`.
 
 ## Removing products and purging
 
@@ -860,6 +899,7 @@ class, record and function of the package with its docstring and types.
 | `model.remove_with_relationships(id: int) -> None` | Remove entity `id` with the relationships that reference it, leaving nothing dangling (:meth:`author` with one :meth:`AuthorOp.remove`). Raises `still-referenced` while an entity other than a relationship needs it. |
 | `model.remove_product(id: int, *, rebase_placements: bool = False, untype_occurrences: bool = False, dry_run: bool = False) -> RemovalReport` | Remove product (or type object) `id` with everything it solely owns -- its placement, representation, own property and quantity sets, material usage, openings and ports, and the relationships left without an end -- as one checked transaction. Shared data stays: a property set another object uses, a type's representation maps, a style used elsewhere. The report says what went and what stayed, and why; with `dry_run` nothing changes. |
 | `model.purge(classes: Sequence[str] = (), *, include_roots: bool = False, include_owner_history: bool = False, dry_run: bool = False) -> RemovalReport` | Remove unreferenced entities as one checked transaction; with `dry_run`, only report. |
+| `model.remove_representation(id: int, *, dry_run: bool = False) -> RemovalReport` | Remove shape representation `id` with what only it uses, as one checked transaction: it is taken off its product definition shape (which goes when left empty), representation map or shape aspects, then removed with its items down to what nothing else uses. Shared items, profiles, points and styles stay, and the report says why; with `dry_run` nothing changes. |
 | `model.dangling_references() -> List[Tuple[int, int]]` | Every `(from, to)` pair where `to` does not exist. |
 | `model.by_id(id: int) -> Entity` | Entity `#id` as an :class:`Entity`; raises :class:`openbim_ifc.IfcError` (`missing-entity`) when absent. |
 | `model.by_guid(global_id: str) -> Optional[Entity]` | The entity whose `GlobalId` is `global_id` as an :class:`Entity`, or `None`: :meth:`IfcModel.id_by_guid`. |
