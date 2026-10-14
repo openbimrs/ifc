@@ -512,6 +512,7 @@ static void b_text(Builder *b, const char *s) { b_node(b, OPENBIM_IFC_KIND_TEXT,
 static void b_enum(Builder *b, const char *s) { b_node(b, OPENBIM_IFC_KIND_ENUM, 0, 0, 0, s); }
 static void b_ref(Builder *b, uint64_t id) { b_node(b, OPENBIM_IFC_KIND_REF, 0, (int64_t)id, 0, NULL); }
 static void b_real(Builder *b, double v) { b_node(b, OPENBIM_IFC_KIND_REAL, 0, 0, v, NULL); }
+static void b_bool(Builder *b, int v) { b_node(b, OPENBIM_IFC_KIND_BOOL, 0, v != 0, 0, NULL); }
 /* An authoring operation: a LIST of its ENUM name, then `fields` (TEXT name, value) pairs. */
 static void b_op(Builder *b, const char *op, uint32_t fields) {
   b_list(b, 1 + 2 * fields);
@@ -713,6 +714,53 @@ static int recipe_remove_product(OpenbimIfcModel model) {
   return 0;
 }
 
+static int recipe_assign_type(OpenbimIfcModel model) {
+  // docs:snippet cookbook-c-assign-type
+  /* Door 1 (#100) typed again by D-90 (#111) with replace: what the old
+   * assignment mapped is taken back, the type's representation map is
+   * mapped afresh, and PredefinedType is left to the type. Wall B (#40)
+   * moves into the building (#13). One batch: both, or neither. */
+  static Builder b;
+  memset(&b, 0, sizeof b);
+  b_list(&b, 2);
+  b_op(&b, "ASSIGN_TYPE", 5);
+  b_text(&b, "type_object");
+  b_ref(&b, 111);
+  b_text(&b, "objects");
+  b_list(&b, 1);
+  b_ref(&b, 100);
+  b_text(&b, "map_representations"); /* also: material_usage, mapping_target */
+  b_bool(&b, 1);
+  b_text(&b, "predefined_type"); /* "ignore" (default), "validate" or "sync" */
+  b_text(&b, "sync");
+  b_text(&b, "replace");
+  b_bool(&b, 1);
+  b_op(&b, "CONTAIN", 3);
+  b_text(&b, "structure");
+  b_ref(&b, 13);
+  b_text(&b, "elements");
+  b_list(&b, 1);
+  b_ref(&b, 40);
+  b_text(&b, "replace");
+  b_bool(&b, 1);
+  uint64_t ids[2];
+  size_t count = 0;
+  if (openbim_ifc_v0_1_model_author(model, b.nodes, b.count, (const uint8_t *)b.strings, b.len, ids,
+                                    2, &count) != OPENBIM_IFC_STATUS_OK) {
+    print_error(model); /* without replace: INVALID_MODEL, both are related already */
+    return 1;
+  }
+  // docs:end
+  uint64_t type = 0;
+  OK(openbim_ifc_v0_1_entity_type_object(model, 100, &type));
+  CHECK(type == 111, "door 1 keeps its type");
+  OpenbimIfcValidationSummary summary;
+  size_t nodes = 0, strings = 0;
+  openbim_ifc_v0_1_model_validate(model, 0, &summary, NULL, 0, &nodes, NULL, 0, &strings);
+  CHECK(summary.errors == 0, "the retyped model is valid");
+  return 0;
+}
+
 int main(int argc, char **argv) {
   if (argc != 3) {
     fprintf(stderr, "usage: cookbook <test/fixtures directory> <scratch directory>\n");
@@ -775,6 +823,10 @@ int main(int argc, char **argv) {
   OK(openbim_ifc_v0_1_model_open((const uint8_t *)cascade_path, strlen(cascade_path), &model,
                                  NULL, 0));
   if (recipe_remove_product(model) != 0) return 1;
+  OK(openbim_ifc_v0_1_model_destroy(model));
+  OK(openbim_ifc_v0_1_model_open((const uint8_t *)cascade_path, strlen(cascade_path), &model,
+                                 NULL, 0));
+  if (recipe_assign_type(model) != 0) return 1;
   OK(openbim_ifc_v0_1_model_destroy(model));
 
   if (recipe_create() != 0) return 1;

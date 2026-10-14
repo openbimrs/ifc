@@ -336,6 +336,50 @@ unreferenced entities of the named classes only. The
 [binding page](/bindings/python#removing-products-and-purging) lists what
 the cascade removes and keeps.
 
+## Assign a type and propagate it
+
+Door 1 typed again by its door type, with the type's representation map
+mapped onto it, and Wall B moved into the building, from
+`test/fixtures/synthetic-relations/cascade_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-py-assign-type -->
+
+```python
+from openbim_ifc import AuthorOp, Text, handle
+
+# Door 1 (#100) typed again by D-90 (#111) with replace: what the
+# old assignment mapped is taken back, the type's representation
+# map is mapped afresh, and PredefinedType is left to the type.
+model.author([
+    AuthorOp.assign_type(
+        111, [100], map_representations=True, predefined_type="sync", replace=True
+    )
+])
+# A new door, typed the same way in the batch that creates it.
+result = model.author([
+    AuthorOp.product("IfcDoor", {"Name": Text("Door 2")}, container=14),
+    AuthorOp.assign_type(111, [handle(0)], map_representations=True),
+])
+body = model[result.ids[0]].Representation.Representations[0]
+print(body.RepresentationType)  # 'MappedRepresentation'
+# Wall B (#40) moves into the building (#13); without replace the
+# second containment is refused with invalid-model.
+model.author([AuthorOp.contain(13, [40], replace=True)])
+```
+
+<!-- /SNIPPET -->
+
+The type assignment takes `map_representations`, `mapping_target`, `material_usage`, `layer_set_direction`, `predefined_type` and `replace`. Every option is off by default: the
+operation then writes only the `IfcRelDefinesByType` and refuses an object
+that already has a type (`invalid-model`). With `replace=True` the previous
+type is unassigned and the representations and material usage it
+propagated are removed with what only they use; `AuthorOp.contain` and `AuthorOp.aggregate` take the
+same flag. `material_usage` derives an `IfcMaterialLayerSetUsage` (walls
+`AXIS2`, slabs and plates `AXIS3`, `POSITIVE`, offset 0) or an
+`IfcMaterialProfileSetUsage` from the type's set; `predefined_type="validate"` refuses an
+object whose own `PredefinedType` contradicts the type's. The
+[binding page](/bindings/python#assigning-types) lists the rules.
+
 ## Create a model
 
 <!-- SNIPPET:cookbook-py-create -->
