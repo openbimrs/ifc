@@ -12,6 +12,39 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#454, curved advanced B-rep faces bounded by 3D edge curves compile)
+
+Semver: patch. No public item, refusal kind or lowered graph changes. Only
+the dependency floors of the opt-in `compile` feature rise, as in 0.26.1,
+and bodies the reference kernel used to refuse now compile.
+
+- Requires `axiolid-mesh-compile` 0.3.26 and
+  `axiolid-mesh-compile-contract` 0.3.4.
+- An `IfcAdvancedBrep` whose curved faces are bounded only by 3D edge
+  curves now compiles through the reference kernel. That is how IFC writes
+  them: `IfcAdvancedFace` admits no `IfcPcurve` as edge geometry. Before,
+  the kernel refused such a face. Now it inverts each edge's shared 3D
+  samples onto the face's surface (axiolid/kernel#310). The lowering is
+  unchanged and still projects nothing (ADR 0004). A seamed cylinder with
+  two circular caps compiles as a watertight solid. So does a B-spline face
+  bounded by B-spline edges over planar walls.
+- A curved face's certified deviation may come out slightly above the
+  requested chord budget. The kernel adds the face's triangle bound to its
+  boundary terms, so check `DeviationReport::meets_requested`. The B-spline
+  fixture reports 1.075 mm at a 1 mm request.
+- The kernel refuses some 3D-bounded faces, and each refusal reaches the
+  caller as `GeometryError::CompilationRefused` with the kernel's reason:
+  - an edge through a sphere pole (or a cone apex);
+  - an edge curve whose whole domain does not run from its start vertex to
+    its end vertex. This includes an `IfcLine` with a unit `IfcVector`, or
+    a part of an `IfcCircle`: without a p-curve the kernel reads the
+    curve's whole domain as the edge;
+  - an edge off its B-spline surface. The kernel's certified inversion
+    gives up on it as `BudgetExceeded` ("certified surface projection").
+- The same kernel release bounds instanced bodies with the rounding of
+  their placement. A chord budget at or below that rounding, about
+  `1e-9` at `6e6`, is refused (axiolid/kernel#295).
+
 ## [0.26.1] - 2026-10-14
 
 ### Changed (#443, stations along offset runs compile through the reference kernel)
