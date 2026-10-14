@@ -38,9 +38,9 @@ pub(crate) const STRADDLED: &str =
 pub(crate) const UNCERTIFIED: &str =
     "a certified length of a station piece no bound here reaches: an offset of a banked curve, a \
      3D intrinsic curve, a chain's parametric piece or an elevated curve with an intrinsic \
-     profile in a leaning frame; an offset by distances along an ellipse or a B-spline; a 3D \
-     offset direction that is not vertical beside a plan-measured or intrinsic base; a base \
-     placed in a frame that tilts +Z; a skewed frame; or a tolerance below the points' rounding";
+     profile in a leaning frame; a 3D offset direction that is not vertical beside a \
+     plan-measured or intrinsic base; a base placed in a frame that tilts +Z; a skewed frame; or \
+     a tolerance below the points' rounding";
 
 /// The resource `axiolid-evaluate` names when certifying a piece's length
 /// to a window's tolerance needs more panels than its budget allows
@@ -73,13 +73,10 @@ pub enum SeamWindowRefusal {
     /// the station lies on it within precision cannot be told.
     Straddled,
     /// A seam's distance cannot be certified (an offset of a banked or a 3D
-    /// intrinsic curve, an offset by distances along an ellipse or a
-    /// B-spline, and the other cases the kernel names). Along an offset by
-    /// distances whose law varies beside an ellipse or a B-spline, which
-    /// `axiolid-evaluate` 0.3.13 does not certify, every windowed station
-    /// past its first stated offset is refused so (#443).
-    // TODO(#443): lift once Axiolid certifies a varying offset law along an
-    // ellipse or a B-spline.
+    /// intrinsic curve, a tolerance below the points' rounding, and the
+    /// other cases the kernel names). An offset by distances along an
+    /// ellipse or a B-spline is certified since `axiolid-evaluate` 0.3.15
+    /// (axiolid/kernel#307, #443).
     UncertifiedLength,
     /// A run's stations, snapped onto seams within their windows, no
     /// longer increase strictly in distance: two snapped onto one seam, or
@@ -95,11 +92,11 @@ pub enum SeamWindowRefusal {
     PastBasisEnd,
     /// Certifying a seam's distance to the window's tolerance (a thousandth
     /// of it) needs more panels than the kernel's budget allows: a piece
-    /// whose length is a quadrature, before the window or reaching it, that
-    /// the kernel bounds only coarsely (#443, a constant offset beside an
-    /// ellipse past a varying one, at a 1e-5 m precision).
-    // TODO(#443): lift once Axiolid certifies such a piece within its
-    // panel budget at a thousandth of the window.
+    /// whose length is a quadrature, before the window or reaching it,
+    /// whose derivatives the kernel bounds only coarsely for so fine a
+    /// tolerance (#443). Since `axiolid-evaluate` 0.3.15 refines its panels
+    /// adaptively (axiolid/kernel#307), an ordinary curve certifies to
+    /// `1e-8` relative and below within the budget.
     CertificationBudgetExceeded,
 }
 

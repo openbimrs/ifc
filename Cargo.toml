@@ -119,8 +119,11 @@ axiolid-spatial = { version = "0.3.0" }
 # with an open or bounded piece the second (#436). axiolid-evaluate 0.3.14:
 # certified frame-law bounds of a station piece (`piece_frame_bounds`,
 # axiolid/kernel#247), released with axiolid-mesh-compile 0.3.24.
+# axiolid-evaluate 0.3.15: certified lengths of offsets by distances along
+# an ellipse or a B-spline, and adaptive chord panels (axiolid/kernel#307;
+# #443), released with axiolid-mesh-compile 0.3.25.
 axiolid-curve = { version = "0.3.9" }
-axiolid-evaluate = { version = "0.3.14" }
+axiolid-evaluate = { version = "0.3.15" }
 axiolid-curve-evaluate-contract = { version = "0.3.7" }
 # Dev-only: the exact volume of a compiled body, to check an arc-bounded
 # half-space clip against its closed form (#398).
@@ -156,11 +159,17 @@ axiolid-contracts = { version = "0.3.1" }
 # bitwise (axiolid/kernel#306; #439), certifies runs of sections at stations
 # where the frame law is bounded (axiolid/kernel#247), and mitres swept disks
 # beside arcs and sweeps closed polylines as loops (axiolid/kernel#248).
-axiolid-mesh-compile = { version = "0.3.24" }
+# 0.3.25 is the release built with axiolid-evaluate 0.3.15, which certifies
+# the windowed stations of an offset by distances beside an ellipse
+# (axiolid/kernel#307; #443), and snaps a boolean's residues to the scale
+# of the coordinates its result is placed at (axiolid/kernel#312).
+axiolid-mesh-compile = { version = "0.3.25" }
 axiolid-mesh-compile-contract = { version = "0.3.3" }
-# 0.3.5: batch booleans keep their memory budget (axiolid/kernel#259); the
-# release `axiolid-mesh-compile` 0.3.24 is tested with.
-axiolid-mesh-boolean-boolmesh = { version = "0.3.5" }
+# 0.3.5: batch booleans keep their memory budget (axiolid/kernel#259).
+# 0.3.6: a boolean whose result outgrows its operands keeps its memory
+# budget (axiolid/kernel#308); the release `axiolid-mesh-compile` 0.3.25 is
+# tested with.
+axiolid-mesh-boolean-boolmesh = { version = "0.3.6" }
 # Not used directly: `axiolid-mesh-compile` reaches it. Pinned here only to
 # raise the floor to the release whose fixes the compiled results depend on
 # (axiolid/kernel#164 half-space frame origin, #166 downward extrusion,
