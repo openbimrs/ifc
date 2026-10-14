@@ -30,7 +30,10 @@ as in 0.25.1, and stations the reference kernel used to refuse now resolve.
     along such a run beside an ellipse) now compiles with its 1e-5 m
     windows. Its mesh is bit for bit the one it compiles to with the
     windows set to zero: a closed solid of 9.99945 m3, against
-    2 m2 x 5 m = 10 m3 by Pappus.
+    2 m2 x 5 m = 10 m3 by Pappus. The kernel's deviation report for it
+    stays unbounded: the frame law along an offset beside an ellipse has
+    no certified derivative bounds yet (axiolid/kernel#316). This crate
+    does not read that report.
   - Derived `IfcLinearPlacement`s 10 m and 30 m along such a run now
     derive and equal the kernel's resolved stations. Before, they were
     refused as `PlacementSeamWindowRefused` with `UncertifiedLength` or

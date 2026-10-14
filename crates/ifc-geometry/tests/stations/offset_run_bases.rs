@@ -289,7 +289,8 @@ mod kernel {
     use axiolid_curve_evaluate_contract::{CurveEvaluator, CurveMeasure};
     use axiolid_evaluate::ReferenceCurveEvaluator;
     use axiolid_mesh_compile::station::{curve_path, resolve};
-    use ifc_geometry::compile::{compile_product_mesh, SeamWindowRefusal, Tolerance};
+    use axiolid_mesh_compile::DeviationBound;
+    use ifc_geometry::compile::{self, compile_product_mesh, SeamWindowRefusal, Tolerance};
     use ifc_geometry::constraint::placement::derive::{
         basis_curve_path, derive_linear_placement_transform,
     };
@@ -306,7 +307,10 @@ mod kernel {
     /// shown clear of follow the run's varying piece beside the ellipse,
     /// which `axiolid-evaluate` 0.3.15 certifies (axiolid/kernel#307). It
     /// is a closed solid of 2 m2 x 5 m by Pappus, within the deck's surface
-    /// area times the 1 mm tolerance.
+    /// area times the 1 mm tolerance. Its deviation from the exact solid is
+    /// not certified: the kernel names the frame law along the ellipse's
+    /// offset, read by quadrature, as having no certified derivative bounds
+    /// (axiolid/kernel#316). Only the compilation is asserted here.
     #[test]
     fn the_ring_deck_compiles_through_the_kernel() {
         let model = bases();
@@ -321,6 +325,28 @@ mod kernel {
             (volume - area * length).abs() <= bound,
             "volume {volume} != {} within {bound}",
             area * length
+        );
+        let lowered = lower(
+            &model,
+            super::super::seams::item(&model, "RING_DECK", "Body"),
+        )
+        .expect("lowers");
+        let (outcome, report) = compile::default_backend()
+            .compile_mesh_with_deviation(
+                &lowered.graph,
+                lowered.root,
+                &ExecutionOptions::new(Tolerance::MILLIMETRE),
+            )
+            .unwrap_or_else(|e| panic!("compiles with a report: {e:?}"));
+        assert_eq!(outcome.mesh.positions, mesh.positions, "the same mesh");
+        assert_eq!(report.bound, None, "{report:?}");
+        assert!(
+            report.unbounded().any(|c| matches!(
+                c.bound,
+                DeviationBound::Unbounded(reason)
+                    if reason.contains("frame law along this basis has no certified derivative bounds")
+            )),
+            "{report:?}"
         );
     }
 
