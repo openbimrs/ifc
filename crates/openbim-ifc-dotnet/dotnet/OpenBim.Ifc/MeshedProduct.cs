@@ -1,6 +1,6 @@
 namespace OpenBim.Ifc;
 
-/// <summary>One product's Body as triangles (#328), from <see cref="IfcModel.ProductMeshes"/>.</summary>
+/// <summary>One product's Body as triangles (#328), from <see cref="IfcModel.ProductMeshes(System.Collections.Generic.IReadOnlyList{ulong})"/>.</summary>
 /// <remarks>The arrays are copies the caller owns, ready for a vertex and an index buffer.</remarks>
 public sealed class MeshedProduct
 {

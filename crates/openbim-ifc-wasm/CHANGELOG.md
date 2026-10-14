@@ -8,6 +8,23 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#458, curves and surfaces as output primitives)
+
+Semver: minor (additive).
+
+- `model.productCurves(ids?, representation?)` (mesh entry): a
+  `ProductCurves` per product, its `positions` one `Float32Array`
+  relative to its transform and a `ProductPolyline` per curve
+  (`firstVertex`, `vertexCount`, `closed`, `curve`, `chordBound`,
+  `chordRequested`). `representation` (`RepresentationName`) is `"Plan"`
+  by default, or `"Axis"`, `"FootPrint"`, `"Annotation"`, `"Body"`,
+  `"Surface"`; another throws `invalid-value`. A trimmed, composite,
+  offset or intrinsic curve is an `unsupported` refusal (#506).
+- `model.productMeshes(ids?, representation?)` meshes another
+  representation on request, and `ProductMesh.closure` is `"solid"`,
+  `"surface"` or `"unknown"`.
+
+
 ## [0.10.0] - 2026-10-14
 
 ### Added (#462, INVERSE attributes by name)

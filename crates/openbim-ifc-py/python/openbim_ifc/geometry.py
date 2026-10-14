@@ -15,7 +15,14 @@ relative to it, so the world position of a vertex is ``transform`` applied
 to it; ``numpy.frombuffer(mesh.positions, numpy.float32)`` reads them
 without a copy. Each mesh carries its :class:`SurfaceColour` (#449): its
 representation item's ``IfcStyledItem``, else its styled presentation
-layer, else its material's ``IfcMaterialDefinitionRepresentation``.
+layer, else its material's ``IfcMaterialDefinitionRepresentation``; and its
+``closure`` (#458): ``"solid"``, ``"surface"`` or ``"unknown"``.
+
+:meth:`IfcModel.product_curves` gives the curves of a curve representation
+(``Axis``, ``FootPrint``, an annotation's) as :class:`ProductCurves` (#458):
+one ``array('f')`` of positions relative to ``transform``, every polyline's
+vertices in turn, and a :class:`ProductPolyline` per curve naming its slice
+and its certified chord bound.
 """
 
 from __future__ import annotations
@@ -150,6 +157,45 @@ class ProductMesh:
     indices: "array[int]"
     colour: Optional[SurfaceColour] = None
     colour_refusal: Optional[GeometryRefusal] = None
+    closure: str = "unknown"
+
+
+@dataclass(frozen=True)
+class ProductPolyline:
+    """One curve of a :class:`ProductCurves`, as a slice of its positions:
+    vertices ``first_vertex`` to ``first_vertex + vertex_count``, in the
+    curve's direction. ``closed``: the last vertex repeats the first.
+    ``chord_bound`` is the certified bound, in metres, on how far the exact
+    curve lies from the polyline (``0.0`` for a polyline the file authored);
+    ``chord_requested`` the budget, one millimetre. ``curve`` is the IFC
+    curve, when the lowering names one."""
+
+    curve: Optional[int]
+    first_vertex: int
+    vertex_count: int
+    closed: bool
+    chord_bound: float
+    chord_requested: float
+
+
+@dataclass(frozen=True)
+class ProductCurves:
+    """One product's curves as polylines (#458).
+
+    ``positions`` holds ``x, y, z`` per vertex (``array('f')``, metres,
+    relative to ``transform``), every polyline's vertices in turn; each of
+    ``polylines`` names its slice. No polylines and no refusal: a product
+    without the representation, or one with no curves.
+    """
+
+    id: int
+    global_id: Optional[str]
+    type_name: str
+    transform: Optional[Matrix4]
+    vertex_count: int
+    polylines: Tuple[ProductPolyline, ...]
+    refusal: Optional[GeometryRefusal]
+    positions: "array[float]"
 
 
 def _refusal(data: Optional[Dict[str, Any]]) -> Optional[GeometryRefusal]:
@@ -212,6 +258,25 @@ def _mesh(data: Dict[str, Any]) -> ProductMesh:
         indices=indices,
         colour=_colour(data["colour"]),
         colour_refusal=_refusal(data["colour_refusal"]),
+        closure=data["closure"],
+    )
+
+
+def _curves(data: Dict[str, Any]) -> ProductCurves:
+    positions = array("f")
+    positions.frombytes(data["positions"])
+    return ProductCurves(
+        id=data["id"],
+        global_id=data["global_id"],
+        type_name=data["type_name"],
+        transform=_matrix(data["transform"]),
+        vertex_count=data["vertex_count"],
+        polylines=tuple(
+            ProductPolyline(**{k: v for k, v in row.items() if k != "_record"})
+            for row in data["polylines"]
+        ),
+        refusal=_refusal(data["refusal"]),
+        positions=positions,
     )
 
 
@@ -219,9 +284,11 @@ __all__ = [
     "GEOMETRY_FORMAT",
     "GEOMETRY_FORMAT_VERSION",
     "GeometryRefusal",
+    "ProductCurves",
     "ProductGeometry",
     "ProductMesh",
     "ProductPlacement",
+    "ProductPolyline",
     "SelectedRepresentation",
     "SurfaceColour",
 ]

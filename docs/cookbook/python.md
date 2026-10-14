@@ -236,6 +236,31 @@ Positions are `f32` relative to each product's `f64` transform, so a site
 kilometres from the origin keeps its millimetres;
 `numpy.frombuffer(mesh.positions, numpy.float32)` reads them without a copy.
 
+Curves have no triangles: an `Axis`, a `FootPrint` or an annotation's
+curves come as polylines from the same wheel
+([#458](https://github.com/openbimrs/ifc/issues/458)), one `array('f')`
+per product and a slice per curve with the certified bound on how far the
+exact curve lies from it:
+
+<!-- SNIPPET:py-geometry-curves -->
+
+```python
+model = openbim_ifc.open(path)
+for product in model.product_curves(representation="Axis"):
+    for line in product.polylines:
+        # positions: array('f'), x y z per vertex in metres relative
+        # to product.transform; this curve is a slice of them.
+        start = 3 * line.first_vertex
+        xyz = product.positions[start : start + 3 * line.vertex_count]
+        print((product.id, len(xyz) // 3, line.closed, line.chord_bound))
+```
+
+<!-- /SNIPPET -->
+
+A trimmed, composite, offset or intrinsic curve is refused by name, code
+`unsupported`, until the reference compiler polylines it
+([#506](https://github.com/openbimrs/ifc/issues/506)).
+
 The exact representation instead of triangles
 ([#367](https://github.com/openbimrs/ifc/issues/367)): each Body as
 Axiolid's neutral geometry graph in its wire format, for your own

@@ -163,6 +163,12 @@ pub fn select_shape_representation(
 pub const PLAN_IDENTIFIERS: &[&str] = &["Plan", "Annotation", "FootPrint", "Axis"];
 
 /// Caller intent for representation selection.
+///
+/// `Body` and `Plan` are policies over several identifiers
+/// ([`SOLID_IDENTIFIERS`], [`PLAN_IDENTIFIERS`]). The others name one
+/// `RepresentationIdentifier` (#458): the first representation the product
+/// authors with it, in authored order, whatever its context. A product
+/// without one has none for that purpose, which is not a failure.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RepresentationPurpose {
@@ -170,6 +176,59 @@ pub enum RepresentationPurpose {
     Body,
     /// Plan/annotation/axis geometry suitable for 2D drawing consumers.
     Plan,
+    /// The `Axis` representation: a wall's or a member's centreline.
+    Axis,
+    /// The `FootPrint` representation: the product's outline on its floor.
+    FootPrint,
+    /// The `Annotation` representation: drawing curves and text.
+    Annotation,
+    /// The `Surface` representation: a surface standing for the product,
+    /// such as a structural surface member's mid-surface.
+    Surface,
+}
+
+impl RepresentationPurpose {
+    /// The one `RepresentationIdentifier` this purpose selects, or `None`
+    /// for the `Body` and `Plan` policies over several.
+    #[must_use]
+    pub const fn identifier(self) -> Option<&'static str> {
+        match self {
+            Self::Body | Self::Plan => None,
+            Self::Axis => Some("Axis"),
+            Self::FootPrint => Some("FootPrint"),
+            Self::Annotation => Some("Annotation"),
+            Self::Surface => Some("Surface"),
+        }
+    }
+
+    /// The purpose named `name`: `Body`, `Plan`, or one of the identifiers
+    /// [`Self::identifier`] names, exactly as IFC spells them.
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        [
+            Self::Body,
+            Self::Plan,
+            Self::Axis,
+            Self::FootPrint,
+            Self::Annotation,
+            Self::Surface,
+        ]
+        .into_iter()
+        .find(|purpose| purpose.name() == name)
+    }
+
+    /// The name [`Self::from_name`] reads.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Body => "Body",
+            Self::Plan => "Plan",
+            Self::Axis => "Axis",
+            Self::FootPrint => "FootPrint",
+            Self::Annotation => "Annotation",
+            Self::Surface => "Surface",
+        }
+    }
 }
 
 /// Select a product representation using an explicit consumer purpose.
@@ -178,10 +237,42 @@ pub fn select_product_representation(
     product: EntityId,
     purpose: RepresentationPurpose,
 ) -> GeometryResult<Option<EntityId>> {
-    match purpose {
-        RepresentationPurpose::Body => select_shape_representation(model, product),
-        RepresentationPurpose::Plan => select_plan_representation(model, product),
+    match purpose.identifier() {
+        Some(identifier) => select_identified_representation(model, product, identifier),
+        None if purpose == RepresentationPurpose::Plan => {
+            select_plan_representation(model, product)
+        }
+        None => select_shape_representation(model, product),
     }
+}
+
+/// The first of the product's representations whose identifier is
+/// `identifier`, in authored order (#458).
+fn select_identified_representation(
+    model: &Model,
+    product: EntityId,
+    identifier: &str,
+) -> GeometryResult<Option<EntityId>> {
+    let entity = model.get(product).ok_or(GeometryError::MissingEntity {
+        referrer: product,
+        missing: product,
+    })?;
+    let Some(shape_id) = super::product::Product::new(product, entity).representation() else {
+        return Ok(None);
+    };
+    let shape_entity = model.get(shape_id).ok_or(GeometryError::MissingEntity {
+        referrer: product,
+        missing: shape_id,
+    })?;
+    let candidates = ProductShape::new(shape_id, shape_entity).representations()?;
+    Ok(candidates.into_iter().find(|&candidate| {
+        model.get(candidate).is_some_and(|entity| {
+            Representation::new(candidate, entity)
+                .identifier()
+                .as_deref()
+                == Some(identifier)
+        })
+    }))
 }
 
 /// Pick the representation a 2D drawing should use for this product.

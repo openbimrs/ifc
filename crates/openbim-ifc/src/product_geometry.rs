@@ -2,7 +2,8 @@
 //!
 //! The language bindings carry geometry at three levels (ADR 0021): this
 //! module, the neutral graph per product (`graph`, feature `geometry-wire`,
-//! #367) and meshes (`mesh`, feature `mesh`). This is the first,
+//! #367) and meshes (`mesh`, feature `mesh`), with the polylines of curve
+//! representations beside them (`curves`, feature `mesh`, #458). This is the first,
 //! kernel-free one: for every product with a shape, its world
 //! placement in metres and the Body representation a viewer would draw,
 //! with the representation's identifier, type and context. It joins
@@ -24,14 +25,17 @@ use ifc_geometry::{
 use ifc_model::{EntityId, Model};
 
 mod colour;
+mod curves;
 mod graph;
 mod mesh;
 #[cfg(feature = "colour")]
 pub use colour::{product_colours, ColourError, ColourResolver, ColourSource, SurfaceColour};
+#[cfg(feature = "mesh")]
+pub use curves::{product_curves, ProductCurves, ProductPolyline};
 #[cfg(feature = "geometry-wire")]
 pub use graph::{product_graphs, ProductGraph};
 #[cfg(feature = "mesh")]
-pub use mesh::{product_meshes, ProductMesh};
+pub use mesh::{product_meshes, product_meshes_for, ProductMesh};
 
 /// One product's world placement and selected Body representation.
 #[derive(Debug, Clone, PartialEq)]

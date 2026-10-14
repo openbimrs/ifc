@@ -306,6 +306,35 @@ kilometres from the origin keeps its millimetres. The WebGL viewer in
 `crates/openbim-ifc-wasm/examples/viewer/`, which the
 [playground](/playground) uses, shows the same data on screen.
 
+Curves have no triangles: an `Axis`, a `FootPrint` or an annotation's
+curves come as polylines from the mesh entry
+([#458](https://github.com/openbimrs/ifc/issues/458)), one `Float32Array`
+per product and a slice per curve with the certified bound on how far the
+exact curve lies from it:
+
+<!-- SNIPPET:js-geometry-curves -->
+
+```js
+const model = IfcModel.parse(bytes);
+for (const product of model.productCurves(undefined, "Axis")) {
+  for (const line of product.polylines) {
+    // positions: Float32Array, x y z per vertex in metres relative to
+    // product.transform; this curve is a slice of them.
+    const xyz = product.positions.subarray(
+      3 * line.firstVertex,
+      3 * (line.firstVertex + line.vertexCount),
+    );
+    console.log(product.id, xyz.length / 3, line.closed, line.chordBound);
+  }
+}
+```
+
+<!-- /SNIPPET -->
+
+A trimmed, composite, offset or intrinsic curve is refused by name, code
+`unsupported`, until the reference compiler polylines it
+([#506](https://github.com/openbimrs/ifc/issues/506)).
+
 The exact representation instead of triangles
 ([#367](https://github.com/openbimrs/ifc/issues/367)): each Body as
 Axiolid's neutral geometry graph in its wire format, for your own

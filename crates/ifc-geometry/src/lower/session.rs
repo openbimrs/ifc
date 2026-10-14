@@ -208,7 +208,10 @@ pub(crate) enum NodeShape {
     },
     /// A family the graph validator admits as a boolean operand.
     Solid,
-    /// Anything else: curves, surfaces, profiles, points.
+    /// A curve, a curve relation or an open profile: compiled to a
+    /// polyline, never to a mesh (#458).
+    Curve,
+    /// Anything else: surfaces, closed profiles, points.
     Other,
 }
 
@@ -256,6 +259,10 @@ impl NodeShape {
             | GeometryNode::BRep(_)
             | GeometryNode::PolygonMesh(_)
             | GeometryNode::TriMesh(_) => Self::Solid,
+            GeometryNode::Curve2(_)
+            | GeometryNode::Curve3(_)
+            | GeometryNode::CurveRelation(_)
+            | GeometryNode::OpenProfile(_) => Self::Curve,
             _ => Self::Other,
         }
     }

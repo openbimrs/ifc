@@ -1,7 +1,8 @@
 // Geometry (#328, #367, ADR 0021), mirroring the shared binding core:
 // placements with the selected Body, the metadata of a graph, whose wire
-// payload crosses separately (ProductGraph), and of a mesh, whose arrays
-// cross separately (MeshedProduct).
+// payload crosses separately (ProductGraph), of a mesh, whose arrays
+// cross separately (MeshedProduct), and of a product's polylines (#458),
+// whose positions cross separately (CurvedProduct).
 
 namespace OpenBim.Ifc;
 
@@ -90,6 +91,7 @@ public sealed record SurfaceColour(
 /// <param name="Refusal">Why there is no mesh. No vertices and no refusal: a product with no Body representation.</param>
 /// <param name="Colour">The surface colour the Body's items agree on; null when nothing colours the product or its colour is refused.</param>
 /// <param name="ColourRefusal">Why the colour could not be resolved: <c>ambiguous</c> (two styled items or two colours at one level, a layer or profile set of several materials, a constituent set no shape aspect resolves, or Body items of different colours), or a shared geometry code. Never refuses the mesh itself.</param>
+/// <param name="Closure"><c>solid</c> when the mesh bounds a volume the file declared, <c>surface</c> for a surface (an area, no volume), <c>unknown</c> for an empty or refused mesh (#458).</param>
 public sealed record ProductMesh(
     ulong Id,
     string? GlobalId,
@@ -99,4 +101,37 @@ public sealed record ProductMesh(
     long TriangleCount,
     GeometryRefusal? Refusal,
     SurfaceColour? Colour,
-    GeometryRefusal? ColourRefusal);
+    GeometryRefusal? ColourRefusal,
+    string Closure);
+
+/// <summary>One curve of a <see cref="ProductCurves"/>, as a slice of its positions (#458).</summary>
+/// <param name="Curve">The IFC curve it was compiled from, when the lowering names one.</param>
+/// <param name="FirstVertex">Its first vertex in the product's positions.</param>
+/// <param name="VertexCount">How many vertices it has.</param>
+/// <param name="Closed">Whether it is closed: its last vertex repeats its first.</param>
+/// <param name="ChordBound">The certified bound, metres, on how far the exact curve lies from the polyline: 0 for a polyline the file authored.</param>
+/// <param name="ChordRequested">The chord budget, metres: one millimetre.</param>
+public sealed record ProductPolyline(
+    ulong? Curve,
+    long FirstVertex,
+    long VertexCount,
+    bool Closed,
+    double ChordBound,
+    double ChordRequested);
+
+/// <summary>One product's curves, without their positions (<see cref="CurvedProduct"/> carries them).</summary>
+/// <param name="Id">The product's entity id.</param>
+/// <param name="GlobalId">Its <c>GlobalId</c>.</param>
+/// <param name="TypeName">Its entity type, upper-case.</param>
+/// <param name="Transform">The world placement, a column-major 4x4 in metres: a vertex's world position is this matrix applied to it. Null when refused.</param>
+/// <param name="VertexCount">Vertices of every polyline together: a third of the positions.</param>
+/// <param name="Polylines">The curves in authored order. Empty with no refusal: a product without the representation, or with no curves.</param>
+/// <param name="Refusal">Why there are no polylines: a trimmed, composite, offset or intrinsic curve is <c>unsupported</c> until the reference compiler polylines it (#506).</param>
+public sealed record ProductCurves(
+    ulong Id,
+    string? GlobalId,
+    string TypeName,
+    EquatableList<double>? Transform,
+    long VertexCount,
+    EquatableList<ProductPolyline> Polylines,
+    GeometryRefusal? Refusal);

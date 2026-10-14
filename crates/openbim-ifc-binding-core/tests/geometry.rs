@@ -245,6 +245,121 @@ mod mesh {
     }
 
     #[test]
+    fn a_mesh_reports_its_closure_and_another_representation_meshes_on_request() {
+        let model = fixture();
+        let meshes = model.product_meshes(None).unwrap();
+        let closures: Vec<&str> = meshes.iter().map(|m| m.closure.as_str()).collect();
+        assert_eq!(closures, ["solid", "solid", "unknown", "unknown"]);
+        assert_eq!(model.product_meshes_for(None, "Body").unwrap(), meshes);
+        // An Axis has nothing to mesh, and that is no failure.
+        for mesh in model.product_meshes_for(None, "Axis").unwrap() {
+            assert!(
+                mesh.indices.is_empty() && mesh.refusal.is_none(),
+                "#{}",
+                mesh.id
+            );
+        }
+        let error = model.product_meshes_for(None, "body").unwrap_err();
+        assert_eq!(error.code(), "invalid-value");
+    }
+
+    /// The wall's and the proxy's `Axis`: an `IfcPolyline` from (-2000, 0)
+    /// to (2000, 0) mm, so (-2, 0, 0) to (2, 0, 0) m in their frames.
+    #[test]
+    fn axis_curves_cross_as_polylines_relative_to_the_placement() {
+        use openbim_ifc_binding_core::record::Field;
+        use openbim_ifc_binding_core::ToRecord;
+
+        let model = fixture();
+        let curves = model.product_curves(None, "Axis").unwrap();
+        let ids: Vec<u64> = curves.iter().map(|c| c.id).collect();
+        assert_eq!(ids, [36, 46, 53, 65]);
+        for index in [0, 2] {
+            let axis = &curves[index];
+            assert_eq!(axis.refusal, None);
+            assert_eq!(axis.polylines.len(), 1);
+            let line = &axis.polylines[0];
+            assert_eq!(
+                (
+                    line.curve,
+                    line.first_vertex,
+                    line.vertex_count,
+                    line.closed
+                ),
+                (Some(33), 0, 2, false)
+            );
+            assert_eq!((line.chord_bound, line.chord_requested), (0.0, 1e-3));
+            for (got, want) in axis.positions.iter().zip([-2.0, 0.0, 0.0, 2.0, 0.0, 0.0]) {
+                assert!((got - want).abs() < 1e-5, "{:?}", axis.positions);
+            }
+            let placed = model.product_placements(Some(&[axis.id])).unwrap();
+            assert_eq!(axis.transform, placed[0].transform, "one placement");
+        }
+        for index in [1, 3] {
+            assert!(curves[index].polylines.is_empty() && curves[index].refusal.is_none());
+        }
+        // `Plan` picks the same Axis; `Body` has no curves.
+        assert_eq!(
+            model.product_curves(Some(&[36]), "Plan").unwrap()[0],
+            curves[0]
+        );
+        assert!(model.product_curves(Some(&[36]), "Body").unwrap()[0]
+            .polylines
+            .is_empty());
+
+        let record = curves[0].to_record();
+        assert_eq!(record.get("vertex_count"), Some(&Field::Count(2)));
+        let Some(Field::List(polylines)) = record.get("polylines") else {
+            panic!("a polyline list: {record:?}");
+        };
+        assert!(
+            matches!(&polylines[0], Field::Record(r) if r.get("closed") == Some(&Field::Bool(false)))
+        );
+        assert_eq!(
+            model.product_curves(None, "Centreline").unwrap_err().code(),
+            "invalid-value"
+        );
+    }
+
+    /// A trimmed axis is refused by name until the reference compiler
+    /// polylines it (#506).
+    #[test]
+    fn a_trimmed_axis_is_an_unsupported_refusal_naming_the_curve() {
+        let model = IfcModel::parse(
+            b"ISO-10303-21;
+HEADER;FILE_DESCRIPTION((''),'2;1');FILE_NAME('','',(''),(''),'','','');FILE_SCHEMA(('IFC4'));ENDSEC;
+DATA;
+#1=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,#2,$);
+#2=IFCAXIS2PLACEMENT3D(#3,$,$);
+#3=IFCCARTESIANPOINT((0.,0.,0.));
+#4=IFCLOCALPLACEMENT($,#2);
+#20=IFCWALL('0000000000000000000020',$,'W',$,$,#4,#21,$,$);
+#21=IFCPRODUCTDEFINITIONSHAPE($,$,(#22));
+#22=IFCSHAPEREPRESENTATION(#1,'Axis','Curve2D',(#23));
+#23=IFCTRIMMEDCURVE(#24,(IFCPARAMETERVALUE(0.)),(IFCPARAMETERVALUE(1.5)),.T.,.PARAMETER.);
+#24=IFCCIRCLE(#25,1.);
+#25=IFCAXIS2PLACEMENT2D(#26,$);
+#26=IFCCARTESIANPOINT((0.,0.));
+ENDSEC;
+END-ISO-10303-21;
+",
+        )
+        .unwrap();
+        let curves = model.product_curves(None, "Axis").unwrap();
+        let refusal = curves[0].refusal.as_ref().expect("refused");
+        assert_eq!(
+            (refusal.code.as_str(), refusal.entity),
+            ("unsupported", Some(23))
+        );
+        assert!(
+            refusal.message.contains("a trimmed curve"),
+            "{}",
+            refusal.message
+        );
+        assert!(curves[0].positions.is_empty() && curves[0].polylines.is_empty());
+    }
+
+    #[test]
     fn a_broken_placement_refuses_the_mesh_with_the_same_code() {
         let model = IfcModel::parse(BROKEN.as_bytes()).unwrap();
         let codes: Vec<String> = model
@@ -309,10 +424,14 @@ mod mesh {
             let refusal = multi.colour_refusal.as_ref().expect("two layers");
             assert_eq!(refusal.code, "ambiguous");
 
-            // The record crosses with both new fields, last.
+            // The record crosses with the colour fields (#449), then the
+            // closure (#458), last.
             let record = meshes[0].to_record();
             let names: Vec<&str> = record.fields.iter().map(|(name, _)| *name).collect();
-            assert_eq!(names[names.len() - 2..], ["colour", "colour_refusal"]);
+            assert_eq!(
+                names[names.len() - 3..],
+                ["colour", "colour_refusal", "closure"]
+            );
         }
 
         let meshes = colour_fixture("material_colour_ifc2x3.ifc")
@@ -333,6 +452,14 @@ fn meshes_refuse_without_the_feature() {
     let model = IfcModel::empty();
     assert_eq!(
         model.product_meshes(None),
+        Err(BindingError::FeatureDisabled("mesh"))
+    );
+    assert_eq!(
+        model.product_meshes_for(None, "Surface"),
+        Err(BindingError::FeatureDisabled("mesh"))
+    );
+    assert_eq!(
+        model.product_curves(None, "Axis"),
         Err(BindingError::FeatureDisabled("mesh"))
     );
 }

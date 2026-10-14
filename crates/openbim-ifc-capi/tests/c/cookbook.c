@@ -450,6 +450,53 @@ static int recipe_meshes(OpenbimIfcModel model) {
   return 0;
 }
 
+static int recipe_curves(OpenbimIfcModel model) {
+  out_len = 0;
+  // docs:snippet cookbook-c-curves
+  /* With the `mesh` feature, the curves of a representation (#458) compile
+   * once into a set: one position array per product, and per curve a
+   * ProductPolyline record naming its slice and its certified chord bound. */
+  const char *representation = "Axis"; /* or Plan, FootPrint, Annotation */
+  OpenbimIfcCurves curves = 0;
+  OpenbimIfcStatus status = openbim_ifc_v0_1_model_product_curves(
+      model, NULL, 0, (const uint8_t *)representation, strlen(representation), &curves);
+  if (status == OPENBIM_IFC_STATUS_OK) {
+    size_t count = 0, nodes = 0, strings = 0;
+    openbim_ifc_v0_1_curves_records(curves, &count, NULL, 0, &nodes, NULL, 0, &strings);
+    Tape t = tape_alloc(nodes, strings);
+    openbim_ifc_v0_1_curves_records(curves, &count, t.nodes, nodes, &nodes, t.strings, strings,
+                                    &strings);
+    size_t product = 1; /* the first record, inside the outer LIST */
+    for (size_t i = 0; i < count; i++, product = tape_next(&t, product)) {
+      size_t need = 0;
+      openbim_ifc_v0_1_curves_positions(curves, i, NULL, 0, &need);
+      float *positions = (float *)malloc((need ? need : 1) * sizeof(float)); /* x y z, metres */
+      openbim_ifc_v0_1_curves_positions(curves, i, positions, need, &need);
+      size_t polylines = tape_field(&t, product, 5), line = polylines + 1;
+      for (uint32_t p = 0; p < t.nodes[polylines].child_count; p++, line = tape_next(&t, line)) {
+        /* this curve's vertices: positions[3 * first .. 3 * (first + count)) */
+        long long first = t.nodes[tape_field(&t, line, 1)].int_value;
+        long long vertices = t.nodes[tape_field(&t, line, 2)].int_value;
+        double bound = t.nodes[tape_field(&t, line, 4)].real_value;
+        printf("#%lld: %lld vertices from %lld, bound %g\n",
+               (long long)t.nodes[tape_field(&t, product, 0)].int_value, vertices, first, bound);
+      }
+      free(positions);
+    }
+    tape_free(&t);
+    openbim_ifc_v0_1_curves_destroy(curves);
+  }
+  // docs:end
+  if (status == OPENBIM_IFC_STATUS_FEATURE_DISABLED) {
+    CHECK(curves == 0, "no set without the feature");
+    return 0;
+  }
+  CHECK(status == OPENBIM_IFC_STATUS_OK, "curves compile");
+  CHECK(strcmp(out, "#36: 2 vertices from 0, bound 0\n#53: 2 vertices from 0, bound 0\n") == 0,
+        out);
+  return 0;
+}
+
 static int recipe_graphs(OpenbimIfcModel model) {
   // docs:snippet cookbook-c-graphs
   /* A library built with the `graph` feature lowers and encodes every Body
@@ -913,6 +960,7 @@ int main(int argc, char **argv) {
   if (recipe_ifcxml(model) != 0) return 1;
   if (recipe_placements(model) != 0) return 1;
   if (recipe_meshes(model) != 0) return 1;
+  if (recipe_curves(model) != 0) return 1;
   if (recipe_graphs(model) != 0) return 1;
   OK(openbim_ifc_v0_1_model_destroy(model));
 

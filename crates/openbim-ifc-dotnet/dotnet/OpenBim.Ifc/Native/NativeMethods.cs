@@ -148,6 +148,15 @@ internal static unsafe partial class NativeMethods
     internal static extern IfcStatus openbim_ifc_v0_1_graphs_destroy(ulong graphs);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_curves_destroy(ulong curves);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_curves_positions(ulong curves, nuint index, float* buffer, nuint capacity, nuint* out_required);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_curves_records(ulong curves, nuint* out_count, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_graphs_payload(ulong graphs, nuint index, byte* buffer, nuint capacity, nuint* out_required);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
@@ -247,10 +256,16 @@ internal static unsafe partial class NativeMethods
     internal static extern IfcStatus openbim_ifc_v0_1_model_parse_with_options(byte* data, nuint len, uint flags, ulong* out_model, byte* error_buffer, nuint capacity);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_model_product_curves(ulong model, ulong* ids, nuint id_count, byte* representation, nuint representation_len, ulong* out_curves);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_model_product_geometry(ulong model, ulong* ids, nuint id_count, uint encoding, ulong* out_graphs);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_model_product_meshes(ulong model, ulong* ids, nuint id_count, ulong* out_meshes);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_model_product_meshes_for(ulong model, ulong* ids, nuint id_count, byte* representation, nuint representation_len, ulong* out_meshes);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_model_product_placements(ulong model, ulong* ids, nuint id_count, nuint* out_count, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);

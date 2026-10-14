@@ -168,9 +168,62 @@ export interface ProductMesh {
    */
   colour: SurfaceColour | undefined;
   colourRefusal: ColourRefusal | undefined;
+  /**
+   * `"solid"` when the mesh bounds a volume the file declared, `"surface"`
+   * for a surface (an area, no volume), `"unknown"` for an empty or refused
+   * mesh (#458).
+   */
+  closure: "solid" | "surface" | "unknown";
   /** `x, y, z` per vertex, metres, relative to `transform`. */
   positions: Float32Array;
   /** Three vertex indices per triangle. */
   indices: Uint32Array;
+}
+
+/**
+ * A representation a product's geometry is read from (#458): `"Body"` (the
+ * meshes' default), `"Plan"` (the curves' default: `Plan`, `Annotation`,
+ * `FootPrint`, then `Axis`, preferring a `PLAN_VIEW` context), or one
+ * `RepresentationIdentifier`.
+ */
+export type RepresentationName =
+  | "Body"
+  | "Plan"
+  | "Axis"
+  | "FootPrint"
+  | "Annotation"
+  | "Surface";
+
+/** One curve of a `ProductCurves`, as a slice of its `positions` (#458). */
+export interface ProductPolyline {
+  /** The IFC curve it was compiled from, when the lowering names one. */
+  curve: bigint | undefined;
+  /** Its first vertex in the product's `positions`. */
+  firstVertex: number;
+  vertexCount: number;
+  /** Whether it is closed: its last vertex repeats its first. */
+  closed: boolean;
+  /**
+   * Certified bound, metres, on how far the exact curve lies from the
+   * polyline: `0` for a polyline the file authored.
+   */
+  chordBound: number;
+  /** The chord budget, metres: one millimetre. */
+  chordRequested: number;
+}
+
+/** One product's curves as polylines, from `IfcModel.productCurves` (#458). */
+export interface ProductCurves {
+  id: bigint;
+  globalId: string | undefined;
+  typeName: string;
+  /** World placement; a vertex's world position is `transform * position`. */
+  transform: Matrix4 | undefined;
+  vertexCount: number;
+  /** In authored order; empty with no refusal: no such curves. */
+  polylines: ProductPolyline[];
+  refusal: GeometryRefusal | undefined;
+  /** `x, y, z` per vertex, metres, relative to `transform`: every polyline in turn. */
+  positions: Float32Array;
 }
 "#;

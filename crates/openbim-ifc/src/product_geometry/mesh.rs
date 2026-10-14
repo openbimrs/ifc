@@ -31,9 +31,12 @@
 
 #![cfg(feature = "mesh")]
 
-use ifc_geometry::compile::{compile_product_mesh_with, default_backend, Tolerance};
+use ifc_geometry::compile::{
+    compile_product_mesh_for_with, default_backend, MeshClosure, Tolerance,
+};
 use ifc_geometry::{
-    geometric_products, products_world_transforms, units, GeometryError, GeometryResult, Transform,
+    geometric_products, products_world_transforms, units, GeometryError, GeometryResult,
+    RepresentationPurpose, Transform,
 };
 use ifc_model::{EntityId, Model};
 
@@ -53,12 +56,20 @@ pub struct ProductMesh {
     pub indices: Vec<u32>,
     /// The surface colour the Body's items agree on
     /// ([`ColourResolver::product_colour`]); `Ok(None)` when nothing
-    /// colours it, and the typed reason when it cannot be resolved.
+    /// colours it, and the typed reason when it cannot be resolved. Only
+    /// the Body's colour is resolved: a mesh of another representation
+    /// ([`product_meshes_for`]) carries `Ok(None)`.
     pub colour: Result<Option<SurfaceColour>, ColourError>,
+    /// Whether the mesh bounds a solid the file declared
+    /// ([`MeshClosure::Solid`]) or is a surface ([`MeshClosure::Surface`]:
+    /// a surface model, a face, a trimmed surface), which has an area and
+    /// no volume (#458). An empty mesh is [`MeshClosure::Unknown`].
+    pub closure: MeshClosure,
 }
 
 /// The Body mesh of each of `products`, or, with `None`, of every product
-/// that has a shape, in id order.
+/// that has a shape, in id order: [`product_meshes_for`] with
+/// [`RepresentationPurpose::Body`].
 ///
 /// A product with no Body representation (an axis or a footprint only) is
 /// not a failure: its mesh is empty, and still placed. A product whose
@@ -69,47 +80,63 @@ pub fn product_meshes(
     model: &Model,
     products: Option<&[EntityId]>,
 ) -> Vec<(EntityId, GeometryResult<ProductMesh>)> {
+    product_meshes_for(model, products, RepresentationPurpose::Body)
+}
+
+/// The surfaces and solids of each product's representation for
+/// `purpose` as one mesh (#458), or, with `None`, of every product that has
+/// a shape, in id order.
+///
+/// The representation is the one the selector picks for `purpose`
+/// ([`select_product_representation`](ifc_geometry::select_product_representation)):
+/// `Body` (the default of [`product_meshes`]), `Surface`, ... Its curves
+/// have no area and are not in the mesh: [`product_curves`](super::product_curves)
+/// returns them. A product with no such representation, or one of curves
+/// only, has an empty mesh and no refusal. A Body with no curves meshes
+/// exactly as before.
+pub fn product_meshes_for(
+    model: &Model,
+    products: Option<&[EntityId]>,
+    purpose: RepresentationPurpose,
+) -> Vec<(EntityId, GeometryResult<ProductMesh>)> {
     let products = products.map_or_else(|| geometric_products(model), <[EntityId]>::to_vec);
     let scale = units::resolve(model);
     let backend = default_backend();
     let resolver = ColourResolver::new(model);
-    let colour = |product| match &resolver {
-        Ok(resolver) => resolver.product_colour(product),
-        Err(error) => Err(error.clone()),
+    let colour = |product| match (&resolver, purpose) {
+        (Ok(resolver), RepresentationPurpose::Body) => resolver.product_colour(product),
+        (Err(error), RepresentationPurpose::Body) => Err(error.clone()),
+        _ => Ok(None),
     };
     products_world_transforms(model, &scale, products)
         .into_iter()
         .map(|(product, world)| {
             let mesh = world.and_then(|world| {
-                let Some(mesh) =
-                    compile_product_mesh_with(&backend, model, product, Tolerance::MILLIMETRE)?
+                let Some(compiled) = compile_product_mesh_for_with(
+                    &backend,
+                    model,
+                    product,
+                    purpose,
+                    Tolerance::MILLIMETRE,
+                )?
                 else {
                     return Ok(ProductMesh {
                         world,
                         positions: Vec::new(),
                         indices: Vec::new(),
                         colour: colour(product),
+                        closure: MeshClosure::Unknown,
                     });
                 };
-                let to_local = Inverse::of(&world).ok_or_else(|| GeometryError::Degenerate {
-                    entity: product,
-                    type_name: model
-                        .get(product)
-                        .map_or_else(String::new, |entity| entity.type_name.to_string()),
-                    detail: "its world placement cannot be inverted".into(),
-                })?;
-                let positions = mesh
-                    .positions
-                    .iter()
-                    .flat_map(|p| to_local.apply([p.x, p.y, p.z]))
-                    // Narrowed after the f64 inverse, on purpose (see above).
-                    .map(|coordinate| coordinate as f32)
-                    .collect();
+                let to_local = Inverse::checked(model, product, &world)?;
+                let positions =
+                    to_local.narrow(compiled.mesh.positions.iter().map(|p| [p.x, p.y, p.z]));
                 Ok(ProductMesh {
                     world,
                     positions,
-                    indices: mesh.indices,
+                    indices: compiled.mesh.indices,
                     colour: colour(product),
+                    closure: compiled.closure,
                 })
             });
             (product, mesh)
@@ -119,12 +146,38 @@ pub fn product_meshes(
 
 /// The inverse of an affine [`Transform`]: `rows` is the inverse of its
 /// linear part, applied after removing the translation.
-struct Inverse {
+pub(super) struct Inverse {
     rows: [[f64; 3]; 3],
     origin: [f64; 3],
 }
 
 impl Inverse {
+    /// The inverse of `product`'s placement `world`, or the typed refusal
+    /// of one whose linear part cannot be inverted.
+    pub(super) fn checked(
+        model: &Model,
+        product: EntityId,
+        world: &Transform,
+    ) -> GeometryResult<Self> {
+        Self::of(world).ok_or_else(|| GeometryError::Degenerate {
+            entity: product,
+            type_name: model
+                .get(product)
+                .map_or_else(String::new, |entity| entity.type_name.to_string()),
+            detail: "its world placement cannot be inverted".into(),
+        })
+    }
+
+    /// World points in metres as `f32` coordinates in the placement's
+    /// frame: mapped back in `f64`, then narrowed, on purpose (see the
+    /// module docs).
+    pub(super) fn narrow(&self, points: impl Iterator<Item = [f64; 3]>) -> Vec<f32> {
+        points
+            .flat_map(|p| self.apply(p))
+            .map(|coordinate| coordinate as f32)
+            .collect()
+    }
+
     /// `None` when the linear part is singular or not finite.
     fn of(transform: &Transform) -> Option<Self> {
         let [c0, c1, c2] = transform.basis;

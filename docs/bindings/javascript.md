@@ -555,6 +555,56 @@ colours the product, and `colourRefusal` says why it is not resolved,
 with code `ambiguous` for a set of several materials or Body items of
 different colours. A colour never refuses the mesh.
 
+`productCurves(ids?, representation?)` gives the curves of a curve
+representation as polylines
+([#458](https://github.com/openbimrs/ifc/issues/458)), from the same mesh
+entry: an `Axis`, a `FootPrint`, the curves of an `IfcAnnotation`, which
+have no area and so no triangles. `representation` picks the
+representation as the context selector does: `"Plan"` (the default)
+takes the best drawing curves, `Plan`, then `Annotation`, `FootPrint`
+and `Axis`, preferring one in a `PLAN_VIEW` context; `"Axis"`,
+`"FootPrint"`, `"Annotation"`, `"Body"` or `"Surface"` name one
+`RepresentationIdentifier`; any other throws `invalid-value`:
+
+<!-- SNIPPET:js-geometry-curves -->
+
+```js
+const model = IfcModel.parse(bytes);
+for (const product of model.productCurves(undefined, "Axis")) {
+  for (const line of product.polylines) {
+    // positions: Float32Array, x y z per vertex in metres relative to
+    // product.transform; this curve is a slice of them.
+    const xyz = product.positions.subarray(
+      3 * line.firstVertex,
+      3 * (line.firstVertex + line.vertexCount),
+    );
+    console.log(product.id, xyz.length / 3, line.closed, line.chordBound);
+  }
+}
+```
+
+<!-- /SNIPPET -->
+
+Each `ProductCurves` has one `positions` `Float32Array`, relative to its
+`transform` as a mesh's are, holding every polyline's vertices in turn,
+and a `ProductPolyline` per curve: its slice (`firstVertex`,
+`vertexCount`), `closed` (the last vertex repeats the first), the IFC
+`curve` it came from, and `chordBound`, the reference backend's certified
+bound in metres on how far the exact curve lies from the polyline (`0`
+for a polyline the file authored), against `chordRequested`, one
+millimetre. Draw each slice as a `LINE_STRIP`. A trimmed, composite,
+offset or intrinsic curve (an `IfcTrimmedCurve` axis, an
+`IfcCompositeCurve` footprint) is refused by name, code `unsupported`
+naming the curve, until the reference compiler polylines it
+([#506](https://github.com/openbimrs/ifc/issues/506)).
+
+`productMeshes(ids, representation)` meshes a representation other than
+the Body the same way, such as `"Surface"`: its surfaces and solids as
+one mesh, its curves left to `productCurves`. Every mesh says what it
+bounds in `closure`: `"solid"`, `"surface"` (a surface model, a face, a
+rectangular trimmed surface: an area and no volume) or `"unknown"` for an
+empty or refused mesh. Only a Body mesh carries a colour.
+
 `crates/openbim-ifc-wasm/examples/viewer/` draws a file's meshes with
 plain WebGL2 and no build step beyond the module. Its `viewer.mjs` imports
 `@openbim/ifc/mesh/web`, and the page's import map says where that is:
@@ -1037,7 +1087,8 @@ class, interface and type the package's `.d.ts` declares.
 | `model.unreachableProducts(): UnreachableProduct[]` | yes | Products no viewer will draw (outside the spatial structure, or with geometry only in non-model contexts), with a stable `reason`. |
 | `model.productPlacements(ids: bigint[] \| BigUint64Array \| undefined): ProductPlacement[]` | yes | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or, without, for every product with a shape. A product that cannot be placed is a record with a typed `refusal`; the call itself throws only `unsupported-schema` or `feature-disabled` (feature `placements`). |
 | `model.productGeometry(ids: bigint[] \| BigUint64Array \| undefined, encoding: GeometryPayloadEncoding \| undefined): ProductGeometry[]` | yes | Each product's Body as Axiolid's neutral geometry graph (#367), exact (extrusions, sweeps, B-splines, unevaluated booleans), for `ids` or, without, every product with a shape, in Axiolid's versioned wire format: `{ format: "axiolid-geometry-graph", version: "1.0", graph: { nodes, roots } }` (the lowest version the content needs, `"1.0"` to `"1.3"`), in world coordinates, metres. `encoding` picks the `payload`: `"json"` (the default) the text, `"object"` the text parsed, `"cbor"` the CBOR bytes as a `Uint8Array`. A product that cannot be lowered has a typed `refusal`; the call itself throws only `unsupported-schema`, `feature-disabled` (feature `graph`) or `invalid-value` for an unknown encoding. |
-| `model.productMeshes(ids: bigint[] \| BigUint64Array \| undefined): ProductMesh[]` | yes | Each product's Body as triangles from the reference backend: `positions` (`Float32Array`, metres, relative to `transform`) and `indices` (`Uint32Array`), for `ids` or, without, every product with a shape. A product that cannot be meshed has a typed `refusal`. Opt-in: a build without the `mesh` feature (the npm package's default entry) throws `feature-disabled`; import `@openbim/ifc/mesh` for it. |
+| `model.productMeshes(ids: bigint[] \| BigUint64Array \| undefined, representation: RepresentationName \| undefined): ProductMesh[]` | yes | Each product's Body as triangles from the reference backend: `positions` (`Float32Array`, metres, relative to `transform`) and `indices` (`Uint32Array`), for `ids` or, without, every product with a shape. A product that cannot be meshed has a typed `refusal`. `representation` meshes another one instead (#458), such as `"Surface"`; its curves are left to `productCurves`, and `closure` says `"solid"` or `"surface"`. Only a Body mesh carries a colour. Opt-in: a build without the `mesh` feature (the npm package's default entry) throws `feature-disabled`; import `@openbim/ifc/mesh` for it. |
+| `model.productCurves(ids: bigint[] \| BigUint64Array \| undefined, representation: RepresentationName \| undefined): ProductCurves[]` | yes | Each product's curves as polylines from the reference backend (#458), for `ids` or, without, every product with a shape: `positions` (`Float32Array`, metres, relative to `transform`), every polyline's vertices in turn, and per curve its slice, whether it is closed and its certified chord bound. `representation` is `"Plan"` by default (the best drawing curves), or `"Axis"`, `"FootPrint"`, `"Annotation"`, `"Body"`, `"Surface"`; another throws `invalid-value`. A trimmed, composite, offset or intrinsic curve is an `unsupported` refusal until the reference compiler polylines it (#506). Opt-in with the meshes: import `@openbim/ifc/mesh`. |
 | `model.propertySets(id: bigint): PropertySet[]` | yes | The property sets, quantity sets and predefined property sets that apply to object `id`: its own first, then those inherited from its type object, an occurrence property overriding an inherited one. Values keep their declared IFC type (`typed IFCLENGTHMEASURE(...)`). |
 | `model.propertySetsMany(ids: bigint[] \| BigUint64Array \| undefined): ObjectPropertySets[]` | yes | The property sets of each of `ids`, in that order, or, with no ids, of every object definition (`IfcObjectDefinition` and its subtypes) in file order, in one pass (#358): the file's property relationships are validated once for the call, so resolving every object is linear in the model. Each `ObjectPropertySets` holds exactly what `propertySets` returns for its object, or, in `refusal`, the code and message it throws; only a refusal of the whole model throws. No index outlives the call. |
 | `model.resolveUnit(measureType: string, unit: bigint \| undefined): ResolvedUnit` | yes | The effective unit of a `measureType` value (`"IFCAREAMEASURE"`): `unit` when given (a property's stated unit), otherwise the project default, resolved exactly to SI. |

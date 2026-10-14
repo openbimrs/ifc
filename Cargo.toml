@@ -168,6 +168,9 @@ axiolid-contracts = { version = "0.3.1" }
 # samples onto its face's surface (axiolid/kernel#310; #454), and bounds
 # instanced bodies with the rounding of their placement (axiolid/kernel#295).
 # It needs contract 0.3.4.
+# The same release compiles curves to polylines with a certified chord
+# bound (`PolylineCompiler`), and rectangular trimmed surfaces and B-reps of
+# loose faces to surface meshes (axiolid/kernel#311; #458).
 axiolid-mesh-compile = { version = "0.3.26" }
 axiolid-mesh-compile-contract = { version = "0.3.4" }
 # 0.3.5: batch booleans keep their memory budget (axiolid/kernel#259).

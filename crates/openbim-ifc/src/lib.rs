@@ -254,8 +254,8 @@ pub use ifc_geometry as geometry;
 #[cfg(feature = "geometry-select")]
 pub use ifc_geometry::{
     all_contexts, context_of, plan_contexts, select_plan_representation,
-    select_shape_representation, RepresentationContext, TargetView, PLAN_IDENTIFIERS,
-    SOLID_IDENTIFIERS,
+    select_product_representation, select_shape_representation, RepresentationContext,
+    RepresentationPurpose, TargetView, PLAN_IDENTIFIERS, SOLID_IDENTIFIERS,
 };
 
 /// Where a product sits in the world.

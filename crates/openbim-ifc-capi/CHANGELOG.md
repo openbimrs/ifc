@@ -8,6 +8,30 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#458, curves and surfaces as output primitives)
+
+- `openbim_ifc_v0_1_model_product_curves(model, ids, id_count,
+  representation, representation_len, out_curves)` (feature `mesh`)
+  compiles the curves of each product's representation into an
+  `OpenbimIfcCurves` set; `openbim_ifc_v0_1_curves_records`
+  (`ProductCurves` records with `ProductPolyline` records: curve, first
+  vertex, vertex count, closed, chord bound, chord requested),
+  `openbim_ifc_v0_1_curves_positions` and
+  `openbim_ifc_v0_1_curves_destroy` read and free it. `representation`
+  is UTF-8: `Plan`, `Axis`, `FootPrint`, `Annotation`, `Body` or
+  `Surface`; another is `INVALID_VALUE`. A trimmed, composite, offset or
+  intrinsic curve is a record refused `unsupported` (#506).
+- `openbim_ifc_v0_1_model_product_meshes_for(..., representation,
+  representation_len, out_meshes)` meshes a named representation; every
+  `ProductMesh` record ends with its closure (`TEXT`: `solid`, `surface`
+  or `unknown`). The header is regenerated.
+- ABI version 0.1.17 (on top of #462's 0.1.16); every export above is
+  new, no `v0_1` symbol changed.
+
+Semver: additive, released on the 0.1 line: the `v0_1` ABI only gains
+symbols and a trailing record field, and the C package keeps 0.1.x.
+
+
 ## [0.1.12] - 2026-10-14
 
 ### Added (#462, INVERSE attributes by name)

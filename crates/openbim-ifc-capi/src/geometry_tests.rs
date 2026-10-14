@@ -167,6 +167,104 @@ fn a_mesh_set_hands_out_the_core_arrays() {
     );
 }
 
+#[cfg(feature = "mesh")]
+#[test]
+fn a_curve_set_hands_out_the_core_polylines() {
+    use openbim_ifc_binding_core::ToRecord;
+
+    let bytes = fixture();
+    let core = IfcModel::parse(&bytes)
+        .unwrap()
+        .product_curves(None, "Axis")
+        .unwrap();
+    let model = parse(&bytes);
+    let axis = "Axis";
+    let mut curves = 0;
+    // SAFETY: valid out-pointer and text; null ids select every product.
+    let status = unsafe {
+        openbim_ifc_v0_1_model_product_curves(
+            model,
+            null(),
+            0,
+            axis.as_ptr(),
+            axis.len(),
+            &mut curves,
+        )
+    };
+    assert_eq!(status, OpenbimIfcStatus::Ok);
+
+    let mut count = 0;
+    let count_out: *mut usize = &mut count;
+    // SAFETY (closure): the helper's buffers; `count` outlives every call.
+    let records = tape(|n, nc, nr, s, sc, sr| unsafe {
+        openbim_ifc_v0_1_curves_records(curves, count_out, n, nc, nr, s, sc, sr)
+    })
+    .unwrap();
+    assert_eq!(count, core.len());
+    assert_eq!(
+        records,
+        Tagged::List(core.iter().map(|c| c.to_record().to_tagged()).collect())
+    );
+    for (index, product) in core.iter().enumerate() {
+        let mut need = 0;
+        // SAFETY: the size query, then a buffer of the size it reported.
+        let positions = unsafe {
+            let _ = openbim_ifc_v0_1_curves_positions(curves, index, null_mut(), 0, &mut need);
+            let mut buffer = vec![0f32; need];
+            let status = openbim_ifc_v0_1_curves_positions(
+                curves,
+                index,
+                buffer.as_mut_ptr(),
+                buffer.len(),
+                &mut need,
+            );
+            assert_eq!(status, OpenbimIfcStatus::Ok);
+            buffer
+        };
+        assert_eq!(positions, product.positions);
+    }
+    assert_eq!(core[0].polylines.len(), 1, "the wall's axis");
+
+    // An unknown name is refused as a whole, with no handle written.
+    let mut none = 0;
+    let bad = "Centreline";
+    // SAFETY: as above.
+    let status = unsafe {
+        openbim_ifc_v0_1_model_product_curves(model, null(), 0, bad.as_ptr(), bad.len(), &mut none)
+    };
+    assert_eq!(status, OpenbimIfcStatus::InvalidValue);
+    assert_eq!(none, 0);
+
+    // Meshes of a named representation: an Axis has none.
+    let mut meshes = 0;
+    // SAFETY: as above.
+    let status = unsafe {
+        openbim_ifc_v0_1_model_product_meshes_for(
+            model,
+            null(),
+            0,
+            axis.as_ptr(),
+            axis.len(),
+            &mut meshes,
+        )
+    };
+    assert_eq!(status, OpenbimIfcStatus::Ok);
+    assert_eq!(
+        openbim_ifc_v0_1_meshes_destroy(meshes),
+        OpenbimIfcStatus::Ok
+    );
+
+    assert_eq!(openbim_ifc_v0_1_model_destroy(model), OpenbimIfcStatus::Ok);
+    assert_eq!(
+        openbim_ifc_v0_1_curves_destroy(curves),
+        OpenbimIfcStatus::Ok
+    );
+    assert_eq!(
+        openbim_ifc_v0_1_curves_destroy(curves),
+        OpenbimIfcStatus::InvalidHandle
+    );
+}
+
 #[cfg(not(feature = "mesh"))]
 #[test]
 fn meshes_refuse_without_the_feature() {
@@ -179,5 +277,12 @@ fn meshes_refuse_without_the_feature() {
     assert_eq!(status, OpenbimIfcStatus::FeatureDisabled);
     assert_eq!(last_code(model), "feature-disabled");
     assert_eq!(meshes, 0, "no handle written");
+    let mut curves = 0;
+    // SAFETY: valid out-pointer and text.
+    let status = unsafe {
+        openbim_ifc_v0_1_model_product_curves(model, null(), 0, "Axis".as_ptr(), 4, &mut curves)
+    };
+    assert_eq!(status, OpenbimIfcStatus::FeatureDisabled);
+    assert_eq!(curves, 0, "no handle written");
     assert_eq!(openbim_ifc_v0_1_model_destroy(model), OpenbimIfcStatus::Ok);
 }

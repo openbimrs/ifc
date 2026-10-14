@@ -12,6 +12,52 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#458, curves and surfaces as output primitives)
+
+Semver: minor. Every item below is new; `RepresentationPurpose` and
+`GeometryError` are `#[non_exhaustive]`, so their new variants are
+additive. One refusal text changes (below); no lowered graph changes.
+
+- `RepresentationPurpose::{Axis, FootPrint, Annotation, Surface}`: each
+  selects the first representation the product authors with that
+  `RepresentationIdentifier`, in authored order, whatever its context.
+  `Body` and `Plan` keep their policies. `RepresentationPurpose::identifier`,
+  `name` and `from_name` map a purpose to and from the IFC spelling.
+- `compile::compile_product_polylines(_with)`: the curves of a product's
+  representation for a purpose as `CompiledPolyline`s (the IFC `curve`,
+  world `points`, `closed`, and the backend's `ChordDeviation`: the chord
+  budget asked for and a certified bound on the distance from the exact
+  curve to the polyline). It takes any `PolylineCompiler`, the reference
+  backend's new operation (axiolid/kernel#311). A collection is opened,
+  and a mapped item holding a curve places each curve on its own by the
+  same composed transform (an exact regrouping; nothing is evaluated).
+- `compile::compile_product_mesh_for(_with)`: the surfaces and solids of
+  a product's representation for a purpose as one `CompiledMesh` with its
+  `MeshClosure`. A representation with no curve compiles from its own
+  root, so a Body's mesh is the one `compile_product_mesh_reported` gives.
+  Rectangular trimmed surfaces and B-reps of loose faces now compile as
+  `MeshClosure::Surface` (axiolid/kernel#311).
+- `GeometryError::PolylineUnsupported { product, curve, family, reason }`
+  with `compile::UnpolylinedCurve::{Trimmed, Composite, Offset,
+  Intrinsic}`: a trimmed, composite, offset or intrinsic curve the
+  backend refuses to polyline is refused by that name, `is_unsupported()`,
+  never approximated here. The reference compiler refuses them until
+  axiolid/kernel#317 (#506).
+- `compile` re-exports `ChordDeviation`, `MeshClosure`, `Point3` and
+  `PolylineCompiler`, so a caller names no `axiolid-*` crate.
+- Tests: an `IfcPolyline` axis, a placed `IfcCircle` footprint far from
+  the origin, a mapped axis, an annotation curve set, a rectangular
+  trimmed surface, a lone `IfcFaceSurface`, a representation mixing both,
+  and the trimmed and composite refusals, each in IFC2X3, IFC4 and IFC4X3.
+
+### Changed (#458)
+
+- Uses the `PolylineCompiler` of `axiolid-mesh-compile` 0.3.26 and
+  `axiolid-mesh-compile-contract` 0.3.4, the floors #454 raised.
+- `GeometryError::CompilationRefused` reads "could not be compiled: ..."
+  instead of "could not be compiled to a mesh: ...": it is now also the
+  polyline compiler's refusal.
+
 ### Changed (#454, curved advanced B-rep faces bounded by 3D edge curves compile)
 
 Semver: patch. No public item, refusal kind or lowered graph changes. Only

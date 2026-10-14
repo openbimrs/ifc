@@ -94,6 +94,60 @@ public class GeometryTests
         }
     }
 
+    /// <summary>The wall with an <c>Axis</c> beside its Body: an <c>IfcPolyline</c> from (-2000, 0) to (2000, 0) mm (#458).</summary>
+    private static readonly string AxisWall = Wall
+        .Replace("#16=IFCPRODUCTDEFINITIONSHAPE($,$,(#15));", "#16=IFCPRODUCTDEFINITIONSHAPE($,$,(#18,#15));")
+        .Replace(
+            "ENDSEC;\nEND-ISO-10303-21;\n",
+            "#18=IFCSHAPEREPRESENTATION(#5,'Axis','Curve2D',(#19));\n"
+            + "#19=IFCPOLYLINE((#20,#21));\n"
+            + "#20=IFCCARTESIANPOINT((-2000.,0.));\n"
+            + "#21=IFCCARTESIANPOINT((2000.,0.));\n"
+            + "ENDSEC;\nEND-ISO-10303-21;\n");
+
+    [Fact]
+    public void CurvesAreOptInAndOtherwisePolylines()
+    {
+        using var model = IfcModel.Parse(Fixtures.Bytes(AxisWall));
+        try
+        {
+            var printed = new System.Collections.Generic.List<string>();
+            // docs:snippet dotnet-geometry-curves
+            foreach (var product in model.ProductCurves(null, "Axis"))
+            {
+                foreach (var line in product.Curves.Polylines)
+                {
+                    // Positions: x y z per vertex, metres, relative to
+                    // product.Curves.Transform; this curve is a slice of them.
+                    var xyz = product.Positions.Skip((int)line.FirstVertex * 3).Take((int)line.VertexCount * 3).ToArray();
+                    printed.Add($"#{product.Curves.Id}: {xyz.Length / 3} vertices, bound {line.ChordBound}");
+                }
+            }
+            // docs:end
+            Assert.Equal(new[] { "#17: 2 vertices, bound 0" }, printed);
+            var wall = Assert.Single(model.ProductCurves(null, "Axis"));
+            Assert.Null(wall.Curves.Refusal);
+            var axis = Assert.Single(wall.Curves.Polylines);
+            Assert.Equal(new ProductPolyline(19, 0, 2, false, 0.0, 0.001), axis);
+            Assert.Equal(wall.Curves.VertexCount * 3, (long)wall.Positions.Length);
+            Assert.Equal(-2.0, (double)wall.Positions[0], 5);
+            Assert.Equal(2.0, (double)wall.Positions[3], 5);
+            // Plan, the default, picks the same Axis; the Body has no curves.
+            Assert.Equal(wall.Curves, Assert.Single(model.ProductCurves()).Curves);
+            Assert.Empty(Assert.Single(model.ProductCurves(null, "Body")).Curves.Polylines);
+            // The Body mesh is a solid; an Axis has nothing to mesh.
+            Assert.Equal("solid", Assert.Single(model.ProductMeshes()).Mesh.Closure);
+            Assert.Empty(Assert.Single(model.ProductMeshes(null, "Axis")).Indices);
+            var error = Assert.Throws<IfcException>(() => model.ProductCurves(null, "Centreline"));
+            Assert.Equal("invalid-value", error.Code);
+        }
+        catch (IfcException error) when (error.Code == "feature-disabled")
+        {
+            // The packaged library leaves meshes and curves out.
+            Assert.Equal(IfcStatus.FeatureDisabled, error.Status);
+        }
+    }
+
     /// <summary>The wall, made of a material whose styled representation
     /// paints it red, a quarter transparent (#449).</summary>
     private static readonly string RedWall = Wall.Replace(

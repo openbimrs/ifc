@@ -325,8 +325,13 @@ public sealed unsafe class IfcModel : IDisposable
 
     /// <summary>Each product's Body as triangles from the reference backend, for <paramref name="ids"/> or, when null, every product with a shape, in id order (#328).</summary>
     /// <remarks>A product that cannot be meshed has a typed <see cref="ProductMesh.Refusal"/>. Needs a native library built with the <c>mesh</c> feature; the packaged one throws <see cref="IfcException"/> with code <c>feature-disabled</c>.</remarks>
-    public IReadOnlyList<MeshedProduct> ProductMeshes(IReadOnlyList<ulong>? ids = null)
+    public IReadOnlyList<MeshedProduct> ProductMeshes(IReadOnlyList<ulong>? ids = null) => ProductMeshes(ids, "Body");
+
+    /// <summary>The surfaces and solids of each product's <paramref name="representation"/> as one mesh (#458): <c>Body</c> as <see cref="ProductMeshes(IReadOnlyList{ulong})"/>, or <c>Surface</c>, <c>Plan</c>, <c>Axis</c>, <c>FootPrint</c>, <c>Annotation</c>.</summary>
+    /// <remarks>Curves are left to <see cref="ProductCurves(IReadOnlyList{ulong}, string)"/>; <see cref="ProductMesh.Closure"/> says <c>solid</c> or <c>surface</c>. A product without the representation, or with curves only, has an empty mesh and no refusal; only a Body mesh carries a colour. Throws <c>invalid-value</c> for another name, and <c>feature-disabled</c> as the Body call does.</remarks>
+    public IReadOnlyList<MeshedProduct> ProductMeshes(IReadOnlyList<ulong>? ids, string representation)
     {
+        var name = Calls.Encode(representation ?? throw new ArgumentNullException(nameof(representation)));
         var selection = ids?.ToArray();
         if (selection is { Length: 0 })
         {
@@ -337,8 +342,9 @@ public sealed unsafe class IfcModel : IDisposable
         {
             var m = lease.Model;
             fixed (ulong* p = selection)
+            fixed (byte* r = name)
             {
-                Calls.Check(m, NativeMethods.openbim_ifc_v0_1_model_product_meshes(m, p, (nuint)(selection?.Length ?? 0), &meshes));
+                Calls.Check(m, NativeMethods.openbim_ifc_v0_1_model_product_meshes_for(m, p, (nuint)(selection?.Length ?? 0), r, (nuint)name.Length, &meshes));
             }
         }
         // A copy for the lambda: a captured local cannot have its address taken.
@@ -366,6 +372,69 @@ public sealed unsafe class IfcModel : IDisposable
         {
             NativeMethods.openbim_ifc_v0_1_meshes_destroy(set);
         }
+    }
+
+    /// <summary>The curves of each product's <paramref name="representation"/> as polylines from the reference backend (#458), for <paramref name="ids"/> or, when null, every product with a shape, in id order.</summary>
+    /// <remarks><paramref name="representation"/> is <c>Plan</c> by default (the best drawing curves: <c>Plan</c>, <c>Annotation</c>, <c>FootPrint</c>, then <c>Axis</c>, preferring a <c>PLAN_VIEW</c> context), or <c>Axis</c>, <c>FootPrint</c>, <c>Annotation</c>, <c>Body</c>, <c>Surface</c>; another throws <c>invalid-value</c>. A product whose curves cannot be compiled has a typed <see cref="OpenBim.Ifc.ProductCurves.Refusal"/>: a trimmed, composite, offset or intrinsic curve is <c>unsupported</c> until the reference compiler polylines it (#506). Needs a native library built with the <c>mesh</c> feature; the packaged one throws <c>feature-disabled</c>.</remarks>
+    public IReadOnlyList<CurvedProduct> ProductCurves(IReadOnlyList<ulong>? ids = null, string representation = "Plan")
+    {
+        var name = Calls.Encode(representation ?? throw new ArgumentNullException(nameof(representation)));
+        var selection = ids?.ToArray();
+        if (selection is { Length: 0 })
+        {
+            return Array.Empty<CurvedProduct>();
+        }
+        ulong curves;
+        using (var lease = handle.Acquire())
+        {
+            var m = lease.Model;
+            fixed (ulong* p = selection)
+            fixed (byte* r = name)
+            {
+                Calls.Check(m, NativeMethods.openbim_ifc_v0_1_model_product_curves(m, p, (nuint)(selection?.Length ?? 0), r, (nuint)name.Length, &curves));
+            }
+        }
+        // A copy for the lambda: a captured local cannot have its address taken.
+        var set = curves;
+        try
+        {
+            var status = Calls.Tape((n, nc, nr, s, sc, sr) =>
+            {
+                nuint count;
+                return NativeMethods.openbim_ifc_v0_1_curves_records(set, &count, n, nc, nr, s, sc, sr);
+            }, out var tape);
+            if (status != IfcStatus.Ok)
+            {
+                throw Calls.Error(status, null);
+            }
+            var records = RecordDecoder.DecodeList<ProductCurves>(tape.One());
+            var result = new CurvedProduct[records.Count];
+            for (var i = 0; i < records.Count; i++)
+            {
+                result[i] = new CurvedProduct(records[i], CurvePositions(set, i));
+            }
+            return result;
+        }
+        finally
+        {
+            NativeMethods.openbim_ifc_v0_1_curves_destroy(set);
+        }
+    }
+
+    private static float[] CurvePositions(ulong curves, int index)
+    {
+        nuint need;
+        var status = NativeMethods.openbim_ifc_v0_1_curves_positions(curves, (nuint)index, null, 0, &need);
+        if (status != IfcStatus.Ok && status != IfcStatus.BufferTooSmall)
+        {
+            throw Calls.Error(status, null);
+        }
+        var buffer = new float[checked((int)need)];
+        fixed (float* p = buffer)
+        {
+            status = NativeMethods.openbim_ifc_v0_1_curves_positions(curves, (nuint)index, p, (nuint)buffer.Length, &need);
+        }
+        return status == IfcStatus.Ok ? buffer : throw Calls.Error(status, null);
     }
 
     private static float[] MeshPositions(ulong meshes, int index)

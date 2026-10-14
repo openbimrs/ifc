@@ -15,7 +15,20 @@
 //!   Each mesh carries its surface colour (#449): RGB and transparency, and
 //!   whether the representation item, its presentation layer or its
 //!   material supplied it; `null` when nothing colours the product, with a
-//!   typed `colour_refusal` when its colour cannot be resolved.
+//!   typed `colour_refusal` when its colour cannot be resolved; and its
+//!   `closure` (#458): `solid`, `surface` (area, no volume) or `unknown`.
+//!   `product_meshes_for` meshes another representation, such as `Surface`.
+//! - **Polylines** (feature `mesh`, #458): per product, the curves of a
+//!   curve representation (`Axis`, `FootPrint`, an annotation's curves),
+//!   one `f32` position array relative to the world placement and one
+//!   `ProductPolyline` record per curve, with its certified chord bound
+//!   ([`curves`]).
+//!
+//! A representation is named by a host as `Body` (the meshes' default),
+//! `Plan` (the polylines' default: `Plan`, `Annotation`, `FootPrint` or
+//! `Axis`, preferring a `PLAN_VIEW` context), or one identifier: `Axis`,
+//! `FootPrint`, `Annotation`, `Surface`. Another name is refused with
+//! `invalid-value`.
 //!
 //! A product that cannot be placed, selected or meshed is a record with a
 //! typed [`GeometryRefusal`], never an error that aborts the call: one
@@ -27,6 +40,7 @@
 use crate::record::{Field, Record, ToRecord};
 use crate::{BindingError, IfcModel};
 
+pub mod curves;
 pub mod graph;
 
 /// Why one product has no placement, representation, graph or mesh.
@@ -136,6 +150,10 @@ pub struct ProductMesh {
     /// `missing-reference`, `unsupported` and `budget-exceeded`. Never
     /// refuses the mesh itself.
     pub colour_refusal: Option<GeometryRefusal>,
+    /// `solid` when the mesh bounds a volume the file declared, `surface`
+    /// for a surface (a surface model, a face, a trimmed surface: an area
+    /// and no volume), `unknown` for an empty or refused mesh (#458).
+    pub closure: String,
 }
 
 impl IfcModel {
@@ -170,16 +188,44 @@ impl IfcModel {
         &self,
         products: Option<&[u64]>,
     ) -> Result<Vec<ProductMesh>, BindingError> {
+        self.product_meshes_for(products, "Body")
+    }
+
+    /// The surfaces and solids of each product's `representation` as one
+    /// mesh (#458): `Body` as [`Self::product_meshes`], or another name the
+    /// module docs list, such as `Surface`. Curves are not meshed:
+    /// [`Self::product_curves`] returns them. A product without that
+    /// representation, or with curves only, has an empty mesh and no
+    /// refusal. Only a Body mesh carries a colour.
+    ///
+    /// Refused as a whole as [`Self::product_meshes`] is, and with
+    /// `invalid-value` for a representation name it does not know.
+    pub fn product_meshes_for(
+        &self,
+        products: Option<&[u64]>,
+        representation: &str,
+    ) -> Result<Vec<ProductMesh>, BindingError> {
         #[cfg(feature = "mesh")]
         {
-            meshes(self, products)
+            meshes(self, products, purpose(representation)?)
         }
         #[cfg(not(feature = "mesh"))]
         {
-            let _ = products;
+            let _ = (products, representation);
             Err(BindingError::FeatureDisabled("mesh"))
         }
     }
+}
+
+/// The selector purpose a host names, or `invalid-value`.
+#[cfg(feature = "mesh")]
+fn purpose(name: &str) -> Result<ifc::RepresentationPurpose, BindingError> {
+    ifc::RepresentationPurpose::from_name(name).ok_or_else(|| {
+        BindingError::InvalidValue(format!(
+            "representation must be Body, Plan, Axis, FootPrint, Annotation or Surface, \
+             not {name:?}"
+        ))
+    })
 }
 
 #[cfg(feature = "placements")]
@@ -239,10 +285,14 @@ fn placements(
 }
 
 #[cfg(feature = "mesh")]
-fn meshes(model: &IfcModel, products: Option<&[u64]>) -> Result<Vec<ProductMesh>, BindingError> {
+fn meshes(
+    model: &IfcModel,
+    products: Option<&[u64]>,
+    purpose: ifc::RepresentationPurpose,
+) -> Result<Vec<ProductMesh>, BindingError> {
     let products = ids(products);
     let mut out = Vec::new();
-    for (product, mesh) in ifc::product_meshes(&model.inner, products.as_deref()) {
+    for (product, mesh) in ifc::product_meshes_for(&model.inner, products.as_deref(), purpose) {
         let (global_id, type_name) = product_identity(model, product.0)?;
         let mut record = ProductMesh {
             id: product.0,
@@ -254,12 +304,14 @@ fn meshes(model: &IfcModel, products: Option<&[u64]>) -> Result<Vec<ProductMesh>
             refusal: None,
             colour: None,
             colour_refusal: None,
+            closure: "unknown".to_owned(),
         };
         match mesh {
             Ok(mesh) => {
                 record.transform = Some(ifc::column_major(&mesh.world));
                 record.positions = mesh.positions;
                 record.indices = mesh.indices;
+                record.closure = closure(mesh.closure).to_owned();
                 match mesh.colour {
                     Ok(colour) => record.colour = colour.as_ref().map(surface_colour),
                     Err(error) => record.colour_refusal = Some(colour_refusal(&error)),
@@ -283,7 +335,7 @@ fn refusal(error: &ifc::geometry::GeometryError) -> GeometryRefusal {
         }
         E::Unsupported { .. } => "unsupported",
         #[cfg(feature = "mesh")]
-        E::CompilationRefused { .. } => "unsupported",
+        E::CompilationRefused { .. } | E::PolylineUnsupported { .. } => "unsupported",
         // A net refusal is as typed as its cause; gross meshes never raise it.
         E::OpeningNotSubtracted { cause, .. } => return refusal(cause),
         E::MissingAttribute { .. }
@@ -300,6 +352,18 @@ fn refusal(error: &ifc::geometry::GeometryError) -> GeometryRefusal {
         code: code.to_owned(),
         entity: error.entity().map(|id| id.0),
         message: error.to_string(),
+    }
+}
+
+/// The host name of a mesh's closure.
+#[cfg(feature = "mesh")]
+fn closure(closure: ifc::geometry::compile::MeshClosure) -> &'static str {
+    use ifc::geometry::compile::MeshClosure as C;
+    match closure {
+        C::Solid => "solid",
+        C::Surface => "surface",
+        // `Unknown`, or a closure added to the contract after this binding.
+        _ => "unknown",
     }
 }
 
@@ -438,6 +502,7 @@ impl ToRecord for ProductMesh {
                     "colour_refusal",
                     Field::record(self.colour_refusal.as_ref()),
                 ),
+                ("closure", Field::Text(self.closure.clone())),
             ],
         )
     }

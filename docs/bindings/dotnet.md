@@ -381,7 +381,44 @@ colours the product, with `ColourRefusal` (code `ambiguous` for a set of
 several materials or Body items of different colours) when it is not
 resolved. A colour never refuses the mesh. It needs a native library built with the C ABI's
 `mesh` feature; the packaged one throws `IfcException` with code
-`feature-disabled`.
+`feature-disabled`. `ProductMesh.Closure` says what the mesh bounds:
+`solid`, `surface` (an area, no volume) or `unknown` for an empty or
+refused mesh; `ProductMeshes(ids, representation)` meshes a named
+representation instead of the Body, such as `"Surface"`.
+
+`ProductCurves(ids, representation)` returns the curves of a curve
+representation as polylines ([#458](https://github.com/openbimrs/ifc/issues/458)),
+from the same native library: a `CurvedProduct` per product, its
+`ProductCurves` record (transform, vertex count, a `ProductPolyline` per
+curve, refusal) and `float[] Positions`, every polyline's vertices in
+turn, relative to its transform. `representation` is `"Plan"` by default
+(the best drawing curves: `Plan`, then `Annotation`, `FootPrint` and
+`Axis`, preferring one in a `PLAN_VIEW` context), or `"Axis"`,
+`"FootPrint"`, `"Annotation"`, `"Body"`, `"Surface"`; another throws
+`invalid-value`. Each `ProductPolyline` names its slice (`FirstVertex`,
+`VertexCount`), whether it is `Closed`, the IFC `Curve`, and
+`ChordBound`, the certified bound in metres on how far the exact curve
+lies from it (0 for a polyline the file authored), against
+`ChordRequested`, one millimetre. A trimmed, composite, offset or
+intrinsic curve is refused `unsupported`, naming the curve, until the
+reference compiler polylines it ([#506](https://github.com/openbimrs/ifc/issues/506)).
+
+<!-- SNIPPET:dotnet-geometry-curves -->
+
+```csharp
+foreach (var product in model.ProductCurves(null, "Axis"))
+{
+    foreach (var line in product.Curves.Polylines)
+    {
+        // Positions: x y z per vertex, metres, relative to
+        // product.Curves.Transform; this curve is a slice of them.
+        var xyz = product.Positions.Skip((int)line.FirstVertex * 3).Take((int)line.VertexCount * 3).ToArray();
+        printed.Add($"#{product.Curves.Id}: {xyz.Length / 3} vertices, bound {line.ChordBound}");
+    }
+}
+```
+
+<!-- /SNIPPET -->
 
 `ProductGeometry(ids, encoding)` returns each product's Body as Axiolid's
 neutral geometry graph ([#367](https://github.com/openbimrs/ifc/issues/367)),
@@ -655,6 +692,8 @@ and `MeshedProduct` included, from its XML documentation comments.
 | `IReadOnlyList<ProductPlacement> ProductPlacements(IReadOnlyList<ulong>? ids = null)` | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or, when null, every product with a shape, in id order (#328). |
 | `IReadOnlyList<ProductGraph> ProductGeometry(IReadOnlyList<ulong>? ids = null, GeometryEncoding encoding = GeometryEncoding.Json)` | Each product's Body as Axiolid's neutral geometry graph (#367), for `ids` or, when null, every product with a shape, in id order, encoded as `encoding` in Axiolid's wire format (1.0; 1.1 when a station carries a seam-snapping window, 1.2 when a run's sections do, 1.3 when an offset run continues to a basis end the kernel measures). |
 | `IReadOnlyList<MeshedProduct> ProductMeshes(IReadOnlyList<ulong>? ids = null)` | Each product's Body as triangles from the reference backend, for `ids` or, when null, every product with a shape, in id order (#328). |
+| `IReadOnlyList<MeshedProduct> ProductMeshes(IReadOnlyList<ulong>? ids, string representation)` | The surfaces and solids of each product's `representation` as one mesh (#458): `Body` as `ProductMeshes(IReadOnlyList{ulong})`, or `Surface`, `Plan`, `Axis`, `FootPrint`, `Annotation`. |
+| `IReadOnlyList<CurvedProduct> ProductCurves(IReadOnlyList<ulong>? ids = null, string representation = "Plan")` | The curves of each product's `representation` as polylines from the reference backend (#458), for `ids` or, when null, every product with a shape, in id order. |
 | `IReadOnlyList<PropertySet> PropertySets(ulong id)` | The property sets, quantity sets and predefined property sets of object `id`: its own first, then those its type object holds, an occurrence property overriding an inherited one of the same name. |
 | `IReadOnlyList<ObjectPropertySets> PropertySetsMany(IReadOnlyList<ulong>? ids = null)` | `PropertySets` of each of `ids`, in that order, or, when null, of every object definition (`IfcObjectDefinition` and its subtypes) in file order, in one pass (#358). |
 | `ResolvedUnit ResolveUnit(string measureType, ulong? unit = null)` | The effective unit of a `measureType` value (`IFCAREAMEASURE`): `unit` when given (a property's stated unit), otherwise the project default, resolved exactly to SI. |

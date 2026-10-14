@@ -48,8 +48,15 @@
 //! [backend-compare]: https://github.com/openbimrs/ifc/tree/main/crates/ifc-geometry/examples/backend_compare
 
 mod bounds;
+mod output;
 mod window;
 
+#[cfg(feature = "compile-reference-backend")]
+pub use output::{compile_product_mesh_for, compile_product_polylines};
+pub use output::{
+    compile_product_mesh_for_with, compile_product_polylines_with, ChordDeviation,
+    CompiledPolyline, MeshClosure, Point3, PolylineCompiler, UnpolylinedCurve,
+};
 pub use window::SeamWindowRefusal;
 
 /// The tolerance every entry point takes and the mesh it returns,
@@ -61,7 +68,7 @@ pub use axiolid_mesh::TriMesh;
 
 use axiolid_contracts::ExecutionOptions;
 use axiolid_core::Aabb;
-use axiolid_mesh_compile_contract::{MeshClosure, MeshCompiler};
+use axiolid_mesh_compile_contract::MeshCompiler;
 use ifc_model::{EntityId, Model};
 
 use crate::error::{GeometryError, GeometryResult};
