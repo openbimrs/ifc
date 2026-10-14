@@ -12,6 +12,13 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-10-14
+
+### Changed
+
+- Requires `ifc-author` 0.3.2, whose builder accepts nested aggregates
+  that the #481 representation ops write.
+
 ### Added (#462, INVERSE attributes by name)
 
 - `attribute_value_by_name(&model, schema, &reverse, id, name)` reads an
@@ -977,7 +984,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.32.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.33.0...HEAD
+[0.33.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.33.0
 [0.32.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.32.0
 [0.31.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.31.0
 [0.30.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.30.0

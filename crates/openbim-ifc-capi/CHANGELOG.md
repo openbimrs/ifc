@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.12] - 2026-10-14
+
 ### Added (#462, INVERSE attributes by name)
 
 - `openbim_ifc_v0_1_entity_attribute_by_name` reads an `INVERSE` name: a

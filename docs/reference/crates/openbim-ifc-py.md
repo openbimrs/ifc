@@ -11,7 +11,7 @@ Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.9.0 (2026-10-13) |
+| Latest release | 0.10.0 (2026-10-14) |
 | Registries | [PyPI `openbim-ifc`](https://pypi.org/project/openbim-ifc/) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_py/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-py/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-py) |
@@ -42,61 +42,54 @@ This crate adds calling-convention glue only. IFC behaviour belongs in
 
 ## Changes
 
-Latest release, 0.9.0 (2026-10-13):
+Latest release, 0.10.0 (2026-10-14):
 
-### Added (#478, cascading delete and purge)
+### Added (#462, INVERSE attributes by name)
 
-- `model.remove_product(id, *, rebase_placements=False,
-  untype_occurrences=False, dry_run=False)` and `model.purge(classes=(),
-  *, include_roots=False, include_owner_history=False, dry_run=False)`,
-  returning a `RemovalReport` (`RemovedEntity`, `KeptEntity`).
+- `entity.IsDefinedBy` and every other `INVERSE` name, resolved against
+  the file's release: a tuple of `Entity` views for a `SET` or `BAG`
+  (`SET [0:1]` included), an `Entity` or `None` for a single-valued
+  inverse; also through `model.attribute_by_name` (`List` of `Ref`, or
+  `Ref`/`Null`). `dir(entity)` lists them.
+- `model.inverse_attribute_names(id)` (`InverseAttributeInfo`),
+  `model.inverse_references(id)` (`InverseReference(id, index)`),
+  `model.total_inverses(id)`, and `entity.inverse_attribute_names()`,
+  `entity.inverse_references()` (`(Entity, index)` pairs),
+  `entity.total_inverses()`.
+- A write to an `INVERSE` name raises `IfcError` with the new code
+  `inverse-attribute`. Reading one no longer raises `unknown-attribute`.
 
-### Deprecated (#478)
+### Added (#481, shape representations)
 
-- `model.remove(id)` leaves references dangling and now warns with a
-  `DeprecationWarning`; use `remove_with_relationships` or
-  `remove_product`. It keeps working.
+- `AuthorOp.shape_representation(context, items, *, identifier=None,
+  representation_type=None)`, `AuthorOp.assign_representation(representation,
+  to)`, `AuthorOp.unassign_representation(representation, from_)`,
+  `AuthorOp.copy_representation(representation)` and
+  `AuthorOp.remove_representation(representation)` for `model.author`.
+- `model.remove_representation(id, *, dry_run=False)`, returning a
+  `RemovalReport`.
 
-Semver: additive, a minor release while 0.x.
+### Added (#464, selectors and values by path)
 
-### Added (#450)
-
-- `IfcModel.write_ifczip(*, inner="step", xsd_profile=None)`, and ifcZIP
-  input to `IfcModel.parse` and `IfcModel.open`, recognized by the ZIP
-  signature and read within a decompression budget (`parse`,
-  `unsupported` or `budget-exceeded` otherwise).
-
-Semver: minor (additive).
-
-### Added (#449)
-
-- `ProductMesh.colour` (`SurfaceColour`: `red`, `green`, `blue`,
-  `transparency`, `source` `item`/`layer`/`material`, `source_entity`,
-  `surface_style`) and `ProductMesh.colour_refusal` (a `GeometryRefusal`,
-  code `ambiguous` or a geometry code), both defaulting to `None`, in a
-  wheel built with `mesh`: the colour of the Body's item style, else its
-  presentation layer's, else its material's styled representation.
-  `SurfaceColour` is exported from `openbim_ifc`.
-
-### Added (#463, GlobalIds, types and openings)
-
-- `model.by_guid(global_id)` (an `Entity` or `None`) and
-  `model.id_by_guid(global_id)`, through an index built on the first lookup;
-  a `GlobalId` several entities carry raises `IfcError` (`invalid-model`),
-  and `model.duplicate_global_ids()` lists them as `DuplicateGlobalId`.
-- `model.type_object(id)`, `occurrences_of`, `openings_of`, `fillings_of`
-  and `voided_element_of`, in IFC2X3, IFC4 and IFC4X3.
-- `openbim_ifc.new_guid()` and `openbim_ifc.name_based_guid(*parts)`.
+- `model.select(query, base=None)` (`Entity` views) and
+  `model.select_ids(...)`, `model.get_value(entity, path)` (plain values,
+  a property set as a read-only mapping) and
+  `model.set_value(entity, path, value)`;
+  `openbim_ifc.canonical_selector(query)`,
+  `openbim_ifc.SELECTOR_GRAMMAR_VERSION`, `SelectedValue`.
+- The code `invalid-selector`, with `IfcError.span`, the byte range an
+  invalid selector refuses.
 
 Semver: additive, a minor release while 0.x.
 
-### Changed
+### Added (#480, type propagation on assignment)
 
-- `IfcModel.georeferencing()` reads IFC2X3 files through their `ePSet_MapConversion` and
-  `ePSet_ProjectedCRS` property sets instead of refusing them as
-  `unsupported-schema` (#451); such a record's source kind is
-  `property-set`. Through `openbim-ifc-binding-core`.
+- `AuthorOp.assign_type(type_object, objects, *, owner_history=None,
+  map_representations=False, mapping_target=None, material_usage=False,
+  layer_set_direction=None, predefined_type=None, replace=False)`, and
+  `replace=False` on `AuthorOp.contain` and `AuthorOp.aggregate`. Every
+  new argument is keyword-only and off by default.
 
-Semver: minor (ADR 0021).
+Semver: additive, a minor release while 0.x.
 
 Full history: [`crates/openbim-ifc-py/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-py/CHANGELOG.md)

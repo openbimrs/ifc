@@ -11,7 +11,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.9.0 (2026-10-13) |
+| Latest release | 0.10.0 (2026-10-14) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_wasm/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-wasm) |
@@ -68,65 +68,56 @@ suites here cover only the JS conversion itself.
 
 ## Changes
 
-Latest release, 0.9.0 (2026-10-13):
+Latest release, 0.10.0 (2026-10-14):
 
-### Added (#478, cascading delete and purge)
+### Added (#462, INVERSE attributes by name)
 
-- `model.removeProduct(id, { rebasePlacements?, untypeOccurrences?,
-  dryRun? })` and `model.purge({ classes?, includeRoots?,
-  includeOwnerHistory?, dryRun? })`, returning a `RemovalReport`
-  (`RemovedEntity`, `KeptEntity`; `RemoveProductOptions`, `PurgeOptions`
-  in the declarations).
+- `model.attributeByName(id, "IsDefinedBy")` and every other `INVERSE`
+  name, resolved against the file's release: a `list` of `ref`s for a
+  `SET` or `BAG` (`SET [0:1]` included), a `ref` or `null` for a
+  single-valued inverse.
+- `model.inverseAttributeNames(id)` (`InverseAttributeInfo[]`),
+  `model.inverseReferences(id)` (`InverseReference[]`, `{ id, index }`)
+  and `model.totalInverses(id)`.
+- Error code `inverse-attribute` (`IfcErrorCode`) for a write to an
+  `INVERSE` name. Reading one no longer throws `unknown-attribute`.
 
-### Deprecated (#478)
+### Added (#481, shape representations)
 
-- `model.remove(id)`, which leaves references dangling (`@deprecated` in
-  the declarations); use `removeWithRelationships` or `removeProduct`. It
-  keeps working.
+- `author` operations `shapeRepresentation` (`context`, `items`,
+  `identifier?`, `representationType?`), `assignRepresentation`
+  (`representation`, `to`), `unassignRepresentation` (`representation`,
+  `from`), `copyRepresentation` and `removeRepresentation`
+  (`representation`), in the `AuthorOp` declaration.
+- `model.removeRepresentation(id, { dryRun })`, returning a
+  `RemovalReport`; `RemoveRepresentationOptions`.
 
-Semver: additive, a minor release while 0.x.
+### Changed (#481)
 
-### Added (#450)
+- The reporting removals (`removeProduct`, `purge`, `removeRepresentation`)
+  live in their own source module; the JavaScript API is unchanged.
 
-- `model.writeIfcZip(inner?, profile?)`, and ifcZIP input to
-  `IfcModel.parse`, recognized by the ZIP signature and read within a
-  decompression budget (`parse`, `unsupported` or `budget-exceeded`
-  otherwise). The `zip` cargo feature, on by default, carries it.
+### Added (#464, selectors and values by path)
 
-Semver: minor (additive).
-
-### Added (#449)
-
-- `ProductMesh.colour` (`SurfaceColour`: `red`, `green`, `blue`,
-  `transparency`, `source` `"item" | "layer" | "material"`,
-  `sourceEntity`, `surfaceStyle`) and `ProductMesh.colourRefusal`
-  (`ColourRefusal`, code `"ambiguous"` or a geometry code) in the
-  `@openbim/ifc/mesh` entry: the colour of the Body's item style, else its
-  presentation layer's, else its material's styled representation.
-  TypeScript declarations included.
-
-### Added (#463, GlobalIds, types and openings)
-
-- `model.byGuid(globalId)` (`bigint | undefined`), through an index built on
-  the first lookup; a `GlobalId` several entities carry throws
-  `invalid-model`, and `model.duplicateGlobalIds()` lists them
-  (`DuplicateGlobalId`).
-- `model.typeObject(id)`, `occurrencesOf`, `openingsOf`, `fillingsOf` and
-  `voidedElementOf`, in IFC2X3, IFC4 and IFC4X3.
-- `IfcModel.newGuid()`, drawn from the host's `crypto.getRandomValues`
-  (browsers, Node 19 and later; `unsupported` on Node 18), and
-  `IfcModel.nameBasedGuid(parts)`. The module now links getrandom's
-  JavaScript backend.
+- `model.select(query, base?)`, `model.getValue(id, path)` (an
+  `IfcSelectedValue`: a tagged value, a list, or a property set as
+  `{ kind: "properties", entries }`) and `model.setValue(id, path,
+  value)`; `IfcModel.canonicalSelector(query)` and
+  `IfcModel.selectorGrammarVersion()`.
+- The code `invalid-selector`, with `error.span`, the byte range an
+  invalid selector refuses. The pattern engine (`regex-lite`) is in every
+  build.
 
 Semver: additive, a minor release while 0.x.
 
-### Changed
+### Added (#480, type propagation on assignment)
 
-- `IfcModel.georeferencing()` reads IFC2X3 files through their `ePSet_MapConversion` and
-  `ePSet_ProjectedCRS` property sets instead of refusing them as
-  `unsupported-schema` (#451); such a record's source kind is
-  `property-set`. Through `openbim-ifc-binding-core`.
+- The `assignType` operation takes `mapRepresentations`,
+  `mappingTarget`, `materialUsage`, `layerSetDirection`,
+  `predefinedType` and `replace`; `contain` and `aggregate` take
+  `replace` (declared in `AuthorOp`). Every new field is optional and off
+  by default.
 
-Semver: minor (ADR 0021).
+Semver: additive, a minor release while 0.x.
 
 Full history: [`crates/openbim-ifc-wasm/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-wasm/CHANGELOG.md)

@@ -9,6 +9,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-14
+
 ### Added (#462, INVERSE attributes by name)
 
 - `model.AttributeByName(id, "IsDefinedBy")` and every other `INVERSE`

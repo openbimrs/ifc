@@ -10,13 +10,13 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.32.0 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
+| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.33.0 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
 
 ## Model, codecs, schema, authoring and validation
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`ifc-author`](./crates/ifc-author) | <span class="status-implemented">Implemented</span> | 0.3.1 | Schema-checked IFC authoring: construct entities by attribute name with arity and type validation. |
+| [`ifc-author`](./crates/ifc-author) | <span class="status-implemented">Implemented</span> | 0.3.2 | Schema-checked IFC authoring: construct entities by attribute name with arity and type validation. |
 | [`ifc-model`](./crates/ifc-model) | <span class="status-implemented">Implemented</span> | 0.3.1 | The IFC entity graph: storage and structural queries, free of domain semantics and serialization. |
 | [`ifc-schema`](./crates/ifc-schema) | <span class="status-implemented">Implemented</span> | 0.3.2 | IFC schema as data: entity table, supertype chain, attribute names. |
 | [`ifc-step`](./crates/ifc-step) | <span class="status-implemented">Implemented</span> | 0.5.0 | STEP physical file (ISO 10303-21) codec for the IFC model. |
@@ -58,13 +58,13 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
 | [`openbim-ifc-binding-core`](./crates/openbim-ifc-binding-core) | <span class="status-implemented">Implemented</span> | not released | Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python). |
-| [`openbim-ifc-capi`](./crates/openbim-ifc-capi) | <span class="status-implemented">Implemented</span> | 0.1.11 | Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++. |
-| [`openbim-ifc-dotnet`](./crates/openbim-ifc-dotnet) | <span class="status-implemented">Implemented</span> | 0.6.0 | The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned C ABI. |
-| [`openbim-ifc-py`](./crates/openbim-ifc-py) | <span class="status-implemented">Implemented</span> | 0.9.0 | Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python. |
-| [`openbim-ifc-wasm`](./crates/openbim-ifc-wasm) | <span class="status-implemented">Implemented</span> | 0.9.0 | WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript. |
+| [`openbim-ifc-capi`](./crates/openbim-ifc-capi) | <span class="status-implemented">Implemented</span> | 0.1.12 | Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++. |
+| [`openbim-ifc-dotnet`](./crates/openbim-ifc-dotnet) | <span class="status-implemented">Implemented</span> | 0.7.0 | The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned C ABI. |
+| [`openbim-ifc-py`](./crates/openbim-ifc-py) | <span class="status-implemented">Implemented</span> | 0.10.0 | Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python. |
+| [`openbim-ifc-wasm`](./crates/openbim-ifc-wasm) | <span class="status-implemented">Implemented</span> | 0.10.0 | WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript. |
 
 ## Command-line tool
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`openbim-ifc-cli`](./crates/openbim-ifc-cli) | <span class="status-partial">Partial</span> | 0.2.0 | The openbim-ifc command: validate, convert, inspect and query IFC files (STEP, ifcXML and ifcZIP) from a shell or CI. |
+| [`openbim-ifc-cli`](./crates/openbim-ifc-cli) | <span class="status-partial">Partial</span> | 0.3.0 | The openbim-ifc command: validate, convert, inspect and query IFC files (STEP, ifcXML and ifcZIP) from a shell or CI. |

@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-14
+
 ### Added (#462, INVERSE attributes by name)
 
 - `entity.IsDefinedBy` and every other `INVERSE` name, resolved against

@@ -40,10 +40,10 @@
           "url": "https://crates.io/crates/ifc-author"
         }
       ],
-      "released": "0.3.1",
-      "released_date": "2026-10-04",
+      "released": "0.3.2",
+      "released_date": "2026-10-14",
       "status": "implemented",
-      "version": "0.3.1"
+      "version": "0.3.2"
     },
     "ifc-classification": {
       "description": "Classification systems, document references, libraries, external references.",
@@ -400,10 +400,10 @@
           "url": "https://crates.io/crates/openbim-ifc"
         }
       ],
-      "released": "0.32.0",
-      "released_date": "2026-10-13",
+      "released": "0.33.0",
+      "released_date": "2026-10-14",
       "status": "implemented",
-      "version": "0.32.0"
+      "version": "0.33.0"
     },
     "openbim-ifc-binding-core": {
       "description": "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python).",
@@ -421,13 +421,13 @@
         {
           "package": "openbim_ifc",
           "registry": "GitHub release",
-          "url": "https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.11"
+          "url": "https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.12"
         }
       ],
-      "released": "0.1.11",
-      "released_date": "2026-10-13",
+      "released": "0.1.12",
+      "released_date": "2026-10-14",
       "status": "implemented",
-      "version": "0.1.11"
+      "version": "0.1.12"
     },
     "openbim-ifc-cli": {
       "description": "The openbim-ifc command: validate, convert, inspect and query IFC files (STEP, ifcXML and ifcZIP) from a shell or CI.",
@@ -439,10 +439,10 @@
           "url": "https://crates.io/crates/openbim-ifc-cli"
         }
       ],
-      "released": "0.2.0",
-      "released_date": "2026-10-13",
+      "released": "0.3.0",
+      "released_date": "2026-10-14",
       "status": "partial",
-      "version": "0.2.0"
+      "version": "0.3.0"
     },
     "openbim-ifc-dotnet": {
       "description": "The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned C ABI.",
@@ -454,10 +454,10 @@
           "url": "https://www.nuget.org/packages/OpenBim.Ifc"
         }
       ],
-      "released": "0.6.0",
-      "released_date": "2026-10-13",
+      "released": "0.7.0",
+      "released_date": "2026-10-14",
       "status": "implemented",
-      "version": "0.6.0"
+      "version": "0.7.0"
     },
     "openbim-ifc-py": {
       "description": "Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python.",
@@ -469,10 +469,10 @@
           "url": "https://pypi.org/project/openbim-ifc/"
         }
       ],
-      "released": "0.9.0",
-      "released_date": "2026-10-13",
+      "released": "0.10.0",
+      "released_date": "2026-10-14",
       "status": "implemented",
-      "version": "0.9.0"
+      "version": "0.10.0"
     },
     "openbim-ifc-wasm": {
       "description": "WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript.",
@@ -484,10 +484,10 @@
           "url": "https://www.npmjs.com/package/@openbim/ifc"
         }
       ],
-      "released": "0.9.0",
-      "released_date": "2026-10-13",
+      "released": "0.10.0",
+      "released_date": "2026-10-14",
       "status": "implemented",
-      "version": "0.9.0"
+      "version": "0.10.0"
     }
   },
   "crates": {
