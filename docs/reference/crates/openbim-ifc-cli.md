@@ -6,7 +6,7 @@ editLink: false
 
 # openbim-ifc-cli
 
-The openbim-ifc command: validate, convert and inspect IFC files (STEP, ifcXML and ifcZIP) from a shell or CI.
+The openbim-ifc command: validate, convert, inspect and query IFC files (STEP, ifcXML and ifcZIP) from a shell or CI.
 
 | | |
 | --- | --- |
@@ -18,7 +18,7 @@ The openbim-ifc command: validate, convert and inspect IFC files (STEP, ifcXML a
 
 ## Overview
 
-`openbim-ifc`: validate, convert and inspect IFC files from a shell or CI.
+`openbim-ifc`: validate, convert, inspect and query IFC files from a shell or CI.
 
 A thin command layer over the `openbim-ifc` facade: every answer comes
 from a facade call, and this crate only parses arguments, picks a codec

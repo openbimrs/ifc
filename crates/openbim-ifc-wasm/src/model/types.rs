@@ -62,7 +62,17 @@ export type IfcErrorCode =
   | "missing-attribute"
   | "still-referenced"
   | "type-mismatch"
-  | "ambiguous-value";
+  | "ambiguous-value"
+  | "invalid-selector";
+
+/**
+ * A value `IfcModel.getValue` reads by path (#464): a tagged value, a list
+ * of them, or a property set's members as `[name, value]` pairs.
+ */
+export type IfcSelectedValue =
+  | IfcValue
+  | { kind: "list"; items: IfcSelectedValue[] }
+  | { kind: "properties"; entries: [string, IfcSelectedValue][] };
 
 /**
  * Where `IfcModel.loadCatalog` reads a catalog snapshot from. By default

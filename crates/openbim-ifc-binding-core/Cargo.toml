@@ -26,7 +26,9 @@ group = "binding"
 # ADR 0013: bindings depend on the facade only, never on an ifc-* crate.
 # `schema-api` without a release: the release features below choose the
 # bundled tables (#112).
-openbim-ifc = { workspace = true, default-features = false, features = ["step", "schema-api"] }
+# `selector` (#464) in every build: the selector language and values by
+# path, with its small pattern engine (`regex-lite`, no Unicode tables).
+openbim-ifc = { workspace = true, default-features = false, features = ["step", "schema-api", "selector"] }
 
 [dev-dependencies]
 # Reading the geometry wire envelope's `format` and `version` (#367).

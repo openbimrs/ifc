@@ -354,6 +354,14 @@ pub use name_guid::{name_based_guid, new_guid, GuidError};
 mod feature_report;
 mod io;
 
+// The selector query language (#464): parse a selector into a typed query
+// with spans, evaluate it over the type, GlobalId, property and
+// relationship indexes, and read and write values by path. It joins the
+// schema's tables with the property resolver, so it lives in this
+// orchestration layer. The module gates itself on `selector` with an inner
+// `#![cfg]`.
+pub mod selector;
+
 // ifcZIP (#450): a STEP or ifcXML model in a ZIP archive, `IfcZipCodec`
 // and its typed refusals. It wraps both codecs, siblings that never depend
 // on each other, so it lives in this orchestration layer. The signature

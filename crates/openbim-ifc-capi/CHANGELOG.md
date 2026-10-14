@@ -8,6 +8,27 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#464, selectors and values by path)
+
+- `openbim_ifc_v0_1_model_select(model, query, query_len, buffer,
+  capacity, out_required)` and `openbim_ifc_v0_1_model_select_from(...,
+  base, base_count, ...)` fill the caller's buffer with the ids a
+  selector selects, ascending; `openbim_ifc_v0_1_entity_get_value(model,
+  id, path, path_len, ...)` writes a value tape (a property set as a
+  `LIST` of name and value pairs); `openbim_ifc_v0_1_entity_set_value(model,
+  id, path, path_len, nodes, node_count, strings, string_len)` writes a
+  one-value plain tape as one checked transaction.
+- Status `OPENBIM_IFC_STATUS_INVALID_SELECTOR` (34) and
+  `openbim_ifc_v0_1_last_error_span(model, out_start, out_end)`, the byte
+  range an invalid selector refuses; `OPENBIM_IFC_SELECTOR_GRAMMAR_MAJOR`
+  and `_MINOR`. The header is regenerated.
+- ABI version 0.1.14 (on top of #480's 0.1.13); every export above is new,
+  no `v0_1` symbol changed.
+
+Semver: additive, released on the 0.1 line: the C package keeps 0.1.x while
+the `v0_1` ABI is unchanged, because CMake's `find_package(openbim_ifc 0.1)`
+does not accept 0.2.
+
 ### Added (#480, type propagation on assignment)
 
 - `openbim_ifc_v0_1_model_author` reads `BOOL` fields: `ASSIGN_TYPE`

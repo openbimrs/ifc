@@ -1,7 +1,7 @@
 # openbim-ifc-cli
 
-The `openbim-ifc` command: validate, convert and inspect IFC files (STEP and
-ifcXML) from a shell or a CI job, with exit codes and JSON or SARIF output
+The `openbim-ifc` command: validate, convert, inspect and query IFC files
+(STEP, ifcXML and ifcZIP) from a shell or a CI job, with exit codes and JSON or SARIF output
 for scripts and code scanning. Pure Rust, one static binary, over the
 [`openbim-ifc`](https://crates.io/crates/openbim-ifc) facade.
 
@@ -26,6 +26,7 @@ openbim-ifc info model.ifc
 openbim-ifc psets model.ifc '2O2Fr$t4X7Zf8NOew3FLOH' --format csv
 openbim-ifc tree model.ifc --elements
 openbim-ifc lint model.ifc
+openbim-ifc select model.ifc 'IfcWall, Pset_WallCommon.IsExternal=TRUE' --value type.Name
 ```
 
 | Command | Answers | Formats |
@@ -36,6 +37,7 @@ openbim-ifc lint model.ifc
 | `psets` | Property and quantity sets of one object or type | table, json, csv |
 | `tree` | Project, site, building, storey, space and their elements | human, json |
 | `lint` | Products with geometry that no model viewer will draw | human, json, sarif |
+| `select` | The entities a selector selects, with values read by path | table, json, csv |
 
 Exit codes: 0 success, 1 findings (`validate`, `lint`), 2 a usage error, an
 unreadable file or a refusal. A refusal names its kind on stderr

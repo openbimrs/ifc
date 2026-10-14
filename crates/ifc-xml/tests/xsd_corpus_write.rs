@@ -93,6 +93,17 @@ const REFUSED: &[(&str, &str, &str)] = &[
         "as relations_ifc4.ifc, in IFC4X3",
     ),
     (
+        "synthetic-relations/selector_ifc4.ifc",
+        "a second relationship in `IfcWall.HasOpenings`",
+        "Wall A is voided by a door opening and a recess, as in \
+         relations_ifc4.ifc (#464)",
+    ),
+    (
+        "synthetic-relations/selector_ifc4x3.ifc",
+        "a second relationship in `IfcWall.HasOpenings`",
+        "as selector_ifc4.ifc, in IFC4X3",
+    ),
+    (
         "synthetic-relations/cascade_ifc4.ifc",
         "a second relationship in `IfcWall.HasOpenings`",
         "Wall A is voided by a door opening and a window opening (#478); the \

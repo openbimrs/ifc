@@ -230,7 +230,7 @@ impl ToRecord for PropertyEditResult {
 }
 
 #[cfg(feature = "properties-write")]
-mod write {
+pub(crate) mod write {
     use ifc::{apply_property_edits, EntityId, PropertyEditError, PropertyEditFailure, SetType};
 
     use super::{EditAction, PropertyEdit, PropertyEditResult};
@@ -292,7 +292,7 @@ mod write {
         }
     }
 
-    fn edit_error(error: PropertyEditError) -> BindingError {
+    pub(crate) fn edit_error(error: PropertyEditError) -> BindingError {
         use PropertyEditFailure as F;
         let detail = error.to_string();
         let position = error.edit.map(|edit| format!("edit {edit}: "));
