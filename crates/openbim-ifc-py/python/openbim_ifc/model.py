@@ -628,6 +628,20 @@ class IfcModel(ModelAccess):
             )
         )
 
+    def remove_representation(self, id: int, *, dry_run: bool = False) -> RemovalReport:
+        """Remove shape representation ``id`` with what only it uses, as
+        one checked transaction: it is taken off its product definition
+        shape (which goes when left empty), representation map or shape
+        aspects, then removed with its items down to what nothing else
+        uses. Shared items, profiles, points and styles stay, and the report
+        says why; with ``dry_run`` nothing changes.
+
+        Raises ``still-referenced`` for a representation map an
+        ``IfcMappedItem`` still maps, and ``wrong-entity-type`` for an entity
+        that is not an ``IfcShapeModel``.
+        """
+        return domains._from_wire(self._native.remove_representation(id, dry_run=dry_run))
+
     def dangling_references(self) -> List[Tuple[int, int]]:
         """Every ``(from, to)`` pair where ``to`` does not exist."""
         return self._native.dangling_references()

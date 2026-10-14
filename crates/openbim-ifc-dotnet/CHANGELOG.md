@@ -19,7 +19,18 @@ a release here does not imply a release of any other crate in the family.
   `model.TotalInverses(id)`.
 - `IfcStatus.InverseAttribute` (35, `inverse-attribute`) for a write to
   an `INVERSE` name.
-- Requires the C ABI 0.1.15 (`openbim-ifc-capi` with #462).
+- Requires the C ABI 0.1.16 (`openbim-ifc-capi` with #462).
+
+### Added (#481, shape representations)
+
+- `AuthorOp.ShapeRepresentation(context, items, identifier, representationType)`,
+  `AuthorOp.AssignRepresentation(representation, to)`,
+  `AuthorOp.UnassignRepresentation(representation, from)`,
+  `AuthorOp.CopyRepresentation(representation)` and
+  `AuthorOp.RemoveRepresentation(representation)` for `IfcModel.Author`.
+- `IfcModel.RemoveRepresentation(id, dryRun)`, returning a
+  `RemovalReport`.
+- Requires the C ABI 0.1.15 (`openbim-ifc-capi` with #481).
 
 ### Added (#464, selectors and values by path)
 

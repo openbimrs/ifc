@@ -806,6 +806,65 @@ static int recipe_assign_type(OpenbimIfcModel model) {
   return 0;
 }
 
+static int recipe_representation(OpenbimIfcModel model) {
+  out_len = 0;
+  out[0] = 0;
+  // docs:snippet cookbook-c-representation
+  /* Give window #130 a copy of wall #40's body #45: the copy gets its own
+   * items and profile, and shares the context and the style. Then take
+   * wall #20's body #25 off and remove it with what only it used. */
+  const uint64_t h = OPENBIM_IFC_HANDLE_BASE;
+  static Builder b;
+  memset(&b, 0, sizeof b);
+  b_list(&b, 4);
+  b_op(&b, "COPY_REPRESENTATION", 1); /* 0 */
+  b_text(&b, "representation");
+  b_ref(&b, 45);
+  b_op(&b, "ASSIGN_REPRESENTATION", 2); /* 1: an IfcProductDefinitionShape */
+  b_text(&b, "representation");
+  b_ref(&b, h + 0);
+  b_text(&b, "to");
+  b_ref(&b, 130);
+  b_op(&b, "UNASSIGN_REPRESENTATION", 2); /* 2: #25 stays, unassigned */
+  b_text(&b, "representation");
+  b_ref(&b, 25);
+  b_text(&b, "from");
+  b_ref(&b, 20);
+  b_op(&b, "REMOVE_REPRESENTATION", 1); /* 3 */
+  b_text(&b, "representation");
+  b_ref(&b, 25);
+  uint64_t ids[4];
+  size_t count = 0;
+  if (openbim_ifc_v0_1_model_author(model, b.nodes, b.count, (const uint8_t *)b.strings, b.len, ids,
+                                    4, &count) != OPENBIM_IFC_STATUS_OK) {
+    print_error(model); /* a refused batch changes nothing */
+    return 1;
+  }
+  printf("copy #%llu on #130\n", (unsigned long long)ids[0]);
+  /* SHAPE_REPRESENTATION assembles one from items instead: fields context,
+   * items, and optionally identifier and representation_type. */
+
+  /* openbim_ifc_v0_1_model_remove_representation removes one alone and
+   * reports what went and what stayed; here, a dry run on the door's body. */
+  size_t nodes = 0, strings = 0;
+  openbim_ifc_v0_1_model_remove_representation(model, 105, OPENBIM_IFC_REMOVE_DRY_RUN, NULL, 0,
+                                               &nodes, NULL, 0, &strings);
+  Tape report = tape_alloc(nodes, strings);
+  if (openbim_ifc_v0_1_model_remove_representation(model, 105, OPENBIM_IFC_REMOVE_DRY_RUN,
+                                                    report.nodes, nodes, &nodes, report.strings,
+                                                    strings, &strings) != OPENBIM_IFC_STATUS_OK) {
+    print_error(model); /* e.g. STILL_REFERENCED: a type's map its occurrences map */
+    tape_free(&report);
+    return 1;
+  }
+  printf("would remove %u entities\n", report.nodes[tape_field(&report, 0, 0)].child_count);
+  tape_free(&report);
+  // docs:end
+  CHECK(count == 4, "one id per operation");
+  CHECK(strstr(out, "on #130\nwould remove 5 entities\n") != NULL, out);
+  return 0;
+}
+
 int main(int argc, char **argv) {
   if (argc != 3) {
     fprintf(stderr, "usage: cookbook <test/fixtures directory> <scratch directory>\n");
@@ -872,6 +931,10 @@ int main(int argc, char **argv) {
   OK(openbim_ifc_v0_1_model_open((const uint8_t *)cascade_path, strlen(cascade_path), &model,
                                  NULL, 0));
   if (recipe_assign_type(model) != 0) return 1;
+  OK(openbim_ifc_v0_1_model_destroy(model));
+  OK(openbim_ifc_v0_1_model_open((const uint8_t *)cascade_path, strlen(cascade_path), &model,
+                                 NULL, 0));
+  if (recipe_representation(model) != 0) return 1;
   OK(openbim_ifc_v0_1_model_destroy(model));
 
   snprintf(selector_path, sizeof selector_path, "%s/synthetic-relations/selector_ifc4.ifc",

@@ -5,10 +5,13 @@
 //! declares: every operation, in order, or, when any is refused, none, and
 //! the model is unchanged. The operations: create an entity by type and
 //! named attributes; edit named attributes; remove an entity with its
-//! relationships; and the builders -- the project, a spatial element
+//! relationships; the builders -- the project, a spatial element
 //! aggregated under its parent, a product placed, contained and typed, a
 //! type object, a type assignment, a containment, an aggregation, a local
-//! placement and an owner history.
+//! placement and an owner history; and the shape representation operations
+//! (#481) -- assemble one from items in a context, its type checked
+//! against them or inferred, assign it to a product or (as a
+//! representation map) a type, unassign, copy and remove it.
 //!
 //! An operation names an entity an earlier one produced by its handle,
 //! [`HANDLE_BASE`] plus the operation's position ([`handle`]), anywhere an id
@@ -29,9 +32,15 @@
 //! does not accept; `missing-entity` for an edited or removed entity that
 //! does not exist; `missing-reference` for a reference to one;
 //! `invalid-model` for an object given a second containment, decomposition
-//! or type, or a second `IfcProject`; `still-referenced` for a removal an
-//! entity other than a relationship still needs; `feature-disabled`
-//! without the `author` feature. The message names the refused operation's
+//! or type, or a second `IfcProject`, a representation that already has its
+//! one use, a product definition shape other products share, or a
+//! representation not assigned where it is unassigned from;
+//! `invalid-value` also for a representation type its items do not fit,
+//! items no type fits, or a missing representation identifier;
+//! `unsupported` for a type check needing a curve dimension that cannot be
+//! derived; `still-referenced` for a removal an entity other than a
+//! relationship still needs; `feature-disabled` without the `author`
+//! feature. The message names the refused operation's
 //! position.
 
 mod ops;

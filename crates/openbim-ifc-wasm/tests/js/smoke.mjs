@@ -1131,3 +1131,80 @@ test("values are read and written by path", () => {
     throwsCode(() => model.setValue(17n, "count", 3), "invalid-value");
   }
 });
+
+// --- Shape representations (#481) -------------------------------------------
+
+/** Ops 0..=3, a 1.2 x 0.1 x 1.0 extrusion (op 3), over the cascade model. */
+function extrusionOps() {
+  const h = IfcModel.handle;
+  return [
+    { op: "create", type: "IfcCartesianPoint", attributes: { Coordinates: reals(0.6, 0.05) } },
+    { op: "create", type: "IfcAxis2Placement2D", attributes: { Location: ref(h(0)) } },
+    {
+      op: "create",
+      type: "IfcRectangleProfileDef",
+      attributes: {
+        ProfileType: token("AREA"),
+        Position: ref(h(1)),
+        XDim: { kind: "real", value: 1.2 },
+        YDim: { kind: "real", value: 0.1 },
+      },
+    },
+    {
+      op: "create",
+      type: "IfcExtrudedAreaSolid",
+      attributes: {
+        SweptArea: ref(h(2)),
+        Position: ref(9n),
+        ExtrudedDirection: ref(31n),
+        Depth: { kind: "real", value: 1 },
+      },
+    },
+  ];
+}
+
+test("shape representations: assemble, assign, copy, unassign and remove", () => {
+  const h = IfcModel.handle;
+  for (const name of CASCADES) {
+    const model = cascade(name);
+    const result = model.author([
+      ...extrusionOps(),
+      { op: "shapeRepresentation", context: 11n, items: [h(3)] },
+      { op: "assignRepresentation", representation: h(4), to: 130n },
+    ]);
+    const representation = result.ids[4];
+    assert.deepEqual(model.attributeByName(representation, "RepresentationType"), text("SweptSolid"), name);
+    assert.deepEqual(model.attributeByName(130n, "Representation"), ref(result.ids[5]), name);
+
+    const swap = model.author([
+      { op: "copyRepresentation", representation: 25n },
+      { op: "unassignRepresentation", representation: 25n, from: 20n },
+      { op: "removeRepresentation", representation: 25n },
+      { op: "assignRepresentation", representation: h(0), to: 20n },
+    ]);
+    assert.ok(swap.removed.includes(25n), name);
+    const shape = model.attributeByName(20n, "Representation").id;
+    assert.deepEqual(model.attributeByName(shape, "Representations"), { kind: "list", items: [ref(swap.ids[0])] }, name);
+
+    // The door type's map is still mapped by the door.
+    throwsCode(() => model.removeRepresentation(114n), "still-referenced");
+    const before = model.size;
+    const dry = model.removeRepresentation(105n, { dryRun: true });
+    assert.equal(dry.applied, false, name);
+    assert.deepEqual(dry.removed.map((e) => e.id), [104n, 105n, 106n, 107n, 108n], name);
+    assert.equal(model.size, before, name);
+    assert.equal(model.removeRepresentation(105n).applied, true, name);
+    assert.equal(model.size, before - 5, name);
+
+    throwsCode(
+      () =>
+        model.author([
+          ...extrusionOps(),
+          { op: "shapeRepresentation", context: 11n, items: [h(3)], representationType: "Brep" },
+        ]),
+      "invalid-value",
+    );
+    throwsCode(() => model.author([{ op: "assignRepresentation", representation: 45n, to: 130n }]), "invalid-model");
+    assert.deepEqual(model.danglingReferences(), [], name);
+  }
+});

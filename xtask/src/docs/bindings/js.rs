@@ -18,6 +18,7 @@ const TYPES: &str = "crates/openbim-ifc-wasm/src/model/types.rs";
 /// blocks, listed after it in this order.
 const MODEL_PARTS: &[&str] = &[
     "crates/openbim-ifc-wasm/src/model/inverse.rs",
+    "crates/openbim-ifc-wasm/src/model/removal.rs",
     "crates/openbim-ifc-wasm/src/model/selector.rs",
 ];
 

@@ -20,6 +20,21 @@ a release here does not imply a release of any other crate in the family.
 - Error code `inverse-attribute` (`IfcErrorCode`) for a write to an
   `INVERSE` name. Reading one no longer throws `unknown-attribute`.
 
+### Added (#481, shape representations)
+
+- `author` operations `shapeRepresentation` (`context`, `items`,
+  `identifier?`, `representationType?`), `assignRepresentation`
+  (`representation`, `to`), `unassignRepresentation` (`representation`,
+  `from`), `copyRepresentation` and `removeRepresentation`
+  (`representation`), in the `AuthorOp` declaration.
+- `model.removeRepresentation(id, { dryRun })`, returning a
+  `RemovalReport`; `RemoveRepresentationOptions`.
+
+### Changed (#481)
+
+- The reporting removals (`removeProduct`, `purge`, `removeRepresentation`)
+  live in their own source module; the JavaScript API is unchanged.
+
 ### Added (#464, selectors and values by path)
 
 - `model.select(query, base?)`, `model.getValue(id, path)` (an

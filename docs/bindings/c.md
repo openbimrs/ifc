@@ -777,6 +777,45 @@ if (openbim_ifc_v0_1_model_author(model, b.nodes, b.count, (const uint8_t *)b.st
 
 <!-- /SNIPPET -->
 
+## Shape representations
+
+The batch tape (`openbim_ifc_v0_1_model_author`) carries five operations:
+`SHAPE_REPRESENTATION` (`context`, `items`, optional `identifier` and
+`representation_type`), `ASSIGN_REPRESENTATION` (`representation`, `to`),
+`UNASSIGN_REPRESENTATION` (`representation`, `from`),
+`COPY_REPRESENTATION` and `REMOVE_REPRESENTATION` (`representation`).
+
+`SHAPE_REPRESENTATION` assembles an `IfcShapeRepresentation` of existing items (built
+in the same batch with `CREATE`) in a geometric representation context or
+sub-context. Its `representation_type` is checked against the items by the release's
+`IfcShapeRepresentationTypes` (`CorrectItemsForType`): a mismatch, items no
+listed type admits, a topological item other than a vertex point, edge curve
+or face surface, and a missing identifier are `InvalidValue`; a label the
+release does not list is written as given. Without a type the most specific
+one admitting every item is inferred (`SweptSolid`, `AdvancedSweptSolid`,
+`Brep`, `Clipping`, `CSG`, `Tessellation`, `Curve2D`, `Curve3D`,
+`MappedRepresentation`, ...; IFC2X3 lists fewer). The identifier defaults
+to the context's `ContextIdentifier`; IFC4 and IFC4X3 require one.
+
+A shape representation belongs to exactly one product definition shape,
+representation map or shape aspect (`IfcShapeModel.WR11`). Assigning adds it
+to a product's `IfcProductDefinitionShape` (created when missing; one several
+products share is refused) or wraps it in a new `IfcRepresentationMap` of a
+type, at the origin; one already used is `InvalidModel`. Unassigning takes
+it off again (an emptied product shape, or the type's map with its origin,
+goes) and leaves it for the batch to assign elsewhere or remove. A copy
+copies every item, profile, point, direction and placement it reaches and
+the styled items of the copied items, and shares the context, styles,
+colours and the type map a mapped item maps; it joins the layers of the
+original. Removal takes it off what uses it and removes it with its items
+down to what nothing else uses, by the cascade rules below; a type map an
+occurrence still maps is `StillReferenced`.
+
+`openbim_ifc_v0_1_model_remove_representation(model, id, flags, ...)` is the
+one-operation removal; it answers the `RemovalReport` tape of
+`openbim_ifc_v0_1_model_remove_product`, and `OPENBIM_IFC_REMOVE_DRY_RUN` is
+its one flag.
+
 ## Removing products and purging
 
 `openbim_ifc_v0_1_model_remove_product(model, id, flags, ...)` removes a

@@ -139,6 +139,31 @@ impl<'m, 's> Planner<'m, 's> {
                 axes,
             } => Some(self.placement(relative_to, location, axes)?),
             AuthorOp::OwnerHistory(fields) => Some(self.owner_history(&fields)?),
+            AuthorOp::ShapeRepresentation {
+                context,
+                items,
+                identifier,
+                representation_type,
+            } => {
+                Some(self.shape_representation(context, &items, identifier, representation_type)?)
+            }
+            AuthorOp::AssignRepresentation { representation, to } => {
+                Some(self.assign_representation(representation, to)?)
+            }
+            AuthorOp::UnassignRepresentation {
+                representation,
+                from,
+            } => {
+                self.report = Some(self.unassign_representation(representation, from)?);
+                Some(representation)
+            }
+            AuthorOp::CopyRepresentation { representation } => {
+                Some(self.copy_representation(representation)?)
+            }
+            AuthorOp::RemoveRepresentation { representation } => {
+                self.report = Some(self.remove_representation(representation)?);
+                None
+            }
         })
     }
 

@@ -550,6 +550,35 @@ model.Author(new[] { AuthorOp.Contain(13, new ulong[] { 40 }, replace: true) });
 
 <!-- /SNIPPET -->
 
+## Shape representations
+
+`AuthorOp.ShapeRepresentation(context, items, identifier, representationType)`
+assembles an `IfcShapeRepresentation` of existing items (built
+in the same batch with `AuthorOp.Create`) in a geometric representation context or
+sub-context. Its `representationType` is checked against the items by the release's
+`IfcShapeRepresentationTypes` (`CorrectItemsForType`): a mismatch, items no
+listed type admits, a topological item other than a vertex point, edge curve
+or face surface, and a missing identifier are `invalid-value`; a label the
+release does not list is written as given. Without a type the most specific
+one admitting every item is inferred (`SweptSolid`, `AdvancedSweptSolid`,
+`Brep`, `Clipping`, `CSG`, `Tessellation`, `Curve2D`, `Curve3D`,
+`MappedRepresentation`, ...; IFC2X3 lists fewer). The identifier defaults
+to the context's `ContextIdentifier`; IFC4 and IFC4X3 require one.
+
+A shape representation belongs to exactly one product definition shape,
+representation map or shape aspect (`IfcShapeModel.WR11`). `AuthorOp.AssignRepresentation(representation, to)` adds it
+to a product's `IfcProductDefinitionShape` (created when missing; one several
+products share is refused) or wraps it in a new `IfcRepresentationMap` of a
+type, at the origin; one already used is `invalid-model`. `UnassignRepresentation(representation, from)` takes
+it off again (an emptied product shape, or the type's map with its origin,
+goes) and leaves it for the batch to assign elsewhere or remove. `CopyRepresentation` copies every item, profile, point, direction and placement it reaches and
+the styled items of the copied items, and shares the context, styles,
+colours and the type map a mapped item maps; it joins the layers of the
+original. `RemoveRepresentation`, and `model.RemoveRepresentation(id, dryRun)` with
+its `RemovalReport`, take it off what uses it and remove it with its items
+down to what nothing else uses, by the cascade rules below; a type map an
+occurrence still maps is `still-referenced`.
+
 ## Removing products and purging
 
 `model.RemoveProduct(id)` removes a product, or a type object, with
@@ -637,6 +666,7 @@ and `MeshedProduct` included, from its XML documentation comments.
 | `void RemoveWithRelationships(ulong id)` | Remove entity `id` with the relationships that reference it, leaving nothing dangling; refused with `still-referenced` while an entity other than a relationship needs it. |
 | `RemovalReport RemoveProduct(ulong id, bool rebasePlacements = false, bool untypeOccurrences = false, bool dryRun = false)` | Remove product (or type object) `id` with everything it solely owns -- its placement, representation, own property and quantity sets, material usage, openings and ports, and the relationships left without an end -- as one checked transaction, keeping what is shared (a property set another object uses, a type's representation maps). With `dryRun` nothing changes. |
 | `RemovalReport Purge(IEnumerable<string>? classes = null, bool includeRoots = false, bool includeOwnerHistory = false, bool dryRun = false)` | Remove unreferenced entities as one checked transaction. Without `classes`, every resource entity no `IfcRoot` reaches (nor annotates something reached); with them, the entities of those classes (subtypes included) nothing references, an `IfcRoot` only with `includeRoots`. The owner history stays unless `includeOwnerHistory`. |
+| `RemovalReport RemoveRepresentation(ulong id, bool dryRun = false)` | Remove shape representation `id` with what only it uses (#481), as one checked transaction: taken off its product definition shape (which goes when left empty), representation map or shape aspects, then removed with its items down to what nothing else uses. Shared items, profiles, points and styles stay. With `dryRun` nothing changes. |
 | `ulong SetProperty(ulong obj, string set, string name, Value value, string? setType = null)` | Write one value (`SetProperties` with one edit); returns the id of the entity holding it. |
 | `void RemoveProperty(ulong obj, string set, string name)` | Remove one property from `obj`'s own set (`SetProperties` with one edit). |
 | `SpatialTree SpatialTree()` | The spatial containment tree: every container with its parent, sub-containers and contained elements. |

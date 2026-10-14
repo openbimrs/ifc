@@ -201,6 +201,134 @@ pub enum AuthorOp {
     /// application it records, through `ifc-author`. Produces the owner
     /// history.
     OwnerHistory(OwnerHistoryOp),
+    /// Assemble an `IfcShapeRepresentation` of `items` in `context`.
+    /// Produces the representation, not yet assigned to anything (see
+    /// [`Self::AssignRepresentation`]).
+    ///
+    /// `representation_type` is checked against the items by the declared
+    /// release's `IfcShapeRepresentationTypes` (`CorrectItemsForType`,
+    /// IFC2X3 `WR24`); when `None`, the most specific type the release
+    /// admits for every item is inferred (`SweptSolid` before
+    /// `AdvancedSweptSolid` before `SolidModel`, ...). A label the release
+    /// does not list is written as given: its rule does not constrain it.
+    /// `identifier` defaults to the context's `ContextIdentifier`
+    /// (`Body` for a `Body` sub-context); IFC4 and IFC4X3 require one
+    /// (`HasRepresentationIdentifier`), IFC2X3 does not. The context must
+    /// be an `IfcGeometricRepresentationContext` (`CorrectContext`), and no
+    /// item a topological item other than a vertex point, edge curve or
+    /// face surface (`NoTopologicalItem`).
+    ///
+    /// Refused with [`RepresentationTypeMismatch`],
+    /// [`NoRepresentationType`], [`UndecidableRepresentationType`] (a
+    /// dimension the release derives that the batch cannot read),
+    /// [`MissingRepresentationIdentifier`] or [`InvalidRepresentationItem`].
+    ///
+    /// [`RepresentationTypeMismatch`]: super::AuthoringFailure::RepresentationTypeMismatch
+    /// [`NoRepresentationType`]: super::AuthoringFailure::NoRepresentationType
+    /// [`UndecidableRepresentationType`]: super::AuthoringFailure::UndecidableRepresentationType
+    /// [`MissingRepresentationIdentifier`]: super::AuthoringFailure::MissingRepresentationIdentifier
+    /// [`InvalidRepresentationItem`]: super::AuthoringFailure::InvalidRepresentationItem
+    ShapeRepresentation {
+        /// `ContextOfItems`: an `IfcGeometricRepresentationContext` or
+        /// sub-context.
+        context: EntityId,
+        /// `Items`, at least one.
+        items: Vec<EntityId>,
+        /// `RepresentationIdentifier` (`Body`, `Axis`, `Box`, ...); the
+        /// context's `ContextIdentifier` when `None`.
+        identifier: Option<String>,
+        /// `RepresentationType` (`SweptSolid`, `Brep`, ...); inferred from
+        /// the items when `None`.
+        representation_type: Option<String>,
+    },
+    /// Assign a shape representation to a product or a type.
+    ///
+    /// To an `IfcProduct`: appended to its `IfcProductDefinitionShape`,
+    /// which is created when the product has none. Produces the product
+    /// definition shape. To an `IfcTypeProduct`: wrapped in a new
+    /// `IfcRepresentationMap` with its `MappingOrigin` at the origin, and
+    /// appended to `RepresentationMaps`. Produces the representation map.
+    /// The type's occurrences are not changed: mapping it onto them is the
+    /// type assignment's concern.
+    ///
+    /// A shape representation belongs to exactly one product definition
+    /// shape, representation map or shape aspect (`IfcShapeModel.WR11`), so
+    /// one already used by any of them is refused with
+    /// [`AlreadyRelated`](super::AuthoringFailure::AlreadyRelated). A product
+    /// definition shape several products share is refused with
+    /// [`SharedProductShape`](super::AuthoringFailure::SharedProductShape):
+    /// extending it would change the others.
+    AssignRepresentation {
+        /// The `IfcShapeModel` (`IfcShapeRepresentation`, ...).
+        representation: EntityId,
+        /// The `IfcProduct` or `IfcTypeProduct`.
+        to: EntityId,
+    },
+    /// Take a shape representation off a product or a type. Produces the
+    /// representation, which stays in the model unassigned: assign it
+    /// elsewhere or remove it ([`Self::RemoveRepresentation`]) in the same
+    /// batch, as a shape representation used nowhere breaks
+    /// `IfcShapeModel.WR11`.
+    ///
+    /// From a product: removed from its product definition shape; a
+    /// product definition shape left empty goes, with its shape aspects
+    /// and what only they use, and the product's `Representation` is
+    /// unset. From a type: its representation map goes with its
+    /// `MappingOrigin` when nothing else uses it, and leaves
+    /// `RepresentationMaps` (unset when empty). The batch outcome carries
+    /// a [`RemovalReport`](super::RemovalReport) of what went.
+    ///
+    /// Refused with [`NotAssigned`](super::AuthoringFailure::NotAssigned)
+    /// when it is not assigned there, [`SharedProductShape`] for a product
+    /// definition shape other products share, and [`StillReferenced`] for
+    /// a representation map an `IfcMappedItem` still maps.
+    ///
+    /// [`SharedProductShape`]: super::AuthoringFailure::SharedProductShape
+    /// [`StillReferenced`]: super::AuthoringFailure::StillReferenced
+    UnassignRepresentation {
+        /// The shape representation.
+        representation: EntityId,
+        /// The `IfcProduct` or `IfcTypeProduct` it is assigned to.
+        from: EntityId,
+    },
+    /// Copy a shape representation: a new representation with copies of
+    /// its items and of everything they are built from, unassigned.
+    /// Produces the copy.
+    ///
+    /// Copied, each once (sharing inside the representation is kept): the
+    /// representation, every representation item (geometry, topology,
+    /// points, directions, placements, transformation operators, mapped
+    /// items, styled items in `Items`) and profile definition it reaches,
+    /// and what attaches to a copied item: its `IfcStyledItem`s, and the
+    /// colour and texture maps of a tessellated item. Shared, not copied:
+    /// the representation context, the `IfcRepresentationMap` a mapped
+    /// item maps, presentation styles, colours and textures, and every
+    /// other resource (units, materials). The copy joins the presentation
+    /// layers the original or its items are on.
+    CopyRepresentation {
+        /// The `IfcShapeModel` to copy.
+        representation: EntityId,
+    },
+    /// Remove a shape representation with what only it uses, by the
+    /// cascade rules of [`Self::RemoveProduct`]. Produces nothing; the
+    /// batch outcome carries a [`RemovalReport`](super::RemovalReport).
+    ///
+    /// It is first taken off what uses it: its product definition shape
+    /// (which goes when left empty, unsetting its products'
+    /// `Representation`), its representation map (which goes, leaving its
+    /// type's `RepresentationMaps`) and its shape aspects (which go when
+    /// left empty). Then it goes with its items down to what nothing else
+    /// uses: an item, profile, point or style another representation uses
+    /// is kept and reported as shared; the context is kept as a
+    /// definition; a styled item goes with its item, and a presentation
+    /// layer loses it. Refused with [`StillReferenced`] for a
+    /// representation map an `IfcMappedItem` still maps.
+    ///
+    /// [`StillReferenced`]: super::AuthoringFailure::StillReferenced
+    RemoveRepresentation {
+        /// The `IfcShapeModel` to remove.
+        representation: EntityId,
+    },
 }
 
 /// How [`AuthorOp::Contain`] and [`AuthorOp::Aggregate`] treat an object
@@ -626,6 +754,23 @@ impl AuthorOp {
                 ids.extend(owner_history.as_mut());
             }
             Self::Placement { relative_to, .. } => ids.extend(relative_to.as_mut()),
+            Self::ShapeRepresentation { context, items, .. } => {
+                ids.push(context);
+                ids.extend(items.iter_mut());
+            }
+            Self::AssignRepresentation {
+                representation,
+                to: target,
+            }
+            | Self::UnassignRepresentation {
+                representation,
+                from: target,
+            } => {
+                ids.push(representation);
+                ids.push(target);
+            }
+            Self::CopyRepresentation { representation }
+            | Self::RemoveRepresentation { representation } => ids.push(representation),
         }
         ids
     }

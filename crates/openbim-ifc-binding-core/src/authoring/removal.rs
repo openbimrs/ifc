@@ -1,5 +1,6 @@
 //! Removing a product with what it solely owns, and purging what nothing
-//! uses (#478, feature `author`).
+//! uses (#478, feature `author`); removing a shape representation the same
+//! way (#481).
 //!
 //! [`IfcModel::remove_product`] and [`IfcModel::purge`] run the facade's
 //! `AuthorOp::RemoveProduct` and `AuthorOp::Purge` as a batch of one, or,
@@ -198,10 +199,36 @@ impl IfcModel {
         }
     }
 
+    /// Remove shape representation `id` with what only it uses (#481):
+    /// taken off its product definition shape (which goes when left
+    /// empty), representation map or shape aspects first, then removed by
+    /// the cascade of [`Self::remove_product`]. With `dry_run`, only
+    /// report. `still-referenced` for a representation map an
+    /// `IfcMappedItem` still maps; `wrong-entity-type` for an entity that
+    /// is not an `IfcShapeModel`.
+    pub fn remove_representation(
+        &mut self,
+        id: u64,
+        dry_run: bool,
+    ) -> Result<RemovalReport, BindingError> {
+        #[cfg(feature = "author")]
+        {
+            let op = ifc::AuthorOp::RemoveRepresentation {
+                representation: ifc::EntityId(id),
+            };
+            self.removal(op, dry_run)
+        }
+        #[cfg(not(feature = "author"))]
+        {
+            let _ = (id, dry_run);
+            Err(BindingError::FeatureDisabled("author"))
+        }
+    }
+
     #[cfg(feature = "author")]
     fn removal(&mut self, op: ifc::AuthorOp, dry_run: bool) -> Result<RemovalReport, BindingError> {
-        // Neither operation creates an `IfcRoot`, so no `GlobalId` is
-        // drawn from the seed.
+        // No removal creates an `IfcRoot`, so no `GlobalId` is drawn from
+        // the seed.
         const SEED: u128 = 0;
         let schema = self.declared_schema()?;
         let ops = [op];

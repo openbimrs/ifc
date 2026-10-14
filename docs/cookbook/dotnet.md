@@ -426,6 +426,61 @@ same flag. `materialUsage` derives an `IfcMaterialLayerSetUsage` (walls
 object whose own `PredefinedType` contradicts the type's. The
 [binding page](/bindings/dotnet#assigning-types) lists the rules.
 
+## Assemble, assign, copy and remove representations
+
+A body for a window from new items, a wall's body swapped for a copy of
+another's, and the dry run of removing a door's body, on the same fixture:
+
+<!-- SNIPPET:cookbook-dotnet-representation -->
+
+```csharp
+static ulong H(int index) => IfcModel.Handle(index); // the entity operation i of the batch produces
+var ids = model.Author(new[]
+{
+    // The items first: a profile swept 1 m up, through the generic create.
+    AuthorOp.Create("IfcCartesianPoint", new Dictionary<string, Value> { ["Coordinates"] = new Value.List(new Value.Real(0.6), new Value.Real(0.05)) }),
+    AuthorOp.Create("IfcAxis2Placement2D", new Dictionary<string, Value> { ["Location"] = new Value.Ref(H(0)) }),
+    AuthorOp.Create("IfcRectangleProfileDef", new Dictionary<string, Value>
+    {
+        ["ProfileType"] = new Value.Enum("AREA"),
+        ["Position"] = new Value.Ref(H(1)),
+        ["XDim"] = new Value.Real(1.2),
+        ["YDim"] = new Value.Real(0.1),
+    }),
+    AuthorOp.Create("IfcExtrudedAreaSolid", new Dictionary<string, Value>
+    {
+        ["SweptArea"] = new Value.Ref(H(2)),
+        ["Position"] = new Value.Ref(9),
+        ["ExtrudedDirection"] = new Value.Ref(31),
+        ["Depth"] = new Value.Real(1.0),
+    }),
+    // Context #11 is the 'Body' sub-context: the identifier is 'Body',
+    // and the type is inferred from the item.
+    AuthorOp.ShapeRepresentation(11, new[] { H(3) }), // 4
+    AuthorOp.AssignRepresentation(H(4), 130), // 5: window #130's shape
+    // Wall #20's body swapped for a copy of wall #40's.
+    AuthorOp.CopyRepresentation(45), // 6
+    AuthorOp.UnassignRepresentation(25, 20),
+    AuthorOp.RemoveRepresentation(25),
+    AuthorOp.AssignRepresentation(H(6), 20),
+});
+var type = model.AttributeByName(ids[4]!.Value, "RepresentationType"); // SweptSolid
+// One alone, with a report of what went and what stayed:
+RemovalReport report = model.RemoveRepresentation(105, dryRun: true); // the door's body
+var removed = report.Removed.Select(entity => entity.Id); // 104, 105, 106, 107, 108
+```
+
+<!-- /SNIPPET -->
+
+`AuthorOp.ShapeRepresentation` checks a given `representationType` against
+the items by the release's `CorrectItemsForType` rule, and refuses a
+mismatch with `invalid-value`. A representation belongs to one product shape, map or shape
+aspect, so assigning one already used is refused (`invalid-model`); on a
+type it becomes a new `IfcRepresentationMap`. A copy shares its context,
+styles and the type geometry a mapped item maps, and copies everything
+else. The [binding page](/bindings/dotnet#shape-representations) has the
+rules.
+
 ## Create a model
 
 <!-- SNIPPET:cookbook-dotnet-create -->

@@ -645,6 +645,21 @@ impl NativeModel {
         records::record_to_py(py, &report.to_record())
     }
 
+    /// Remove a shape representation with what only it uses; the report.
+    #[pyo3(signature = (id, dry_run = false))]
+    fn remove_representation<'py>(
+        &mut self,
+        py: Python<'py>,
+        id: u64,
+        dry_run: bool,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let report = self
+            .inner
+            .remove_representation(id, dry_run)
+            .map_err(py_err)?;
+        records::record_to_py(py, &report.to_record())
+    }
+
     /// The handle of operation `index`'s entity.
     #[staticmethod]
     fn handle(index: u64) -> PyResult<u64> {

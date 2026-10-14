@@ -12,6 +12,17 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#481)
+
+- `EntityBuilder` checks a nested aggregate (`LIST [1:?] OF LIST [3:3] OF
+  IfcLengthMeasure`, as `IfcCartesianPointList3D.CoordList` and
+  `IfcTriangulatedFaceSet.CoordIndex` declare) at its elements, level by
+  level, instead of refusing the inner lists as values of the element
+  type; a level that should hold aggregates and holds a scalar is
+  `AggregateMismatch`.
+
+Semver: patch.
+
 ## [0.3.1] - 2026-10-04
 
 ### Fixed (#330)

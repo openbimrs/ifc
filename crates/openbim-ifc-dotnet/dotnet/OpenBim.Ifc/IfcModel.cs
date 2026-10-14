@@ -531,7 +531,9 @@ public sealed unsafe class IfcModel : IDisposable
     /// <c>unknown-attribute</c>, <c>derived-attribute</c>,
     /// <c>missing-attribute</c>, <c>invalid-value</c>, <c>wrong-entity-type</c>,
     /// <c>missing-entity</c>, <c>missing-reference</c>, <c>invalid-model</c>,
-    /// <c>still-referenced</c>, <c>unsupported-schema</c>.
+    /// <c>still-referenced</c>, <c>unsupported-schema</c>, and
+    /// <c>unsupported</c> for a representation type check that needs a curve
+    /// dimension it cannot derive.
     /// </remarks>
     public IReadOnlyList<ulong?> Author(IEnumerable<AuthorOp> ops)
     {
@@ -633,6 +635,18 @@ public sealed unsafe class IfcModel : IDisposable
                 return NativeMethods.openbim_ifc_v0_1_model_purge(m, (byte**)table, sizes, count, flags, n, nc, nr, s, sc, sr);
             }
         }).One());
+    }
+
+    /// <summary>Remove shape representation <paramref name="id"/> with what only it uses (#481), as one checked transaction: taken off its product definition shape (which goes when left empty), representation map or shape aspects, then removed with its items down to what nothing else uses. Shared items, profiles, points and styles stay. With <paramref name="dryRun"/> nothing changes.</summary>
+    /// <param name="id">The <c>IfcShapeModel</c>; <c>wrong-entity-type</c> otherwise, <c>still-referenced</c> for a representation map an <c>IfcMappedItem</c> still maps.</param>
+    /// <param name="dryRun">Report only.</param>
+    /// <returns>What went, what stayed and why.</returns>
+    public RemovalReport RemoveRepresentation(ulong id, bool dryRun = false)
+    {
+        uint flags = dryRun ? 4u : 0u;
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return RecordDecoder.Decode<RemovalReport>(Tape(m, (n, nc, nr, s, sc, sr) => NativeMethods.openbim_ifc_v0_1_model_remove_representation(m, id, flags, n, nc, nr, s, sc, sr)).One());
     }
 
     /// <summary>Write one value (<see cref="SetProperties"/> with one edit); returns the id of the entity holding it.</summary>

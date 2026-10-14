@@ -1,4 +1,6 @@
-//! Boundary tests for `remove_product` and `purge` (#478), called exactly
+//! Boundary tests for `remove_product` and `purge` (#478), and for
+//! `remove_representation` and the representation operations of the batch
+//! tape (#481), called exactly
 //! as C would call them, over the IFC2X3, IFC4 and IFC4X3 cascade
 //! fixtures. The answers are pinned in `openbim-ifc-binding-core`; these
 //! check the calling convention, and that a size query applies nothing.
@@ -168,6 +170,127 @@ fn a_purge_by_class_then_by_default() {
         purge(model, &["IfcPropertySet"], OPENBIM_IFC_PURGE_INCLUDE_ROOTS).unwrap();
         purge(model, &[], 0).unwrap();
         assert_eq!(count(model), before - 5, "{name}");
+        assert_eq!(openbim_ifc_v0_1_model_destroy(model), OpenbimIfcStatus::Ok);
+    }
+}
+
+fn remove_representation(
+    model: OpenbimIfcModel,
+    id: u64,
+    flags: u32,
+) -> Result<Tagged, OpenbimIfcStatus> {
+    // SAFETY (closure): forwards the buffers the helper sized.
+    tape(|n, nc, nr, s, sc, sr| unsafe {
+        openbim_ifc_v0_1_model_remove_representation(model, id, flags, n, nc, nr, s, sc, sr)
+    })
+}
+
+/// Apply a batch tape; the ids it produced.
+fn author(model: OpenbimIfcModel, ops: Vec<Tagged>) -> Result<Vec<u64>, OpenbimIfcStatus> {
+    let encoded = crate::tape::Tape::encode(&Tagged::List(ops));
+    let mut ids = vec![0u64; 16];
+    let mut count = 0;
+    // SAFETY: tape slices valid for their lengths; `ids` for its capacity.
+    let status = unsafe {
+        openbim_ifc_v0_1_model_author(
+            model,
+            encoded.nodes.as_ptr(),
+            encoded.nodes.len(),
+            encoded.strings.as_ptr(),
+            encoded.strings.len(),
+            ids.as_mut_ptr(),
+            ids.len(),
+            &mut count,
+        )
+    };
+    if status != OpenbimIfcStatus::Ok {
+        return Err(status);
+    }
+    ids.truncate(count);
+    Ok(ids)
+}
+
+fn op(name: &str, fields: &[(&str, Tagged)]) -> Tagged {
+    let mut tape = vec![Tagged::Enum(name.into())];
+    for (key, value) in fields {
+        tape.push(Tagged::Text((*key).into()));
+        tape.push(value.clone());
+    }
+    Tagged::List(tape)
+}
+
+#[test]
+fn shape_representations_cross_the_tape_and_remove_with_a_report() {
+    for name in RELEASES {
+        let model = fixture(name);
+        // Wall A's body swapped for its copy in one batch.
+        let ids = author(
+            model,
+            vec![
+                op(
+                    "COPY_REPRESENTATION",
+                    &[("representation", Tagged::Ref(25))],
+                ),
+                op(
+                    "UNASSIGN_REPRESENTATION",
+                    &[
+                        ("representation", Tagged::Ref(25)),
+                        ("from", Tagged::Ref(20)),
+                    ],
+                ),
+                op(
+                    "REMOVE_REPRESENTATION",
+                    &[("representation", Tagged::Ref(25))],
+                ),
+                op(
+                    "ASSIGN_REPRESENTATION",
+                    &[
+                        ("representation", Tagged::Ref(OPENBIM_IFC_HANDLE_BASE)),
+                        ("to", Tagged::Ref(20)),
+                    ],
+                ),
+            ],
+        )
+        .unwrap();
+        assert_eq!(ids.len(), 4, "{name}");
+        assert_eq!(ids[2], 0, "{name}: a removal produces nothing");
+        assert_eq!(
+            author(
+                model,
+                vec![op(
+                    "SHAPE_REPRESENTATION",
+                    &[
+                        ("context", Tagged::Ref(11)),
+                        ("items", Tagged::List(vec![Tagged::Ref(46)])),
+                        ("representation_type", Tagged::Text("Brep".into())),
+                    ],
+                )],
+            ),
+            Err(OpenbimIfcStatus::InvalidValue),
+            "{name}"
+        );
+
+        // The door type's map is still mapped by the door.
+        assert_eq!(
+            remove_representation(model, 114, 0),
+            Err(OpenbimIfcStatus::StillReferenced)
+        );
+        let before = count(model);
+        let dry = remove_representation(model, 105, OPENBIM_IFC_REMOVE_DRY_RUN).unwrap();
+        assert_eq!(count(model), before, "{name}");
+        let expected = core(name, |m| {
+            m.remove_representation(105, true)
+                .unwrap()
+                .to_record()
+                .to_tagged()
+        });
+        assert_eq!(dry, expected, "{name}");
+        remove_representation(model, 105, 0).unwrap();
+        assert_eq!(count(model), before - 5, "{name}");
+        assert_eq!(
+            remove_representation(model, 45, OPENBIM_IFC_REMOVE_REBASE_PLACEMENTS),
+            Err(OpenbimIfcStatus::InvalidArgument)
+        );
         assert_eq!(openbim_ifc_v0_1_model_destroy(model), OpenbimIfcStatus::Ok);
     }
 }
