@@ -6,7 +6,12 @@
 //! `PLACEMENT`, `OWNER_HISTORY`), then alternating field names (`TEXT`,
 //! snake case) and values; a `NULL` value is an absent field. Ids are `REF`
 //! (or non-negative `INTEGER`), points and directions a `LIST` of three
-//! `REAL`s, attributes a `LIST` of `LIST(TEXT name, value)`. The core reads
+//! `REAL`s, flags `BOOL`, attributes a `LIST` of `LIST(TEXT name, value)`.
+//! `ASSIGN_TYPE` takes the flags `map_representations`, `material_usage`
+//! and `replace`, the id `mapping_target`, and the texts
+//! `layer_set_direction` (`AXIS1`..`AXIS3`) and `predefined_type`
+//! (`ignore`, `validate`, `sync`); `CONTAIN` and `AGGREGATE` take
+//! `replace` (#480). The core reads
 //! it (`AuthorOp::from_tagged`), so the layout is the one the other hosts'
 //! objects convert to.
 //!
@@ -44,8 +49,12 @@ const _: () = assert!(OPENBIM_IFC_HANDLE_BASE == openbim_ifc_binding_core::autho
 /// schema cannot hold; `WrongEntityType` for an abstract type, a builder's
 /// type of the wrong kind or a reference the attribute does not accept;
 /// `MissingEntity`, `MissingReference`; `InvalidModel` for a second
-/// containment, decomposition, typing or `IfcProject`; `StillReferenced`
-/// for a removal an entity other than a relationship still needs.
+/// containment, decomposition, typing, material or `IfcProject` (unless
+/// `replace`), a mapped representation that clashes with one the object
+/// has, or a `PredefinedType` that contradicts the type's; `Unsupported`
+/// for a representation map that cannot be mapped or a material usage
+/// whose defaults cannot be determined; `StillReferenced` for a removal an
+/// entity other than a relationship still needs.
 ///
 /// # Safety
 /// `nodes` valid for `node_count` reads and `strings` for `string_len`

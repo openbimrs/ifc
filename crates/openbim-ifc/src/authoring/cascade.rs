@@ -113,6 +113,20 @@ impl Planner<'_, '_> {
         self.apply_cascade(&kinds, cascade)
     }
 
+    /// Remove each of `roots` that nothing that stays still needs, with
+    /// what it solely owns, by the cascade's rules; a root still in use
+    /// stays. For the representations and usages a type propagated, once
+    /// the object no longer references them (#480).
+    pub(super) fn remove_owned(&mut self, roots: &[EntityId]) -> Result<(), F> {
+        let kinds = Kinds::new(self.schema);
+        let mut cascade = Cascade::default();
+        for root in roots {
+            self.consider(&kinds, &mut cascade, *root);
+        }
+        self.drain(&kinds, &mut cascade);
+        self.apply_cascade(&kinds, cascade).map(drop)
+    }
+
     /// The objects `type_object` types, through `IfcRelDefinesByType`.
     fn occurrences(&self, kinds: &Kinds<'_>, type_object: EntityId) -> Vec<EntityId> {
         let mut found = BTreeSet::new();

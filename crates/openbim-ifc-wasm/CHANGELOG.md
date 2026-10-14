@@ -8,6 +8,16 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#480, type propagation on assignment)
+
+- The `assignType` operation takes `mapRepresentations`,
+  `mappingTarget`, `materialUsage`, `layerSetDirection`,
+  `predefinedType` and `replace`; `contain` and `aggregate` take
+  `replace` (declared in `AuthorOp`). Every new field is optional and off
+  by default.
+
+Semver: additive, a minor release while 0.x.
+
 ## [0.9.0] - 2026-10-13
 
 ### Added (#478, cascading delete and purge)

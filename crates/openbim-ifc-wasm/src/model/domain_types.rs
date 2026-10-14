@@ -170,12 +170,32 @@ export type AuthorOp =
     }
   /** A type object (`IfcWallType`, ...). */
   | { op: "typeObject"; type: string; attributes?: NamedAttributes; ownerHistory?: bigint }
-  /** `IfcRelDefinesByType`. */
-  | { op: "assignType"; typeObject: bigint; objects: bigint[]; ownerHistory?: bigint }
-  /** `IfcRelContainedInSpatialStructure`. */
-  | { op: "contain"; structure: bigint; elements: bigint[]; ownerHistory?: bigint }
-  /** `IfcRelAggregates`. */
-  | { op: "aggregate"; parent: bigint; parts: bigint[]; ownerHistory?: bigint }
+  /**
+   * `IfcRelDefinesByType`; an object already typed is refused unless
+   * `replace`, which unassigns its previous type and removes what that
+   * type propagated (#480). `mapRepresentations` maps the type's
+   * `RepresentationMaps` onto each object (through `mappingTarget` or an
+   * identity operator); `materialUsage` derives a layer or profile set
+   * usage from the type's set (`layerSetDirection` `"AXIS1"`..`"AXIS3"`
+   * overrides the class default); `predefinedType` reconciles
+   * `PredefinedType`.
+   */
+  | {
+      op: "assignType";
+      typeObject: bigint;
+      objects: bigint[];
+      ownerHistory?: bigint;
+      mapRepresentations?: boolean;
+      mappingTarget?: bigint;
+      materialUsage?: boolean;
+      layerSetDirection?: "AXIS1" | "AXIS2" | "AXIS3";
+      predefinedType?: "ignore" | "validate" | "sync";
+      replace?: boolean;
+    }
+  /** `IfcRelContainedInSpatialStructure`; `replace` moves an element out of its previous container. */
+  | { op: "contain"; structure: bigint; elements: bigint[]; ownerHistory?: bigint; replace?: boolean }
+  /** `IfcRelAggregates`; `replace` moves a part out of its previous whole. */
+  | { op: "aggregate"; parent: bigint; parts: bigint[]; ownerHistory?: bigint; replace?: boolean }
   /** An `IfcLocalPlacement`; `axis` and `refDirection` both or neither. */
   | { op: "placement"; relativeTo?: bigint; location?: Triple; axis?: Triple; refDirection?: Triple }
   /** An `IfcOwnerHistory` with its person, organization and application. */
