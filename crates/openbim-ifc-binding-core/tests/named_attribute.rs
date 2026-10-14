@@ -184,15 +184,16 @@ mod ifc4 {
         assert_eq!(global_id.declared_by, "IfcRoot");
         assert!(!global_id.optional && !global_id.derived && !global_id.aggregate);
         assert!(names[1].optional, "OwnerHistory is OPTIONAL in IFC4");
-        // INVERSE attributes hold no slot.
+        // INVERSE attributes hold no slot and are not listed.
         assert!(model
             .attribute_names(7)
             .unwrap()
             .iter()
             .all(|info| info.name != "IsDefinedBy"));
+        // Read through the reverse index instead (#462); nothing defines #7.
         assert_eq!(
-            code(model.attribute_by_name(7, "IsDefinedBy")),
-            "unknown-attribute"
+            model.attribute_by_name(7, "IsDefinedBy"),
+            Ok(openbim_ifc_binding_core::value::Tagged::List(vec![]))
         );
     }
 

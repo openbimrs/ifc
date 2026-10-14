@@ -24,7 +24,7 @@ use crate::tape::{OpenbimIfcValueNode, Reader};
 /// (`INTEGER`, the slot), type name (`TEXT`), optional (`BOOL`), aggregate
 /// (`BOOL`), derived (`BOOL`: written `*`, not writable), declared by
 /// (`TEXT`, the entity introducing it). `INVERSE` attributes hold no slot
-/// and are not listed.
+/// and are listed by `openbim_ifc_v0_1_entity_inverse_attribute_names`.
 ///
 /// `MissingEntity`; `UnsupportedSchema` when the header names no bundled
 /// release or the release does not declare the entity's type.
@@ -63,6 +63,12 @@ pub unsafe extern "C" fn openbim_ifc_v0_1_entity_attribute_names(
 /// Attribute `name` (UTF-8, `name_len` bytes, any case, e.g. `Name`) of
 /// entity `id` as a value tape; `NULL` when the record stops before its
 /// slot.
+///
+/// An `INVERSE` name (`IsDefinedBy`, #462) reads the entities referencing
+/// `id` through the declared release's `FOR` clause: a `LIST` of `REF`s
+/// in ascending id order for a `SET` or `BAG` (`SET [0:1]` included: zero
+/// or one element), a `REF` or `NULL` for a single-valued inverse, which
+/// two referrers refuse with `InvalidModel`.
 ///
 /// `MissingEntity`, `UnknownAttribute`, `UnsupportedSchema` as for
 /// [`openbim_ifc_v0_1_entity_attribute_names`].
@@ -109,7 +115,7 @@ pub unsafe extern "C" fn openbim_ifc_v0_1_entity_attribute_by_name(
 /// tape. Every check runs before the write, so a refusal changes nothing.
 ///
 /// `DerivedAttribute` for a slot the entity's type derives (written `*`);
-/// otherwise as for [`openbim_ifc_v0_1_entity_attribute_by_name`] and
+/// `InverseAttribute` for an `INVERSE` name, which holds no slot; otherwise as for [`openbim_ifc_v0_1_entity_attribute_by_name`] and
 /// `openbim_ifc_v0_1_entity_set_attribute`.
 ///
 /// # Safety

@@ -65,6 +65,9 @@ pub use ifc_model::{codec, Codec, Entity, EntityId, Header, Model, ModelError, V
 // these a facade user could build an editor but never apply it.
 // `Budget` bounds the domain views' traversals (a classification hierarchy).
 pub use ifc_model::{Applied, Budget, Conflict, Transaction};
+// Who references an entity, and through which slot: the index `INVERSE`
+// attributes resolve through (#462).
+pub use ifc_model::{Referrer, ReverseIndex};
 
 /// The STEP physical file codec (`.ifc`).
 #[cfg(feature = "step")]
@@ -100,10 +103,13 @@ pub use ifc_schema as schema;
 // gate themselves on `schema-api` with an inner `#![cfg]`.
 // Entities by `GlobalId`, an object's type, a type's occurrences and the
 // openings and fillings of elements (#463) join the model with the
-// schema's `IfcRoot`, `IfcObject` and relationship tables in the same way.
+// schema's `IfcRoot`, `IfcObject` and relationship tables in the same way,
+// as do `INVERSE` attributes by name (#462), joining the reverse index
+// with the release's `FOR` clauses.
 mod declared_type;
 mod global_id;
 mod identity;
+mod inverse_attribute;
 mod named_attribute;
 mod object_relations;
 mod subtype_query;
@@ -112,6 +118,10 @@ pub use self::{
     declared_type::{attribute_type, declared_type, DeclaredType, SimpleType},
     global_id::{by_guid, DuplicateGlobalId, GlobalIdIndex},
     identity::{root_identity, RootIdentity},
+    inverse_attribute::{
+        attribute_value_by_name, inverse_slot, inverse_slots, total_inverses, AttributeValue,
+        InverseSlot, InverseValue,
+    },
     named_attribute::{
         attribute_by_name, attribute_slot, attribute_slots, set_attribute_by_name, AttributeSlot,
         NamedAttributeError,

@@ -8,6 +8,19 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#462, INVERSE attributes by name)
+
+- `IfcModel::attribute_by_name` resolves an `INVERSE` name through a
+  reverse index cached per model revision: a `list` of `ref`s for a `SET`
+  or `BAG` (`SET [0:1]` included), a `ref` or `null` for a single-valued
+  inverse, `invalid-model` when several entities reference a single one.
+- `IfcModel::inverse_attribute_names(id)` (`InverseAttributeInfo`
+  records), `inverse_references(id)` (`InverseReference { id, index }`)
+  and `total_inverses(id)`.
+- Error code `inverse-attribute`: a by-name write to an `INVERSE` name.
+
+Semver: additive (internal crate, not published).
+
 ### Added (#481, shape representations)
 
 - Batch operations `shape_representation` (`context`, `items`,

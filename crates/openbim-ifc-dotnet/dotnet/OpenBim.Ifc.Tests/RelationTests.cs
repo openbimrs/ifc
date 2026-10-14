@@ -88,4 +88,40 @@ public class RelationTests
         Assert.Equal("347eFU5Y69bPY9V9tumQuV", IfcModel.NameBasedGuid("openbim-ifc", "example"));
         Assert.Equal(22, IfcModel.NameBasedGuid().Length);
     }
+
+    private static ulong[] Refs(Value value) =>
+        ((Value.List)value).Items.Select(item => ((Value.Ref)item).Id).ToArray();
+
+    [Theory]
+    [MemberData(nameof(Releases))]
+    public void InverseAttributesReadThroughTheDeclaredRelease(string file)
+    {
+        using var model = IfcModel.Parse(Fixtures.Bytes(file));
+        var ifc2x3 = file == Fixtures.RelationsIfc2x3;
+        if (ifc2x3)
+        {
+            Assert.Equal(new[] { 20UL, 36UL }, Refs(model.AttributeByName(17, "IsDefinedBy")));
+            Assert.Equal("unknown-attribute", Assert.Throws<IfcException>(() => model.AttributeByName(17, "IsTypedBy")).Code);
+        }
+        else
+        {
+            Assert.Equal(new[] { 36UL }, Refs(model.AttributeByName(17, "isdefinedby")));
+            Assert.Equal(new[] { 20UL }, Refs(model.AttributeByName(17, "IsTypedBy")));
+        }
+        Assert.Equal(new[] { 33UL }, Refs(model.AttributeByName(17, "ContainedInStructure")));
+        Assert.Empty(Refs(model.AttributeByName(11, "Decomposes")));
+        Assert.Equal(new Value.Ref(24), model.AttributeByName(21, "VoidsElements"));
+        var refused = Assert.Throws<IfcException>(() => model.SetAttributeByName(17, "HasOpenings", new Value.Null()));
+        Assert.Equal("inverse-attribute", refused.Code);
+        Assert.Equal(IfcStatus.InverseAttribute, refused.Status);
+
+        Assert.Equal(new[] { new InverseReference(24, 5), new InverseReference(30, 4) }, model.InverseReferences(21));
+        Assert.Equal(5, model.TotalInverses(17));
+        Assert.Equal("missing-entity", Assert.Throws<IfcException>(() => model.TotalInverses(999)).Code);
+        var voids = model.InverseAttributeNames(21).Single(info => info.Name == "VoidsElements");
+        Assert.Equal(new InverseAttributeInfo("VoidsElements", "IfcRelVoidsElement", "RelatedOpeningElement", false, 1, 1, "IfcFeatureElementSubtraction"), voids);
+        var defined = model.InverseAttributeNames(17).Single(info => info.Name == "IsDefinedBy");
+        Assert.Equal(ifc2x3 ? "IfcRelDefines" : "IfcRelDefinesByProperties", defined.Entity);
+        Assert.Null(defined.Upper);
+    }
 }

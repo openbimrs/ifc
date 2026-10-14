@@ -6,7 +6,7 @@ namespace OpenBim.Ifc;
 /// </summary>
 /// <remarks>
 /// <see cref="Parse"/> to <see cref="FeatureDisabled"/>, <see cref="InvalidModel"/>
-/// and <see cref="MissingReference"/> to <see cref="InvalidSelector"/> are the
+/// and <see cref="MissingReference"/> to <see cref="InverseAttribute"/> are the
 /// errors every binding shares, each with a stable <see cref="IfcException.Code"/>.
 /// The rest describe misuse of the C boundary, which this binding does not
 /// commit; <see cref="Panic"/> is a bug in the library, worth reporting.
@@ -59,7 +59,7 @@ public enum IfcStatus
     MissingProperty = 26,
     /// <summary>Reserved: a property edit before its catalog was loaded (<c>catalog-not-loaded</c>). This package embeds the catalog and never returns it.</summary>
     CatalogNotLoaded = 27,
-    /// <summary>A by-name attribute access named no explicit attribute of the entity's type (<c>unknown-attribute</c>).</summary>
+    /// <summary>A by-name attribute access named no attribute of the entity's type, explicit or (for a read) <c>INVERSE</c> (<c>unknown-attribute</c>).</summary>
     UnknownAttribute = 28,
     /// <summary>A by-name attribute write named a slot the entity's type derives, written <c>*</c> (<c>derived-attribute</c>).</summary>
     DerivedAttribute = 29,
@@ -73,6 +73,8 @@ public enum IfcStatus
     AmbiguousValue = 33,
     /// <summary>A selector or value path does not follow the grammar, or names a class or attribute the declared release does not declare (<c>invalid-selector</c>); <see cref="IfcException.Span"/> is the byte range it refuses.</summary>
     InvalidSelector = 34,
+    /// <summary>A by-name attribute write named an <c>INVERSE</c> attribute, which holds no slot (<c>inverse-attribute</c>).</summary>
+    InverseAttribute = 35,
     /// <summary>A Rust panic was contained at the boundary.</summary>
     Panic = 255,
 }

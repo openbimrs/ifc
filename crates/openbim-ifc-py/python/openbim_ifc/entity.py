@@ -50,7 +50,7 @@ from typing import (
 )
 
 from ._native import IfcError
-from .domains import AttributeInfo, Property, PropertySet
+from .domains import AttributeInfo, InverseAttributeInfo, Property, PropertySet
 from .values import (
     Binary,
     Bool,
@@ -203,7 +203,12 @@ class Entity:
     through the model's ``attribute_by_name``/``set_attribute_by_name``, so
     names match ASCII case-insensitively against the declared release. An
     unknown name raises ``AttributeError``, chained from the
-    ``unknown-attribute`` :class:`openbim_ifc.IfcError`. The view holds no
+    ``unknown-attribute`` :class:`openbim_ifc.IfcError`. An ``INVERSE``
+    name reads too (#462): ``wall.IsDefinedBy`` is a tuple of the
+    relationship :class:`Entity` views, ``wall.ContainedInStructure``
+    (``SET [0:1]``) a tuple of zero or one, and a single-valued inverse
+    such as ``opening.VoidsElements`` an :class:`Entity` or ``None``;
+    writing one raises ``inverse-attribute``. The view holds no
     data: every read sees the model as it is then. Two views are equal when
     they name the same id of the same model.
     """
@@ -263,6 +268,25 @@ class Entity:
         """Every explicit attribute, in slot order, as
         :meth:`IfcModel.attribute_names` lists them."""
         return self._model.attribute_names(self._id)
+
+    def inverse_attribute_names(self) -> list[InverseAttributeInfo]:
+        """Every ``INVERSE`` attribute, as
+        :meth:`IfcModel.inverse_attribute_names` lists them."""
+        return self._model.inverse_attribute_names(self._id)
+
+    def inverse_references(self) -> list[Tuple["Entity", int]]:
+        """Every entity referencing this one, with the attribute index
+        holding the reference: :meth:`IfcModel.inverse_references` as
+        ``(Entity, index)`` pairs."""
+        return [
+            (Entity(self._model, reference.id), reference.index)
+            for reference in self._model.inverse_references(self._id)
+        ]
+
+    def total_inverses(self) -> int:
+        """How many distinct entities reference this one:
+        :meth:`IfcModel.total_inverses`."""
+        return self._model.total_inverses(self._id)
 
     def property_sets(self) -> list[PropertySet]:
         """The exact records :meth:`IfcModel.property_sets` returns."""
@@ -327,6 +351,7 @@ class Entity:
         names = list(super().__dir__())
         try:
             names.extend(info.name for info in self.attribute_names())
+            names.extend(info.name for info in self.inverse_attribute_names())
         except IfcError:
             pass
         return sorted(set(names))

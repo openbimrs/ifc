@@ -46,6 +46,7 @@ mod geometry;
 mod graph;
 mod header;
 mod ifczip;
+mod inverse;
 mod model;
 mod open;
 mod options;
@@ -67,6 +68,7 @@ pub use geometry::*;
 pub use graph::*;
 pub use header::*;
 pub use ifczip::*;
+pub use inverse::*;
 pub use model::*;
 pub use open::*;
 pub use options::*;
@@ -91,6 +93,8 @@ mod domain_tests;
 mod geometry_tests;
 #[cfg(test)]
 mod graph_tests;
+#[cfg(test)]
+mod inverse_tests;
 #[cfg(test)]
 mod plain_tests;
 #[cfg(test)]

@@ -8,6 +8,21 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#462, INVERSE attributes by name)
+
+- `openbim_ifc_v0_1_entity_attribute_by_name` reads an `INVERSE` name: a
+  `LIST` of `REF`s for a `SET` or `BAG` (`SET [0:1]` included), a `REF` or
+  `NULL` for a single-valued inverse (`InvalidModel` for two referrers).
+  It no longer answers `UnknownAttribute` for one.
+- `openbim_ifc_v0_1_entity_inverse_attribute_names` (`InverseAttributeInfo`
+  records), `openbim_ifc_v0_1_entity_inverse_references`
+  (`InverseReference` records: `REF` id, `INTEGER` attribute index) and
+  `openbim_ifc_v0_1_entity_total_inverses` (`out_count`).
+- `OPENBIM_IFC_STATUS_INVERSE_ATTRIBUTE` (35, `inverse-attribute`) for a
+  by-name write to an `INVERSE` name. The header is regenerated.
+- ABI version 0.1.16 (on top of #481's 0.1.15); every export above is
+  new, no `v0_1` symbol changed.
+
 ### Added (#481, shape representations)
 
 - The batch tape (`openbim_ifc_v0_1_model_author`) reads

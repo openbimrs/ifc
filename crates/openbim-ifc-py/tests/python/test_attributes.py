@@ -2,7 +2,7 @@
 
 import unittest
 
-from openbim_ifc import AttributeInfo, Derived, Enum, IfcError, IfcModel, Null, Ref, Text
+from openbim_ifc import AttributeInfo, Derived, Enum, IfcError, IfcModel, List, Null, Ref, Text
 
 
 def file(schema: str, data: str) -> bytes:
@@ -62,7 +62,8 @@ class ByName(unittest.TestCase):
         self.assertEqual(model.attribute_by_name(2, "PredefinedType"), Enum("STANDARD"))
         self.assertEqual(model.attribute_by_name(3, "Dimensions"), Derived())
         self.assertEqual(self.code(lambda: model.set_attribute_by_name(3, "Dimensions", Null())), "derived-attribute")
-        self.assertEqual(self.code(lambda: model.attribute_by_name(2, "IsDefinedBy")), "unknown-attribute")
+        self.assertEqual(model.attribute_by_name(2, "IsDefinedBy"), List([]))
+        self.assertEqual(self.code(lambda: model.set_attribute_by_name(2, "IsDefinedBy", List([]))), "inverse-attribute")
         self.assertEqual(self.code(lambda: model.set_attribute_by_name(2, "Nmae", Ref(1))), "unknown-attribute")
         self.assertEqual(self.code(lambda: model.attribute_names(99)), "missing-entity")
         unknown = IfcModel.parse(IFC4.replace(b"'IFC4'", b"'IFC9'"))

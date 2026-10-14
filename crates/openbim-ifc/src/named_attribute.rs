@@ -12,7 +12,10 @@
 //! The slots are the explicit attributes in Part 21 order, inherited
 //! first (ISO 10303-21 §12.2.5.2): exactly the slots a STEP record holds.
 //! `INVERSE` attributes occupy no slot and are not listed, nor are new
-//! `DERIVE` attributes. An inherited attribute a subtype redeclares in its
+//! `DERIVE` attributes. [`attribute_by_name`] refuses an `INVERSE` name
+//! with [`NamedAttributeError::InverseAttribute`];
+//! [`attribute_value_by_name`](crate::attribute_value_by_name) resolves it
+//! through a [`ReverseIndex`](crate::ReverseIndex) (#462). An inherited attribute a subtype redeclares in its
 //! `DERIVE` block keeps its slot and is marked [`AttributeSlot::derived`]:
 //! the file writes it `*` (ADR 0009), and [`set_attribute_by_name`] refuses
 //! to overwrite it.
@@ -69,8 +72,9 @@ pub enum NamedAttributeError {
         /// The type as asked for.
         type_name: String,
     },
-    /// The entity type has no explicit attribute of this name in the
-    /// schema (an `INVERSE` or new `DERIVE` attribute included).
+    /// The entity type has no attribute of this name in the schema: no
+    /// explicit one, and no `INVERSE` one where the call resolves those
+    /// (a new `DERIVE` attribute is unknown too).
     UnknownAttribute {
         /// The schema's name.
         schema: String,
@@ -87,6 +91,27 @@ pub enum NamedAttributeError {
         /// The attribute, in the schema's spelling.
         name: String,
     },
+    /// The name is an `INVERSE` attribute of the entity type (#462): it
+    /// occupies no slot, so a positional read or any write is refused.
+    /// Read it with [`attribute_value_by_name`](crate::attribute_value_by_name).
+    InverseAttribute {
+        /// The entity type, in the schema's spelling.
+        type_name: String,
+        /// The attribute, in the schema's spelling.
+        name: String,
+    },
+    /// A single-valued (non-aggregate) `INVERSE` attribute, such as
+    /// IFC4's `IfcFeatureElementSubtraction.VoidsElements`, is referenced
+    /// by more than one entity: the model contradicts the schema, and no
+    /// one of them is the answer.
+    InverseCardinality {
+        /// The entity type, in the schema's spelling.
+        type_name: String,
+        /// The attribute, in the schema's spelling.
+        name: String,
+        /// Every referencing entity, in ascending id order.
+        referrers: Vec<EntityId>,
+    },
 }
 
 impl fmt::Display for NamedAttributeError {
@@ -100,11 +125,31 @@ impl fmt::Display for NamedAttributeError {
                 schema,
                 type_name,
                 name,
-            } => write!(f, "{schema} {type_name} has no explicit attribute {name:?}"),
+            } => write!(f, "{schema} {type_name} has no attribute {name:?}"),
             Self::DerivedAttribute { type_name, name } => write!(
                 f,
                 "{type_name}.{name} is derived (written `*`) and cannot be set"
             ),
+            Self::InverseAttribute { type_name, name } => write!(
+                f,
+                "{type_name}.{name} is an INVERSE attribute: it has no slot and \
+                 cannot be set; read it through the reverse index"
+            ),
+            Self::InverseCardinality {
+                type_name,
+                name,
+                referrers,
+            } => {
+                write!(
+                    f,
+                    "{type_name}.{name} is single-valued but {} entities reference it:",
+                    referrers.len()
+                )?;
+                for EntityId(id) in referrers {
+                    write!(f, " #{id}")?;
+                }
+                Ok(())
+            }
         }
     }
 }
@@ -166,24 +211,35 @@ pub fn attribute_slots<'s>(
 /// # Errors
 ///
 /// [`NamedAttributeError::UnknownEntity`] for an undeclared type,
-/// [`NamedAttributeError::UnknownAttribute`] for a name it has no explicit
-/// slot for.
+/// [`NamedAttributeError::InverseAttribute`] for one of its `INVERSE`
+/// attributes, and [`NamedAttributeError::UnknownAttribute`] for any other
+/// name it has no explicit slot for.
 pub fn attribute_slot<'s>(
     schema: &'s Schema,
     type_name: &str,
     name: &str,
 ) -> Result<AttributeSlot<'s>, NamedAttributeError> {
-    attribute_slots(schema, type_name)?
+    if let Some(slot) = attribute_slots(schema, type_name)?
         .into_iter()
         .find(|slot| slot.name.eq_ignore_ascii_case(name))
-        .ok_or_else(|| NamedAttributeError::UnknownAttribute {
+    {
+        return Ok(slot);
+    }
+    let spelled = schema
+        .entity(type_name)
+        .map_or(type_name, |entity| entity.name.as_str())
+        .to_owned();
+    match crate::inverse_attribute::inverse_slot(schema, type_name, name)? {
+        Some(inverse) => Err(NamedAttributeError::InverseAttribute {
+            type_name: spelled,
+            name: inverse.name.to_owned(),
+        }),
+        None => Err(NamedAttributeError::UnknownAttribute {
             schema: schema.name().to_owned(),
-            type_name: schema
-                .entity(type_name)
-                .map_or(type_name, |entity| entity.name.as_str())
-                .to_owned(),
+            type_name: spelled,
             name: name.to_owned(),
-        })
+        }),
+    }
 }
 
 /// The value of attribute `name` of entity `id`, resolved against
@@ -192,7 +248,10 @@ pub fn attribute_slot<'s>(
 ///
 /// # Errors
 ///
-/// [`NamedAttributeError::MissingEntity`], then as for [`attribute_slot`].
+/// [`NamedAttributeError::MissingEntity`], then as for [`attribute_slot`]:
+/// an `INVERSE` name is refused with
+/// [`NamedAttributeError::InverseAttribute`], since this read borrows a
+/// stored value and an inverse has none.
 pub fn attribute_by_name<'m>(
     model: &'m Model,
     schema: &Schema,

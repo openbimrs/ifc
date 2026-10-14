@@ -63,7 +63,8 @@ export type IfcErrorCode =
   | "still-referenced"
   | "type-mismatch"
   | "ambiguous-value"
-  | "invalid-selector";
+  | "invalid-selector"
+  | "inverse-attribute";
 
 /**
  * A value `IfcModel.getValue` reads by path (#464): a tagged value, a list
@@ -180,5 +181,31 @@ export interface AttributeInfo {
   derived: boolean;
   /** The entity that declares the attribute, e.g. `IfcRoot`. */
   declaredBy: string;
+}
+
+/** One `INVERSE` attribute of an entity, from `IfcModel.inverseAttributeNames`. */
+export interface InverseAttributeInfo {
+  /** The declared name in the schema's spelling, e.g. `IsDefinedBy`. */
+  name: string;
+  /** The referencing entity type before `FOR`; its subtypes count too. */
+  entity: string;
+  /** The attribute of `entity` after `FOR`, e.g. `RelatedObjects`. */
+  forAttribute: string;
+  /** A `SET` or `BAG` (read as a `list`), not a single `ref`. */
+  aggregate: boolean;
+  /** The declared lower bound; `1` for a single-valued inverse. */
+  lower: number;
+  /** The declared upper bound, `undefined` for `?`. */
+  upper?: number;
+  /** The entity that declares the inverse, e.g. `IfcObject`. */
+  declaredBy: string;
+}
+
+/** One reference to an entity, from `IfcModel.inverseReferences`. */
+export interface InverseReference {
+  /** The referencing entity. */
+  id: bigint;
+  /** The attribute index of `id` holding the reference. */
+  index: number;
 }
 "#;

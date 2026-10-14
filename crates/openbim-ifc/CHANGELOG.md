@@ -12,6 +12,41 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#462, INVERSE attributes by name)
+
+- `attribute_value_by_name(&model, schema, &reverse, id, name)` reads an
+  explicit attribute (`AttributeValue::Explicit`) or an `INVERSE` one
+  (`AttributeValue::Inverse`): every referrer whose type is the `FOR`
+  entity or a subtype in the declared release and whose `FOR` attribute
+  (the slot that release gives it) holds the entity, directly or as an
+  aggregate member, read from a `ReverseIndex` the caller builds once.
+  `InverseValue::Aggregate(ids)` for a `SET` or `BAG`, `SET [0:1]`
+  included (zero or one id, never unwrapped), in ascending id order;
+  `InverseValue::Single(Option<EntityId>)` for a non-aggregate inverse
+  (`VoidsElements`, IFC2X3's `IfcGroup.IsGroupedBy`), refused with
+  `NamedAttributeError::InverseCardinality` naming every referrer when
+  more than one references it. Both enums are `#[non_exhaustive]`.
+- `inverse_slots(schema, type_name)` and `inverse_slot(..)`: every
+  `INVERSE` attribute of a type, inherited first, as `InverseSlot` (name,
+  `FOR` entity and attribute, aggregation with `lower()`/`upper()`,
+  declaring entity); a subtype's redeclaration replaces the inherited one.
+  The bundled tables' answers equal the normative EXPRESS's for every
+  entity of IFC2X3, IFC4 and IFC4X3 (a spec-backed test).
+- `total_inverses(&reverse, id)`: the distinct entities referencing one
+  (IfcOpenShell's `get_total_inverses`). `ReverseIndex` and `Referrer`
+  are re-exported at the root; `ReverseIndex::referrers` is the
+  `get_inverse(.., with_attribute_indices=True)` equivalent.
+
+### Changed (#462)
+
+- `attribute_slot`, `attribute_by_name`, `set_attribute_by_name` and
+  `attribute_type` refuse an `INVERSE` name with the new
+  `NamedAttributeError::InverseAttribute` instead of `UnknownAttribute`;
+  `UnknownAttribute` now reads "has no attribute".
+
+Semver: additive (`NamedAttributeError` is `#[non_exhaustive]`), a minor
+release while 0.x.
+
 ### Added (#481, shape representations)
 
 - `AuthorOp::ShapeRepresentation { context, items, identifier,

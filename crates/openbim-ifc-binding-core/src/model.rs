@@ -16,6 +16,8 @@ pub struct IfcModel {
     pub(crate) inner: Model,
     /// The `GlobalId` index `by_guid` builds on first use (#463).
     pub(crate) guid_index: crate::relations::GuidCache,
+    /// The reverse index `INVERSE` reads build on first use (#462).
+    pub(crate) reverse_index: crate::inverse::ReverseCache,
 }
 
 impl IfcModel {
@@ -122,6 +124,7 @@ impl IfcModel {
             Ok(inner) => Ok(Self {
                 inner,
                 guid_index: Default::default(),
+                reverse_index: Default::default(),
             }),
             Err(ModelError::Io(detail)) => Err(BindingError::Io(detail)),
             Err(error) => Err(BindingError::Parse(format!("{format}: {error}"))),

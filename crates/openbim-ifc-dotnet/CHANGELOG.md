@@ -9,6 +9,18 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#462, INVERSE attributes by name)
+
+- `model.AttributeByName(id, "IsDefinedBy")` and every other `INVERSE`
+  name: a `Value.List` of `Value.Ref` for a `SET` or `BAG` (`SET [0:1]`
+  included), a `Value.Ref` or `Value.Null` for a single-valued inverse.
+- `model.InverseAttributeNames(id)` (`InverseAttributeInfo`),
+  `model.InverseReferences(id)` (`InverseReference(Id, Index)`) and
+  `model.TotalInverses(id)`.
+- `IfcStatus.InverseAttribute` (35, `inverse-attribute`) for a write to
+  an `INVERSE` name.
+- Requires the C ABI 0.1.16 (`openbim-ifc-capi` with #462).
+
 ### Added (#481, shape representations)
 
 - `AuthorOp.ShapeRepresentation(context, items, identifier, representationType)`,

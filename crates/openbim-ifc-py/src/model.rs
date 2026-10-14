@@ -489,6 +489,28 @@ impl NativeModel {
         to_py(py, &self.inner.attribute_by_name(id, name).map_err(py_err)?)
     }
 
+    /// Every `INVERSE` attribute of `id`, inherited ones first, as
+    /// `InverseAttributeInfo` record dicts (#462).
+    fn inverse_attribute_names<'py>(
+        &self,
+        py: Python<'py>,
+        id: u64,
+    ) -> PyResult<Bound<'py, PyList>> {
+        let names = self.inner.inverse_attribute_names(id).map_err(py_err)?;
+        records::records_to_py(py, &to_records(&names))
+    }
+
+    /// Every reference to `id` as `InverseReference` record dicts (#462).
+    fn inverse_references<'py>(&self, py: Python<'py>, id: u64) -> PyResult<Bound<'py, PyList>> {
+        let references = self.inner.inverse_references(id).map_err(py_err)?;
+        records::records_to_py(py, &to_records(&references))
+    }
+
+    /// How many distinct entities reference `id` (#462).
+    fn total_inverses(&self, id: u64) -> PyResult<usize> {
+        self.inner.total_inverses(id).map_err(py_err)
+    }
+
     fn set_attribute_by_name<'py>(
         &mut self,
         py: Python<'py>,

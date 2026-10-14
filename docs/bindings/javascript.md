@@ -107,8 +107,18 @@ against the release the file's header declares, so the same code reads
 `attributeNames(id)` lists every explicit attribute in slot order,
 inherited first, as `{ name, index, typeName, optional, aggregate,
 derived, declaredBy }`. Names match case-insensitively and come back in
-the schema's spelling. `INVERSE` attributes hold no slot and are unknown
-names (`unknown-attribute`). A slot the entity's type derives is listed
+the schema's spelling. An `INVERSE` name (#462) reads through
+`attributeByName` too, following the declared release's `FOR` clause
+(IFC2X3's `IsDefinedBy` holds type and property relationships, IFC4's
+only property ones beside `IsTypedBy`): a `{ kind: "list" }` of `ref`s
+in ascending id order for a `SET` or `BAG`, `SET [0:1]` inverses such as
+`ContainedInStructure` included (zero or one item, never unwrapped); a
+`ref` or `{ kind: "null" }` for a single-valued inverse (`VoidsElements`),
+where two referrers throw `invalid-model`. Writing one throws
+`inverse-attribute`. `inverseAttributeNames(id)` lists the declarations
+as `{ name, entity, forAttribute, aggregate, lower, upper, declaredBy }`,
+`inverseReferences(id)` every referrer as `{ id, index }`, and
+`totalInverses(id)` counts the distinct referrers. A slot the entity's type derives is listed
 with `derived: true`, reads as stored (`{ kind: "derived" }`) and refuses
 a write (`derived-attribute`). An entity type the declared release does
 not have, or a release the build leaves out, is `unsupported-schema`.
@@ -1064,7 +1074,7 @@ class, interface and type the package's `.d.ts` declares.
 | `model.setAttribute(id: bigint, slot: number, value: IfcValue): IfcValue` | yes | Set attribute `index` of entity `id`; returns the previous value. |
 | `model.attributeNames(id: bigint): AttributeInfo[]` | yes | Every explicit attribute of entity `id` in slot order, inherited first, as the release the header declares defines them. |
 | `model.attributeByName(id: bigint, name: string): IfcValue` | yes | Attribute `name` of entity `id` (case-insensitive, e.g. `"Name"`), resolved against the declared release, as a tagged value. |
-| `model.setAttributeByName(id: bigint, name: string, value: IfcValue \| IfcPlainValue): IfcValue` | yes | Set attribute `name` of entity `id`; returns the previous value. A derived attribute is refused (`derived-attribute`). |
+| `model.setAttributeByName(id: bigint, name: string, value: IfcValue \| IfcPlainValue): IfcValue` | yes | Set attribute `name` of entity `id`; returns the previous value. A derived attribute is refused (`derived-attribute`), an `INVERSE` one (`inverse-attribute`). |
 | `model.add(typeName: string, attributes: IfcValue[]): bigint` | yes | Append an entity; returns its id (`bigint`). |
 | `model.remove(id: bigint): void` | yes | Remove entity `id`, leaving references to it dangling. |
 | `model.author(ops: AuthorOp[]): AuthoringResult` | yes | Apply authoring operations as one checked transaction against the release the header declares: every operation, in order, or none, and a refused batch leaves the model unchanged. An operation names the entity an earlier one produced by `IfcModel.handle(index)`. `result.ids` holds, per operation, the id of the entity it produced. |
@@ -1072,6 +1082,17 @@ class, interface and type the package's `.d.ts` declares.
 | `model.removeWithRelationships(id: bigint): void` | yes | Remove entity `id` with its relationships, leaving nothing dangling (`author` with one `remove`); refused with `still-referenced` while an entity other than a relationship needs it. |
 | `IfcModel.handle(index: number): bigint` |  | The handle of the entity operation `index` of an `author` batch produces, usable wherever a later operation takes an id (`bigint`). |
 | `model.danglingReferences(): [bigint, bigint][]` |  | Every `[from, to]` pair (`bigint`s) where `to` does not exist. |
+| `model.inverseAttributeNames(id: bigint): InverseAttributeInfo[]` | yes | Every `INVERSE` attribute of entity `id`, inherited ones first, as the declared release defines them (#462). |
+| `model.inverseReferences(id: bigint): InverseReference[]` | yes | Every reference to entity `id`: the referencing entity and the attribute index it references through, in ascending order (#462). |
+| `model.totalInverses(id: bigint): number` | yes | How many distinct entities reference entity `id` (#462). |
+| `model.removeProduct(id: bigint, options: RemoveProductOptions \| undefined): RemovalReport` | yes | Remove product (or type object) `id` with everything it solely owns -- its placement, representation, own property and quantity sets, material usage, openings and ports, and the relationships left without an end -- as one checked transaction, keeping what is shared (a property set another object uses, a type's representation maps). The report says what went, what stayed and why; with `dryRun` nothing changes. Refused with `still-referenced` while other placements are relative to its placement (unless `rebasePlacements`) or a type object types objects (unless `untypeOccurrences`), `wrong-entity-type` for neither a product nor a type object, `unsupported` for a placement that cannot be re-based. |
+| `model.purge(options: PurgeOptions \| undefined): RemovalReport` | yes | Remove unreferenced entities as one checked transaction; with `dryRun`, only report. Without `classes`, every resource entity no `IfcRoot` reaches (nor annotates something reached); with them, the entities of those classes nothing references, an `IfcRoot` only with `includeRoots`. The owner history stays unless `includeOwnerHistory`. Refused with `unsupported-schema` for a class the release does not declare. |
+| `model.removeRepresentation(id: bigint, options: RemoveRepresentationOptions \| undefined): RemovalReport` | yes | Remove shape representation `id` with what only it uses (#481), as one checked transaction: taken off its product definition shape (which goes when left empty), representation map or shape aspects, then removed with its items down to what nothing else uses. Shared items, profiles, points and styles stay, and the report says why; with `dryRun` nothing changes. Refused with `still-referenced` for a representation map an `IfcMappedItem` still maps, `wrong-entity-type` for an entity that is not an `IfcShapeModel`. |
+| `model.select(query: string, base: bigint[] \| BigUint64Array \| undefined): bigint[]` | yes | The ids selector `query` selects, ascending (#464); with `base`, from those entities alone. |
+| `model.getValue(id: bigint, path: string): IfcSelectedValue` | yes | The value `path` reads from entity `id`: `"type.Name"`, `"Pset_WallCommon.FireRating"`, `"materials.Name"`, `"occurrences.count"`. |
+| `model.setValue(id: bigint, path: string, value: IfcValue \| IfcPlainValue): void` | yes | Write `value` at `path` of entity `id` as one checked transaction: an attribute coerced as `setAttributeByName` coerces a plain value, or a property from a typed value, or a plain one when the property already states its type. A refused write changes nothing. |
+| `IfcModel.canonicalSelector(query: string): string` | yes | Selector `query` in its canonical form: spacing, quoting and aliases normalised. Throws `invalid-selector`. |
+| `IfcModel.selectorGrammarVersion(): string` |  | The version of the selector grammar this build parses (`"1.0"`). |
 
 Attribute values and error codes are typed by the package's `.d.ts`:
 
@@ -1131,7 +1152,8 @@ export type IfcErrorCode =
   | "still-referenced"
   | "type-mismatch"
   | "ambiguous-value"
-  | "invalid-selector";
+  | "invalid-selector"
+  | "inverse-attribute";
 
 /**
  * A value `IfcModel.getValue` reads by path (#464): a tagged value, a list
@@ -1248,6 +1270,32 @@ export interface AttributeInfo {
   derived: boolean;
   /** The entity that declares the attribute, e.g. `IfcRoot`. */
   declaredBy: string;
+}
+
+/** One `INVERSE` attribute of an entity, from `IfcModel.inverseAttributeNames`. */
+export interface InverseAttributeInfo {
+  /** The declared name in the schema's spelling, e.g. `IsDefinedBy`. */
+  name: string;
+  /** The referencing entity type before `FOR`; its subtypes count too. */
+  entity: string;
+  /** The attribute of `entity` after `FOR`, e.g. `RelatedObjects`. */
+  forAttribute: string;
+  /** A `SET` or `BAG` (read as a `list`), not a single `ref`. */
+  aggregate: boolean;
+  /** The declared lower bound; `1` for a single-valued inverse. */
+  lower: number;
+  /** The declared upper bound, `undefined` for `?`. */
+  upper?: number;
+  /** The entity that declares the inverse, e.g. `IfcObject`. */
+  declaredBy: string;
+}
+
+/** One reference to an entity, from `IfcModel.inverseReferences`. */
+export interface InverseReference {
+  /** The referencing entity. */
+  id: bigint;
+  /** The attribute index of `id` holding the reference. */
+  index: number;
 }
 ```
 

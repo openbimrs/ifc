@@ -40,6 +40,8 @@ from .geometry import (
 from .domains import (
     HANDLE_BASE,
     AttributeInfo,
+    InverseAttributeInfo,
+    InverseReference,
     AuthorOp,
     AuthoringResult,
     KeptEntity,
@@ -157,6 +159,8 @@ __all__ = [
     "PropertyValue",
     "Assignable",
     "AttributeInfo",
+    "InverseAttributeInfo",
+    "InverseReference",
     "AuthorOp",
     "AuthoringResult",
     "RemovalReport",

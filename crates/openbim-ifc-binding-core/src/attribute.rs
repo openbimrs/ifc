@@ -10,15 +10,19 @@
 //! - Names match ASCII case-insensitively, as EXPRESS identifiers do;
 //!   answers spell them as the schema declares (`GlobalId`).
 //! - The slots are the explicit attributes, inherited first: exactly what a
-//!   STEP record holds. `INVERSE` and new `DERIVE` attributes have no slot
-//!   and are unknown names.
+//!   STEP record holds. A new `DERIVE` attribute has no slot and is an
+//!   unknown name. An `INVERSE` attribute has no slot either: a read
+//!   resolves it through the reverse index ([`crate::inverse`], #462) and a
+//!   write is refused with `inverse-attribute`.
 //! - An inherited attribute a subtype redeclares as derived keeps its slot,
 //!   is listed with `derived` set, reads as stored (normally `*`) and is
 //!   refused on write with `derived-attribute`.
 //!
 //! Refusals: `missing-entity`; `unsupported-schema` when the header names
 //! no release this build bundles, or the release does not declare the
-//! entity's type; `unknown-attribute`; `derived-attribute`.
+//! entity's type; `unknown-attribute`; `derived-attribute`;
+//! `inverse-attribute` for a write to an `INVERSE` name; `invalid-model`
+//! for a single-valued inverse several entities reference.
 
 use ifc::{EntityId, NamedAttributeError};
 
@@ -76,6 +80,9 @@ pub(crate) fn refused(error: NamedAttributeError) -> BindingError {
         NamedAttributeError::DerivedAttribute { .. } => {
             BindingError::DerivedAttribute(error.to_string())
         }
+        NamedAttributeError::InverseAttribute { .. } => {
+            BindingError::InverseAttribute(error.to_string())
+        }
         // `NamedAttributeError` is non-exhaustive; a new refusal is
         // reported, never dropped, until it earns a code of its own.
         other => BindingError::InvalidModel(other.to_string()),
@@ -104,14 +111,17 @@ impl IfcModel {
     }
 
     /// Attribute `name` (any case) of entity `id`; `null` when the record
-    /// stops before its slot, as for [`Self::attribute`].
+    /// stops before its slot, as for [`Self::attribute`]. An `INVERSE`
+    /// name reads the entities referencing `id` through it
+    /// ([`crate::inverse`]): a `list` of `ref`s for a `SET` or `BAG`, a
+    /// `ref` or `null` for a single-valued one.
     pub fn attribute_by_name(&self, id: u64, name: &str) -> Result<Tagged, BindingError> {
         let schema = self.declared_schema()?;
-        Ok(
-            ifc::attribute_by_name(&self.inner, schema, EntityId(id), name)
-                .map_err(refused)?
-                .map_or(Tagged::Null, Tagged::from_value),
-        )
+        match ifc::attribute_by_name(&self.inner, schema, EntityId(id), name) {
+            Ok(value) => Ok(value.map_or(Tagged::Null, Tagged::from_value)),
+            Err(NamedAttributeError::InverseAttribute { .. }) => self.inverse_by_name(id, name),
+            Err(error) => Err(refused(error)),
+        }
     }
 
     /// Set attribute `name` (any case) of entity `id`, returning the

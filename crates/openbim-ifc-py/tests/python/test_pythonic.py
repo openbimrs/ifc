@@ -106,8 +106,12 @@ class Entities(unittest.TestCase):
         self.assertEqual(wall.get("GLOBALID"), "2CazjTQP11iu6o3c47EEd8")
         self.assertIn("ObjectPlacement", dir(wall))
         self.assertFalse(hasattr(wall, "Nmae"))
+        # INVERSE: read through the reverse index (#462).
+        self.assertEqual(wall.IsDefinedBy, (wall.model[52],))
+        self.assertEqual(wall.IsTypedBy, (wall.model[33],))
+        self.assertIn("IsDefinedBy", dir(wall))
         with self.assertRaises(AttributeError) as caught:
-            wall.IsDefinedBy  # INVERSE: no slot
+            wall.IsDefinedByy
         self.assertEqual(code(caught.exception.__cause__ or caught.exception), "unknown-attribute")
         with self.assertRaises(IfcError) as refused:
             wall.get("Nmae")

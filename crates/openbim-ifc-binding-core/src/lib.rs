@@ -69,6 +69,12 @@
 //! ([`IfcModel::get_value`], [`IfcModel::set_value`]). A query that does
 //! not parse is refused with `invalid-selector` and the byte span of the
 //! offending text ([`BindingError::span`]).
+//!
+//! `INVERSE` attributes read by name too ([`inverse`], #462):
+//! `attribute_by_name(wall, "IsDefinedBy")` follows the declared release's
+//! `FOR` clause through a reverse index built on first use and rebuilt
+//! only after an edit; [`IfcModel::inverse_references`] and
+//! [`IfcModel::total_inverses`] list and count every referrer.
 
 mod attribute;
 pub mod authoring;
@@ -81,6 +87,7 @@ pub mod geometry;
 pub mod georef;
 pub mod header;
 pub mod ifczip;
+pub mod inverse;
 pub mod material;
 mod model;
 mod options;
@@ -109,6 +116,7 @@ pub use geometry::graph::{
 pub use geometry::{
     GeometryRefusal, ProductMesh, ProductPlacement, SelectedRepresentation, SurfaceColour,
 };
+pub use inverse::{InverseAttributeInfo, InverseReference};
 pub use model::IfcModel;
 pub use options::{OnMalformed, ParseOptions};
 pub use record::{Field, Record, ToRecord};

@@ -75,6 +75,7 @@ public sealed class IfcException : Exception
         IfcStatus.TypeMismatch => "type-mismatch",
         IfcStatus.AmbiguousValue => "ambiguous-value",
         IfcStatus.InvalidSelector => "invalid-selector",
+        IfcStatus.InverseAttribute => "inverse-attribute",
         IfcStatus.NullPointer => "null-pointer",
         IfcStatus.InvalidArgument => "invalid-argument",
         IfcStatus.InvalidHandle => "invalid-handle",

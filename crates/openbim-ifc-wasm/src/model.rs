@@ -19,6 +19,7 @@ use crate::value::{self, from_js, to_js};
 
 mod domain_types;
 mod geometry_types;
+mod inverse;
 mod removal;
 mod selector;
 mod types;
@@ -600,6 +601,12 @@ impl IfcModel {
 
     /// Attribute `name` of entity `id` (case-insensitive, e.g. `"Name"`),
     /// resolved against the declared release, as a tagged value.
+    ///
+    /// An `INVERSE` name (`"IsDefinedBy"`, #462) reads the entities
+    /// referencing `id` through the release's `FOR` clause: a `list` of
+    /// `ref`s for a `SET` or `BAG` (`SET [0:1]` included: zero or one
+    /// element), a `ref` or `null` for a single-valued inverse, which two
+    /// referrers refuse with `invalid-model`.
     #[wasm_bindgen(js_name = attributeByName, unchecked_return_type = "IfcValue")]
     pub fn attribute_by_name_js(&self, id: u64, name: &str) -> Result<JsValue, JsValue> {
         Ok(to_js(
@@ -608,7 +615,8 @@ impl IfcModel {
     }
 
     /// Set attribute `name` of entity `id`; returns the previous value. A
-    /// derived attribute is refused (`derived-attribute`).
+    /// derived attribute is refused (`derived-attribute`), an `INVERSE` one
+    /// (`inverse-attribute`).
     ///
     /// An `IfcValue` object is written exactly. A plain value (#342) is
     /// coerced against the attribute's declared type in the declared

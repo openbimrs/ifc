@@ -69,8 +69,9 @@ pub enum OpenbimIfcStatus {
     /// catalog, so it never returns this; the value is reserved so every
     /// binding code has one.
     CatalogNotLoaded = 27,
-    /// A by-name attribute access named no explicit attribute of the
-    /// entity's type in the declared release (`unknown-attribute`).
+    /// A by-name attribute access named no attribute of the entity's type
+    /// in the declared release, explicit or (for a read) `INVERSE`
+    /// (`unknown-attribute`).
     UnknownAttribute = 28,
     /// A by-name attribute write named a slot the entity's type derives,
     /// written `*` (`derived-attribute`).
@@ -92,6 +93,9 @@ pub enum OpenbimIfcStatus {
     /// (`invalid-selector`); `openbim_ifc_v0_1_last_error_span` gives the
     /// byte range it refuses.
     InvalidSelector = 34,
+    /// A by-name attribute write named an `INVERSE` attribute, which holds
+    /// no slot (`inverse-attribute`).
+    InverseAttribute = 35,
     /// A Rust panic was contained at the boundary. Report it as a bug.
     Panic = 255,
 }
@@ -123,6 +127,7 @@ impl From<&BindingError> for OpenbimIfcStatus {
             BindingError::TypeMismatch(_) => Self::TypeMismatch,
             BindingError::AmbiguousValue(_) => Self::AmbiguousValue,
             BindingError::InvalidSelector { .. } => Self::InvalidSelector,
+            BindingError::InverseAttribute(_) => Self::InverseAttribute,
         }
     }
 }
@@ -252,6 +257,10 @@ mod tests {
                     span: (0, 0),
                 },
                 OpenbimIfcStatus::InvalidSelector,
+            ),
+            (
+                BindingError::InverseAttribute(String::new()),
+                OpenbimIfcStatus::InverseAttribute,
             ),
         ];
         for (error, status) in cases {
