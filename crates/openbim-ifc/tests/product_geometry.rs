@@ -91,6 +91,150 @@ fn meshes_are_relative_to_the_placement_and_refused_per_product() {
     assert!(refused.is_unsupported(), "{refused}");
 }
 
+/// Curve representations as polylines (#458): the wall's and the proxy's
+/// `Axis` is an `IfcPolyline` from (-2000, 0) to (2000, 0) mm, so (-2, 0, 0)
+/// to (2, 0, 0) m in the product's frame, its own curve.
+#[cfg(feature = "mesh")]
+#[test]
+fn axis_curves_are_polylines_relative_to_the_placement() {
+    use ifc::RepresentationPurpose;
+
+    let model = fixture();
+    let curves = ifc::product_curves(&model, None, RepresentationPurpose::Axis);
+    let products: Vec<u64> = curves.iter().map(|(id, _)| id.0).collect();
+    assert_eq!(products, [36, 46, 53, 65]);
+    for index in [0, 2] {
+        let product = curves[index].1.as_ref().expect("the axis compiles");
+        assert_eq!(product.polylines.len(), 1);
+        let axis = &product.polylines[0];
+        assert_eq!(axis.curve, Some(EntityId(33)));
+        assert!(!axis.closed);
+        assert_eq!(axis.chord_bound, 0.0);
+        assert_eq!(axis.chord_requested, 1e-3);
+        let expected = [-2.0, 0.0, 0.0, 2.0, 0.0, 0.0];
+        assert_eq!(axis.positions.len(), 6);
+        for (got, want) in axis.positions.iter().zip(expected) {
+            assert!(
+                (f64::from(*got) - want).abs() < 1e-6,
+                "{:?}",
+                axis.positions
+            );
+        }
+        // Mapped back, the axis lies 5,403 km out, as the wall does.
+        let start = [axis.positions[0], axis.positions[1], axis.positions[2]].map(f64::from);
+        let world = product.world.apply(start);
+        assert!((world[1] - 5_403_001.0).abs() < 3.0, "{world:?}");
+    }
+    // A slab has no Axis and the text member none either: no failure.
+    for index in [1, 3] {
+        assert!(curves[index].1.as_ref().unwrap().polylines.is_empty());
+    }
+    // The drawing selector picks the same Axis when nothing else is drawn.
+    let plan = ifc::product_curves(&model, Some(&[EntityId(36)]), RepresentationPurpose::Plan);
+    assert_eq!(plan[0].1, curves[0].1);
+    // The Body is a solid and has no curves.
+    let body = ifc::product_curves(&model, Some(&[EntityId(36)]), RepresentationPurpose::Body);
+    assert!(body[0].1.as_ref().unwrap().polylines.is_empty());
+}
+
+/// A mesh reports whether it bounds a solid; an `Axis` has nothing to mesh.
+#[cfg(feature = "mesh")]
+#[test]
+fn meshes_report_their_closure_and_select_a_representation() {
+    use ifc::geometry::compile::MeshClosure;
+    use ifc::RepresentationPurpose;
+
+    let model = fixture();
+    let meshes = ifc::product_meshes(&model, None);
+    assert_eq!(meshes[0].1.as_ref().unwrap().closure, MeshClosure::Solid);
+    assert_eq!(meshes[2].1.as_ref().unwrap().closure, MeshClosure::Unknown);
+    let body = ifc::product_meshes_for(&model, None, RepresentationPurpose::Body);
+    assert_eq!(body.len(), meshes.len());
+    for ((_, a), (_, b)) in body.iter().zip(&meshes) {
+        assert_eq!(a.as_ref().ok(), b.as_ref().ok(), "Body is the default");
+    }
+    let axis = ifc::product_meshes_for(&model, None, RepresentationPurpose::Axis);
+    for (product, mesh) in &axis {
+        let mesh = mesh.as_ref().expect("no Axis mesh is no failure");
+        assert!(mesh.indices.is_empty(), "#{}", product.0);
+        assert_eq!(mesh.colour, Ok(None));
+    }
+}
+
+/// A slab whose `Surface` is a rectangular trimmed plane, 2 x 3 m, is a
+/// surface mesh of 6 m2; a wall whose `Axis` is an `IfcTrimmedCurve` is
+/// refused by name until the reference compiler polylines it (#506).
+#[cfg(feature = "mesh")]
+#[test]
+fn a_trimmed_surface_meshes_as_a_surface_and_a_trimmed_axis_is_refused_by_name() {
+    use ifc::geometry::compile::{MeshClosure, UnpolylinedCurve};
+    use ifc::geometry::GeometryError;
+    use ifc::RepresentationPurpose;
+
+    let text = "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n\
+FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;
+#1=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,#2,$);
+#2=IFCAXIS2PLACEMENT3D(#3,$,$);
+#3=IFCCARTESIANPOINT((0.,0.,0.));
+#4=IFCLOCALPLACEMENT($,#2);
+#10=IFCSLAB('0000000000000000000010',$,'S',$,$,#4,#11,$,$);
+#11=IFCPRODUCTDEFINITIONSHAPE($,$,(#12));
+#12=IFCSHAPEREPRESENTATION(#1,'Surface','Surface3D',(#13));
+#13=IFCRECTANGULARTRIMMEDSURFACE(#14,0.,0.,2.,3.,.T.,.T.);
+#14=IFCPLANE(#2);
+#20=IFCWALL('0000000000000000000020',$,'W',$,$,#4,#21,$,$);
+#21=IFCPRODUCTDEFINITIONSHAPE($,$,(#22));
+#22=IFCSHAPEREPRESENTATION(#1,'Axis','Curve2D',(#23));
+#23=IFCTRIMMEDCURVE(#24,(IFCPARAMETERVALUE(0.)),(IFCPARAMETERVALUE(1.5)),.T.,.PARAMETER.);
+#24=IFCCIRCLE(#25,1.);
+#25=IFCAXIS2PLACEMENT2D(#26,$);
+#26=IFCCARTESIANPOINT((0.,0.));
+ENDSEC;\nEND-ISO-10303-21;\n";
+    let model = StepCodec.read_bytes(text.as_bytes()).expect("parses");
+
+    let surfaces = ifc::product_meshes_for(
+        &model,
+        Some(&[EntityId(10)]),
+        RepresentationPurpose::Surface,
+    );
+    let slab = surfaces[0].1.as_ref().expect("the surface meshes");
+    assert_eq!(slab.closure, MeshClosure::Surface);
+    let p = |i: u32| {
+        let i = 3 * i as usize;
+        [
+            slab.positions[i],
+            slab.positions[i + 1],
+            slab.positions[i + 2],
+        ]
+        .map(f64::from)
+    };
+    let area: f64 = slab
+        .indices
+        .chunks_exact(3)
+        .map(|t| {
+            let (a, b, c) = (p(t[0]), p(t[1]), p(t[2]));
+            let (u, v) = ([b[0] - a[0], b[1] - a[1]], [c[0] - a[0], c[1] - a[1]]);
+            0.5 * (u[0] * v[1] - u[1] * v[0]).abs()
+        })
+        .sum();
+    assert!((area - 6.0).abs() < 1e-6, "{area}");
+
+    let axis = ifc::product_curves(&model, Some(&[EntityId(20)]), RepresentationPurpose::Axis);
+    let refused = axis[0].1.as_ref().expect_err("no polyline for a trim yet");
+    assert!(
+        matches!(
+            refused,
+            GeometryError::PolylineUnsupported {
+                curve: EntityId(23),
+                family: UnpolylinedCurve::Trimmed,
+                ..
+            }
+        ),
+        "{refused:?}"
+    );
+    assert!(refused.is_unsupported());
+}
+
 #[cfg(feature = "geometry-wire")]
 #[test]
 fn graphs_round_trip_through_the_wire_format_and_are_refused_per_product() {

@@ -11,7 +11,7 @@ use openbim_ifc_binding_core::record::to_records;
 use openbim_ifc_binding_core::value::Tagged;
 use openbim_ifc_binding_core::{ProductMesh, ToRecord};
 
-use crate::buffer::{fill, put, slice};
+use crate::buffer::{fill, put, slice, text};
 use crate::domains::{list_export, Out};
 use crate::model::{with_model, OpenbimIfcModel};
 use crate::registry;
@@ -134,6 +134,55 @@ pub unsafe extern "C" fn openbim_ifc_v0_1_model_product_meshes(
     })
 }
 
+/// As [`openbim_ifc_v0_1_model_product_meshes`], meshing each product's
+/// `representation` (#458): `representation_len` bytes of UTF-8 at
+/// `representation`, one of `Body` (as the call above), `Plan`, `Axis`,
+/// `FootPrint`, `Annotation` or `Surface`. Its surfaces and solids are one
+/// mesh, whose record's closure says `solid` or `surface`; its curves are
+/// left to `openbim_ifc_v0_1_model_product_curves`. A product without the
+/// representation, or with curves only, has an empty mesh and no refusal.
+/// Only a Body mesh carries a colour.
+///
+/// `InvalidValue` for another name, `InvalidArgument` for text that is not
+/// UTF-8; otherwise as the call above.
+///
+/// # Safety
+/// `representation` valid for `representation_len` reads; otherwise as
+/// for `openbim_ifc_v0_1_model_product_meshes`.
+#[no_mangle]
+pub unsafe extern "C" fn openbim_ifc_v0_1_model_product_meshes_for(
+    model: OpenbimIfcModel,
+    ids: *const u64,
+    id_count: usize,
+    representation: *const u8,
+    representation_len: usize,
+    out_meshes: *mut OpenbimIfcMeshes,
+) -> OpenbimIfcStatus {
+    boundary(|| {
+        if out_meshes.is_null() {
+            return OpenbimIfcStatus::NullPointer;
+        }
+        // SAFETY: caller contract above.
+        let inputs = unsafe {
+            (
+                selection(ids, id_count),
+                text(representation, representation_len),
+            )
+        };
+        let (ids, representation) = match inputs {
+            (Ok(ids), Ok(representation)) => (ids, representation),
+            (Err(status), _) | (_, Err(status)) => return status,
+        };
+        with_model(model, |m| {
+            let handle = registry::insert_meshes(m.product_meshes_for(ids, representation)?);
+            // SAFETY: checked non-null; caller contract above.
+            Ok(unsafe { put(out_meshes, handle) }
+                .err()
+                .unwrap_or(OpenbimIfcStatus::Ok))
+        })
+    })
+}
+
 /// Run `read` on the live set behind `meshes`.
 fn with_meshes(
     meshes: OpenbimIfcMeshes,
@@ -150,8 +199,10 @@ fn with_meshes(
 /// type name, transform (`LIST` of 16 `REAL`s, column-major, metres, or
 /// `NULL`), vertex count, triangle count (`INTEGER`s), refusal
 /// (`GeometryRefusal` or `NULL`), colour (`SurfaceColour` or `NULL`),
-/// colour refusal (`GeometryRefusal` or `NULL`). Empty arrays and no
-/// refusal is a product with no Body representation.
+/// colour refusal (`GeometryRefusal` or `NULL`), closure (`TEXT`, #458:
+/// `solid`, `surface` for an area with no volume, or `unknown` for an
+/// empty or refused mesh). Empty arrays and no refusal is a product with no
+/// Body representation.
 ///
 /// `SurfaceColour` (#449): red, green, blue (`REAL`s in [0, 1]),
 /// transparency (`REAL`, 0 opaque, or `NULL` when the file states none),

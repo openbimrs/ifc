@@ -340,9 +340,9 @@ typedef int32_t OpenbimIfcStatus;
 #endif // __cplusplus
 
 /**
- * Opaque model handle. Zero is never a valid handle.
+ * Opaque handle to a compiled polyline set. Zero is never a valid handle.
  */
-typedef uint64_t OpenbimIfcModel;
+typedef uint64_t OpenbimIfcCurves;
 
 /**
  * One node of a value tape. Fields a kind does not use are zero.
@@ -373,6 +373,11 @@ typedef struct {
    */
   uint64_t str_len;
 } OpenbimIfcValueNode;
+
+/**
+ * Opaque model handle. Zero is never a valid handle.
+ */
+typedef uint64_t OpenbimIfcModel;
 
 /**
  * Opaque handle to an encoded graph set. Zero is never a valid handle.
@@ -452,6 +457,54 @@ typedef struct {
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
+
+/**
+ * Destroy a polyline set. A stale or repeated handle is `InvalidHandle`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_curves_destroy(OpenbimIfcCurves curves);
+
+/**
+ * Copy the positions of product `index` -- `x, y, z` per vertex, metres,
+ * relative to its record's transform, every polyline's vertices in turn
+ * -- into `buffer` (`capacity` floats), after writing the count needed
+ * (3 x vertex count) to `out_required`. `OutOfRange` for an index past
+ * the set.
+ *
+ * # Safety
+ * As for `openbim_ifc_v0_1_meshes_positions`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_curves_positions(OpenbimIfcCurves curves,
+                                                   size_t index,
+                                                   float *buffer,
+                                                   size_t capacity,
+                                                   size_t *out_required);
+
+/**
+ * The set's `ProductCurves` records as a tape, in the order compiled;
+ * `out_count` gets their number. `ProductCurves`: id (`REF`), global id,
+ * type name, transform (`LIST` of 16 `REAL`s, column-major, metres, or
+ * `NULL`), vertex count (`INTEGER`), polylines (`LIST` of
+ * `ProductPolyline`), refusal (`GeometryRefusal` or `NULL`).
+ * `ProductPolyline`: curve (`REF` of the IFC curve, or `NULL`), first
+ * vertex and vertex count (`INTEGER`s: its slice of the positions),
+ * closed (`BOOL`: its last vertex repeats its first), chord bound and
+ * chord requested (`REAL`s, metres: the certified bound on how far the
+ * exact curve lies from the polyline, `0` for a polyline the file
+ * authored, and the budget). No polylines and no refusal is a product
+ * without the representation, or with no curves.
+ *
+ * # Safety
+ * `out_count` valid for one write; otherwise as for
+ * `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_curves_records(OpenbimIfcCurves curves,
+                                                 size_t *out_count,
+                                                 OpenbimIfcValueNode *nodes,
+                                                 size_t node_capacity,
+                                                 size_t *out_nodes_required,
+                                                 uint8_t *strings,
+                                                 size_t string_capacity,
+                                                 size_t *out_strings_required);
 
 /**
  * Append an entity of `type_name` whose `attribute_count` attributes are
@@ -970,8 +1023,10 @@ OpenbimIfcStatus openbim_ifc_v0_1_meshes_positions(OpenbimIfcMeshes meshes,
  * type name, transform (`LIST` of 16 `REAL`s, column-major, metres, or
  * `NULL`), vertex count, triangle count (`INTEGER`s), refusal
  * (`GeometryRefusal` or `NULL`), colour (`SurfaceColour` or `NULL`),
- * colour refusal (`GeometryRefusal` or `NULL`). Empty arrays and no
- * refusal is a product with no Body representation.
+ * colour refusal (`GeometryRefusal` or `NULL`), closure (`TEXT`, #458:
+ * `solid`, `surface` for an area with no volume, or `unknown` for an
+ * empty or refused mesh). Empty arrays and no refusal is a product with no
+ * Body representation.
  *
  * `SurfaceColour` (#449): red, green, blue (`REAL`s in [0, 1]),
  * transparency (`REAL`, 0 opaque, or `NULL` when the file states none),
@@ -1429,6 +1484,36 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_parse_with_options(const uint8_t *data,
                                                            size_t capacity);
 
 /**
+ * Compile the curves of each product's `representation` as polylines
+ * (#458), for `ids` (`id_count` of them) or, with `ids` null and
+ * `id_count` 0, every product with a shape, and write the new set's
+ * handle to `out_curves`. `representation` is `representation_len` bytes
+ * of UTF-8: `Plan` (the best drawing curves: `Plan`, `Annotation`,
+ * `FootPrint`, then `Axis`, preferring a `PLAN_VIEW` context), `Axis`,
+ * `FootPrint`, `Annotation`, `Body` or `Surface`. Read the set with
+ * `openbim_ifc_v0_1_curves_records` and `_curves_positions`; destroy it
+ * with `openbim_ifc_v0_1_curves_destroy`. The chord budget is one
+ * millimetre.
+ *
+ * A product whose curves cannot be compiled is a record with a refusal,
+ * not a failed call: a trimmed, composite, offset or intrinsic curve is
+ * `unsupported`, naming the curve, until the reference compiler
+ * polylines it (#506). `InvalidValue` for another representation name,
+ * `InvalidArgument` for text that is not UTF-8, `UnsupportedSchema`;
+ * `FeatureDisabled` in a library built without the `mesh` feature.
+ *
+ * # Safety
+ * `ids` valid for `id_count` reads when non-null; `representation` valid
+ * for `representation_len` reads; `out_curves` valid for one write.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_product_curves(OpenbimIfcModel model,
+                                                       const uint64_t *ids,
+                                                       size_t id_count,
+                                                       const uint8_t *representation,
+                                                       size_t representation_len,
+                                                       OpenbimIfcCurves *out_curves);
+
+/**
  * Lower the Body of each of `ids` (`id_count` of them) or, with `ids` null
  * and `id_count` 0, of every product with a shape, encode each graph in
  * Axiolid's wire format as `encoding` (`OPENBIM_IFC_GEOMETRY_JSON` or
@@ -1473,6 +1558,30 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_product_meshes(OpenbimIfcModel model,
                                                        const uint64_t *ids,
                                                        size_t id_count,
                                                        OpenbimIfcMeshes *out_meshes);
+
+/**
+ * As [`openbim_ifc_v0_1_model_product_meshes`], meshing each product's
+ * `representation` (#458): `representation_len` bytes of UTF-8 at
+ * `representation`, one of `Body` (as the call above), `Plan`, `Axis`,
+ * `FootPrint`, `Annotation` or `Surface`. Its surfaces and solids are one
+ * mesh, whose record's closure says `solid` or `surface`; its curves are
+ * left to `openbim_ifc_v0_1_model_product_curves`. A product without the
+ * representation, or with curves only, has an empty mesh and no refusal.
+ * Only a Body mesh carries a colour.
+ *
+ * `InvalidValue` for another name, `InvalidArgument` for text that is not
+ * UTF-8; otherwise as the call above.
+ *
+ * # Safety
+ * `representation` valid for `representation_len` reads; otherwise as
+ * for `openbim_ifc_v0_1_model_product_meshes`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_product_meshes_for(OpenbimIfcModel model,
+                                                           const uint64_t *ids,
+                                                           size_t id_count,
+                                                           const uint8_t *representation,
+                                                           size_t representation_len,
+                                                           OpenbimIfcMeshes *out_meshes);
 
 /**
  * Each product's world placement and selected Body representation, for

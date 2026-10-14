@@ -197,6 +197,14 @@ if (!mesh) {
       (error) => error.name === "IfcError" && error.code === "feature-disabled",
     );
   });
+
+  test("curves are opt-in with the meshes: this build refuses them", () => {
+    const model = IfcModel.parse(bytes);
+    assert.throws(
+      () => model.productCurves(),
+      (error) => error.name === "IfcError" && error.code === "feature-disabled",
+    );
+  });
 } else {
   test("graphs come as Axiolid's wire format, per product", () => {
     const log = [];
@@ -333,6 +341,54 @@ if (!mesh) {
     );
     near(max, [2, 0.1, 2.8], "wall extent, local metres");
     near(wall.transform, model.productPlacements([36n])[0].transform, "one placement");
+  });
+
+  test("axis curves come as polylines relative to each product (#458)", () => {
+    const log = [];
+    const console = { log: (...args) => log.push(args) };
+    // docs:snippet js-geometry-curves
+    const model = IfcModel.parse(bytes);
+    for (const product of model.productCurves(undefined, "Axis")) {
+      for (const line of product.polylines) {
+        // positions: Float32Array, x y z per vertex in metres relative to
+        // product.transform; this curve is a slice of them.
+        const xyz = product.positions.subarray(
+          3 * line.firstVertex,
+          3 * (line.firstVertex + line.vertexCount),
+        );
+        console.log(product.id, xyz.length / 3, line.closed, line.chordBound);
+      }
+    }
+    // docs:end
+    assert.deepEqual(log, [
+      [36n, 2, false, 0],
+      [53n, 2, false, 0],
+    ]);
+    const [wall, slab] = model.productCurves(undefined, "Axis");
+    assert.ok(wall.positions instanceof Float32Array);
+    assert.equal(wall.vertexCount * 3, wall.positions.length);
+    near(Array.from(wall.positions), [-2, 0, 0, 2, 0, 0], "axis, local metres");
+    assert.equal(wall.polylines[0].curve, 33n);
+    assert.equal(wall.polylines[0].chordRequested, 0.001);
+    near(wall.transform, model.productPlacements([36n])[0].transform, "one placement");
+    assert.deepEqual([slab.polylines, slab.refusal], [[], undefined]);
+    // "Plan", the default, picks the same Axis.
+    near(Array.from(model.productCurves([36n])[0].positions), Array.from(wall.positions), "Plan");
+    assert.throws(
+      () => model.productCurves(undefined, "Centreline"),
+      (error) => error.name === "IfcError" && error.code === "invalid-value",
+    );
+  });
+
+  test("meshes report their closure and select a representation (#458)", () => {
+    const model = IfcModel.parse(bytes);
+    assert.deepEqual(
+      model.productMeshes().map((mesh) => mesh.closure),
+      ["solid", "solid", "unknown", "unknown"],
+    );
+    for (const mesh of model.productMeshes(undefined, "Axis")) {
+      assert.deepEqual([mesh.indices.length, mesh.refusal], [0, undefined]);
+    }
   });
 
   test("meshes carry the item, layer or material colour (#449)", () => {

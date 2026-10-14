@@ -2,15 +2,16 @@
 //! wire payload as a string, a parsed object or a `Uint8Array`, meshes with
 //! their arrays as typed arrays.
 //!
-//! A mesh's positions and indices are copied into a fresh `Float32Array`
-//! and `Uint32Array`, owned by JavaScript: ready for a WebGL buffer or a
+//! A mesh's positions and indices, and a product's polyline positions
+//! (#458), are copied into a fresh `Float32Array` and `Uint32Array`, owned
+//! by JavaScript: ready for a WebGL buffer or a
 //! three.js `BufferAttribute`, and still valid after the model is freed.
 
 use js_sys::{
     Array, BigInt, BigUint64Array, Float32Array, Object, Reflect, Uint32Array, Uint8Array, JSON,
 };
 use openbim_ifc_binding_core::{
-    BindingError, GeometryEncoding, ProductGeometry, ProductMesh, ToRecord,
+    BindingError, GeometryEncoding, ProductCurves, ProductGeometry, ProductMesh, ToRecord,
 };
 use wasm_bindgen::{JsCast, JsValue};
 
@@ -61,6 +62,34 @@ pub(crate) fn meshes_to_js(meshes: &[ProductMesh]) -> Array {
                 &object,
                 &"indices".into(),
                 &Uint32Array::from(mesh.indices.as_slice()),
+            );
+            JsValue::from(object)
+        })
+        .collect()
+}
+
+/// A representation name (#458), or `default` when `undefined`/`null`.
+/// The core refuses a name it does not know with `invalid-value`.
+pub(crate) fn representation(value: &JsValue, default: &str) -> Result<String, BindingError> {
+    if value.is_undefined() || value.is_null() {
+        return Ok(default.to_owned());
+    }
+    value.as_string().ok_or_else(|| {
+        BindingError::InvalidValue("representation must be a string or undefined".into())
+    })
+}
+
+/// `ProductCurves` objects: the core's record plus `positions`.
+pub(crate) fn curves_to_js(curves: &[ProductCurves]) -> Array {
+    curves
+        .iter()
+        .map(|product| {
+            let object: Object = record_to_js(&product.to_record()).unchecked_into();
+            // A plain property on a fresh plain object; setting cannot fail.
+            let _ = Reflect::set(
+                &object,
+                &"positions".into(),
+                &Float32Array::from(product.positions.as_slice()),
             );
             JsValue::from(object)
         })

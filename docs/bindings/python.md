@@ -590,6 +590,52 @@ the product, and `colour_refusal` says why it is not resolved, with code
 `ambiguous` for a set of several materials or Body items of different
 colours. A colour never refuses the mesh.
 
+`model.product_curves(ids=None, representation="Plan")` gives the curves
+of a curve representation as polylines
+([#458](https://github.com/openbimrs/ifc/issues/458)), from the same
+`mesh` wheel: an `Axis`, a `FootPrint`, the curves of an `IfcAnnotation`,
+which have no area and so no triangles. `representation` picks the
+representation as the context selector does: `"Plan"` (the default) takes
+the best drawing curves, `Plan`, then `Annotation`, `FootPrint` and
+`Axis`, preferring one in a `PLAN_VIEW` context; `"Axis"`,
+`"FootPrint"`, `"Annotation"`, `"Body"` or `"Surface"` name one
+`RepresentationIdentifier`; any other name raises `invalid-value`:
+
+<!-- SNIPPET:py-geometry-curves -->
+
+```python
+model = openbim_ifc.open(path)
+for product in model.product_curves(representation="Axis"):
+    for line in product.polylines:
+        # positions: array('f'), x y z per vertex in metres relative
+        # to product.transform; this curve is a slice of them.
+        start = 3 * line.first_vertex
+        xyz = product.positions[start : start + 3 * line.vertex_count]
+        print((product.id, len(xyz) // 3, line.closed, line.chord_bound))
+```
+
+<!-- /SNIPPET -->
+
+Each `ProductCurves` has one `positions` `array('f')`, relative to its
+`transform` as a mesh's are, holding every polyline's vertices in turn,
+and a `ProductPolyline` per curve: its slice (`first_vertex`,
+`vertex_count`), `closed` (the last vertex repeats the first), the IFC
+`curve` it came from, and `chord_bound`, the reference backend's
+certified bound in metres on how far the exact curve lies from the
+polyline (`0.0` for a polyline the file authored), against
+`chord_requested`, one millimetre. A trimmed, composite, offset or
+intrinsic curve (an `IfcTrimmedCurve` axis, an `IfcCompositeCurve`
+footprint) is refused by name, code `unsupported` naming the curve, until
+the reference compiler polylines it
+([#506](https://github.com/openbimrs/ifc/issues/506)).
+
+`product_meshes(ids, representation=...)` meshes a representation other
+than the Body the same way, such as `"Surface"`: its surfaces and solids
+as one mesh, its curves left to `product_curves`. Every mesh says what it
+bounds in `closure`: `"solid"`, `"surface"` (a surface model, a face, a
+rectangular trimmed surface: an area and no volume) or `"unknown"` for an
+empty or refused mesh. Only a Body mesh carries a colour.
+
 `model.product_geometry(ids=None, encoding="json")` hands over each
 product's Body as Axiolid's neutral geometry graph instead
 ([#367](https://github.com/openbimrs/ifc/issues/367)): exact extrusions,
@@ -883,7 +929,8 @@ class, record and function of the package with its docstring and types.
 | `model.material(id: int) -> Optional[MaterialAssignment]` | The material association of object `id`, its own or its type's, or `None`. |
 | `model.product_placements(ids: Optional[Iterable[int]] = None) -> List[ProductPlacement]` | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or every product with a shape. A product that cannot be placed carries a typed `refusal`; the call raises only `unsupported-schema` or `feature-disabled`. |
 | `model.product_geometry(ids: Optional[Iterable[int]] = None, encoding: str = 'json') -> List[ProductGeometry]` | Each product's Body as Axiolid's neutral geometry graph, exact, for `ids` or every product with a shape, in Axiolid's versioned wire format: `{"format": "axiolid-geometry-graph", "version": "1.0", "graph": {"nodes": [...], "roots": [...]}}` (the lowest version the content needs, `"1.0"` to `"1.3"`), in world coordinates, metres. `encoding` `"json"` gives the payload as a `str`, `"cbor"` as `bytes`; any other raises `ValueError`. A product that cannot be lowered carries a typed `refusal`; the call raises only `unsupported-schema` or `feature-disabled`. |
-| `model.product_meshes(ids: Optional[Iterable[int]] = None) -> List[ProductMesh]` | Each product's Body as triangles from the reference backend, for `ids` or every product with a shape; a product that cannot be meshed carries a typed `refusal`. Needs a wheel built with the `mesh` feature; the published wheel raises `feature-disabled`. |
+| `model.product_meshes(ids: Optional[Iterable[int]] = None, representation: str = 'Body') -> List[ProductMesh]` | Each product's Body as triangles from the reference backend, for `ids` or every product with a shape; a product that cannot be meshed carries a typed `refusal`. `representation` meshes another one instead (#458): `"Surface"`, or any name :meth:`product_curves` takes; its curves are left to that call, and `closure` says `"solid"` or `"surface"`. Only a Body mesh carries a colour. Needs a wheel built with the `mesh` feature; the published wheel raises `feature-disabled`. |
+| `model.product_curves(ids: Optional[Iterable[int]] = None, representation: str = 'Plan') -> List[ProductCurves]` | Each product's curves as polylines from the reference backend (#458), for `ids` or every product with a shape. `representation` is `"Plan"` (the best drawing curves: `Plan`, `Annotation`, `FootPrint`, then `Axis`, preferring a `PLAN_VIEW` context), or `"Axis"`, `"FootPrint"`, `"Annotation"`, `"Body"` or `"Surface"`; another name raises `invalid-value`. A product whose curves cannot be compiled carries a typed `refusal`: a trimmed, composite, offset or intrinsic curve is `unsupported` until the reference compiler polylines it (#506). Needs a wheel built with the `mesh` feature. |
 | `model.systems() -> Systems` | Every system with its members and served structures, and the memberships the reader could not honour. |
 | `model.cost() -> Cost` | Every cost schedule and cost item; values as authored, typed. |
 | `model.georeferencing() -> List[MapConversion]` | Every coordinate operation resolved with the project length unit; empty when the model has none. IFC2X3 is read from its `ePSet_MapConversion` and `ePSet_ProjectedCRS` property sets. |

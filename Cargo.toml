@@ -163,8 +163,13 @@ axiolid-contracts = { version = "0.3.1" }
 # the windowed stations of an offset by distances beside an ellipse
 # (axiolid/kernel#307; #443), and snaps a boolean's residues to the scale
 # of the coordinates its result is placed at (axiolid/kernel#312).
-axiolid-mesh-compile = { version = "0.3.25" }
-axiolid-mesh-compile-contract = { version = "0.3.3" }
+# 0.3.26 (contract 0.3.4) compiles curves to polylines with a certified
+# chord bound (`PolylineCompiler`), and rectangular trimmed surfaces and
+# B-reps of loose faces to surface meshes (axiolid/kernel#311; #458); it
+# also bounds the rounding of placing an instance far from the origin and
+# refuses a budget below it by name (axiolid/kernel#295).
+axiolid-mesh-compile = { version = "0.3.26" }
+axiolid-mesh-compile-contract = { version = "0.3.4" }
 # 0.3.5: batch booleans keep their memory budget (axiolid/kernel#259).
 # 0.3.6: a boolean whose result outgrows its operands keeps its memory
 # budget (axiolid/kernel#308); the release `axiolid-mesh-compile` 0.3.25 is

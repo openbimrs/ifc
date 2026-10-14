@@ -235,18 +235,20 @@ impl NativeModel {
         Ok(list)
     }
 
-    /// Body meshes per product (#328), releasing the GIL while they
-    /// compile: record dicts with `positions` (native-endian `f32`) and
-    /// `indices` (native-endian `u32`) as bytes.
-    #[pyo3(signature = (ids = None))]
+    /// Meshes per product (#328) of the `representation` (#458, `Body` by
+    /// default), releasing the GIL while they compile: record dicts with
+    /// `positions` (native-endian `f32`) and `indices` (native-endian
+    /// `u32`) as bytes.
+    #[pyo3(signature = (ids = None, representation = "Body"))]
     fn product_meshes<'py>(
         &self,
         py: Python<'py>,
         ids: Option<Vec<u64>>,
+        representation: &str,
     ) -> PyResult<Bound<'py, PyList>> {
         let inner = &self.inner;
         let meshes = py
-            .detach(|| inner.product_meshes(ids.as_deref()))
+            .detach(|| inner.product_meshes_for(ids.as_deref(), representation))
             .map_err(py_err)?;
         let list = PyList::empty(py);
         for mesh in &meshes {
@@ -259,6 +261,34 @@ impl NativeModel {
             let indices: Vec<u8> = mesh.indices.iter().flat_map(|v| v.to_ne_bytes()).collect();
             dict.set_item("positions", PyBytes::new(py, &positions))?;
             dict.set_item("indices", PyBytes::new(py, &indices))?;
+            list.append(dict)?;
+        }
+        Ok(list)
+    }
+
+    /// Polylines per product (#458) of the curve `representation` (`Plan`
+    /// by default), releasing the GIL while they compile: record dicts with
+    /// `positions` (native-endian `f32`) as bytes.
+    #[pyo3(signature = (ids = None, representation = "Plan"))]
+    fn product_curves<'py>(
+        &self,
+        py: Python<'py>,
+        ids: Option<Vec<u64>>,
+        representation: &str,
+    ) -> PyResult<Bound<'py, PyList>> {
+        let inner = &self.inner;
+        let curves = py
+            .detach(|| inner.product_curves(ids.as_deref(), representation))
+            .map_err(py_err)?;
+        let list = PyList::empty(py);
+        for product in &curves {
+            let dict = records::record_to_py(py, &product.to_record())?;
+            let positions: Vec<u8> = product
+                .positions
+                .iter()
+                .flat_map(|v| v.to_ne_bytes())
+                .collect();
+            dict.set_item("positions", PyBytes::new(py, &positions))?;
             list.append(dict)?;
         }
         Ok(list)

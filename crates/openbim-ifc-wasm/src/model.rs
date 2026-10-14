@@ -222,7 +222,10 @@ impl IfcModel {
     /// `positions` (`Float32Array`, metres, relative to `transform`) and
     /// `indices` (`Uint32Array`), for `ids` or, without, every product
     /// with a shape. A product that cannot be meshed has a typed
-    /// `refusal`. Opt-in: a build without the `mesh` feature (the npm
+    /// `refusal`. `representation` meshes another one instead (#458), such
+    /// as `"Surface"`; its curves are left to `productCurves`, and
+    /// `closure` says `"solid"` or `"surface"`. Only a Body mesh carries a
+    /// colour. Opt-in: a build without the `mesh` feature (the npm
     /// package's default entry) throws `feature-disabled`; import
     /// `@openbim/ifc/mesh` for it.
     #[wasm_bindgen(js_name = productMeshes, unchecked_return_type = "ProductMesh[]")]
@@ -230,10 +233,43 @@ impl IfcModel {
         &self,
         #[wasm_bindgen(unchecked_param_type = "bigint[] | BigUint64Array | undefined")]
         ids: &JsValue,
+        #[wasm_bindgen(unchecked_param_type = "RepresentationName | undefined")]
+        representation: &JsValue,
     ) -> Result<Array, JsValue> {
         let ids = geometry::ids(ids).map_err(js_error)?;
-        let meshes = self.0.product_meshes(ids.as_deref()).map_err(js_error)?;
+        let representation = geometry::representation(representation, "Body").map_err(js_error)?;
+        let meshes = self
+            .0
+            .product_meshes_for(ids.as_deref(), &representation)
+            .map_err(js_error)?;
         Ok(geometry::meshes_to_js(&meshes))
+    }
+
+    /// Each product's curves as polylines from the reference backend
+    /// (#458), for `ids` or, without, every product with a shape:
+    /// `positions` (`Float32Array`, metres, relative to `transform`), every
+    /// polyline's vertices in turn, and per curve its slice, whether it is
+    /// closed and its certified chord bound. `representation` is `"Plan"`
+    /// by default (the best drawing curves), or `"Axis"`, `"FootPrint"`,
+    /// `"Annotation"`, `"Body"`, `"Surface"`; another throws
+    /// `invalid-value`. A trimmed, composite, offset or intrinsic curve is
+    /// an `unsupported` refusal until the reference compiler polylines it
+    /// (#506). Opt-in with the meshes: import `@openbim/ifc/mesh`.
+    #[wasm_bindgen(js_name = productCurves, unchecked_return_type = "ProductCurves[]")]
+    pub fn product_curves_js(
+        &self,
+        #[wasm_bindgen(unchecked_param_type = "bigint[] | BigUint64Array | undefined")]
+        ids: &JsValue,
+        #[wasm_bindgen(unchecked_param_type = "RepresentationName | undefined")]
+        representation: &JsValue,
+    ) -> Result<Array, JsValue> {
+        let ids = geometry::ids(ids).map_err(js_error)?;
+        let representation = geometry::representation(representation, "Plan").map_err(js_error)?;
+        let curves = self
+            .0
+            .product_curves(ids.as_deref(), &representation)
+            .map_err(js_error)?;
+        Ok(geometry::curves_to_js(&curves))
     }
 
     /// The property sets, quantity sets and predefined property sets that

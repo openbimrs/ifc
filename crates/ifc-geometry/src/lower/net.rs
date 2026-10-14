@@ -477,7 +477,7 @@ fn collect_parts(
                 collect_parts(session, member, outer, owner, depth + 1, parts)?;
             }
         }
-        Some(NodeShape::Other) | None => {
+        Some(NodeShape::Other | NodeShape::Curve) | None => {
             return Err(degenerate(
                 session,
                 owner,

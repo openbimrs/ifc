@@ -8,6 +8,24 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#458, curves and surfaces as output primitives)
+
+- `IfcModel::product_curves(products, representation)` (feature `mesh`):
+  a `ProductCurves` record per product (id, global id, type name,
+  transform, vertex count, `ProductPolyline` records, refusal) with one
+  `f32` position array; each `ProductPolyline` names its slice
+  (`first_vertex`, `vertex_count`), `closed`, the IFC `curve`,
+  `chord_bound` and `chord_requested`. A trimmed, composite, offset or
+  intrinsic curve is an `unsupported` refusal naming the curve (#506).
+- `IfcModel::product_meshes_for(products, representation)`, and
+  `ProductMesh::closure` (`solid`, `surface`, `unknown`), the record's
+  last field.
+- Representation names `Body`, `Plan`, `Axis`, `FootPrint`, `Annotation`,
+  `Surface`; another is refused with `invalid-value`.
+
+Semver: additive (internal crate, not published).
+
+
 ### Added (#462, INVERSE attributes by name)
 
 - `IfcModel::attribute_by_name` resolves an `INVERSE` name through a

@@ -35,7 +35,7 @@ from .entity import (
     _plain_wire,
     _selected,
 )
-from .geometry import ProductGeometry, ProductMesh, ProductPlacement
+from .geometry import ProductCurves, ProductGeometry, ProductMesh, ProductPlacement
 from .records import (
     DuplicateGlobalId,
     Header,
@@ -295,13 +295,35 @@ class IfcModel(ModelAccess):
         wire = self._native.product_geometry(None if ids is None else list(ids), encoding)
         return [geometry._graph(row) for row in wire]
 
-    def product_meshes(self, ids: Optional[Iterable[int]] = None) -> List[ProductMesh]:
+    def product_meshes(
+        self, ids: Optional[Iterable[int]] = None, representation: str = "Body"
+    ) -> List[ProductMesh]:
         """Each product's Body as triangles from the reference backend, for
         ``ids`` or every product with a shape; a product that cannot be
-        meshed carries a typed ``refusal``. Needs a wheel built with the
-        ``mesh`` feature; the published wheel raises ``feature-disabled``."""
-        wire = self._native.product_meshes(None if ids is None else list(ids))
+        meshed carries a typed ``refusal``. ``representation`` meshes
+        another one instead (#458): ``"Surface"``, or any name
+        :meth:`product_curves` takes; its curves are left to that call, and
+        ``closure`` says ``"solid"`` or ``"surface"``. Only a Body mesh
+        carries a colour. Needs a wheel built with the ``mesh`` feature; the
+        published wheel raises ``feature-disabled``."""
+        wire = self._native.product_meshes(None if ids is None else list(ids), representation)
         return [geometry._mesh(row) for row in wire]
+
+    def product_curves(
+        self, ids: Optional[Iterable[int]] = None, representation: str = "Plan"
+    ) -> List[ProductCurves]:
+        """Each product's curves as polylines from the reference backend
+        (#458), for ``ids`` or every product with a shape. ``representation``
+        is ``"Plan"`` (the best drawing curves: ``Plan``, ``Annotation``,
+        ``FootPrint``, then ``Axis``, preferring a ``PLAN_VIEW`` context),
+        or ``"Axis"``, ``"FootPrint"``, ``"Annotation"``, ``"Body"`` or
+        ``"Surface"``; another name raises ``invalid-value``. A product
+        whose curves cannot be compiled carries a typed ``refusal``: a
+        trimmed, composite, offset or intrinsic curve is ``unsupported``
+        until the reference compiler polylines it (#506). Needs a wheel
+        built with the ``mesh`` feature."""
+        wire = self._native.product_curves(None if ids is None else list(ids), representation)
+        return [geometry._curves(row) for row in wire]
 
     def systems(self) -> Systems:
         """Every system with its members and served structures, and the

@@ -441,6 +441,56 @@ type name, transform, vertex and triangle counts, refusal) on a tape.
 Positions are `float`s relative to the record's `double` transform, so a
 site kilometres from the origin keeps its millimetres.
 
+Curves have no triangles: an `Axis`, a `FootPrint` or an annotation's
+curves come as polylines from the same library
+([#458](https://github.com/openbimrs/ifc/issues/458)), one position array
+per product and a `ProductPolyline` record per curve naming its slice and
+the certified bound on how far the exact curve lies from it:
+
+<!-- SNIPPET:cookbook-c-curves -->
+
+```c
+/* With the `mesh` feature, the curves of a representation (#458) compile
+ * once into a set: one position array per product, and per curve a
+ * ProductPolyline record naming its slice and its certified chord bound. */
+const char *representation = "Axis"; /* or Plan, FootPrint, Annotation */
+OpenbimIfcCurves curves = 0;
+OpenbimIfcStatus status = openbim_ifc_v0_1_model_product_curves(
+    model, NULL, 0, (const uint8_t *)representation, strlen(representation), &curves);
+if (status == OPENBIM_IFC_STATUS_OK) {
+  size_t count = 0, nodes = 0, strings = 0;
+  openbim_ifc_v0_1_curves_records(curves, &count, NULL, 0, &nodes, NULL, 0, &strings);
+  Tape t = tape_alloc(nodes, strings);
+  openbim_ifc_v0_1_curves_records(curves, &count, t.nodes, nodes, &nodes, t.strings, strings,
+                                  &strings);
+  size_t product = 1; /* the first record, inside the outer LIST */
+  for (size_t i = 0; i < count; i++, product = tape_next(&t, product)) {
+    size_t need = 0;
+    openbim_ifc_v0_1_curves_positions(curves, i, NULL, 0, &need);
+    float *positions = (float *)malloc((need ? need : 1) * sizeof(float)); /* x y z, metres */
+    openbim_ifc_v0_1_curves_positions(curves, i, positions, need, &need);
+    size_t polylines = tape_field(&t, product, 5), line = polylines + 1;
+    for (uint32_t p = 0; p < t.nodes[polylines].child_count; p++, line = tape_next(&t, line)) {
+      /* this curve's vertices: positions[3 * first .. 3 * (first + count)) */
+      long long first = t.nodes[tape_field(&t, line, 1)].int_value;
+      long long vertices = t.nodes[tape_field(&t, line, 2)].int_value;
+      double bound = t.nodes[tape_field(&t, line, 4)].real_value;
+      printf("#%lld: %lld vertices from %lld, bound %g\n",
+             (long long)t.nodes[tape_field(&t, product, 0)].int_value, vertices, first, bound);
+    }
+    free(positions);
+  }
+  tape_free(&t);
+  openbim_ifc_v0_1_curves_destroy(curves);
+}
+```
+
+<!-- /SNIPPET -->
+
+A trimmed, composite, offset or intrinsic curve is refused by name, code
+`unsupported`, until the reference compiler polylines it
+([#506](https://github.com/openbimrs/ifc/issues/506)).
+
 The exact representation instead of triangles
 ([#367](https://github.com/openbimrs/ifc/issues/367)): each Body as
 Axiolid's neutral geometry graph in its wire format, for your own

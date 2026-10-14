@@ -117,7 +117,8 @@ pub enum GeometryError {
         limit: usize,
     },
 
-    /// A lowered product reached the mesh compiler, which refused it.
+    /// A lowered product reached the mesh or polyline compiler, which
+    /// refused it.
     ///
     /// Distinct from [`Self::Unsupported`]: lowering succeeded and the neutral
     /// DAG is valid IFC meaning. What failed is *execution* -- a provider that
@@ -126,7 +127,7 @@ pub enum GeometryError {
     /// missing capability precisely enough for a caller to register a provider
     /// for it. Only reachable with the `compile` feature.
     #[cfg(feature = "compile")]
-    #[error("{entity} could not be compiled to a mesh: {reason}")]
+    #[error("{entity} could not be compiled: {reason}")]
     CompilationRefused {
         /// The product whose body representation was being compiled.
         entity: EntityId,
@@ -148,6 +149,25 @@ pub enum GeometryError {
         entity: EntityId,
         /// The closure the backend reported: `Surface` or `Unknown`.
         closure: axiolid_mesh_compile_contract::MeshClosure,
+    },
+
+    /// A curve of a product's representation that the backend does not
+    /// compile to a polyline, named by its family (#458): a trimmed,
+    /// composite or offset curve, or an intrinsic one. The reference
+    /// compiler refuses these by name until axiolid/kernel#317; #506 tracks
+    /// them here. Valid IFC, so [`Self::is_unsupported`]; nothing is
+    /// approximated in its place.
+    #[cfg(feature = "compile")]
+    #[error("{curve} of {product} is {family}, which has no polyline in this backend: {reason}")]
+    PolylineUnsupported {
+        /// The product whose representation was being compiled.
+        product: EntityId,
+        /// The curve item, or the product when the curve names no source.
+        curve: EntityId,
+        /// Which family the backend refused.
+        family: crate::compile::UnpolylinedCurve,
+        /// The backend's own refusal, verbatim.
+        reason: String,
     },
 
     /// An opening that voids a host could not be subtracted from it (#44).
@@ -641,6 +661,8 @@ impl GeometryError {
             #[cfg(feature = "compile")]
             Self::NotASolid { entity, .. } => Some(*entity),
             #[cfg(feature = "compile")]
+            Self::PolylineUnsupported { curve, .. } => Some(*curve),
+            #[cfg(feature = "compile")]
             Self::CachedPlacementMismatch { placement, .. } => Some(*placement),
             #[cfg(feature = "compile")]
             Self::SeamSideUnsupported { placement, .. } => Some(*placement),
@@ -684,6 +706,9 @@ impl GeometryError {
             // Valid IFC this evaluator cannot read; one with curve paths can.
             #[cfg(feature = "compile")]
             Self::CurvePathUnsupported { .. } => true,
+            // Valid IFC this backend has no polyline for yet (#506).
+            #[cfg(feature = "compile")]
+            Self::PolylineUnsupported { .. } => true,
             // Valid IFC whose path needs an execution provider, or an
             // evaluator with open ends, piece bounds or certified joints
             // (#427, #436). A trim point off its curve, or one it passes

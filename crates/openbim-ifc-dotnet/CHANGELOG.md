@@ -9,6 +9,21 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#458, curves and surfaces as output primitives)
+
+Semver: minor (additive).
+
+- `model.ProductCurves(ids, representation = "Plan")`: a `CurvedProduct`
+  per product, its `ProductCurves` record (with a `ProductPolyline` per
+  curve: `Curve`, `FirstVertex`, `VertexCount`, `Closed`, `ChordBound`,
+  `ChordRequested`) and `float[] Positions`. A trimmed, composite, offset
+  or intrinsic curve is an `unsupported` refusal (#506).
+- `model.ProductMeshes(ids, representation)` meshes a named
+  representation, such as `"Surface"`; `ProductMesh.Closure` is `solid`,
+  `surface` or `unknown`.
+- Requires the C ABI 0.1.17 (`openbim-ifc-capi` with #458).
+
+
 ## [0.7.0] - 2026-10-14
 
 ### Added (#462, INVERSE attributes by name)

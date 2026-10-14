@@ -17,9 +17,11 @@ from openbim_ifc import (
     GEOMETRY_FORMAT_VERSION,
     IfcError,
     IfcModel,
+    ProductCurves,
     ProductGeometry,
     ProductMesh,
     ProductPlacement,
+    ProductPolyline,
     SurfaceColour,
 )
 
@@ -261,6 +263,55 @@ class MeshTests(unittest.TestCase):
         # The binding fixture states no style and no material.
         self.assertIsNone(wall.colour)
         self.assertIsNone(wall.colour_refusal)
+
+    @unittest.skipIf(MESH, "this wheel was built with the mesh feature")
+    def test_curves_are_opt_in(self) -> None:
+        with self.assertRaises(IfcError) as raised:
+            model().product_curves()
+        self.assertEqual(raised.exception.code, "feature-disabled")
+
+    @unittest.skipUnless(MESH, "needs a wheel built with --features mesh")
+    def test_axis_curves_come_as_polylines_relative_to_each_product(self) -> None:
+        printed = []
+        print = printed.append  # noqa: A001
+        path = FIXTURE
+        # docs:snippet py-geometry-curves
+        model = openbim_ifc.open(path)
+        for product in model.product_curves(representation="Axis"):
+            for line in product.polylines:
+                # positions: array('f'), x y z per vertex in metres relative
+                # to product.transform; this curve is a slice of them.
+                start = 3 * line.first_vertex
+                xyz = product.positions[start : start + 3 * line.vertex_count]
+                print((product.id, len(xyz) // 3, line.closed, line.chord_bound))
+        # docs:end
+        self.assertEqual(printed, [(36, 2, False, 0.0), (53, 2, False, 0.0)])
+
+        wall, slab, proxy, text = model.product_curves(representation="Axis")
+        self.assertIsInstance(wall, ProductCurves)
+        self.assertIsInstance(wall.polylines[0], ProductPolyline)
+        self.assertEqual(wall.positions.typecode, "f")
+        self.assertEqual(len(wall.positions), wall.vertex_count * 3)
+        for got, want in zip(wall.positions, (-2.0, 0.0, 0.0, 2.0, 0.0, 0.0)):
+            self.assertAlmostEqual(got, want, places=5)
+        self.assertEqual(wall.polylines[0].curve, 33)
+        self.assertEqual(wall.polylines[0].chord_requested, 0.001)
+        self.assertEqual(wall.transform, model.product_placements([36])[0].transform)
+        self.assertEqual((slab.polylines, slab.refusal), ((), None))
+        self.assertEqual((text.polylines, text.refusal), ((), None))
+        # Plan, the default, picks the same Axis.
+        self.assertEqual(model.product_curves([36]), [wall])
+        with self.assertRaises(IfcError) as raised:
+            model.product_curves(representation="Centreline")
+        self.assertEqual(raised.exception.code, "invalid-value")
+
+    @unittest.skipUnless(MESH, "needs a wheel built with --features mesh")
+    def test_meshes_report_their_closure_and_select_a_representation(self) -> None:
+        m = model()
+        closures = [mesh.closure for mesh in m.product_meshes()]
+        self.assertEqual(closures, ["solid", "solid", "unknown", "unknown"])
+        for mesh in m.product_meshes(representation="Axis"):
+            self.assertEqual((len(mesh.indices), mesh.refusal), (0, None))
 
     @unittest.skipUnless(MESH, "needs a wheel built with --features mesh")
     def test_meshes_carry_the_item_layer_or_material_colour(self) -> None:

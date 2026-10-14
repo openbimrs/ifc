@@ -9,7 +9,9 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, LazyLock, Mutex, MutexGuard, PoisonError};
 
-use openbim_ifc_binding_core::{BindingError, IfcModel, ProductGeometry, ProductMesh};
+use openbim_ifc_binding_core::{
+    BindingError, IfcModel, ProductCurves, ProductGeometry, ProductMesh,
+};
 
 /// One live model plus the last error raised against it.
 #[derive(Debug, Default)]
@@ -26,6 +28,11 @@ static MODELS: LazyLock<Mutex<HashMap<u64, Shared>>> = LazyLock::new(Default::de
 /// per-set lock. Their handles come from the same counter as models', so
 /// a model handle is never a live mesh-set handle.
 static MESHES: LazyLock<Mutex<HashMap<u64, Arc<Vec<ProductMesh>>>>> =
+    LazyLock::new(Default::default);
+
+/// Compiled polyline sets (#458), as the mesh sets: immutable, handles
+/// from the same counter.
+static CURVES: LazyLock<Mutex<HashMap<u64, Arc<Vec<ProductCurves>>>>> =
     LazyLock::new(Default::default);
 
 /// Encoded graph sets (#367), as the mesh sets: immutable, handles from the
@@ -82,6 +89,23 @@ pub(crate) fn meshes(handle: u64) -> Option<Arc<Vec<ProductMesh>>> {
 /// Remove mesh set `handle`; `false` if it was not live.
 pub(crate) fn remove_meshes(handle: u64) -> bool {
     lock(&MESHES).remove(&handle).is_some()
+}
+
+/// Register a compiled polyline set, returning its new handle.
+pub(crate) fn insert_curves(curves: Vec<ProductCurves>) -> u64 {
+    let handle = NEXT.fetch_add(1, Ordering::Relaxed);
+    lock(&CURVES).insert(handle, Arc::new(curves));
+    handle
+}
+
+/// The polyline set behind `handle`, if it is live.
+pub(crate) fn curves(handle: u64) -> Option<Arc<Vec<ProductCurves>>> {
+    lock(&CURVES).get(&handle).cloned()
+}
+
+/// Remove polyline set `handle`; `false` if it was not live.
+pub(crate) fn remove_curves(handle: u64) -> bool {
+    lock(&CURVES).remove(&handle).is_some()
 }
 
 /// Register an encoded graph set, returning its new handle.

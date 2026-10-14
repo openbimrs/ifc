@@ -567,6 +567,34 @@ set is `OUT_OF_RANGE`. `openbim_ifc_v0_1_meshes_destroy` frees the set. A
 product with no Body has no vertices and no refusal. These exports make
 the ABI version 0.1.7; no `v0_1` symbol changed.
 
+Curves have no triangles, so the curves of a curve representation -- an
+`Axis`, a `FootPrint`, an annotation's curves -- come as polylines
+([#458](https://github.com/openbimrs/ifc/issues/458)), from the same
+`mesh` feature. `openbim_ifc_v0_1_model_product_curves(model, ids,
+id_count, representation, representation_len, out_curves)` compiles them
+once into an `OpenbimIfcCurves` set, read and freed as a mesh set is.
+`representation` is UTF-8: `Plan` (the best drawing curves: `Plan`, then
+`Annotation`, `FootPrint` and `Axis`, preferring one in a `PLAN_VIEW`
+context), or one `RepresentationIdentifier`, `Axis`, `FootPrint`,
+`Annotation`, `Body` or `Surface`; another name is `INVALID_VALUE`.
+`openbim_ifc_v0_1_curves_records` returns a `ProductCurves` record per
+product (id, global id, type name, transform, vertex count, polylines,
+refusal), each polyline a `ProductPolyline` record (curve, first vertex,
+vertex count, closed, chord bound, chord requested: the certified bound
+in metres on how far the exact curve lies from the polyline, `0` for a
+polyline the file authored, and the one-millimetre budget);
+`openbim_ifc_v0_1_curves_positions` copies a product's `float` positions,
+every polyline's vertices in turn, relative to its transform; and
+`openbim_ifc_v0_1_curves_destroy` frees the set. A trimmed, composite,
+offset or intrinsic curve is a record refused `unsupported`, naming the
+curve, until the reference compiler polylines it
+([#506](https://github.com/openbimrs/ifc/issues/506)).
+`openbim_ifc_v0_1_model_product_meshes_for` meshes a named representation
+instead of the Body, such as `Surface`, its curves left out; every
+`ProductMesh` record now ends with its closure, `solid`, `surface` (an
+area, no volume) or `unknown`. These exports make the ABI version 0.1.17;
+no `v0_1` symbol changed.
+
 The exact neutral representation
 ([#367](https://github.com/openbimrs/ifc/issues/367)) is each product's
 Body as Axiolid's geometry graph, serialised in Axiolid's versioned wire

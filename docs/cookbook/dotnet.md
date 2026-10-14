@@ -250,6 +250,34 @@ foreach (var meshed in model.ProductMeshes())
 Positions are `float`s relative to each product's `double` transform, so a
 site kilometres from the origin keeps its millimetres.
 
+Curves have no triangles: an `Axis`, a `FootPrint` or an annotation's
+curves come as polylines from the same native library
+([#458](https://github.com/openbimrs/ifc/issues/458)), a `CurvedProduct`
+per product with one `float[]` of positions and a `ProductPolyline` per
+curve naming its slice and the certified bound on how far the exact curve
+lies from it:
+
+<!-- SNIPPET:dotnet-geometry-curves -->
+
+```csharp
+foreach (var product in model.ProductCurves(null, "Axis"))
+{
+    foreach (var line in product.Curves.Polylines)
+    {
+        // Positions: x y z per vertex, metres, relative to
+        // product.Curves.Transform; this curve is a slice of them.
+        var xyz = product.Positions.Skip((int)line.FirstVertex * 3).Take((int)line.VertexCount * 3).ToArray();
+        printed.Add($"#{product.Curves.Id}: {xyz.Length / 3} vertices, bound {line.ChordBound}");
+    }
+}
+```
+
+<!-- /SNIPPET -->
+
+A trimmed, composite, offset or intrinsic curve is refused by name, code
+`unsupported`, until the reference compiler polylines it
+([#506](https://github.com/openbimrs/ifc/issues/506)).
+
 The exact representation instead of triangles
 ([#367](https://github.com/openbimrs/ifc/issues/367)): each Body as
 Axiolid's neutral geometry graph in its wire format, for your own

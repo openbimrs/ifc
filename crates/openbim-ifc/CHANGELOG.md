@@ -12,6 +12,35 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#458, curves and surfaces as output primitives)
+
+Semver: minor (additive; `ProductMesh` is `#[non_exhaustive]`).
+
+- `product_curves(model, products, purpose)` (feature `mesh`): each
+  product's curves for a `RepresentationPurpose` as `ProductCurves`
+  (world placement, one `ProductPolyline` per curve: the IFC `curve`,
+  `f32` positions relative to the placement, `closed`, `chord_bound` and
+  `chord_requested`). `Plan` takes the drawing curves (`Plan`, then
+  `Annotation`, `FootPrint`, `Axis`), and `Axis`, `FootPrint`,
+  `Annotation` one identifier. A trimmed, composite, offset or intrinsic
+  curve refuses the product with `GeometryError::PolylineUnsupported`
+  until the reference compiler polylines it (#506).
+- `product_meshes_for(model, products, purpose)`: the surfaces and solids
+  of another representation, such as `Surface`, as one mesh; its curves
+  are left to `product_curves`. `product_meshes` is it with `Body`.
+- `ProductMesh::closure`: `Solid`, `Surface` (an area, no volume) or
+  `Unknown` for an empty mesh. Only a Body mesh resolves a colour; a mesh
+  of another representation carries `Ok(None)`.
+- `RepresentationPurpose` and `select_product_representation` are
+  re-exported at the root.
+
+### Changed (#458)
+
+- A Body whose items mix curves with solids or surfaces now meshes those
+  and leaves the curves to `product_curves`; before, the reference backend
+  refused the whole Body. A Body with no curves meshes exactly as before.
+
+
 ## [0.33.0] - 2026-10-14
 
 ### Changed

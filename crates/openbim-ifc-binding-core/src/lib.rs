@@ -110,6 +110,7 @@ pub use authoring::{
 };
 pub use coerce::Plain;
 pub use error::BindingError;
+pub use geometry::curves::{ProductCurves, ProductPolyline};
 pub use geometry::graph::{
     GeometryEncoding, ProductGeometry, GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION,
 };
