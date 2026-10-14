@@ -1,4 +1,4 @@
-//! `openbim-ifc`: validate, convert and inspect IFC files from a shell or CI.
+//! `openbim-ifc`: validate, convert, inspect and query IFC files from a shell or CI.
 //!
 //! A thin command layer over the `openbim-ifc` facade: every answer comes
 //! from a facade call, and this crate only parses arguments, picks a codec
@@ -26,7 +26,7 @@
 //! | `input` | Reading STEP or ifcXML, the declared release, entity lookup |
 //! | `json` | A small JSON writer for the machine-readable outputs |
 //! | `sarif` | SARIF 2.1.0 for `validate` and `lint` |
-//! | `validate`, `convert`, `info`, `psets`, `tree`, `lint` | One command each |
+//! | `validate`, `convert`, `info`, `psets`, `tree`, `lint`, `select` | One command each |
 
 mod cli;
 mod convert;
@@ -37,6 +37,7 @@ mod json;
 mod lint;
 mod psets;
 mod sarif;
+mod select;
 mod tree;
 mod validate;
 
@@ -56,6 +57,7 @@ fn main() -> ExitCode {
         cli::Command::Psets(args) => psets::run(&args, &mut out),
         cli::Command::Tree(args) => tree::run(&args, &mut out),
         cli::Command::Lint(args) => lint::run(&args, &mut out),
+        cli::Command::Select(args) => select::run(&args, &mut out),
     };
     let _ = out.flush();
     match result {

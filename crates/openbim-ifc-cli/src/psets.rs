@@ -300,7 +300,7 @@ fn sets_json(rows: &[Row]) -> Json {
 }
 
 /// The resolver's refusal as the CLI's kind.
-fn property_error(error: ExactPropertyError) -> CliError {
+pub(crate) fn property_error(error: ExactPropertyError) -> CliError {
     use ExactPropertyError as E;
     let detail = error.to_string();
     match error {

@@ -23,6 +23,19 @@ a release here does not imply a release of any other crate in the family.
 - A write to an `INVERSE` name raises `IfcError` with the new code
   `inverse-attribute`. Reading one no longer raises `unknown-attribute`.
 
+### Added (#464, selectors and values by path)
+
+- `model.select(query, base=None)` (`Entity` views) and
+  `model.select_ids(...)`, `model.get_value(entity, path)` (plain values,
+  a property set as a read-only mapping) and
+  `model.set_value(entity, path, value)`;
+  `openbim_ifc.canonical_selector(query)`,
+  `openbim_ifc.SELECTOR_GRAMMAR_VERSION`, `SelectedValue`.
+- The code `invalid-selector`, with `IfcError.span`, the byte range an
+  invalid selector refuses.
+
+Semver: additive, a minor release while 0.x.
+
 ### Added (#480, type propagation on assignment)
 
 - `AuthorOp.assign_type(type_object, objects, *, owner_history=None,

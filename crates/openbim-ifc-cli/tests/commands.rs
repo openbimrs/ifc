@@ -533,3 +533,92 @@ fn lint_exits_1_on_a_product_no_viewer_draws() {
     let clean = run(&["lint", &fixture(PROPERTIES)]);
     assert_eq!(clean.code, 0, "{}", clean.stdout);
 }
+
+const SELECTOR: &str = "synthetic-relations/selector_ifc4.ifc";
+
+#[test]
+fn select_lists_the_entities_a_selector_selects_in_every_format() {
+    let file = fixture(SELECTOR);
+    let query = "IfcWall, Pset_WallCommon.FireRating=F90";
+    let table = run(&["select", &file, query, "--value", "type.Name"]);
+    assert_eq!(table.code, 0, "{}", table.stderr);
+    assert!(table.stdout.contains("#17  IfcWall"), "{}", table.stdout);
+    assert!(table.stdout.contains("Wall B  WT-200"), "{}", table.stdout);
+    assert!(table.stdout.ends_with("2 selected\n"), "{}", table.stdout);
+
+    let json = run(&[
+        "select",
+        &file,
+        "IfcDoor + container = \"Level 1\"",
+        "--format",
+        "json",
+        "--value",
+        "materials.Name",
+        "--value",
+        "Pset_WallCommon",
+    ])
+    .json();
+    assert_eq!(json["query"], "IfcDoor + location=\"Level 1\"");
+    assert_eq!(json["grammar"], "1.0");
+    assert_eq!(json["schema"], "IFC4");
+    assert_eq!(json["count"], 4);
+    let ids: Vec<u64> = json["entities"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|entity| entity["id"].as_u64().unwrap())
+        .collect();
+    assert_eq!(ids, [19, 28, 38, 40]);
+    assert_eq!(json["entities"][1]["values"]["materials.Name"][0], "Oak");
+    assert_eq!(
+        json["entities"][0]["values"]["Pset_WallCommon"],
+        serde_json::Value::Null
+    );
+
+    let csv = run(&[
+        "select",
+        &file,
+        "IfcWall",
+        "--format",
+        "csv",
+        "--value",
+        "storey.Name",
+    ]);
+    assert_eq!(
+        csv.stdout,
+        "id,type,global_id,name,storey.Name\r\n\
+         17,IfcWall,0TG0wWfbZOvmJHW7AuHJ$k,Wall A,Level 0\r\n\
+         18,IfcWall,0XLKvWwoErh4p4gJsHE2zX,Wall B,Level 0\r\n\
+         19,IfcWall,19HFrQ$NB$TW0hRFxhxvxK,Wall C,Level 1\r\n"
+    );
+    let none = run(&["select", &file, "IfcSlab, Name=nothing"]);
+    assert_eq!(
+        (none.code, none.stdout.as_str()),
+        (0, "no entity selected\n")
+    );
+}
+
+#[test]
+fn select_refuses_a_selector_with_its_span() {
+    let file = fixture(SELECTOR);
+    for (query, span) in [
+        ("IfcWall, colour=red", "at bytes 9..15"),
+        ("IfcWal", "(bytes 0..6)"),
+        ("IfcWall, Flavour=x", "(bytes 9..18)"),
+    ] {
+        let refused = run(&["select", &file, query]);
+        assert_eq!(refused.code, 2, "{query}");
+        assert!(
+            refused.stderr.contains("invalid-selector") && refused.stderr.contains(span),
+            "{query}: {}",
+            refused.stderr
+        );
+    }
+    let refused = run(&["select", &file, "IfcWall", "--value", "type."]);
+    assert_eq!(refused.code, 2);
+    assert!(
+        refused.stderr.contains("--value \"type.\""),
+        "{}",
+        refused.stderr
+    );
+}

@@ -431,6 +431,19 @@ several entities carry throws `invalid-model` naming them all, and
 [cookbook](/cookbook/javascript#find-entities-by-globalid-types-and-openings)
 has a recipe.
 
+## Selectors and values by path
+
+`model.select(query, base?)` returns the ids a
+[selector](/guide/selectors) selects, in ascending order.
+`model.getValue(id, path)` reads a value by path as an `IfcSelectedValue`
+(a property set as `{ kind: "properties", entries }`) and
+`model.setValue(id, path, value)` writes one as a single checked
+transaction. `IfcModel.canonicalSelector(query)` prints a selector in
+canonical form and `IfcModel.selectorGrammarVersion()` names the grammar.
+A selector that does not parse throws `invalid-selector` with `span`. The
+[cookbook](/cookbook/javascript#select-entities-and-read-values-by-path)
+has a recipe.
+
 ## Geometry
 
 Geometry crosses at three levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)):
@@ -1040,6 +1053,11 @@ class, interface and type the package's `.d.ts` declares.
 | `model.inverseAttributeNames(id: bigint): InverseAttributeInfo[]` | yes | Every `INVERSE` attribute of entity `id`, inherited ones first, as the declared release defines them (#462). |
 | `model.inverseReferences(id: bigint): InverseReference[]` | yes | Every reference to entity `id`: the referencing entity and the attribute index it references through, in ascending order (#462). |
 | `model.totalInverses(id: bigint): number` | yes | How many distinct entities reference entity `id` (#462). |
+| `model.select(query: string, base: bigint[] \| BigUint64Array \| undefined): bigint[]` | yes | The ids selector `query` selects, ascending (#464); with `base`, from those entities alone. |
+| `model.getValue(id: bigint, path: string): IfcSelectedValue` | yes | The value `path` reads from entity `id`: `"type.Name"`, `"Pset_WallCommon.FireRating"`, `"materials.Name"`, `"occurrences.count"`. |
+| `model.setValue(id: bigint, path: string, value: IfcValue \| IfcPlainValue): void` | yes | Write `value` at `path` of entity `id` as one checked transaction: an attribute coerced as `setAttributeByName` coerces a plain value, or a property from a typed value, or a plain one when the property already states its type. A refused write changes nothing. |
+| `IfcModel.canonicalSelector(query: string): string` | yes | Selector `query` in its canonical form: spacing, quoting and aliases normalised. Throws `invalid-selector`. |
+| `IfcModel.selectorGrammarVersion(): string` |  | The version of the selector grammar this build parses (`"1.0"`). |
 
 Attribute values and error codes are typed by the package's `.d.ts`:
 
@@ -1099,7 +1117,17 @@ export type IfcErrorCode =
   | "still-referenced"
   | "type-mismatch"
   | "ambiguous-value"
+  | "invalid-selector"
   | "inverse-attribute";
+
+/**
+ * A value `IfcModel.getValue` reads by path (#464): a tagged value, a list
+ * of them, or a property set's members as `[name, value]` pairs.
+ */
+export type IfcSelectedValue =
+  | IfcValue
+  | { kind: "list"; items: IfcSelectedValue[] }
+  | { kind: "properties"; entries: [string, IfcSelectedValue][] };
 
 /**
  * Where `IfcModel.loadCatalog` reads a catalog snapshot from. By default

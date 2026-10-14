@@ -18,6 +18,7 @@ FIXTURES = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "test
 PROPERTIES = os.path.join(FIXTURES, "synthetic-properties", "synthetic_properties.ifc")
 GEOMETRY = os.path.join(FIXTURES, "synthetic-bindings", "binding_geometry.ifc")
 RELATIONS = os.path.join(FIXTURES, "synthetic-relations", "relations_ifc4.ifc")
+SELECTOR = os.path.join(FIXTURES, "synthetic-relations", "selector_ifc4.ifc")
 CASCADE = os.path.join(FIXTURES, "synthetic-relations", "cascade_ifc4.ifc")
 MESH = os.environ.get("OPENBIM_IFC_MESH") == "1"
 
@@ -303,6 +304,35 @@ class Cookbook(unittest.TestCase):
         )
         self.assertEqual(model.dangling_references(), [])
         self.assertEqual(len(printed[3]), 3)
+
+    def test_select_and_values_by_path(self) -> None:
+        model = openbim_ifc.open(SELECTOR)
+        printed: List[Any] = []
+        print = printed.append  # noqa: A001
+        # docs:snippet cookbook-py-selectors
+        walls = model.select("IfcWall, Pset_WallCommon.FireRating=F90")  # Entity views
+        print([wall.Name for wall in walls])  # ['Wall A', 'Wall B']
+        print(model.select_ids('IfcDoor + location="Level 1"'))  # [19, 28, 38, 40]
+
+        print(model.get_value(walls[0], "type.Name"))  # 'WT-200'
+        print(model.get_value(walls[0], "materials.Name"))  # ('Concrete',)
+        print(dict(model.get_value(walls[0], "Pset_WallCommon")))
+        # {'IsExternal': True, 'FireRating': 'F90', 'AcousticRating': 'R45'}
+
+        model.set_value(walls[0], "type.Name", "WT-300")  # one checked transaction
+        try:
+            model.select("IfcWall, colour=red")
+        except openbim_ifc.IfcError as error:
+            print((error.code, error.span))  # ('invalid-selector', (9, 15))
+        # docs:end
+        self.assertEqual(printed[0], ["Wall A", "Wall B"])
+        self.assertEqual(printed[1], [19, 28, 38, 40])
+        self.assertEqual(printed[2:4], ["WT-200", ("Concrete",)])
+        self.assertEqual(
+            printed[4], {"IsExternal": True, "FireRating": "F90", "AcousticRating": "R45"}
+        )
+        self.assertEqual(printed[5], ("invalid-selector", (9, 15)))
+        self.assertEqual(model.get_value(18, "type.Name"), "WT-300")
 
     def test_assign_type_with_propagation(self) -> None:
         model = openbim_ifc.open(CASCADE)

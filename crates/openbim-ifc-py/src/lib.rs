@@ -36,12 +36,23 @@ fn name_based_guid(parts: Vec<String>) -> String {
     openbim_ifc_binding_core::name_based_guid(&parts)
 }
 
+/// A selector in its canonical form (#464); raises `invalid-selector`.
+#[pyfunction]
+fn canonical_selector(query: &str) -> PyResult<String> {
+    openbim_ifc_binding_core::canonical_selector(query).map_err(error::py_err)
+}
+
 /// The `openbim_ifc._native` extension module.
 #[pymodule]
 fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<model::NativeModel>()?;
     module.add_function(wrap_pyfunction!(new_guid, module)?)?;
     module.add_function(wrap_pyfunction!(name_based_guid, module)?)?;
+    module.add_function(wrap_pyfunction!(canonical_selector, module)?)?;
+    module.add(
+        "SELECTOR_GRAMMAR_VERSION",
+        openbim_ifc_binding_core::SELECTOR_GRAMMAR_VERSION,
+    )?;
     module.add("IfcError", module.py().get_type::<error::IfcError>())?;
     Ok(())
 }

@@ -22,6 +22,7 @@ use crate::value::{self, from_js, to_js};
 mod domain_types;
 mod geometry_types;
 mod inverse;
+mod selector;
 mod types;
 
 /// An IFC model: entities keyed by their `#id`, in file order.

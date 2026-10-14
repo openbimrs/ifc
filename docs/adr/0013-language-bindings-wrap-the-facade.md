@@ -133,7 +133,7 @@ crate directly.
   builds on these calls. *Amended 2026-10-14 (#462):* a read resolves an
   `INVERSE` name through the reverse index with the declared release's
   `FOR` clause (`wall.IsDefinedBy`), and a write to one is refused with
-  the new code `inverse-attribute` (C 34).
+  the new code `inverse-attribute` (C 35).
 - *Amended 2026-10-04 (#327, .NET):* .NET hosts (Revit, Navisworks,
   Tekla, Dynamo) get the `OpenBim.Ifc` NuGet package: C# P/Invoke over
   the versioned C ABI (`openbim_ifc_v0_1_*`) and nothing else, the one

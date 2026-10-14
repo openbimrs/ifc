@@ -9,7 +9,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyBool, PyBytes, PyDict, PyList, PyString};
 
 use crate::authoring;
-use crate::convert::{from_py, plain_from_py, to_py};
+use crate::convert::{from_py, plain_from_py, selected_to_py, to_py};
 use crate::edits;
 use crate::error::py_err;
 use crate::records;
@@ -545,6 +545,28 @@ impl NativeModel {
                 .set_attribute_by_name_plain(id, name, value)
                 .map_err(py_err)?,
         )
+    }
+
+    /// The ids a selector selects (#464), ascending.
+    fn select(&self, query: &str) -> PyResult<Vec<u64>> {
+        self.inner.select(query).map_err(py_err)
+    }
+
+    /// The ids a selector selects from `base` alone, ascending.
+    fn select_from(&self, query: &str, base: Vec<u64>) -> PyResult<Vec<u64>> {
+        self.inner.select_from(query, &base).map_err(py_err)
+    }
+
+    /// The value a path reads, as a tagged dict (`list` and `properties`
+    /// nest).
+    fn get_value<'py>(&self, py: Python<'py>, id: u64, path: &str) -> PyResult<Bound<'py, PyDict>> {
+        selected_to_py(py, &self.inner.get_value(id, path).map_err(py_err)?)
+    }
+
+    /// Write a plain Python value at a path, as one transaction.
+    fn set_value(&mut self, id: u64, path: &str, value: &Bound<'_, PyAny>) -> PyResult<()> {
+        let value = plain_from_py(value).map_err(py_err)?;
+        self.inner.set_value(id, path, value).map_err(py_err)
     }
 
     fn add(&mut self, type_name: &str, attributes: &Bound<'_, PyAny>) -> PyResult<u64> {

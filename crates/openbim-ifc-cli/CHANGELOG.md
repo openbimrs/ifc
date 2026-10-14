@@ -11,6 +11,18 @@ documents) is this crate's public interface.
 
 ## [Unreleased]
 
+### Added (#464)
+
+- `select FILE QUERY [--value PATH]... [--format table|json|csv]` lists
+  the entities a selector selects, in ascending id order, with their
+  class, `GlobalId`, `Name` and one column per value path. JSON carries
+  the query in canonical form and the grammar version. A selector or path
+  that does not parse, or names a class or attribute the declared release
+  lacks, is refused with the new kind `invalid-selector` and its byte
+  span (exit 2).
+
+Semver: minor (additive).
+
 ## [0.2.0] - 2026-10-13
 
 ### Added (#450)

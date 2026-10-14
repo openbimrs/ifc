@@ -63,6 +63,13 @@
 //! and host ([`IfcModel::type_object`] and its siblings) read the
 //! relationships the declared release states.
 //!
+//! Selectors (#464, [`selector`]) filter the model by class, attribute,
+//! property, type, material, classification, location and group
+//! ([`IfcModel::select`]); values are read and written by path
+//! ([`IfcModel::get_value`], [`IfcModel::set_value`]). A query that does
+//! not parse is refused with `invalid-selector` and the byte span of the
+//! offending text ([`BindingError::span`]).
+//!
 //! `INVERSE` attributes read by name too ([`inverse`], #462):
 //! `attribute_by_name(wall, "IsDefinedBy")` follows the declared release's
 //! `FOR` clause through a reverse index built on first use and rebuilt
@@ -88,6 +95,7 @@ pub mod properties;
 pub mod property_edit;
 pub mod record;
 pub mod relations;
+pub mod selector;
 pub mod spatial;
 pub mod systems;
 pub mod unreachable;
@@ -113,5 +121,6 @@ pub use model::IfcModel;
 pub use options::{OnMalformed, ParseOptions};
 pub use record::{Field, Record, ToRecord};
 pub use relations::{name_based_guid, new_guid, DuplicateGlobalId};
+pub use selector::{canonical_selector, Selected, SELECTOR_GRAMMAR_VERSION};
 pub use unreachable::UnreachableProduct;
 pub use validation::{ValidationFinding, ValidationReport, ValidationSummary};

@@ -20,7 +20,13 @@ Python values (``wall.Name``), and ``wall.psets`` maps property sets
 import os as _os
 from typing import Optional as _Optional, Union as _Union
 
-from ._native import IfcError, name_based_guid as _name_based_guid, new_guid as _new_guid
+from ._native import (
+    SELECTOR_GRAMMAR_VERSION,
+    IfcError,
+    canonical_selector as _canonical_selector,
+    name_based_guid as _name_based_guid,
+    new_guid as _new_guid,
+)
 from .geometry import (
     GEOMETRY_FORMAT,
     GEOMETRY_FORMAT_VERSION,
@@ -78,7 +84,7 @@ from .domains import (
     UnitBasis,
     handle,
 )
-from .entity import Assignable, Entity, PlainValue, PropertyValue
+from .entity import Assignable, Entity, PlainValue, PropertyValue, SelectedValue
 from .model import IfcModel
 from .records import (
     DuplicateGlobalId,
@@ -130,10 +136,21 @@ def name_based_guid(*parts: str) -> str:
     return _name_based_guid(list(parts))
 
 
+def canonical_selector(query: str) -> str:
+    """Selector ``query`` in its canonical form (#464): spacing, quoting
+    and aliases normalised, so two spellings of one query compare equal.
+    Raises ``invalid-selector`` (with ``span``) when it does not parse
+    against grammar :data:`SELECTOR_GRAMMAR_VERSION`."""
+    return _canonical_selector(query)
+
+
 __all__ = [
     "open",
     "new_guid",
     "name_based_guid",
+    "canonical_selector",
+    "SELECTOR_GRAMMAR_VERSION",
+    "SelectedValue",
     "DuplicateGlobalId",
     "IfcError",
     "IfcModel",

@@ -17,9 +17,19 @@ a release here does not imply a release of any other crate in the family.
 - `model.InverseAttributeNames(id)` (`InverseAttributeInfo`),
   `model.InverseReferences(id)` (`InverseReference(Id, Index)`) and
   `model.TotalInverses(id)`.
-- `IfcStatus.InverseAttribute` (34, `inverse-attribute`) for a write to
+- `IfcStatus.InverseAttribute` (35, `inverse-attribute`) for a write to
   an `INVERSE` name.
-- Requires the C ABI 0.1.14 (`openbim-ifc-capi` with #462).
+- Requires the C ABI 0.1.15 (`openbim-ifc-capi` with #462).
+
+### Added (#464, selectors and values by path)
+
+- `model.Select(query)`, `model.Select(query, baseIds)`,
+  `model.GetValue(id, path)` (a property set as a `Value.List` of name and
+  value pairs) and `model.SetValue(id, path, value)`;
+  `IfcModel.SelectorGrammarVersion`.
+- `IfcStatus.InvalidSelector` and the code `invalid-selector`, with
+  `IfcException.Span`, the byte range an invalid selector refuses.
+- Requires the C ABI 0.1.14 (`openbim-ifc-capi` with #464).
 
 Semver: additive, a minor release while 0.x.
 

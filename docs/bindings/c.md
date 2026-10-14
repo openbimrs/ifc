@@ -479,6 +479,20 @@ ABI version 0.1.10; no `v0_1` symbol changed. The
 [cookbook](/cookbook/c#find-entities-by-globalid-types-and-openings) has a
 recipe.
 
+## Selectors and values by path
+
+`openbim_ifc_v0_1_model_select` and `openbim_ifc_v0_1_model_select_from`
+fill the caller's buffer with the ids a [selector](/guide/selectors)
+selects, in ascending order. `openbim_ifc_v0_1_entity_get_value` reads a
+value by path as a tape (a property set as a `LIST` of name and value
+pairs) and `openbim_ifc_v0_1_entity_set_value` writes one from a tape of
+plain values as a single checked transaction. A selector that does not
+parse is `INVALID_SELECTOR`; `openbim_ifc_v0_1_last_error_span` then gives
+the byte range it refuses. These exports make the ABI version 0.1.14; no
+`v0_1` symbol changed. The
+[cookbook](/cookbook/c#select-entities-and-read-values-by-path) has a
+recipe.
+
 ## Geometry
 
 Geometry crosses at three levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)):

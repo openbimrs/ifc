@@ -71,8 +71,10 @@ public enum IfcStatus
     TypeMismatch = 32,
     /// <summary>A plain value written by name fits several members of the attribute's SELECT; write it exactly instead (<c>ambiguous-value</c>).</summary>
     AmbiguousValue = 33,
+    /// <summary>A selector or value path does not follow the grammar, or names a class or attribute the declared release does not declare (<c>invalid-selector</c>); <see cref="IfcException.Span"/> is the byte range it refuses.</summary>
+    InvalidSelector = 34,
     /// <summary>A by-name attribute write named an <c>INVERSE</c> attribute, which holds no slot (<c>inverse-attribute</c>).</summary>
-    InverseAttribute = 34,
+    InverseAttribute = 35,
     /// <summary>A Rust panic was contained at the boundary.</summary>
     Panic = 255,
 }

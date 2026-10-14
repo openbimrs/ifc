@@ -16,7 +16,10 @@ const MODEL: &str = "crates/openbim-ifc-wasm/src/model.rs";
 const TYPES: &str = "crates/openbim-ifc-wasm/src/model/types.rs";
 /// Submodules of `model.rs` that add `#[wasm_bindgen] impl IfcModel`
 /// blocks, listed after it in this order.
-const MODEL_PARTS: &[&str] = &["crates/openbim-ifc-wasm/src/model/inverse.rs"];
+const MODEL_PARTS: &[&str] = &[
+    "crates/openbim-ifc-wasm/src/model/inverse.rs",
+    "crates/openbim-ifc-wasm/src/model/selector.rs",
+];
 
 pub(super) fn reference(workspace: &Workspace) -> Result<String, String> {
     let mut files = vec![parse(workspace, MODEL)?];
