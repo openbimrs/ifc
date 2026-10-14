@@ -60,6 +60,9 @@ struct Cascade {
     placements: BTreeSet<EntityId>,
     /// Placements re-based onto a kept ancestor.
     rebased: Vec<EntityId>,
+    /// Entities that stay whatever the counts say, unreported: the
+    /// representation an unassignment takes off a removed map or shape.
+    keep: BTreeSet<EntityId>,
 }
 
 impl Cascade {
@@ -106,8 +109,25 @@ impl Planner<'_, '_> {
                 });
             }
         }
-        let mut cascade = Cascade::default();
-        cascade.add(target);
+        self.cascade(&[target], BTreeSet::new(), options)
+    }
+
+    /// Remove `roots` with everything they solely own, never `keep`, and
+    /// report it: the cascade of [`Self::remove_product`] from any start.
+    pub(super) fn cascade(
+        &mut self,
+        roots: &[EntityId],
+        keep: BTreeSet<EntityId>,
+        options: RemoveProductOptions,
+    ) -> Result<RemovalReport, F> {
+        let kinds = Kinds::new(self.schema);
+        let mut cascade = Cascade {
+            keep,
+            ..Cascade::default()
+        };
+        for root in roots {
+            cascade.add(*root);
+        }
         self.drain(&kinds, &mut cascade);
         self.settle_placements(&kinds, &mut cascade, options)?;
         self.apply_cascade(&kinds, cascade)
@@ -246,7 +266,7 @@ impl Planner<'_, '_> {
     /// An entity a removed one references: removed when solely owned and
     /// of a kind the cascade removes, reached otherwise.
     fn consider(&self, kinds: &Kinds<'_>, cascade: &mut Cascade, id: EntityId) {
-        if cascade.removed.contains(&id) {
+        if cascade.removed.contains(&id) || cascade.keep.contains(&id) {
             return;
         }
         let Some(entity) = self.view.get(id) else {

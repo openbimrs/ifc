@@ -1,8 +1,9 @@
 //! Checked authoring batches (#330): create entities by type and named
 //! attributes, the spatial-structure, product, type and placement builders,
-//! removal together with relationships, and the removal of a product with
-//! what it solely owns and the purge of what nothing uses (#478), applied
-//! as one transaction.
+//! removal together with relationships, the removal of a product with
+//! what it solely owns and the purge of what nothing uses (#478), and
+//! assembling, assigning, unassigning, copying and removing shape
+//! representations (#481), applied as one transaction.
 //!
 //! A batch is a list of [`AuthorOp`]s run in order against the model as the
 //! operations before them leave it, then committed as one
@@ -82,7 +83,9 @@ mod rebase;
 mod relate;
 mod remove;
 mod report;
+mod represent;
 mod seed;
+mod shape_type;
 
 use ifc_model::{EntityId, Model, Transaction, Value};
 use ifc_schema::Schema;
@@ -114,8 +117,10 @@ pub struct StagedAuthoring {
     pub transaction: Transaction,
     /// Per operation, the id of the entity it produces.
     pub ids: Vec<Option<EntityId>>,
-    /// Per operation, what a [`AuthorOp::RemoveProduct`] or
-    /// [`AuthorOp::Purge`] would remove and keep: staging is the dry run.
+    /// Per operation, what a [`AuthorOp::RemoveProduct`],
+    /// [`AuthorOp::Purge`], [`AuthorOp::UnassignRepresentation`] or
+    /// [`AuthorOp::RemoveRepresentation`] would remove and keep: staging is
+    /// the dry run.
     pub reports: Vec<Option<RemovalReport>>,
 }
 
@@ -131,8 +136,9 @@ pub struct AuthoringOutcome {
     /// Entities removed, the targets and the relationships removed with
     /// them.
     pub removed: Vec<EntityId>,
-    /// Per operation, what a [`AuthorOp::RemoveProduct`] or
-    /// [`AuthorOp::Purge`] removed and kept, and why.
+    /// Per operation, what a [`AuthorOp::RemoveProduct`],
+    /// [`AuthorOp::Purge`], [`AuthorOp::UnassignRepresentation`] or
+    /// [`AuthorOp::RemoveRepresentation`] removed and kept, and why.
     pub reports: Vec<Option<RemovalReport>>,
     /// The model revision after the commit.
     pub revision: u64,
