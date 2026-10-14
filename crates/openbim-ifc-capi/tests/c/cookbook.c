@@ -758,6 +758,8 @@ static int recipe_assign_type(OpenbimIfcModel model) {
   size_t nodes = 0, strings = 0;
   openbim_ifc_v0_1_model_validate(model, 0, &summary, NULL, 0, &nodes, NULL, 0, &strings);
   CHECK(summary.errors == 0, "the retyped model is valid");
+  return 0;
+}
 
 static int recipe_representation(OpenbimIfcModel model) {
   out_len = 0;

@@ -368,6 +368,7 @@ test("assign a type with propagation, and move an element", () => {
   assert.deepEqual(printed, [["MappedRepresentation"]]);
   assert.deepEqual(model.danglingReferences(), []);
   assert.equal(model.validate().errors, 0);
+});
 
 test("assemble, assign, copy and remove representations", () => {
   const model = IfcModel.parse(readFileSync(CASCADE));

@@ -469,7 +469,9 @@ public class CookbookTests
         Assert.Equal(new Value.Text("MappedRepresentation"), model.AttributeByName(body, "RepresentationType"));
         Assert.Empty(model.DanglingReferences());
         Assert.Equal(0L, model.Validate().Errors);
+    }
 
+    [Fact]
     public void AssembleAssignCopyAndRemoveRepresentations()
     {
         using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.CascadeIfc4));
