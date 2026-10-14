@@ -157,6 +157,18 @@
 #define OPENBIM_IFC_REMOVE_UNTYPE_OCCURRENCES 2
 
 /**
+ * The selector grammar's major version (#464); a selector written for one
+ * major version parses the same in every build of it.
+ */
+#define OPENBIM_IFC_SELECTOR_GRAMMAR_MAJOR 1
+
+/**
+ * The selector grammar's minor version: it grows when the grammar accepts
+ * more.
+ */
+#define OPENBIM_IFC_SELECTOR_GRAMMAR_MINOR 0
+
+/**
  * Result of every ABI call. `Ok` is zero; every failure is non-zero.
  *
  * The values from `Parse` to `FeatureDisabled`, `InvalidModel`, and
@@ -301,6 +313,13 @@ enum OpenbimIfcStatus
    * attribute's SELECT; write it exactly instead (`ambiguous-value`).
    */
   OPENBIM_IFC_STATUS_AMBIGUOUS_VALUE = 33,
+  /**
+   * A selector or value path does not follow the grammar, or names a
+   * class or attribute the declared release does not declare
+   * (`invalid-selector`); `openbim_ifc_v0_1_last_error_span` gives the
+   * byte range it refuses.
+   */
+  OPENBIM_IFC_STATUS_INVALID_SELECTOR = 34,
   /**
    * A Rust panic was contained at the boundary. Report it as a bug.
    */
@@ -545,6 +564,30 @@ OpenbimIfcStatus openbim_ifc_v0_1_entity_fillings(OpenbimIfcModel model,
                                                   size_t *out_required);
 
 /**
+ * The value `path` (UTF-8, e.g. `type.Name`, `Pset_WallCommon.FireRating`)
+ * reads from entity `id`, as a value tape: a scalar or reference as its
+ * node, several values as a `LIST`, a property set as a `LIST` of
+ * two-item `LIST`s, each the member's name (`TEXT`) and value.
+ *
+ * `InvalidSelector` for a path that does not parse, `MissingEntity`, and
+ * as for [`openbim_ifc_v0_1_model_select`].
+ *
+ * # Safety
+ * `path` valid for `path_len` reads; otherwise as for
+ * `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_entity_get_value(OpenbimIfcModel model,
+                                                   uint64_t id,
+                                                   const uint8_t *path,
+                                                   size_t path_len,
+                                                   OpenbimIfcValueNode *nodes,
+                                                   size_t node_capacity,
+                                                   size_t *out_nodes_required,
+                                                   uint8_t *strings,
+                                                   size_t string_capacity,
+                                                   size_t *out_strings_required);
+
+/**
  * Every object type object `id` types, in file order. Refusals as for
  * [`openbim_ifc_v0_1_entity_type_object`] (`WrongEntityType`: not an
  * `IfcTypeObject`).
@@ -664,6 +707,32 @@ OpenbimIfcStatus openbim_ifc_v0_1_entity_set_attribute_by_name_plain(OpenbimIfcM
                                                                      size_t string_len);
 
 /**
+ * Write a one-value tape of plain values at `path` (UTF-8) of entity
+ * `id`, as one transaction: an attribute (`Name`, `type.Name`) coerced
+ * as `openbim_ifc_v0_1_entity_set_attribute_by_name_plain` coerces it,
+ * or a property (`Pset_WallCommon.FireRating`) from a `TYPED` value, or a
+ * plain one when the property already states its type. A refusal
+ * changes nothing.
+ *
+ * `InvalidValue` for a path that names no single value (a pattern,
+ * `count`, a prefix reaching no entity), `UnknownAttribute`,
+ * `DerivedAttribute`, `TypeMismatch` (also for a plain value no stated
+ * property types), `AmbiguousValue`, and the property edit's refusals.
+ *
+ * # Safety
+ * `path` valid for `path_len` reads; the tape as for
+ * `openbim_ifc_v0_1_entity_set_attribute_by_name_plain`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_entity_set_value(OpenbimIfcModel model,
+                                                   uint64_t id,
+                                                   const uint8_t *path,
+                                                   size_t path_len,
+                                                   const OpenbimIfcValueNode *nodes,
+                                                   size_t node_count,
+                                                   const uint8_t *strings,
+                                                   size_t string_len);
+
+/**
  * The type name of entity `id`, upper-case, NUL-terminated.
  *
  * # Safety
@@ -768,6 +837,18 @@ OpenbimIfcStatus openbim_ifc_v0_1_last_error_message(OpenbimIfcModel model,
                                                      uint8_t *buffer,
                                                      size_t capacity,
                                                      size_t *out_required);
+
+/**
+ * The byte range in the query the last error on `model` refuses, written
+ * to `out_start` and `out_end`; `NoValue` when the last call succeeded or
+ * its error names no span (only `InvalidSelector` does).
+ *
+ * # Safety
+ * `out_start` and `out_end` valid for one write each.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_last_error_span(OpenbimIfcModel model,
+                                                  size_t *out_start,
+                                                  size_t *out_end);
 
 /**
  * Number of live models, for leak checks.
@@ -1562,6 +1643,47 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_schema(OpenbimIfcModel model,
                                                uint8_t *buffer,
                                                size_t capacity,
                                                size_t *out_required);
+
+/**
+ * The ids selector `query` (UTF-8, `query_len` bytes) selects, ascending,
+ * filling `buffer` as `openbim_ifc_v0_1_model_ids` does.
+ *
+ * Class facets (subtypes included) add entities, `!` removes them;
+ * attribute, property and `type=`, `material=`, `classification=`,
+ * `location=` and `group=` facets filter; `,` chains facets and `+`
+ * unites lists. `InvalidSelector` (span through
+ * `openbim_ifc_v0_1_last_error_span`), `UnsupportedSchema`,
+ * `InvalidModel` for an ambiguous or malformed relationship or a
+ * duplicated `GlobalId` an instance facet names, `MissingReference`, and
+ * the property refusals of `openbim_ifc_v0_1_entity_property_sets`.
+ *
+ * # Safety
+ * `query` valid for `query_len` reads; otherwise as for
+ * `openbim_ifc_v0_1_model_ids`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_select(OpenbimIfcModel model,
+                                               const uint8_t *query,
+                                               size_t query_len,
+                                               uint64_t *buffer,
+                                               size_t capacity,
+                                               size_t *out_required);
+
+/**
+ * As [`openbim_ifc_v0_1_model_select`], selecting from the `base_count`
+ * ids at `base` alone; `MissingEntity` for one the model lacks.
+ *
+ * # Safety
+ * `base` valid for `base_count` reads; otherwise as for
+ * [`openbim_ifc_v0_1_model_select`].
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_select_from(OpenbimIfcModel model,
+                                                    const uint8_t *query,
+                                                    size_t query_len,
+                                                    const uint64_t *base,
+                                                    size_t base_count,
+                                                    uint64_t *buffer,
+                                                    size_t capacity,
+                                                    size_t *out_required);
 
 /**
  * Replace the file header with the one on the tape. A tape of any other

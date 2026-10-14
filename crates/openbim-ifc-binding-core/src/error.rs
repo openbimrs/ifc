@@ -91,6 +91,14 @@ pub enum BindingError {
     /// of the attribute's SELECT, such as a string for `IfcValue`; the
     /// detail names the candidates. Wrap the value explicitly instead.
     AmbiguousValue(String),
+    /// A selector or value path (#464) does not follow the grammar, or
+    /// names a class or attribute the declared release does not declare.
+    InvalidSelector {
+        /// What is wrong.
+        detail: String,
+        /// The byte range of the offending text in the UTF-8 query.
+        span: (usize, usize),
+    },
 }
 
 impl BindingError {
@@ -120,6 +128,15 @@ impl BindingError {
             Self::StillReferenced(_) => "still-referenced",
             Self::TypeMismatch(_) => "type-mismatch",
             Self::AmbiguousValue(_) => "ambiguous-value",
+            Self::InvalidSelector { .. } => "invalid-selector",
+        }
+    }
+
+    /// The byte range in the query an `invalid-selector` refusal names.
+    pub const fn span(&self) -> Option<(usize, usize)> {
+        match self {
+            Self::InvalidSelector { span, .. } => Some(*span),
+            _ => None,
         }
     }
 }
@@ -165,6 +182,11 @@ impl fmt::Display for BindingError {
                 f,
                 "ambiguous value: {detail}; pass an explicit typed value instead"
             ),
+            Self::InvalidSelector { detail, span } => write!(
+                f,
+                "invalid selector: {detail} at bytes {}..{}",
+                span.0, span.1
+            ),
         }
     }
 }
@@ -203,6 +225,7 @@ mod tests {
         "still-referenced",
         "type-mismatch",
         "ambiguous-value",
+        "invalid-selector",
     ];
 
     /// One value of every variant, in declaration order.
@@ -231,6 +254,10 @@ mod tests {
             BindingError::StillReferenced(String::new()),
             BindingError::TypeMismatch(String::new()),
             BindingError::AmbiguousValue(String::new()),
+            BindingError::InvalidSelector {
+                detail: String::new(),
+                span: (0, 0),
+            },
         ];
         // Exhaustive on purpose: a new variant does not compile until it is
         // listed above, so its code cannot escape the snapshot.
@@ -258,7 +285,8 @@ mod tests {
                 | BindingError::MissingAttribute(_)
                 | BindingError::StillReferenced(_)
                 | BindingError::TypeMismatch(_)
-                | BindingError::AmbiguousValue(_) => {}
+                | BindingError::AmbiguousValue(_)
+                | BindingError::InvalidSelector { .. } => {}
             }
         }
         all

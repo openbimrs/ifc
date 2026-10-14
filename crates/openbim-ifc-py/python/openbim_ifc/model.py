@@ -25,7 +25,14 @@ from .domains import (
     SpatialTree,
     Systems,
 )
-from .entity import Assignable, ModelAccess, _plain_wire
+from .entity import (
+    Assignable,
+    Entity,
+    ModelAccess,
+    SelectedValue,
+    _plain_wire,
+    _selected,
+)
 from .geometry import ProductGeometry, ProductMesh, ProductPlacement
 from .records import (
     DuplicateGlobalId,
@@ -332,6 +339,56 @@ class IfcModel(ModelAccess):
     def ids_of_type_including_subtypes(self, type_name: str) -> List[int]:
         """Ids of ``type_name`` or any subtype, per the file's schema."""
         return self._native.ids_of_type_including_subtypes(type_name)
+
+    def select_ids(
+        self, query: str, base: Optional[Iterable[Union[int, Entity]]] = None
+    ) -> List[int]:
+        """The ids selector ``query`` selects, ascending (#464).
+
+        ``"IfcWall, Pset_WallCommon.IsExternal=TRUE + IfcSlab"``: class
+        facets (subtypes included) add entities, ``!`` removes them,
+        attribute, property and ``type=``, ``material=``,
+        ``classification=``, ``location=`` and ``group=`` facets filter;
+        ``,`` chains facets and ``+`` unites lists. With ``base``, facets
+        select from those entities alone. The grammar and its differences
+        from IfcOpenShell's selector are documented in the guide.
+
+        Raises ``invalid-selector`` (with ``span``, the byte range in the
+        UTF-8 query) for a query that does not parse or names a class or
+        attribute the file's release does not declare.
+        """
+        if base is None:
+            return self._native.select(query)
+        ids = [item.id if isinstance(item, Entity) else item for item in base]
+        return self._native.select_from(query, ids)
+
+    def select(
+        self, query: str, base: Optional[Iterable[Union[int, Entity]]] = None
+    ) -> List[Entity]:
+        """:meth:`select_ids` as :class:`Entity` views."""
+        return [Entity(self, id) for id in self.select_ids(query, base)]
+
+    def get_value(self, entity: Union[int, Entity], path: str) -> SelectedValue:
+        """The value ``path`` reads from ``entity`` (#464): ``"Name"``,
+        ``"type.Name"``, ``"Pset_WallCommon.FireRating"``,
+        ``"materials.Name"``, ``"storey.Name"``, ``"occurrences.count"``.
+
+        Plain Python values as :class:`Entity` attributes read them: a
+        reference is an :class:`Entity`, ``$`` is ``None``, several values
+        a tuple, and a property set a read-only mapping of its properties.
+        """
+        id = entity.id if isinstance(entity, Entity) else entity
+        return _selected(self._native.get_value(id, path), self)
+
+    def set_value(self, entity: Union[int, Entity], path: str, value: Assignable) -> None:
+        """Write ``value`` at ``path`` of ``entity`` (#464), as one checked
+        transaction: an attribute (``"Name"``, ``"type.Name"``) coerced as
+        :meth:`set_attribute_by_name_plain` coerces it, or a property
+        (``"Pset_WallCommon.FireRating"``) from a typed value, or a plain one
+        when the property already states its type. A refused write changes
+        nothing; a path naming no single value raises ``invalid-value``."""
+        id = entity.id if isinstance(entity, Entity) else entity
+        self._native.set_value(id, path, _plain_wire(value, self))
 
     def id_by_guid(self, global_id: str) -> Optional[int]:
         """The id of the entity whose ``GlobalId`` is ``global_id``, or

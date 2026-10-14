@@ -381,6 +381,31 @@ public class CookbookTests
     }
 
     [Fact]
+    public void SelectAndValuesByPath()
+    {
+        using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.SelectorIfc4));
+        var printed = new List<string>();
+        void Print(string line) => printed.Add(line);
+        // docs:snippet cookbook-dotnet-selectors
+        var walls = model.Select("IfcWall, Pset_WallCommon.FireRating=F90"); // 17, 18
+        Print(string.Join(", ", model.Select("IfcDoor + location=\"Level 1\""))); // 19, 28, 38, 40
+
+        Print(((Value.Text)model.GetValue(walls[0], "type.Name")).Value); // WT-200
+        // A property set is a list of [name, value] pairs.
+        var pset = (Value.List)model.GetValue(walls[0], "Pset_WallCommon");
+        Print(string.Join(", ", pset.Items.Select(pair => ((Value.Text)((Value.List)pair).Items[0]).Value)));
+        // IsExternal, FireRating, AcousticRating
+
+        model.SetValue(walls[0], "type.Name", "WT-300"); // one checked transaction
+        var error = Assert.Throws<IfcException>(() => model.Select("IfcWall, colour=red"));
+        Print($"{error.Code} {error.Span}"); // invalid-selector (9, 15)
+        // docs:end
+        Assert.Equal(new[] { 17UL, 18UL }, walls);
+        Assert.Equal(new[] { "19, 28, 38, 40", "WT-200", "IsExternal, FireRating, AcousticRating", "invalid-selector (9, 15)" }, printed);
+        Assert.Equal(new Value.Text("WT-300"), model.GetValue(18, "type.Name"));
+    }
+
+    [Fact]
     public void GlobalIdsTypesAndOpenings()
     {
         using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.RelationsIfc4));

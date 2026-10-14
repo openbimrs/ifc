@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
-/// Validate, convert and inspect IFC files (STEP, ifcXML and ifcZIP).
+/// Validate, convert, inspect and query IFC files (STEP, ifcXML and ifcZIP).
 ///
 /// Exit codes: 0 success, 1 findings (validate, lint), 2 usage error,
 /// unreadable input or a refusal.
@@ -42,6 +42,8 @@ pub(crate) enum Command {
     Tree(TreeArgs),
     /// Report products no model viewer will draw (exit 1 on findings).
     Lint(LintArgs),
+    /// List the entities a selector selects, with values read by path.
+    Select(SelectArgs),
 }
 
 /// How the input's ifcXML layout is chosen.
@@ -227,6 +229,25 @@ pub(crate) struct LintArgs {
     /// Report format.
     #[arg(long, value_enum, default_value_t = ReportFormat::Human)]
     pub(crate) format: ReportFormat,
+    #[command(flatten)]
+    pub(crate) input: InputArgs,
+}
+
+/// `select`.
+#[derive(Debug, Args)]
+pub(crate) struct SelectArgs {
+    /// The file to read.
+    pub(crate) file: PathBuf,
+    /// The selector, e.g. `IfcWall, Pset_WallCommon.IsExternal=TRUE +
+    /// IfcSlab` (grammar 1.0; see the guide's selector page).
+    pub(crate) query: String,
+    /// A value path to show for each entity, e.g. `type.Name` or
+    /// `Pset_WallCommon.FireRating`; repeat for several columns.
+    #[arg(long = "value", value_name = "PATH")]
+    pub(crate) values: Vec<String>,
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = TableFormat::Table)]
+    pub(crate) format: TableFormat,
     #[command(flatten)]
     pub(crate) input: InputArgs,
 }

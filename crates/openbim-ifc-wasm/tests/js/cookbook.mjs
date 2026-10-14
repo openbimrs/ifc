@@ -21,6 +21,7 @@ const fixtures = path.resolve(here, "../../../../test/fixtures");
 const PROPERTIES = path.join(fixtures, "synthetic-properties/synthetic_properties.ifc");
 const GEOMETRY = path.join(fixtures, "synthetic-bindings/binding_geometry.ifc");
 const RELATIONS = path.join(fixtures, "synthetic-relations/relations_ifc4.ifc");
+const SELECTOR = path.join(fixtures, "synthetic-relations/selector_ifc4.ifc");
 const CASCADE = path.join(fixtures, "synthetic-relations/cascade_ifc4.ifc");
 
 // docs:snippet cookbook-js-plain
@@ -447,4 +448,32 @@ test("create a model from nothing", () => {
   assert.equal(storey.name, "Level 0");
   assert.deepEqual(storey.elements, [wall]);
   assert.equal(again.validate().errors, 0);
+});
+
+test("select entities and read values by path", () => {
+  const model = IfcModel.parse(readFileSync(SELECTOR));
+  const printed = [];
+  const log = (...values) => printed.push(values);
+  // docs:snippet cookbook-js-selectors
+  const walls = model.select("IfcWall, Pset_WallCommon.FireRating=F90"); // [17n, 18n]
+  log(model.select('IfcDoor + location="Level 1"')); // [19n, 28n, 38n, 40n]
+
+  log(model.getValue(walls[0], "type.Name")); // { kind: "text", value: "WT-200" }
+  const pset = model.getValue(walls[0], "Pset_WallCommon");
+  log(Object.fromEntries(pset.entries.map(([name, value]) => [name, value.value])));
+  // { IsExternal: true, FireRating: "F90", AcousticRating: "R45" }
+
+  model.setValue(walls[0], "type.Name", "WT-300"); // one checked transaction
+  try {
+    model.select("IfcWall, colour=red");
+  } catch (error) {
+    log(error.code, error.span); // "invalid-selector" [9, 15]
+  }
+  // docs:end
+  assert.deepEqual(walls, [17n, 18n]);
+  assert.deepEqual(printed[0], [[19n, 28n, 38n, 40n]]);
+  assert.deepEqual(printed[1], [{ kind: "text", value: "WT-200" }]);
+  assert.deepEqual(printed[2], [{ IsExternal: true, FireRating: "F90", AcousticRating: "R45" }]);
+  assert.deepEqual(printed[3], ["invalid-selector", [9, 15]]);
+  assert.deepEqual(model.getValue(18n, "type.Name"), { kind: "text", value: "WT-300" });
 });

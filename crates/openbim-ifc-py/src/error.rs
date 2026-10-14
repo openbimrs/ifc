@@ -9,7 +9,7 @@ create_exception!(
     _native,
     IfcError,
     PyException,
-    "A failed IFC operation. `code` is stable across bindings: parse, write, missing-entity, invalid-value, out-of-range, unsupported-schema, io, unsupported-profile, feature-disabled, invalid-model, missing-reference, budget-exceeded, unsupported, wrong-entity-type, template-violation, missing-property, catalog-not-loaded (JavaScript only: this package embeds the catalog), unknown-attribute, derived-attribute, missing-attribute, still-referenced, type-mismatch, ambiguous-value."
+    "A failed IFC operation. `code` is stable across bindings: parse, write, missing-entity, invalid-value, out-of-range, unsupported-schema, io, unsupported-profile, feature-disabled, invalid-model, missing-reference, budget-exceeded, unsupported, wrong-entity-type, template-violation, missing-property, catalog-not-loaded (JavaScript only: this package embeds the catalog), unknown-attribute, derived-attribute, missing-attribute, still-referenced, type-mismatch, ambiguous-value, invalid-selector (with `span`, the byte range in the UTF-8 query)."
 );
 
 /// Raise `error` as an `IfcError` with `.code` set.
@@ -19,6 +19,9 @@ pub fn py_err(error: BindingError) -> PyErr {
         // Setting an attribute on a fresh exception instance cannot fail in
         // practice; if it did, the message alone is still correct.
         let _ = err.value(py).setattr("code", error.code());
+        if let Some(span) = error.span() {
+            let _ = err.value(py).setattr("span", span);
+        }
     });
     err
 }

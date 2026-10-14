@@ -53,6 +53,41 @@ everything released before per-crate changelogs began.
 Semver: additive (`AuthorOp` and `AuthoringFailure` are
 `#[non_exhaustive]`): minor.
 
+### Added (#464, selector query language)
+
+- `ifc::selector` (feature `selector`; in `full`): a selector grammar,
+  version 1.0 (`GRAMMAR_VERSION`), close to IfcOpenShell's
+  `util.selector`: class facets (subtypes included) and `GlobalId` facets
+  with `!` negation, explicit attribute facets, property and quantity
+  facets (`Pset_WallCommon.FireRating=F90`, names or `/patterns/`),
+  `type`, `material`, `classification`, `location` (alias `container`)
+  and `group` keywords, `query:` value paths, comparisons `=`, `!=`, `*=`,
+  `!*=`, `>`, `>=`, `<`, `<=` against text, numbers, `NULL`, `TRUE`,
+  `FALSE` and patterns, `,` facet lists, `+` unions and `/* */` comments.
+  `Selector::parse` and `ValuePath::parse` give a typed AST that prints
+  back in canonical form; every `ParseError` carries the byte span it
+  refuses.
+- `SelectorIndex` evaluates a selector (`select`, `select_from`) over the
+  model's type index, a `GlobalIdIndex`, the exact resolver's
+  `PropertyIndex` (feature `properties`; `FeatureDisabled` without) and
+  one scan per relationship kind, each built on first use. A class or
+  attribute the release does not declare is refused with its span before
+  any entity is read; contradictory or dangling relationships are
+  refused, never skipped. Results are in ascending id order.
+- Values by path (`SelectorIndex::value`, `get_value`): attributes,
+  property sets and properties, `type`, `material(s)`, `container`,
+  `parent`, `space`, `storey`, `building`, `site`, `occurrences`,
+  `classification`, `group`, `class`, `id`, `predefined_type`, `count`
+  and list indices, as `SelectedValue`s.
+- Writes by path (`set_value`, `SelectorIndex::stage_set_value`,
+  `set_targets`, `stage_attributes`, `property_edits`): an attribute of
+  every entity the path reaches, checked against its declared type in the
+  release, or a property through the checked property edit, staged on one
+  transaction; `SelectorError` names every refusal.
+- Depends on `regex-lite` (optional, with `selector`).
+
+Semver: minor (additive).
+
 ### Added (#480, type propagation on assignment)
 
 - `AuthorOp::AssignType` takes `options: AssignTypeOptions`. With

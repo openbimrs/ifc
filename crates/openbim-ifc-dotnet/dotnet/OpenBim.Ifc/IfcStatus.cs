@@ -6,7 +6,7 @@ namespace OpenBim.Ifc;
 /// </summary>
 /// <remarks>
 /// <see cref="Parse"/> to <see cref="FeatureDisabled"/>, <see cref="InvalidModel"/>
-/// and <see cref="MissingReference"/> to <see cref="AmbiguousValue"/> are the
+/// and <see cref="MissingReference"/> to <see cref="InvalidSelector"/> are the
 /// errors every binding shares, each with a stable <see cref="IfcException.Code"/>.
 /// The rest describe misuse of the C boundary, which this binding does not
 /// commit; <see cref="Panic"/> is a bug in the library, worth reporting.
@@ -71,6 +71,8 @@ public enum IfcStatus
     TypeMismatch = 32,
     /// <summary>A plain value written by name fits several members of the attribute's SELECT; write it exactly instead (<c>ambiguous-value</c>).</summary>
     AmbiguousValue = 33,
+    /// <summary>A selector or value path does not follow the grammar, or names a class or attribute the declared release does not declare (<c>invalid-selector</c>); <see cref="IfcException.Span"/> is the byte range it refuses.</summary>
+    InvalidSelector = 34,
     /// <summary>A Rust panic was contained at the boundary.</summary>
     Panic = 255,
 }

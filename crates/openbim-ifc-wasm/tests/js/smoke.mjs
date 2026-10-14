@@ -1037,6 +1037,68 @@ test("purge by class, then by default", () => {
   throwsCode(() => cascade("cascade_ifc4.ifc").purge({ classes: ["IfcNoSuchThing"] }), "unsupported-schema");
 });
 
+// --- Selectors and values by path (#464) ------------------------------------
+
+const SELECTOR_RELEASES = ["selector_ifc2x3.ifc", "selector_ifc4.ifc", "selector_ifc4x3.ifc"];
+const selectorFixture = (name) => openFixture(path.join("synthetic-relations", name));
+
+test("selectors select the same ids in every release", () => {
+  assert.equal(IfcModel.selectorGrammarVersion(), "1.0");
+  for (const name of SELECTOR_RELEASES) {
+    const model = selectorFixture(name);
+    assert.deepEqual(model.select("IfcWall, type=WT-200 + IfcDoor"), [17n, 18n, 28n], name);
+    assert.deepEqual(model.select("Pset_WallCommon.IsExternal=TRUE"), [17n], name);
+    assert.deepEqual(model.select('location="Level 1"'), [19n, 38n, 40n], name);
+    assert.deepEqual(model.select("IfcWall", [17n, 28n]), [17n], name);
+  }
+  assert.equal(
+    IfcModel.canonicalSelector(' IfcWall ,container = "Level 1" '),
+    'IfcWall, location="Level 1"',
+  );
+});
+
+test("a selector that does not parse names its span", () => {
+  const model = selectorFixture("selector_ifc4.ifc");
+  assert.throws(
+    () => model.select("IfcWall, colour=red"),
+    (error) => error.code === "invalid-selector" && error.span[0] === 9 && error.span[1] === 15,
+  );
+  throwsCode(() => model.select("IfcWal"), "invalid-selector");
+  throwsCode(() => IfcModel.canonicalSelector(""), "invalid-selector");
+});
+
+test("values are read and written by path", () => {
+  for (const name of SELECTOR_RELEASES) {
+    const model = selectorFixture(name);
+    assert.deepEqual(model.getValue(17n, "type.Name"), { kind: "text", value: "WT-200" }, name);
+    assert.deepEqual(model.getValue(17n, "type"), { kind: "ref", id: 16n }, name);
+    assert.deepEqual(
+      model.getValue(16n, "occurrences.Name"),
+      { kind: "list", items: [{ kind: "text", value: "Wall A" }, { kind: "text", value: "Wall B" }] },
+      name,
+    );
+    const pset = model.getValue(17n, "Pset_WallCommon");
+    assert.equal(pset.kind, "properties", name);
+    assert.deepEqual(pset.entries[0], ["IsExternal", { kind: "bool", value: true }], name);
+
+    model.setValue(17n, "type.Name", "WT-300");
+    assert.deepEqual(model.getValue(18n, "type.Name"), { kind: "text", value: "WT-300" }, name);
+    model.setValue(19n, "Custom_Notes.Note", {
+      kind: "typed",
+      type: "IFCLABEL",
+      value: { kind: "text", value: "checked" },
+    });
+    model.setValue(19n, "Custom_Notes.Note", "rechecked");
+    assert.deepEqual(
+      model.getValue(19n, "Custom_Notes.Note"),
+      { kind: "text", value: "rechecked" },
+      name,
+    );
+    throwsCode(() => model.setValue(17n, "Name", 3), "type-mismatch");
+    throwsCode(() => model.setValue(17n, "count", 3), "invalid-value");
+  }
+});
+
 // --- Shape representations (#481) -------------------------------------------
 
 /** Ops 0..=3, a 1.2 x 0.1 x 1.0 extrusion (op 3), over the cascade model. */

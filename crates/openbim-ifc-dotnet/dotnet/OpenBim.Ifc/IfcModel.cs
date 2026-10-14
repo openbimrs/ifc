@@ -973,6 +973,89 @@ public sealed unsafe class IfcModel : IDisposable
         return id;
     }
 
+    /// <summary>The version of the selector grammar this binding parses (#464).</summary>
+    public const string SelectorGrammarVersion = "1.0";
+
+    /// <summary>The ids selector <paramref name="query"/> selects, ascending (#464).</summary>
+    /// <remarks>Class facets (subtypes included) add entities, <c>!</c> removes them; attribute,
+    /// property and <c>type=</c>, <c>material=</c>, <c>classification=</c>, <c>location=</c> and
+    /// <c>group=</c> facets filter; <c>,</c> chains facets and <c>+</c> unites lists, as in
+    /// <c>IfcWall, Pset_WallCommon.IsExternal=TRUE + IfcSlab</c>. Throws <c>invalid-selector</c>,
+    /// with <see cref="IfcException.Span"/>, for a query that does not parse or names a class or
+    /// attribute the file's release does not declare.</remarks>
+    public IReadOnlyList<ulong> Select(string query)
+    {
+        var text = Calls.Encode(query);
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return Ids(m, (buffer, capacity, required) =>
+        {
+            fixed (byte* q = text)
+            {
+                return NativeMethods.openbim_ifc_v0_1_model_select(m, q, (nuint)text.Length, buffer, capacity, required);
+            }
+        });
+    }
+
+    /// <summary>The ids selector <paramref name="query"/> selects from <paramref name="baseIds"/>
+    /// alone, ascending; <c>missing-entity</c> for an id the model lacks.</summary>
+    public IReadOnlyList<ulong> Select(string query, IEnumerable<ulong> baseIds)
+    {
+        var text = Calls.Encode(query);
+        var ids = (baseIds ?? throw new ArgumentNullException(nameof(baseIds))).ToArray();
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return Ids(m, (buffer, capacity, required) =>
+        {
+            fixed (byte* q = text)
+            fixed (ulong* b = ids)
+            {
+                return NativeMethods.openbim_ifc_v0_1_model_select_from(m, q, (nuint)text.Length, b, (nuint)ids.Length, buffer, capacity, required);
+            }
+        });
+    }
+
+    /// <summary>The value <paramref name="path"/> reads from entity <paramref name="id"/> (#464):
+    /// <c>type.Name</c>, <c>Pset_WallCommon.FireRating</c>, <c>materials.Name</c>,
+    /// <c>occurrences.count</c>.</summary>
+    /// <remarks>Several values are a <see cref="Value.List"/>; a property set is a
+    /// <see cref="Value.List"/> of two-item lists, each the member's name and its value.</remarks>
+    public Value GetValue(ulong id, string path)
+    {
+        var bytes = Calls.Encode(path);
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return Tape(m, (n, nc, nr, s, sc, sr) =>
+        {
+            fixed (byte* text = bytes)
+            {
+                return NativeMethods.openbim_ifc_v0_1_entity_get_value(m, id, text, (nuint)bytes.Length, n, nc, nr, s, sc, sr);
+            }
+        }).One();
+    }
+
+    /// <summary>Write <paramref name="value"/> at <paramref name="path"/> of entity
+    /// <paramref name="id"/> as one checked transaction (#464).</summary>
+    /// <remarks>An attribute (<c>Name</c>, <c>type.Name</c>) takes a plain value coerced as
+    /// <see cref="SetAttributeByNamePlain"/> coerces it; a property
+    /// (<c>Pset_WallCommon.FireRating</c>) a typed <see cref="Value"/>, or a plain one when the
+    /// property already states its type. A path that names no single value throws
+    /// <c>invalid-value</c>; a refused write changes nothing.</remarks>
+    public void SetValue(ulong id, string path, object? value)
+    {
+        var bytes = Calls.Encode(path);
+        var tape = TapeWriter.OfPlain(value);
+        var nodes = tape.Nodes;
+        var strings = tape.Strings;
+        using var lease = handle.Acquire();
+        fixed (byte* text = bytes)
+        fixed (ValueNode* n = nodes)
+        fixed (byte* s = strings)
+        {
+            Calls.Check(lease.Model, NativeMethods.openbim_ifc_v0_1_entity_set_value(lease.Model, id, text, (nuint)bytes.Length, n, (nuint)nodes.Length, s, (nuint)strings.Length));
+        }
+    }
+
     /// <summary>The upper-case type name of entity <paramref name="id"/>.</summary>
     public string TypeOf(ulong id)
     {

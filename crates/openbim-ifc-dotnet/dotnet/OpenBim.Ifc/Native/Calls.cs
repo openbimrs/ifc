@@ -166,9 +166,24 @@ internal static unsafe class Calls
             && String((buffer, capacity, required) => NativeMethods.openbim_ifc_v0_1_last_error_code(model, buffer, capacity, required), out var code) == IfcStatus.Ok
             && String((buffer, capacity, required) => NativeMethods.openbim_ifc_v0_1_last_error_message(model, buffer, capacity, required), out var message) == IfcStatus.Ok)
         {
-            return new IfcException(code, status, message);
+            return new IfcException(code, status, message, Span(model, status));
         }
         return Error(status, null);
+    }
+
+    /// <summary>The byte range an <c>invalid-selector</c> error refuses.</summary>
+    private static (int Start, int End)? Span(ulong model, IfcStatus status)
+    {
+        if (status != IfcStatus.InvalidSelector)
+        {
+            return null;
+        }
+        nuint start = 0, end = 0;
+        if (NativeMethods.openbim_ifc_v0_1_last_error_span(model, &start, &end) != IfcStatus.Ok)
+        {
+            return null;
+        }
+        return ((int)start, (int)end);
     }
 
     /// <summary>The exception for a failed call with no model to ask.</summary>

@@ -5,7 +5,7 @@
 //! input is an `invalid-value` [`BindingError`], never a panic or a guess.
 
 use openbim_ifc_binding_core::value::{Kind, Tagged, MAX_NESTING};
-use openbim_ifc_binding_core::{BindingError, Plain};
+use openbim_ifc_binding_core::{BindingError, Plain, Selected};
 use pyo3::prelude::*;
 use pyo3::types::{PyBool, PyDict, PyFloat, PyInt, PyList, PyString, PyTuple};
 
@@ -37,6 +37,35 @@ pub fn to_py<'py>(py: Python<'py>, value: &Tagged) -> PyResult<Bound<'py, PyDict
         }
     }
     Ok(dict)
+}
+
+/// A value read by path (#464) as a tagged dict: a scalar as [`to_py`]
+/// writes it, a list as `{"kind": "list", "items": [...]}`, a property
+/// set as `{"kind": "properties", "entries": [[name, value], ...]}`.
+pub fn selected_to_py<'py>(py: Python<'py>, value: &Selected) -> PyResult<Bound<'py, PyDict>> {
+    match value {
+        Selected::Value(tagged) => to_py(py, tagged),
+        Selected::List(items) => {
+            let dict = PyDict::new(py);
+            dict.set_item("kind", "list")?;
+            let list = PyList::empty(py);
+            for item in items {
+                list.append(selected_to_py(py, item)?)?;
+            }
+            dict.set_item("items", list)?;
+            Ok(dict)
+        }
+        Selected::Properties(members) => {
+            let dict = PyDict::new(py);
+            dict.set_item("kind", "properties")?;
+            let entries = PyList::empty(py);
+            for (name, member) in members {
+                entries.append((name, selected_to_py(py, member)?))?;
+            }
+            dict.set_item("entries", entries)?;
+            Ok(dict)
+        }
+    }
 }
 
 /// Decode a dict, rejecting anything outside the encoding.

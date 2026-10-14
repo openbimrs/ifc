@@ -69,6 +69,10 @@ pub(crate) enum CliError {
     BudgetExceeded(String),
     /// Writing the output format refused the model.
     Write(String),
+    /// A selector or value path does not follow the grammar, or names a
+    /// class or attribute the declared release does not declare; the
+    /// detail names the byte span it refuses.
+    InvalidSelector(String),
 }
 
 impl CliError {
@@ -91,6 +95,7 @@ impl CliError {
             Self::InvalidModel(_) => "invalid-model",
             Self::BudgetExceeded(_) => "budget-exceeded",
             Self::Write(_) => "write",
+            Self::InvalidSelector(_) => "invalid-selector",
         }
     }
 
@@ -118,7 +123,8 @@ impl fmt::Display for CliError {
             | Self::MissingReference(detail)
             | Self::InvalidModel(detail)
             | Self::BudgetExceeded(detail)
-            | Self::Write(detail) => f.write_str(detail),
+            | Self::Write(detail)
+            | Self::InvalidSelector(detail) => f.write_str(detail),
         }
     }
 }

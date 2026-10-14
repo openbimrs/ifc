@@ -476,6 +476,22 @@ reproducible version-8 one. The
 [cookbook](/cookbook/python#find-entities-by-globalid-types-and-openings)
 has a recipe.
 
+## Selectors and values by path
+
+`model.select(query, base=None)` returns the entities a
+[selector](/guide/selectors) selects (`select_ids` their ids), in ascending
+id order: `"IfcWall, Pset_WallCommon.IsExternal=TRUE + IfcSlab"`.
+`model.get_value(entity, path)` reads a value by path (`type.Name`,
+`Pset_WallCommon.FireRating`, `materials.Name`) as plain Python values, a
+property set as a read-only mapping; `model.set_value(entity, path, value)`
+writes one as a single checked transaction.
+`openbim_ifc.canonical_selector(query)` prints a selector in canonical form
+and `openbim_ifc.SELECTOR_GRAMMAR_VERSION` names the grammar. A selector
+that does not parse raises `IfcError` with `code` `invalid-selector` and
+`span`. The
+[cookbook](/cookbook/python#select-entities-and-read-values-by-path) has a
+recipe.
+
 ## Geometry
 
 Geometry crosses at three levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)):
@@ -857,6 +873,10 @@ class, record and function of the package with its docstring and types.
 | `model.ids() -> List[int]` | Every entity id, in file order. |
 | `model.ids_of_type(type_name: str) -> List[int]` | Ids of every entity of exactly `type_name` (case-insensitive). |
 | `model.ids_of_type_including_subtypes(type_name: str) -> List[int]` | Ids of `type_name` or any subtype, per the file's schema. |
+| `model.select_ids(query: str, base: Optional[Iterable[Union[int, Entity]]] = None) -> List[int]` | The ids selector `query` selects, ascending (#464). |
+| `model.select(query: str, base: Optional[Iterable[Union[int, Entity]]] = None) -> List[Entity]` | :meth:`select_ids` as :class:`Entity` views. |
+| `model.get_value(entity: Union[int, Entity], path: str) -> SelectedValue` | The value `path` reads from `entity` (#464): `"Name"`, `"type.Name"`, `"Pset_WallCommon.FireRating"`, `"materials.Name"`, `"storey.Name"`, `"occurrences.count"`. |
+| `model.set_value(entity: Union[int, Entity], path: str, value: Assignable) -> None` | Write `value` at `path` of `entity` (#464), as one checked transaction: an attribute (`"Name"`, `"type.Name"`) coerced as :meth:`set_attribute_by_name_plain` coerces it, or a property (`"Pset_WallCommon.FireRating"`) from a typed value, or a plain one when the property already states its type. A refused write changes nothing; a path naming no single value raises `invalid-value`. |
 | `model.id_by_guid(global_id: str) -> Optional[int]` | The id of the entity whose `GlobalId` is `global_id`, or `None`. The first lookup indexes every `GlobalId` once; later ones reuse it until the model changes. Raises `invalid-value` for text that is not a `GlobalId` and `invalid-model` when several entities carry it. :meth:`by_guid` returns the :class:`Entity`. |
 | `model.duplicate_global_ids() -> List[DuplicateGlobalId]` | Every `GlobalId` several entities carry, with its holders; empty for a conformant file. |
 | `model.type_object(id: int) -> Optional[int]` | The type object of occurrence `id` (`IfcRelDefinesByType`), or `None`. Raises `wrong-entity-type` for a non-`IfcObject` and `invalid-model` when the file states two types. |
