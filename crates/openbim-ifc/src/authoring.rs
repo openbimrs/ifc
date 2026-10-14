@@ -1,7 +1,9 @@
 //! Checked authoring batches (#330): create entities by type and named
 //! attributes, the spatial-structure, product, type and placement builders,
 //! removal together with relationships, the removal of a product with
-//! what it solely owns and the purge of what nothing uses (#478), and
+//! what it solely owns and the purge of what nothing uses (#478), the
+//! propagation of a type's representations, material usage and
+//! predefined type to the objects it is assigned to (#480), and
 //! assembling, assigning, unassigning, copying and removing shape
 //! representations (#481), applied as one transaction.
 //!
@@ -78,6 +80,7 @@ mod overlay;
 mod owner;
 mod place;
 mod plan;
+mod propagate;
 mod purge;
 mod rebase;
 mod relate;
@@ -91,7 +94,10 @@ use ifc_model::{EntityId, Model, Transaction, Value};
 use ifc_schema::Schema;
 
 pub use error::{AuthoringError, AuthoringFailure};
-pub use op::{AuthorOp, NamedValues, OwnerHistoryOp, PurgeOptions, RemoveProductOptions};
+pub use op::{
+    AssignTypeOptions, AuthorOp, LayerAxis, NamedValues, OwnerHistoryOp, PredefinedTypeMode,
+    PurgeOptions, RelateOptions, RemoveProductOptions,
+};
 pub use report::{KeepReason, KeptEntity, RemovalReport, RemovedEntity};
 pub use seed::fresh_seed;
 

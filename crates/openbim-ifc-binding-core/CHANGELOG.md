@@ -26,6 +26,22 @@ a release here does not imply a release of any other crate in the family.
 Semver: additive (internal crate, not published); a minor change of every
 binding.
 
+### Added (#480, type propagation on assignment)
+
+- The `assign_type` operation takes `map_representations`,
+  `mapping_target`, `material_usage`, `layer_set_direction` (`AXIS1` to
+  `AXIS3`), `predefined_type` (`ignore`, `validate`, `sync`) and
+  `replace`; `contain` and `aggregate` take `replace`. A new field kind,
+  `FieldKind::Bool`, carried as a `BOOL` on the tape. An unknown mode or
+  direction is `invalid-value`.
+- The new refusals map to the shared codes: `RepresentationConflict` and
+  `PredefinedTypeConflict` to `invalid-model`,
+  `UnsupportedRepresentationMap` and `MaterialUsageUndetermined` to
+  `unsupported`.
+
+Semver: additive (a new variant of the `#[non_exhaustive]` `FieldKind`,
+new optional fields), a minor release while 0.x.
+
 ### Added (#478, cascading delete and purge)
 
 - `IfcModel::remove_product(id, RemoveProductOptions)` and

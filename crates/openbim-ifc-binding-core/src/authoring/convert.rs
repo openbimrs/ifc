@@ -1,7 +1,10 @@
 //! The tape's fields into the facade's operation, and the facade's
 //! refusals into the shared codes.
 
-use ifc::{AuthorOp, AuthoringError, AuthoringFailure as F, EntityId, OwnerHistoryOp};
+use ifc::{
+    AssignTypeOptions, AuthorOp, AuthoringError, AuthoringFailure as F, EntityId, LayerAxis,
+    OwnerHistoryOp, PredefinedTypeMode, RelateOptions,
+};
 
 use super::ops::{invalid, Arg, Fields};
 use crate::BindingError;
@@ -139,21 +142,33 @@ fn structural(name: &str, mut fields: Fields) -> Result<AuthorOp, BindingError> 
             attributes,
             owner_history,
         },
-        "assign_type" => AuthorOp::AssignType {
-            type_object: required("type_object")?,
-            objects: ids(&mut fields, "objects"),
-            owner_history,
-        },
-        "contain" => AuthorOp::Contain {
-            structure: required("structure")?,
-            elements: ids(&mut fields, "elements"),
-            owner_history,
-        },
-        "aggregate" => AuthorOp::Aggregate {
-            parent: required("parent")?,
-            parts: ids(&mut fields, "parts"),
-            owner_history,
-        },
+        "assign_type" => {
+            let type_object = required("type_object")?;
+            AuthorOp::AssignType {
+                type_object,
+                objects: ids(&mut fields, "objects"),
+                owner_history,
+                options: assign_type_options(&mut fields)?,
+            }
+        }
+        "contain" => {
+            let structure = required("structure")?;
+            AuthorOp::Contain {
+                structure,
+                elements: ids(&mut fields, "elements"),
+                owner_history,
+                options: RelateOptions::new().replace(flag(&mut fields, "replace")),
+            }
+        }
+        "aggregate" => {
+            let parent = required("parent")?;
+            AuthorOp::Aggregate {
+                parent,
+                parts: ids(&mut fields, "parts"),
+                owner_history,
+                options: RelateOptions::new().replace(flag(&mut fields, "replace")),
+            }
+        }
         "assign_representation" => AuthorOp::AssignRepresentation {
             representation: required("representation")?,
             to: required("to")?,
@@ -170,6 +185,44 @@ fn structural(name: &str, mut fields: Fields) -> Result<AuthorOp, BindingError> 
         },
         other => return Err(invalid(format!("no operation `{other}`"))),
     })
+}
+
+/// The propagation options of `assign_type` (#480).
+fn assign_type_options(fields: &mut Fields) -> Result<AssignTypeOptions, BindingError> {
+    let text = |fields: &mut Fields, key: &str| match fields.take(key) {
+        Some(Arg::Text(text)) => Some(text),
+        _ => None,
+    };
+    let direction = text(fields, "layer_set_direction")
+        .map(|name| {
+            LayerAxis::parse(&name).ok_or_else(|| {
+                invalid(format!(
+                    "`assign_type.layer_set_direction` `{name}` is not AXIS1, AXIS2 or AXIS3"
+                ))
+            })
+        })
+        .transpose()?;
+    let mode = text(fields, "predefined_type")
+        .map(|name| {
+            PredefinedTypeMode::parse(&name).ok_or_else(|| {
+                invalid(format!(
+                    "`assign_type.predefined_type` `{name}` is not ignore, validate or sync"
+                ))
+            })
+        })
+        .transpose()?
+        .unwrap_or_default();
+    Ok(AssignTypeOptions::new()
+        .map_representations(flag(fields, "map_representations"))
+        .mapping_target(id(fields, "mapping_target"))
+        .material_usage(flag(fields, "material_usage"))
+        .layer_set_direction(direction)
+        .predefined_type(mode)
+        .replace(flag(fields, "replace")))
+}
+
+fn flag(fields: &mut Fields, key: &str) -> bool {
+    matches!(fields.take(key), Some(Arg::Bool(true)))
 }
 
 fn id(fields: &mut Fields, key: &str) -> Option<EntityId> {
@@ -209,10 +262,13 @@ pub(super) fn error(error: AuthoringError) -> BindingError {
         F::StillReferenced { .. }
         | F::PlacementHasDependents { .. }
         | F::TypeHasOccurrences { .. } => BindingError::StillReferenced(detail),
-        F::UnsupportedRebase { .. } | F::UndecidableRepresentationType { .. } => {
-            BindingError::Unsupported(detail)
-        }
+        F::UnsupportedRebase { .. }
+        | F::UnsupportedRepresentationMap { .. }
+        | F::MaterialUsageUndetermined { .. }
+        | F::UndecidableRepresentationType { .. } => BindingError::Unsupported(detail),
         F::AlreadyRelated { .. }
+        | F::RepresentationConflict { .. }
+        | F::PredefinedTypeConflict { .. }
         | F::Conflict(_)
         | F::SharedProductShape { .. }
         | F::NotAssigned { .. } => BindingError::InvalidModel(detail),

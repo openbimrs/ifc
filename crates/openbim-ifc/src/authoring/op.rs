@@ -138,19 +138,29 @@ pub enum AuthorOp {
         /// `OwnerHistory`, which IFC2X3 requires.
         owner_history: Option<EntityId>,
     },
-    /// Type `objects` by `type_object` with one `IfcRelDefinesByType`; an
-    /// object already typed is refused. Produces the relationship.
+    /// Type `objects` by `type_object` with one `IfcRelDefinesByType`;
+    /// an object already typed is refused unless
+    /// [`AssignTypeOptions::replace`]. With [`AssignTypeOptions`], the
+    /// type is also propagated to each object (#480): its
+    /// `RepresentationMaps` mapped onto the object as `IfcMappedItem`
+    /// representations, a material set usage derived from its material
+    /// set, and `PredefinedType` synchronised or validated. Produces the
+    /// relationship.
     AssignType {
         /// The `IfcTypeObject`.
         type_object: EntityId,
         /// The objects it types; at least one.
         objects: Vec<EntityId>,
-        /// `OwnerHistory` of the relationship.
+        /// `OwnerHistory` of the relationship and of every relationship
+        /// the propagation creates.
         owner_history: Option<EntityId>,
+        /// What to propagate, and whether to replace a previous type.
+        options: AssignTypeOptions,
     },
     /// Contain `elements` in `structure` with one
     /// `IfcRelContainedInSpatialStructure`; an element already contained
-    /// is refused. Produces the relationship.
+    /// is refused unless [`RelateOptions::replace`]. Produces the
+    /// relationship.
     Contain {
         /// The spatial structure element.
         structure: EntityId,
@@ -158,9 +168,12 @@ pub enum AuthorOp {
         elements: Vec<EntityId>,
         /// `OwnerHistory` of the relationship.
         owner_history: Option<EntityId>,
+        /// Whether to move an element out of its previous container.
+        options: RelateOptions,
     },
     /// Decompose `parent` into `parts` with one `IfcRelAggregates`; a part
-    /// already aggregated is refused. Produces the relationship.
+    /// already aggregated is refused unless [`RelateOptions::replace`].
+    /// Produces the relationship.
     Aggregate {
         /// The whole.
         parent: EntityId,
@@ -168,6 +181,8 @@ pub enum AuthorOp {
         parts: Vec<EntityId>,
         /// `OwnerHistory` of the relationship.
         owner_history: Option<EntityId>,
+        /// Whether to move a part out of its previous whole.
+        options: RelateOptions,
     },
     /// Create an `IfcLocalPlacement` with its `IfcAxis2Placement3D`,
     /// `IfcCartesianPoint` and, when given, `IfcDirection`s. Produces the
@@ -314,6 +329,230 @@ pub enum AuthorOp {
         /// The `IfcShapeModel` to remove.
         representation: EntityId,
     },
+}
+
+/// How [`AuthorOp::Contain`] and [`AuthorOp::Aggregate`] treat an object
+/// that already has the one relationship of their kind the schema allows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
+pub struct RelateOptions {
+    /// Take each object out of the relationship it already has (removing
+    /// that relationship when it is left relating nothing) instead of
+    /// refusing with [`AlreadyRelated`](super::AuthoringFailure::AlreadyRelated).
+    pub replace: bool,
+}
+
+impl RelateOptions {
+    /// Refuse an object that is already related: the default.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { replace: false }
+    }
+
+    /// With [`Self::replace`] set to `replace`.
+    #[must_use]
+    pub const fn replace(mut self, replace: bool) -> Self {
+        self.replace = replace;
+        self
+    }
+}
+
+/// What [`AuthorOp::AssignType`] propagates from the type to each object
+/// (#480). Every option is off by default: the operation then only writes
+/// the `IfcRelDefinesByType`, and refuses an object that is already typed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
+pub struct AssignTypeOptions {
+    /// Map each of the type's `RepresentationMaps` onto the object: one
+    /// `IfcShapeRepresentation` per map, in the map's representation
+    /// context, with its `RepresentationIdentifier`, the
+    /// `RepresentationType` `MappedRepresentation` and one
+    /// `IfcMappedItem` whose `MappingTarget` is [`Self::mapping_target`]
+    /// or a fresh identity operator. The representations go into the
+    /// object's `IfcProductDefinitionShape`, created when it has none.
+    /// Refused with [`RepresentationConflict`] when the object already
+    /// has a representation with the same identifier (or, unnamed, in the
+    /// same context), and with [`UnsupportedRepresentationMap`] for a map
+    /// whose representation is not an `IfcShapeRepresentation`.
+    ///
+    /// [`RepresentationConflict`]: super::AuthoringFailure::RepresentationConflict
+    /// [`UnsupportedRepresentationMap`]: super::AuthoringFailure::UnsupportedRepresentationMap
+    pub map_representations: bool,
+    /// The `IfcCartesianTransformationOperator` every mapped item uses;
+    /// `None` creates one per object at the origin of its placement with
+    /// no axes or scale (the identity), 3D or 2D as the map's
+    /// `MappingOrigin` is.
+    pub mapping_target: Option<EntityId>,
+    /// Derive the object's material usage from the type's material set:
+    /// an `IfcMaterialLayerSetUsage` for an `IfcMaterialLayerSet`
+    /// (`LayerSetDirection` from [`Self::layer_set_direction`] or the
+    /// object's class, `DirectionSense` `POSITIVE`,
+    /// `OffsetFromReferenceLine` 0), an `IfcMaterialProfileSetUsage` for
+    /// an `IfcMaterialProfileSet` (no `CardinalPoint`), each in its own
+    /// `IfcRelAssociatesMaterial`. Any other material (a single material,
+    /// a list, a constituent set) applies through the type and is not
+    /// copied. Refused with [`MaterialUsageUndetermined`] where the
+    /// defaults cannot be determined, and with [`AlreadyRelated`] for an
+    /// object that already has a material.
+    ///
+    /// [`MaterialUsageUndetermined`]: super::AuthoringFailure::MaterialUsageUndetermined
+    /// [`AlreadyRelated`]: super::AuthoringFailure::AlreadyRelated
+    pub material_usage: bool,
+    /// The `LayerSetDirection` of a derived layer set usage; `None` takes
+    /// the one the IFC documentation fixes for the object's class
+    /// (`AXIS2` for `IfcWall`, `AXIS3` for `IfcSlab` and `IfcPlate`,
+    /// subtypes included) and refuses any other class.
+    pub layer_set_direction: Option<LayerAxis>,
+    /// How the object's `PredefinedType` is reconciled with the type's.
+    pub predefined_type: PredefinedTypeMode,
+    /// Unassign each object's previous type instead of refusing: the
+    /// object leaves its `IfcRelDefinesByType` (removed when it is left
+    /// relating nothing), and the representations mapped from the
+    /// previous type's maps and the set usage derived from its material
+    /// set are removed from the object, with what only they used.
+    pub replace: bool,
+}
+
+impl AssignTypeOptions {
+    /// Only the relationship, refusing an object already typed: the
+    /// default.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            map_representations: false,
+            mapping_target: None,
+            material_usage: false,
+            layer_set_direction: None,
+            predefined_type: PredefinedTypeMode::Ignore,
+            replace: false,
+        }
+    }
+
+    /// Everything the type carries: representations mapped, material
+    /// usage derived, `PredefinedType` synchronised.
+    #[must_use]
+    pub const fn propagate() -> Self {
+        Self::new()
+            .map_representations(true)
+            .material_usage(true)
+            .predefined_type(PredefinedTypeMode::Sync)
+    }
+
+    /// With [`Self::map_representations`] set.
+    #[must_use]
+    pub const fn map_representations(mut self, map: bool) -> Self {
+        self.map_representations = map;
+        self
+    }
+
+    /// With [`Self::mapping_target`] set.
+    #[must_use]
+    pub const fn mapping_target(mut self, target: Option<EntityId>) -> Self {
+        self.mapping_target = target;
+        self
+    }
+
+    /// With [`Self::material_usage`] set.
+    #[must_use]
+    pub const fn material_usage(mut self, derive: bool) -> Self {
+        self.material_usage = derive;
+        self
+    }
+
+    /// With [`Self::layer_set_direction`] set.
+    #[must_use]
+    pub const fn layer_set_direction(mut self, direction: Option<LayerAxis>) -> Self {
+        self.layer_set_direction = direction;
+        self
+    }
+
+    /// With [`Self::predefined_type`] set.
+    #[must_use]
+    pub const fn predefined_type(mut self, mode: PredefinedTypeMode) -> Self {
+        self.predefined_type = mode;
+        self
+    }
+
+    /// With [`Self::replace`] set.
+    #[must_use]
+    pub const fn replace(mut self, replace: bool) -> Self {
+        self.replace = replace;
+        self
+    }
+}
+
+/// `IfcLayerSetDirectionEnum`: the axis of the element's placement the
+/// layers of a set usage are stacked along.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum LayerAxis {
+    /// `AXIS1`.
+    Axis1,
+    /// `AXIS2`: walls.
+    Axis2,
+    /// `AXIS3`: slabs and plates.
+    Axis3,
+}
+
+impl LayerAxis {
+    /// The enumeration constant, `AXIS1` to `AXIS3`.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Axis1 => "AXIS1",
+            Self::Axis2 => "AXIS2",
+            Self::Axis3 => "AXIS3",
+        }
+    }
+
+    /// The constant named `name`, any case.
+    #[must_use]
+    pub fn parse(name: &str) -> Option<Self> {
+        [Self::Axis1, Self::Axis2, Self::Axis3]
+            .into_iter()
+            .find(|axis| axis.as_str().eq_ignore_ascii_case(name.trim_matches('.')))
+    }
+}
+
+/// How [`AuthorOp::AssignType`] reconciles an object's `PredefinedType`
+/// with its type's. The IFC documentation (IFC4 ADD2 TC1 `IfcWall`,
+/// `IfcDoor`, ...) states that an occurrence's `PredefinedType` "shall
+/// only be used, if no type is assigned, providing its own
+/// `PredefinedType`". A type provides one when its `PredefinedType` is set
+/// and not `NOTDEFINED`; a `USERDEFINED` type names it in `ElementType`
+/// (`ProcessType`, `ResourceType`), an object in `ObjectType`. Nothing is
+/// done where the object or the type has no `PredefinedType` attribute in
+/// the declared release (IFC2X3 `IfcWall`, `IfcDoorStyle`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
+pub enum PredefinedTypeMode {
+    /// Leave the object's `PredefinedType` as it is: the default.
+    #[default]
+    Ignore,
+    /// Refuse with [`PredefinedTypeConflict`] an object whose own
+    /// `PredefinedType` is set, not `NOTDEFINED`, and differs from the
+    /// one the type provides (both `USERDEFINED`: when `ObjectType` and
+    /// the type's `ElementType` differ). An equal value is accepted.
+    ///
+    /// [`PredefinedTypeConflict`]: super::AuthoringFailure::PredefinedTypeConflict
+    Validate,
+    /// Where the type provides a `PredefinedType`, unset the object's
+    /// (and its `ObjectType` when that held its `USERDEFINED` name), so
+    /// the type's applies; otherwise leave the object's.
+    Sync,
+}
+
+impl PredefinedTypeMode {
+    /// The mode named `name` (`ignore`, `validate`, `sync`), any case.
+    #[must_use]
+    pub fn parse(name: &str) -> Option<Self> {
+        match name.to_ascii_lowercase().as_str() {
+            "ignore" => Some(Self::Ignore),
+            "validate" => Some(Self::Validate),
+            "sync" => Some(Self::Sync),
+            _ => None,
+        }
+    }
 }
 
 /// How [`AuthorOp::RemoveProduct`] treats what would otherwise refuse it.
@@ -491,16 +730,24 @@ impl AuthorOp {
                 type_object: one,
                 objects: many,
                 owner_history,
+                options,
+            } => {
+                ids.push(one);
+                ids.extend(many.iter_mut());
+                ids.extend(owner_history.as_mut());
+                ids.extend(options.mapping_target.as_mut());
             }
-            | Self::Contain {
+            Self::Contain {
                 structure: one,
                 elements: many,
                 owner_history,
+                ..
             }
             | Self::Aggregate {
                 parent: one,
                 parts: many,
                 owner_history,
+                ..
             } => {
                 ids.push(one);
                 ids.extend(many.iter_mut());

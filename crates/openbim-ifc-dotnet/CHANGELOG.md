@@ -18,8 +18,22 @@ a release here does not imply a release of any other crate in the family.
   `AuthorOp.RemoveRepresentation(representation)` for `IfcModel.Author`.
 - `IfcModel.RemoveRepresentation(id, dryRun)`, returning a
   `RemovalReport`.
+- Requires the C ABI 0.1.14 (`openbim-ifc-capi` with #481).
 
 Semver: additive, a minor release while 0.x.
+
+### Added (#480, type propagation on assignment)
+
+- `AuthorOp.AssignType(typeObject, objects, ownerHistory,
+  mapRepresentations, mappingTarget, materialUsage, layerSetDirection,
+  predefinedType, replace)` with the enums `PredefinedTypeMode` and
+  `LayerAxis`, and a `replace` parameter on `AuthorOp.Contain` and
+  `AuthorOp.Aggregate`. Every new parameter is optional and off by
+  default.
+- Requires the C ABI 0.1.13 (`openbim-ifc-capi` with #480).
+
+Semver: additive (new optional parameters; source-compatible), a minor
+release while 0.x.
 
 ## [0.6.0] - 2026-10-13
 

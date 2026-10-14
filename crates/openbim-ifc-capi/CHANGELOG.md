@@ -19,9 +19,24 @@ a release here does not imply a release of any other crate in the family.
   `OPENBIM_IFC_REMOVE_DRY_RUN` is its one flag, another is
   `InvalidArgument`. A size query or a short buffer plans the removal and
   answers `BufferTooSmall` without applying it. The header is regenerated.
+- ABI version 0.1.14 (on top of #480's 0.1.13); every export above is new,
+  no `v0_1` symbol changed.
 
 Semver: additive, released on the 0.1 line: the `v0_1` ABI only gains a
 symbol, and the C package keeps 0.1.x.
+
+### Added (#480, type propagation on assignment)
+
+- `openbim_ifc_v0_1_model_author` reads `BOOL` fields: `ASSIGN_TYPE`
+  takes `map_representations`, `material_usage`, `replace`, the id
+  `mapping_target` and the texts `layer_set_direction` and
+  `predefined_type`; `CONTAIN` and `AGGREGATE` take `replace`. The new
+  refusals are `InvalidModel` and `Unsupported`. The header is
+  regenerated; only its documentation changed.
+- ABI version 0.1.13 (on top of #478's 0.1.12); no `v0_1` symbol changed.
+
+Semver: additive, released on the 0.1 line (the `v0_1` ABI is unchanged:
+a tape without the new fields means what it meant).
 
 ## [0.1.11] - 2026-10-13
 

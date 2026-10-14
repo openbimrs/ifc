@@ -654,7 +654,7 @@ from nothing needs a header naming its release first (`set_header`).
 | `spatial` | a spatial element of `type` and its `Ifc_rel_aggregates` under `parent` |
 | `product` | a product, its `Ifc_rel_contained_in_spatial_structure` in `container` and its `Ifc_rel_defines_by_type` by `type_object` |
 | `type_object` | a type object (`Ifc_wall_type`, ...) |
-| `assign_type`, `contain`, `aggregate` | one relationship; an object already related is refused |
+| `assign_type`, `contain`, `aggregate` | one relationship; an object already related is refused unless `replace` (see [Assigning types](#assigning-types)) |
 | `placement` | an `Ifc_local_placement` over an `Ifc_axis2Placement3D` at `location`, relative to `relative_to`; `axis` and `ref_direction` both or neither |
 | `owner_history` | an `Ifc_owner_history` with its person, organization and application |
 | `shape_representation` | an `IfcShapeRepresentation` of `items` in `context`, its type checked or inferred ([below](#shape-representations)) |
@@ -678,6 +678,63 @@ is never invented: a builder writes the one it is given on every record it
 creates, and IFC2X3, which requires it, refuses a record without
 (`missing-attribute`). The ids the batch returns are the ones `model[id]`
 wraps as an `Entity`.
+
+## Assigning types
+
+The type assignment propagates the type to each object when asked (#480);
+every option is off by default, and the operation then writes only the
+`IfcRelDefinesByType`.
+
+| Option | What it does |
+| --- | --- |
+| `map_representations=True` | maps each of the type's `RepresentationMaps` onto the object: an `IfcShapeRepresentation` in the map's context with its `RepresentationIdentifier`, `RepresentationType` `MappedRepresentation` and one `IfcMappedItem`, added to the object's `IfcProductDefinitionShape` (created when it has none) |
+| `mapping_target` | the `IfcCartesianTransformationOperator` every mapped item uses; by default a fresh identity operator (3D, or 2D for a 2D `MappingOrigin`) per object, so the geometry sits at the object's placement |
+| `material_usage=True` | derives the object's material usage from the type's set: an `IfcMaterialLayerSetUsage` (`DirectionSense` `POSITIVE`, `OffsetFromReferenceLine` 0) for a layer set, an `IfcMaterialProfileSetUsage` (no `CardinalPoint`) for a profile set, one per object in its own `IfcRelAssociatesMaterial`; any other material applies through the type |
+| `layer_set_direction` | the layer direction, `"AXIS1"` to `"AXIS3"`; by default the one the IFC documentation fixes for the class: `AXIS2` for `IfcWall`, `AXIS3` for `IfcSlab` and `IfcPlate` |
+| `predefined_type` | "ignore" (default) leaves `PredefinedType`; "validate" refuses an object whose own value is set, not `NOTDEFINED`, and differs from the one the type provides (for `USERDEFINED`, `ObjectType` against the type's `ElementType`); "sync" unsets the object's (and its `USERDEFINED` `ObjectType`) where the type provides one, as IFC asks |
+| `replace=True` | unassigns the previous type instead of refusing: the object leaves its `IfcRelDefinesByType` (removed when left relating nothing), and the representations mapped from the previous type's maps and the usage derived from its set are removed with what only they use |
+
+A type provides a `PredefinedType` when its own is set and not `NOTDEFINED`;
+nothing is synchronised where the object or the type has no such attribute
+in the declared release (IFC2X3 `IfcWall`, `IfcDoorStyle`). The containment
+and aggregation take `replace` too: the object leaves its previous container
+or whole, whose relationship goes when it is left relating nothing.
+
+Refused, with the model unchanged: a representation that clashes with one
+the object has (same identifier, or unnamed in the same context) or a
+product definition shape another product shares, a contradicting
+`PredefinedType`, and an object that already has a material
+(`invalid-model`); a map whose representation is not an
+`IfcShapeRepresentation`, a type with several material associations or a
+usage instead of a set, and a layer set usage for a class with no documented
+direction when none is given (`unsupported`).
+
+<!-- SNIPPET:cookbook-py-assign-type -->
+
+```python
+from openbim_ifc import AuthorOp, Text, handle
+
+# Door 1 (#100) typed again by D-90 (#111) with replace: what the
+# old assignment mapped is taken back, the type's representation
+# map is mapped afresh, and PredefinedType is left to the type.
+model.author([
+    AuthorOp.assign_type(
+        111, [100], map_representations=True, predefined_type="sync", replace=True
+    )
+])
+# A new door, typed the same way in the batch that creates it.
+result = model.author([
+    AuthorOp.product("IfcDoor", {"Name": Text("Door 2")}, container=14),
+    AuthorOp.assign_type(111, [handle(0)], map_representations=True),
+])
+body = model[result.ids[0]].Representation.Representations[0]
+print(body.RepresentationType)  # 'MappedRepresentation'
+# Wall B (#40) moves into the building (#13); without replace the
+# second containment is refused with invalid-model.
+model.author([AuthorOp.contain(13, [40], replace=True)])
+```
+
+<!-- /SNIPPET -->
 
 ## Shape representations
 

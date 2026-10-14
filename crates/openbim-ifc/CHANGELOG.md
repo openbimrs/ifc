@@ -53,6 +53,49 @@ everything released before per-crate changelogs began.
 Semver: additive (`AuthorOp` and `AuthoringFailure` are
 `#[non_exhaustive]`): minor.
 
+### Added (#480, type propagation on assignment)
+
+- `AuthorOp::AssignType` takes `options: AssignTypeOptions`. With
+  `map_representations`, each of the type's `RepresentationMaps` is mapped
+  onto every object as an `IfcShapeRepresentation` (the map's context and
+  `RepresentationIdentifier`, `RepresentationType` `MappedRepresentation`)
+  holding one `IfcMappedItem`, whose `MappingTarget` is `mapping_target`
+  or a fresh identity `IfcCartesianTransformationOperator3D` (`2D` for a
+  2D `MappingOrigin`); the representations join the object's
+  `IfcProductDefinitionShape`, created when it has none. With
+  `material_usage`, an `IfcMaterialLayerSetUsage` (`LayerSetDirection`
+  from `layer_set_direction` or the class: `AXIS2` for `IfcWall`, `AXIS3`
+  for `IfcSlab` and `IfcPlate`, as the IFC4 ADD2 TC1 documentation fixes
+  them; `POSITIVE`; offset 0) or an `IfcMaterialProfileSetUsage` (no
+  `CardinalPoint`) is derived from the type's set, one per object in its
+  own `IfcRelAssociatesMaterial`; any other material applies through the
+  type. `predefined_type: PredefinedTypeMode` is `Ignore` (default),
+  `Validate` (refuse an object whose own `PredefinedType` is set, not
+  `NOTDEFINED` and differs from the one the type provides; `USERDEFINED`
+  compares `ObjectType` with the type's `ElementType`) or `Sync` (unset
+  the object's, and its `USERDEFINED` `ObjectType`, where the type
+  provides one). `replace` unassigns each object's previous type: it
+  leaves its `IfcRelDefinesByType` (removed when emptied), and the
+  representations mapped from the previous type's maps and the usage
+  derived from its set are removed with what only they use, by the #478
+  cascade's ownership rules. `AssignTypeOptions::propagate()` sets the
+  three propagations.
+- `AuthorOp::Contain` and `AuthorOp::Aggregate` take
+  `options: RelateOptions` with `replace`, which moves an object out of
+  its previous container or whole instead of refusing it.
+- `AssignTypeOptions`, `RelateOptions`, `PredefinedTypeMode`, `LayerAxis`.
+- `AuthoringFailure::RepresentationConflict`,
+  `UnsupportedRepresentationMap`, `MaterialUsageUndetermined` and
+  `PredefinedTypeConflict`; a material on an object that already has one
+  is `AlreadyRelated` with `IFCRELASSOCIATESMATERIAL`.
+
+Refusing a second type, container or parent stays the default, and every
+option is off by default: a batch that sets none writes what it wrote
+before. Semver: minor while 0.x. The three operations gain a field, so a
+struct literal of them needs `options` (`AssignTypeOptions::new()`,
+`RelateOptions::new()`); new variants of `#[non_exhaustive]` enums and new
+`#[non_exhaustive]` types are additive.
+
 ## [0.32.0] - 2026-10-13
 
 ### Added (#478, cascading delete and purge)

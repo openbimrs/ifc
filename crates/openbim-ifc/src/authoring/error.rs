@@ -138,6 +138,49 @@ pub enum AuthoringFailure {
         /// What it is instead.
         detail: String,
     },
+    /// Mapping a type's representations would clash with one the object
+    /// already has: the same `RepresentationIdentifier` (or, both unnamed,
+    /// the same context), or a product definition shape another product
+    /// shares (#480).
+    RepresentationConflict {
+        /// The object.
+        object: EntityId,
+        /// The representation, or shared product definition shape, in the
+        /// way.
+        existing: EntityId,
+        /// What clashes.
+        detail: String,
+    },
+    /// A type's `IfcRepresentationMap` cannot be mapped onto an object:
+    /// its `MappedRepresentation` is not an `IfcShapeRepresentation`, or
+    /// its `MappingOrigin` is neither an `IfcAxis2Placement3D` nor an
+    /// `IfcAxis2Placement2D` (#480).
+    UnsupportedRepresentationMap {
+        /// The representation map.
+        map: EntityId,
+        /// What it holds instead.
+        detail: String,
+    },
+    /// A material set usage cannot be derived from the type with
+    /// documented defaults: the type has several material associations
+    /// or carries a usage instead of a set, or the object's class has no
+    /// documented `LayerSetDirection` and none was given (#480).
+    MaterialUsageUndetermined {
+        /// The object, or the type when the type's material is at fault.
+        object: EntityId,
+        /// Why.
+        detail: String,
+    },
+    /// An object's own `PredefinedType` contradicts the one its type
+    /// provides (#480).
+    PredefinedTypeConflict {
+        /// The object.
+        object: EntityId,
+        /// Its value (with `ObjectType` for `USERDEFINED`).
+        object_value: String,
+        /// The type's value (with `ElementType` for `USERDEFINED`).
+        type_value: String,
+    },
     /// A handle names an operation that has not run yet or produced no
     /// entity.
     InvalidHandle {
@@ -303,6 +346,28 @@ impl fmt::Display for AuthoringFailure {
             Self::UnsupportedRebase { placement, detail } => {
                 write!(f, "cannot re-base onto placement {placement}: {detail}")
             }
+            Self::RepresentationConflict {
+                object,
+                existing,
+                detail,
+            } => write!(
+                f,
+                "cannot map the type's representations onto {object}: {existing} {detail}"
+            ),
+            Self::UnsupportedRepresentationMap { map, detail } => {
+                write!(f, "representation map {map} cannot be mapped: {detail}")
+            }
+            Self::MaterialUsageUndetermined { object, detail } => {
+                write!(f, "cannot derive a material usage for {object}: {detail}")
+            }
+            Self::PredefinedTypeConflict {
+                object,
+                object_value,
+                type_value,
+            } => write!(
+                f,
+                "{object} has PredefinedType {object_value}, but its type provides {type_value}"
+            ),
             Self::InvalidHandle { handle, detail } => {
                 write!(f, "handle {handle}: {detail}")
             }

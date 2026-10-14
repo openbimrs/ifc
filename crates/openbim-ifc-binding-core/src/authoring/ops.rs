@@ -1,7 +1,7 @@
 //! The operations a batch carries, as every host spells them, and the one
 //! reader that turns the shared tape form into the facade's operation.
 //!
-//! An operation is named by `op` and carries named fields of six kinds
+//! An operation is named by `op` and carries named fields of seven kinds
 //! ([`FieldKind`]). [`OPS`] lists them all: each host converts its own
 //! idiom (a JavaScript object, a Python dict, a C# record) field by field
 //! into the tape form below, guided by the table, so no host interprets an
@@ -19,6 +19,7 @@
 //! | ids | `LIST` of ids |
 //! | reals | `LIST` of three `REAL`s (or `INTEGER`s) |
 //! | integer | `INTEGER` |
+//! | bool | `BOOL` |
 //! | attributes | `LIST` of `LIST(TEXT name, value)` |
 
 use crate::value::Tagged;
@@ -38,6 +39,8 @@ pub enum FieldKind {
     Reals,
     /// A 64-bit integer.
     Integer,
+    /// A flag (#480).
+    Bool,
     /// Attribute values by name.
     Attributes,
 }
@@ -100,6 +103,7 @@ use FieldKind as K;
 const TYPE: FieldSpec = required("type", "type", K::Text);
 const ATTRIBUTES: FieldSpec = field("attributes", "attributes", K::Attributes);
 const OWNER: FieldSpec = field("owner_history", "ownerHistory", K::Id);
+const REPLACE: FieldSpec = field("replace", "replace", K::Bool);
 const REPRESENTATION: FieldSpec = required("representation", "representation", K::Id);
 
 /// Every operation, with its fields.
@@ -162,6 +166,12 @@ pub const OPS: &[OpSpec] = &[
             required("type_object", "typeObject", K::Id),
             required("objects", "objects", K::Ids),
             OWNER,
+            field("map_representations", "mapRepresentations", K::Bool),
+            field("mapping_target", "mappingTarget", K::Id),
+            field("material_usage", "materialUsage", K::Bool),
+            field("layer_set_direction", "layerSetDirection", K::Text),
+            field("predefined_type", "predefinedType", K::Text),
+            REPLACE,
         ],
     },
     OpSpec {
@@ -171,6 +181,7 @@ pub const OPS: &[OpSpec] = &[
             required("structure", "structure", K::Id),
             required("elements", "elements", K::Ids),
             OWNER,
+            REPLACE,
         ],
     },
     OpSpec {
@@ -180,6 +191,7 @@ pub const OPS: &[OpSpec] = &[
             required("parent", "parent", K::Id),
             required("parts", "parts", K::Ids),
             OWNER,
+            REPLACE,
         ],
     },
     OpSpec {
@@ -256,6 +268,7 @@ pub(crate) enum Arg {
     Ids(Vec<u64>),
     Reals([f64; 3]),
     Integer(i64),
+    Bool(bool),
     Attributes(Vec<(String, Tagged)>),
 }
 
@@ -367,6 +380,10 @@ fn arg(kind: FieldKind, value: &Tagged) -> Result<Arg, String> {
         K::Integer => match value {
             Tagged::Integer(i) => Arg::Integer(*i),
             _ => return Err("must be an INTEGER".into()),
+        },
+        K::Bool => match value {
+            Tagged::Bool(b) => Arg::Bool(*b),
+            _ => return Err("must be a BOOL".into()),
         },
         K::Attributes => {
             let Tagged::List(items) = value else {

@@ -84,17 +84,49 @@ public sealed class AuthorOp
     public static AuthorOp TypeObject(string type, IEnumerable<KeyValuePair<string, Value>>? attributes = null, ulong? ownerHistory = null) =>
         new("type_object", ("type", type), ("attributes", Pairs(attributes)), ("owner_history", ownerHistory));
 
-    /// <summary><c>IfcRelDefinesByType</c>; an object already typed is refused.</summary>
-    public static AuthorOp AssignType(ulong typeObject, IEnumerable<ulong> objects, ulong? ownerHistory = null) =>
-        new("assign_type", ("type_object", typeObject), ("objects", Ids(objects)), ("owner_history", ownerHistory));
+    /// <summary>
+    /// <c>IfcRelDefinesByType</c>; an object already typed is refused unless
+    /// <paramref name="replace"/>, which unassigns its previous type and removes
+    /// what that type propagated (#480).
+    /// </summary>
+    /// <param name="typeObject">The <c>IfcTypeObject</c>.</param>
+    /// <param name="objects">The objects it types.</param>
+    /// <param name="ownerHistory">The owner history of every relationship written.</param>
+    /// <param name="mapRepresentations">Map the type's <c>RepresentationMaps</c> onto each object as <c>IfcMappedItem</c> representations.</param>
+    /// <param name="mappingTarget">The <c>IfcCartesianTransformationOperator</c> of every mapped item; an identity operator when null.</param>
+    /// <param name="materialUsage">Derive an <c>IfcMaterialLayerSetUsage</c> or <c>IfcMaterialProfileSetUsage</c> from the type's set.</param>
+    /// <param name="layerSetDirection">The layer direction of a derived usage; the class default (walls AXIS2, slabs and plates AXIS3) when null.</param>
+    /// <param name="predefinedType">How the object's <c>PredefinedType</c> is reconciled with the type's.</param>
+    /// <param name="replace">Unassign a previous type instead of refusing.</param>
+    public static AuthorOp AssignType(
+        ulong typeObject,
+        IEnumerable<ulong> objects,
+        ulong? ownerHistory = null,
+        bool mapRepresentations = false,
+        ulong? mappingTarget = null,
+        bool materialUsage = false,
+        LayerAxis? layerSetDirection = null,
+        PredefinedTypeMode predefinedType = PredefinedTypeMode.Ignore,
+        bool replace = false) =>
+        new(
+            "assign_type",
+            ("type_object", typeObject),
+            ("objects", Ids(objects)),
+            ("owner_history", ownerHistory),
+            ("map_representations", Flag(mapRepresentations)),
+            ("mapping_target", mappingTarget),
+            ("material_usage", Flag(materialUsage)),
+            ("layer_set_direction", layerSetDirection is { } axis ? "AXIS" + ((int)axis + 1) : null),
+            ("predefined_type", predefinedType == PredefinedTypeMode.Ignore ? null : predefinedType.ToString().ToLowerInvariant()),
+            ("replace", Flag(replace)));
 
-    /// <summary><c>IfcRelContainedInSpatialStructure</c>; an element already contained is refused.</summary>
-    public static AuthorOp Contain(ulong structure, IEnumerable<ulong> elements, ulong? ownerHistory = null) =>
-        new("contain", ("structure", structure), ("elements", Ids(elements)), ("owner_history", ownerHistory));
+    /// <summary><c>IfcRelContainedInSpatialStructure</c>; an element already contained is refused unless <paramref name="replace"/>, which moves it out of its previous container.</summary>
+    public static AuthorOp Contain(ulong structure, IEnumerable<ulong> elements, ulong? ownerHistory = null, bool replace = false) =>
+        new("contain", ("structure", structure), ("elements", Ids(elements)), ("owner_history", ownerHistory), ("replace", Flag(replace)));
 
-    /// <summary><c>IfcRelAggregates</c>; a part already aggregated is refused.</summary>
-    public static AuthorOp Aggregate(ulong parent, IEnumerable<ulong> parts, ulong? ownerHistory = null) =>
-        new("aggregate", ("parent", parent), ("parts", Ids(parts)), ("owner_history", ownerHistory));
+    /// <summary><c>IfcRelAggregates</c>; a part already aggregated is refused unless <paramref name="replace"/>, which moves it out of its previous whole.</summary>
+    public static AuthorOp Aggregate(ulong parent, IEnumerable<ulong> parts, ulong? ownerHistory = null, bool replace = false) =>
+        new("aggregate", ("parent", parent), ("parts", Ids(parts)), ("owner_history", ownerHistory), ("replace", Flag(replace)));
 
     /// <summary>An <c>IfcLocalPlacement</c>; <paramref name="axis"/> and <paramref name="refDirection"/> both or neither.</summary>
     public static AuthorOp Placement(
@@ -159,6 +191,8 @@ public sealed class AuthorOp
             ? null
             : new Value.List(attributes.Select(pair => (Value)new Value.List(new Value.Text(pair.Key), pair.Value)));
 
+    private static Value? Flag(bool flag) => flag ? new Value.Bool(true) : null;
+
     private static Value Ids(IEnumerable<ulong> ids) =>
         new Value.List((ids ?? throw new ArgumentNullException(nameof(ids))).Select(id => (Value)new Value.Ref(id)));
 
@@ -192,4 +226,30 @@ public sealed class AuthorOp
             }
         }
     }
+}
+
+/// <summary>How <see cref="AuthorOp.AssignType"/> reconciles an object's <c>PredefinedType</c> with its type's (#480).</summary>
+public enum PredefinedTypeMode
+{
+    /// <summary>Leave the object's <c>PredefinedType</c> as it is.</summary>
+    Ignore,
+
+    /// <summary>Refuse an object whose own <c>PredefinedType</c> contradicts the type's.</summary>
+    Validate,
+
+    /// <summary>Unset the object's <c>PredefinedType</c> where the type provides one.</summary>
+    Sync,
+}
+
+/// <summary><c>IfcLayerSetDirectionEnum</c>: the axis the layers of a set usage stack along.</summary>
+public enum LayerAxis
+{
+    /// <summary><c>AXIS1</c>.</summary>
+    Axis1,
+
+    /// <summary><c>AXIS2</c>: walls.</summary>
+    Axis2,
+
+    /// <summary><c>AXIS3</c>: slabs and plates.</summary>
+    Axis3,
 }

@@ -846,6 +846,86 @@ test("authoring refusals carry the shared codes", () => {
   throwsCode(() => new IfcModel().author([{ op: "project" }]), "unsupported-schema");
 });
 
+test("assignType propagates the type and replaces a type and container (#480)", () => {
+  const model = emptyModel();
+  const ids = building(model);
+  const [context, buildingId, wall] = [ids[4], ids[9], ids[14]];
+  const h = IfcModel.handle;
+  const list = (...items) => ({ kind: "list", items });
+  const added = model.author([
+    { op: "create", type: "IfcCartesianPoint", attributes: { Coordinates: reals(0, 0, 0) } }, // 0
+    { op: "create", type: "IfcAxis2Placement3D", attributes: { Location: ref(h(0)) } }, // 1
+    {
+      op: "create",
+      type: "IfcBoundingBox",
+      attributes: {
+        Corner: ref(h(0)),
+        XDim: { kind: "real", value: 5 },
+        YDim: { kind: "real", value: 0.2 },
+        ZDim: { kind: "real", value: 3 },
+      },
+    }, // 2
+    {
+      op: "create",
+      type: "IfcShapeRepresentation",
+      attributes: {
+        ContextOfItems: ref(context),
+        RepresentationIdentifier: text("Body"),
+        RepresentationType: text("BoundingBox"),
+        Items: list(ref(h(2))),
+      },
+    }, // 3
+    {
+      op: "create",
+      type: "IfcRepresentationMap",
+      attributes: { MappingOrigin: ref(h(1)), MappedRepresentation: ref(h(3)) },
+    }, // 4
+    { op: "create", type: "IfcMaterial", attributes: { Name: text("Concrete") } }, // 5
+    {
+      op: "create",
+      type: "IfcMaterialLayer",
+      attributes: { Material: ref(h(5)), LayerThickness: { kind: "real", value: 0.2 } },
+    }, // 6
+    { op: "create", type: "IfcMaterialLayerSet", attributes: { MaterialLayers: list(ref(h(6))) } }, // 7
+    {
+      op: "typeObject",
+      type: "IfcWallType",
+      attributes: { PredefinedType: token("SOLIDWALL"), RepresentationMaps: list(ref(h(4))) },
+    }, // 8
+    {
+      op: "create",
+      type: "IfcRelAssociatesMaterial",
+      attributes: { RelatedObjects: list(ref(h(8))), RelatingMaterial: ref(h(7)) },
+    }, // 9
+    { op: "spatial", type: "IfcBuildingStorey", parent: buildingId, attributes: { Name: text("Level 1") } }, // 10
+  ]).ids;
+  const [newType, level1] = [added[8], added[10]];
+  throwsCode(() => model.author([{ op: "assignType", typeObject: newType, objects: [wall] }]), "invalid-model");
+  throwsCode(() => model.author([{ op: "contain", structure: level1, elements: [wall] }]), "invalid-model");
+  throwsCode(
+    () => model.author([{ op: "assignType", typeObject: newType, objects: [wall], replace: "yes" }]),
+    "invalid-value",
+  );
+  model.author([
+    {
+      op: "assignType",
+      typeObject: newType,
+      objects: [wall],
+      mapRepresentations: true,
+      materialUsage: true,
+      predefinedType: "sync",
+      replace: true,
+    },
+    { op: "contain", structure: level1, elements: [wall], replace: true },
+  ]);
+  assert.equal(model.typeObject(wall), newType);
+  const shape = model.attributeByName(wall, "Representation").id;
+  const representation = model.attributeByName(shape, "Representations").items[0].id;
+  assert.deepEqual(model.attributeByName(representation, "RepresentationType"), text("MappedRepresentation"));
+  const report = model.validate();
+  assert.equal(report.errors + report.evaluationErrors, 0, JSON.stringify(report.findings));
+});
+
 // --- GlobalIds, types, openings and fillings (#463) -------------------------
 
 const RELEASES = ["relations_ifc2x3.ifc", "relations_ifc4.ifc", "relations_ifc4x3.ifc"];

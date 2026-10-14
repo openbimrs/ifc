@@ -9,7 +9,7 @@ use ifc_schema::Schema;
 use super::check::{build, recheck, relations};
 use super::overlay::Overlay;
 use super::report::RemovalReport;
-use super::{AuthorOp, AuthoringFailure as F, NamedValues};
+use super::{AssignTypeOptions, AuthorOp, AuthoringFailure as F, NamedValues};
 use crate::name_guid::name_based_guid;
 
 /// The batch's state: the overlay, and what each operation produced.
@@ -95,10 +95,15 @@ impl<'m, 's> Planner<'m, 's> {
             } => {
                 let product = self.product(&type_name, attributes, placement, owner_history)?;
                 if let Some(container) = container {
-                    self.contain(container, &[product], owner_history)?;
+                    self.contain(container, &[product], owner_history, false)?;
                 }
                 if let Some(type_object) = type_object {
-                    self.assign_type(type_object, &[product], owner_history)?;
+                    self.assign_type(
+                        type_object,
+                        &[product],
+                        owner_history,
+                        &AssignTypeOptions::new(),
+                    )?;
                 }
                 Some(product)
             }
@@ -114,17 +119,20 @@ impl<'m, 's> Planner<'m, 's> {
                 type_object,
                 objects,
                 owner_history,
-            } => Some(self.assign_type(type_object, &objects, owner_history)?),
+                options,
+            } => Some(self.assign_type(type_object, &objects, owner_history, &options)?),
             AuthorOp::Contain {
                 structure,
                 elements,
                 owner_history,
-            } => Some(self.contain(structure, &elements, owner_history)?),
+                options,
+            } => Some(self.contain(structure, &elements, owner_history, options.replace)?),
             AuthorOp::Aggregate {
                 parent,
                 parts,
                 owner_history,
-            } => Some(self.aggregate(parent, &parts, owner_history)?),
+                options,
+            } => Some(self.aggregate(parent, &parts, owner_history, options.replace)?),
             AuthorOp::Placement {
                 relative_to,
                 location,
@@ -316,7 +324,7 @@ impl<'m, 's> Planner<'m, 's> {
         }
         let attributes = with_placement(with_owner(attributes, owner_history), placement);
         let element = self.create(type_name, attributes)?;
-        self.aggregate(parent, &[element], owner_history)?;
+        self.aggregate(parent, &[element], owner_history, false)?;
         Ok(element)
     }
 

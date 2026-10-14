@@ -863,14 +863,17 @@ OpenbimIfcStatus openbim_ifc_v0_1_meshes_records(OpenbimIfcMeshes meshes,
  * schema cannot hold; `WrongEntityType` for an abstract type, a builder's
  * type of the wrong kind or a reference the attribute does not accept;
  * `MissingEntity`, `MissingReference`; `InvalidModel` for a second
- * containment, decomposition, typing or `IfcProject`, a shape
+ * containment, decomposition, typing, material or `IfcProject` (unless
+ * `replace`), a mapped representation that clashes with one the object
+ * has, a `PredefinedType` that contradicts the type's, a shape
  * representation that already has its one use, a product definition shape
  * other products share, or a representation not assigned where it is
  * unassigned from; `InvalidValue` also for a representation type its items
  * do not fit, items no type fits, or a missing representation identifier;
- * `Unsupported` for a type check needing a curve dimension that cannot be
- * derived; `StillReferenced` for a removal an entity other than a
- * relationship still needs.
+ * `Unsupported` for a representation map that cannot be mapped, a material
+ * usage whose defaults cannot be determined, or a representation type check
+ * needing a curve dimension that cannot be derived; `StillReferenced` for a
+ * removal an entity other than a relationship still needs.
  *
  * # Safety
  * `nodes` valid for `node_count` reads and `strings` for `string_len`
