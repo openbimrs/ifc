@@ -88,6 +88,10 @@ class Representation(unittest.TestCase):
         for name in RELEASES:
             with self.subTest(name):
                 model = fixture(name)
+                # The door type's map is still mapped by the door.
+                with self.assertRaises(IfcError) as raised:
+                    model.remove_representation(114)
+                self.assertEqual(raised.exception.code, "still-referenced")
                 before = len(model)
                 dry = model.remove_representation(105, dry_run=True)
                 self.assertIsInstance(dry, RemovalReport)
@@ -97,9 +101,6 @@ class Representation(unittest.TestCase):
                 self.assertTrue(done.applied)
                 self.assertEqual(len(model), before - 5)
                 self.assertEqual(model.attribute_by_name(100, "Representation"), Null())
-                with self.assertRaises(IfcError) as raised:
-                    model.remove_representation(114)
-                self.assertEqual(raised.exception.code, "still-referenced")
 
 
 if __name__ == "__main__":

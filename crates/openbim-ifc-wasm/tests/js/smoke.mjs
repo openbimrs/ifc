@@ -1011,6 +1011,8 @@ test("shape representations: assemble, assign, copy, unassign and remove", () =>
     const shape = model.attributeByName(20n, "Representation").id;
     assert.deepEqual(model.attributeByName(shape, "Representations"), { kind: "list", items: [ref(swap.ids[0])] }, name);
 
+    // The door type's map is still mapped by the door.
+    throwsCode(() => model.removeRepresentation(114n), "still-referenced");
     const before = model.size;
     const dry = model.removeRepresentation(105n, { dryRun: true });
     assert.equal(dry.applied, false, name);
@@ -1028,7 +1030,6 @@ test("shape representations: assemble, assign, copy, unassign and remove", () =>
       "invalid-value",
     );
     throwsCode(() => model.author([{ op: "assignRepresentation", representation: 45n, to: 130n }]), "invalid-model");
-    throwsCode(() => model.removeRepresentation(114n), "still-referenced");
     assert.deepEqual(model.danglingReferences(), [], name);
   }
 });
