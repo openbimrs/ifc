@@ -21,6 +21,16 @@ a release here does not imply a release of any other crate in the family.
 
 Semver: additive, a minor release while 0.x.
 
+### Added (#480, type propagation on assignment)
+
+- `AuthorOp.assign_type(type_object, objects, *, owner_history=None,
+  map_representations=False, mapping_target=None, material_usage=False,
+  layer_set_direction=None, predefined_type=None, replace=False)`, and
+  `replace=False` on `AuthorOp.contain` and `AuthorOp.aggregate`. Every
+  new argument is keyword-only and off by default.
+
+Semver: additive, a minor release while 0.x.
+
 ## [0.9.0] - 2026-10-13
 
 ### Added (#478, cascading delete and purge)

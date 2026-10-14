@@ -343,6 +343,34 @@ test("remove a product with what it owns, then purge", () => {
   assert.deepEqual(model.danglingReferences(), []);
 });
 
+test("assign a type with propagation, and move an element", () => {
+  const model = IfcModel.parse(readFileSync(CASCADE));
+  const printed = [];
+  const log = (...values) => printed.push(values);
+  // docs:snippet cookbook-js-assign-type
+  // Door 1 (#100) typed again by D-90 (#111) with replace: what the old
+  // assignment mapped is taken back, the type's representation map is
+  // mapped afresh, and PredefinedType is left to the type.
+  model.author([
+    { op: "assignType", typeObject: 111n, objects: [100n], mapRepresentations: true, predefinedType: "sync", replace: true },
+  ]);
+  // A new door, typed the same way in the batch that creates it.
+  const { ids } = model.author([
+    { op: "product", type: "IfcDoor", container: 14n, attributes: { Name: { kind: "text", value: "Door 2" } } },
+    { op: "assignType", typeObject: 111n, objects: [IfcModel.handle(0)], mapRepresentations: true },
+  ]);
+  const shape = model.attributeByName(ids[0], "Representation").id;
+  const body = model.attributeByName(shape, "Representations").items[0].id;
+  log(model.attributeByName(body, "RepresentationType").value); // "MappedRepresentation"
+  // Wall B (#40) moves into the building (#13); without replace the second
+  // containment is refused with invalid-model.
+  model.author([{ op: "contain", structure: 13n, elements: [40n], replace: true }]);
+  // docs:end
+  assert.deepEqual(printed, [["MappedRepresentation"]]);
+  assert.deepEqual(model.danglingReferences(), []);
+  assert.equal(model.validate().errors, 0);
+});
+
 test("create a model from nothing", () => {
   // docs:snippet cookbook-js-create
   const model = new IfcModel();

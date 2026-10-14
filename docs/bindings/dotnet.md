@@ -463,7 +463,7 @@ from nothing needs a header naming its release first (assign `Header`).
 | `Spatial` | a spatial element of `type` and its `IfcRelAggregates` under `parent` |
 | `Product` | a product, its `IfcRelContainedInSpatialStructure` in `container` and its `IfcRelDefinesByType` by `typeObject` |
 | `TypeObject` | a type object (`IfcWallType`, ...) |
-| `AssignType`, `Contain`, `Aggregate` | one relationship; an object already related is refused |
+| `AssignType`, `Contain`, `Aggregate` | one relationship; an object already related is refused unless `replace` (see [Assigning types](#assigning-types)) |
 | `Placement` | an `IfcLocalPlacement` over an `IfcAxis2Placement3D` at `location`, relative to `relativeTo`; `axis` and `refDirection` both or neither |
 | `OwnerHistory` | an `IfcOwnerHistory` with its person, organization and application |
 
@@ -483,6 +483,59 @@ An `IfcRoot` created without a `GlobalId` gets a fresh one. `OwnerHistory`
 is never invented: a builder writes the one it is given on every record it
 creates, and IFC2X3, which requires it, refuses a record without
 (`missing-attribute`).
+
+## Assigning types
+
+The type assignment propagates the type to each object when asked (#480);
+every option is off by default, and the operation then writes only the
+`IfcRelDefinesByType`.
+
+| Option | What it does |
+| --- | --- |
+| `mapRepresentations: true` | maps each of the type's `RepresentationMaps` onto the object: an `IfcShapeRepresentation` in the map's context with its `RepresentationIdentifier`, `RepresentationType` `MappedRepresentation` and one `IfcMappedItem`, added to the object's `IfcProductDefinitionShape` (created when it has none) |
+| `mappingTarget` | the `IfcCartesianTransformationOperator` every mapped item uses; by default a fresh identity operator (3D, or 2D for a 2D `MappingOrigin`) per object, so the geometry sits at the object's placement |
+| `materialUsage: true` | derives the object's material usage from the type's set: an `IfcMaterialLayerSetUsage` (`DirectionSense` `POSITIVE`, `OffsetFromReferenceLine` 0) for a layer set, an `IfcMaterialProfileSetUsage` (no `CardinalPoint`) for a profile set, one per object in its own `IfcRelAssociatesMaterial`; any other material applies through the type |
+| `layerSetDirection` | the layer direction, a `LayerAxis`; by default the one the IFC documentation fixes for the class: `AXIS2` for `IfcWall`, `AXIS3` for `IfcSlab` and `IfcPlate` |
+| `predefinedType` | `PredefinedTypeMode.Ignore` (default) leaves `PredefinedType`; `PredefinedTypeMode.Validate` refuses an object whose own value is set, not `NOTDEFINED`, and differs from the one the type provides (for `USERDEFINED`, `ObjectType` against the type's `ElementType`); `PredefinedTypeMode.Sync` unsets the object's (and its `USERDEFINED` `ObjectType`) where the type provides one, as IFC asks |
+| `replace: true` | unassigns the previous type instead of refusing: the object leaves its `IfcRelDefinesByType` (removed when left relating nothing), and the representations mapped from the previous type's maps and the usage derived from its set are removed with what only they use |
+
+A type provides a `PredefinedType` when its own is set and not `NOTDEFINED`;
+nothing is synchronised where the object or the type has no such attribute
+in the declared release (IFC2X3 `IfcWall`, `IfcDoorStyle`). The containment
+and aggregation take `replace` too: the object leaves its previous container
+or whole, whose relationship goes when it is left relating nothing.
+
+Refused, with the model unchanged: a representation that clashes with one
+the object has (same identifier, or unnamed in the same context) or a
+product definition shape another product shares, a contradicting
+`PredefinedType`, and an object that already has a material
+(`invalid-model`); a map whose representation is not an
+`IfcShapeRepresentation`, a type with several material associations or a
+usage instead of a set, and a layer set usage for a class with no documented
+direction when none is given (`unsupported`).
+
+<!-- SNIPPET:cookbook-dotnet-assign-type -->
+
+```csharp
+// Door 1 (#100) typed again by D-90 (#111) with replace: what the old
+// assignment mapped is taken back, the type's representation map is
+// mapped afresh, and PredefinedType is left to the type.
+model.Author(new[]
+{
+    AuthorOp.AssignType(111, new ulong[] { 100 }, mapRepresentations: true, predefinedType: PredefinedTypeMode.Sync, replace: true),
+});
+// A new door, typed the same way in the batch that creates it.
+var ids = model.Author(new[]
+{
+    AuthorOp.Product("IfcDoor", new Dictionary<string, Value> { ["Name"] = new Value.Text("Door 2") }, container: 14),
+    AuthorOp.AssignType(111, new[] { IfcModel.Handle(0) }, mapRepresentations: true),
+});
+// Wall B (#40) moves into the building (#13); without replace the
+// second containment is refused with invalid-model.
+model.Author(new[] { AuthorOp.Contain(13, new ulong[] { 40 }, replace: true) });
+```
+
+<!-- /SNIPPET -->
 
 ## Removing products and purging
 

@@ -475,7 +475,7 @@ value by path as a tape (a property set as a `LIST` of name and value
 pairs) and `openbim_ifc_v0_1_entity_set_value` writes one from a tape of
 plain values as a single checked transaction. A selector that does not
 parse is `INVALID_SELECTOR`; `openbim_ifc_v0_1_last_error_span` then gives
-the byte range it refuses. These exports make the ABI version 0.1.13; no
+the byte range it refuses. These exports make the ABI version 0.1.14; no
 `v0_1` symbol changed. The
 [cookbook](/cookbook/c#select-entities-and-read-values-by-path) has a
 recipe.
@@ -666,7 +666,7 @@ forms. A model built from nothing needs a header naming its release first
 | `SPATIAL` | a spatial element of `type` and its `Ifc_rel_aggregates` under `parent` |
 | `PRODUCT` | a product, its `Ifc_rel_contained_in_spatial_structure` in `container` and its `Ifc_rel_defines_by_type` by `type_object` |
 | `TYPE_OBJECT` | a type object (`Ifc_wall_type`, ...) |
-| `ASSIGN_TYPE`, `CONTAIN`, `AGGREGATE` | one relationship; an object already related is refused |
+| `ASSIGN_TYPE`, `CONTAIN`, `AGGREGATE` | one relationship; an object already related is refused unless `replace` (see [Assigning types](#assigning-types)) |
 | `PLACEMENT` | an `Ifc_local_placement` over an `Ifc_axis2Placement3D` at `location`, relative to `relative_to`; `axis` and `ref_direction` both or neither |
 | `OWNER_HISTORY` | an `Ifc_owner_history` with its person, organization and application |
 
@@ -692,6 +692,77 @@ three `REAL`s, attributes a `LIST` of `LIST(TEXT name, value)` pairs; a
 `NULL` value is an absent field. One id per operation comes back (0 for a
 removal), and an id buffer shorter than the batch is `BUFFER_TOO_SMALL`
 before anything is written.
+
+## Assigning types
+
+The type assignment propagates the type to each object when asked (#480);
+every option is off by default, and the operation then writes only the
+`IfcRelDefinesByType`.
+
+| Option | What it does |
+| --- | --- |
+| `map_representations (BOOL)` | maps each of the type's `RepresentationMaps` onto the object: an `IfcShapeRepresentation` in the map's context with its `RepresentationIdentifier`, `RepresentationType` `MappedRepresentation` and one `IfcMappedItem`, added to the object's `IfcProductDefinitionShape` (created when it has none) |
+| `mapping_target` | the `IfcCartesianTransformationOperator` every mapped item uses; by default a fresh identity operator (3D, or 2D for a 2D `MappingOrigin`) per object, so the geometry sits at the object's placement |
+| `material_usage (BOOL)` | derives the object's material usage from the type's set: an `IfcMaterialLayerSetUsage` (`DirectionSense` `POSITIVE`, `OffsetFromReferenceLine` 0) for a layer set, an `IfcMaterialProfileSetUsage` (no `CardinalPoint`) for a profile set, one per object in its own `IfcRelAssociatesMaterial`; any other material applies through the type |
+| `layer_set_direction` | the layer direction, `"AXIS1"` to `"AXIS3"` (TEXT); by default the one the IFC documentation fixes for the class: `AXIS2` for `IfcWall`, `AXIS3` for `IfcSlab` and `IfcPlate` |
+| `predefined_type` | "ignore" (default) leaves `PredefinedType`; "validate" refuses an object whose own value is set, not `NOTDEFINED`, and differs from the one the type provides (for `USERDEFINED`, `ObjectType` against the type's `ElementType`); "sync" unsets the object's (and its `USERDEFINED` `ObjectType`) where the type provides one, as IFC asks |
+| `replace (BOOL)` | unassigns the previous type instead of refusing: the object leaves its `IfcRelDefinesByType` (removed when left relating nothing), and the representations mapped from the previous type's maps and the usage derived from its set are removed with what only they use |
+
+A type provides a `PredefinedType` when its own is set and not `NOTDEFINED`;
+nothing is synchronised where the object or the type has no such attribute
+in the declared release (IFC2X3 `IfcWall`, `IfcDoorStyle`). The containment
+and aggregation take `replace` too: the object leaves its previous container
+or whole, whose relationship goes when it is left relating nothing.
+
+Refused, with the model unchanged: a representation that clashes with one
+the object has (same identifier, or unnamed in the same context) or a
+product definition shape another product shares, a contradicting
+`PredefinedType`, and an object that already has a material
+(`invalid-model`); a map whose representation is not an
+`IfcShapeRepresentation`, a type with several material associations or a
+usage instead of a set, and a layer set usage for a class with no documented
+direction when none is given (`unsupported`).
+
+<!-- SNIPPET:cookbook-c-assign-type -->
+
+```c
+/* Door 1 (#100) typed again by D-90 (#111) with replace: what the old
+ * assignment mapped is taken back, the type's representation map is
+ * mapped afresh, and PredefinedType is left to the type. Wall B (#40)
+ * moves into the building (#13). One batch: both, or neither. */
+static Builder b;
+memset(&b, 0, sizeof b);
+b_list(&b, 2);
+b_op(&b, "ASSIGN_TYPE", 5);
+b_text(&b, "type_object");
+b_ref(&b, 111);
+b_text(&b, "objects");
+b_list(&b, 1);
+b_ref(&b, 100);
+b_text(&b, "map_representations"); /* also: material_usage, mapping_target */
+b_bool(&b, 1);
+b_text(&b, "predefined_type"); /* "ignore" (default), "validate" or "sync" */
+b_text(&b, "sync");
+b_text(&b, "replace");
+b_bool(&b, 1);
+b_op(&b, "CONTAIN", 3);
+b_text(&b, "structure");
+b_ref(&b, 13);
+b_text(&b, "elements");
+b_list(&b, 1);
+b_ref(&b, 40);
+b_text(&b, "replace");
+b_bool(&b, 1);
+uint64_t ids[2];
+size_t count = 0;
+if (openbim_ifc_v0_1_model_author(model, b.nodes, b.count, (const uint8_t *)b.strings, b.len, ids,
+                                  2, &count) != OPENBIM_IFC_STATUS_OK) {
+  print_error(model); /* without replace: INVALID_MODEL, both are related already */
+  return 1;
+}
+```
+
+<!-- /SNIPPET -->
 
 ## Removing products and purging
 

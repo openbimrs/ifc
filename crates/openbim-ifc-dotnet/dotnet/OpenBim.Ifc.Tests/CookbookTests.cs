@@ -468,6 +468,35 @@ public class CookbookTests
     }
 
     [Fact]
+    public void AssignATypeWithPropagation()
+    {
+        using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.CascadeIfc4));
+        // docs:snippet cookbook-dotnet-assign-type
+        // Door 1 (#100) typed again by D-90 (#111) with replace: what the old
+        // assignment mapped is taken back, the type's representation map is
+        // mapped afresh, and PredefinedType is left to the type.
+        model.Author(new[]
+        {
+            AuthorOp.AssignType(111, new ulong[] { 100 }, mapRepresentations: true, predefinedType: PredefinedTypeMode.Sync, replace: true),
+        });
+        // A new door, typed the same way in the batch that creates it.
+        var ids = model.Author(new[]
+        {
+            AuthorOp.Product("IfcDoor", new Dictionary<string, Value> { ["Name"] = new Value.Text("Door 2") }, container: 14),
+            AuthorOp.AssignType(111, new[] { IfcModel.Handle(0) }, mapRepresentations: true),
+        });
+        // Wall B (#40) moves into the building (#13); without replace the
+        // second containment is refused with invalid-model.
+        model.Author(new[] { AuthorOp.Contain(13, new ulong[] { 40 }, replace: true) });
+        // docs:end
+        var shape = ((Value.Ref)model.AttributeByName(ids[0]!.Value, "Representation")).Id;
+        var body = ((Value.Ref)((Value.List)model.AttributeByName(shape, "Representations")).Items[0]).Id;
+        Assert.Equal(new Value.Text("MappedRepresentation"), model.AttributeByName(body, "RepresentationType"));
+        Assert.Empty(model.DanglingReferences());
+        Assert.Equal(0L, model.Validate().Errors);
+    }
+
+    [Fact]
     public void CreateAModelFromNothing()
     {
         // docs:snippet cookbook-dotnet-create

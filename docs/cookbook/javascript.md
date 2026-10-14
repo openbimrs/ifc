@@ -443,6 +443,47 @@ true })` purges unreferenced entities of the named classes only. The
 [binding page](/bindings/javascript#removing-products-and-purging) lists
 what the cascade removes and keeps.
 
+## Assign a type and propagate it
+
+Door 1 typed again by its door type, with the type's representation map
+mapped onto it, and Wall B moved into the building, from
+`test/fixtures/synthetic-relations/cascade_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-js-assign-type -->
+
+```js
+// Door 1 (#100) typed again by D-90 (#111) with replace: what the old
+// assignment mapped is taken back, the type's representation map is
+// mapped afresh, and PredefinedType is left to the type.
+model.author([
+  { op: "assignType", typeObject: 111n, objects: [100n], mapRepresentations: true, predefinedType: "sync", replace: true },
+]);
+// A new door, typed the same way in the batch that creates it.
+const { ids } = model.author([
+  { op: "product", type: "IfcDoor", container: 14n, attributes: { Name: { kind: "text", value: "Door 2" } } },
+  { op: "assignType", typeObject: 111n, objects: [IfcModel.handle(0)], mapRepresentations: true },
+]);
+const shape = model.attributeByName(ids[0], "Representation").id;
+const body = model.attributeByName(shape, "Representations").items[0].id;
+log(model.attributeByName(body, "RepresentationType").value); // "MappedRepresentation"
+// Wall B (#40) moves into the building (#13); without replace the second
+// containment is refused with invalid-model.
+model.author([{ op: "contain", structure: 13n, elements: [40n], replace: true }]);
+```
+
+<!-- /SNIPPET -->
+
+The type assignment takes `mapRepresentations`, `mappingTarget`, `materialUsage`, `layerSetDirection`, `predefinedType` and `replace`. Every option is off by default: the
+operation then writes only the `IfcRelDefinesByType` and refuses an object
+that already has a type (`invalid-model`). With `replace: true` the previous
+type is unassigned and the representations and material usage it
+propagated are removed with what only they use; `contain` and `aggregate` take the
+same flag. `materialUsage` derives an `IfcMaterialLayerSetUsage` (walls
+`AXIS2`, slabs and plates `AXIS3`, `POSITIVE`, offset 0) or an
+`IfcMaterialProfileSetUsage` from the type's set; `predefinedType: "validate"` refuses an
+object whose own `PredefinedType` contradicts the type's. The
+[binding page](/bindings/javascript#assigning-types) lists the rules.
+
 ## Create a model
 
 <!-- SNIPPET:cookbook-js-create -->

@@ -386,6 +386,46 @@ purges unreferenced entities of the named classes only. The
 [binding page](/bindings/dotnet#removing-products-and-purging) lists what
 the cascade removes and keeps.
 
+## Assign a type and propagate it
+
+Door 1 typed again by its door type, with the type's representation map
+mapped onto it, and Wall B moved into the building, from
+`test/fixtures/synthetic-relations/cascade_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-dotnet-assign-type -->
+
+```csharp
+// Door 1 (#100) typed again by D-90 (#111) with replace: what the old
+// assignment mapped is taken back, the type's representation map is
+// mapped afresh, and PredefinedType is left to the type.
+model.Author(new[]
+{
+    AuthorOp.AssignType(111, new ulong[] { 100 }, mapRepresentations: true, predefinedType: PredefinedTypeMode.Sync, replace: true),
+});
+// A new door, typed the same way in the batch that creates it.
+var ids = model.Author(new[]
+{
+    AuthorOp.Product("IfcDoor", new Dictionary<string, Value> { ["Name"] = new Value.Text("Door 2") }, container: 14),
+    AuthorOp.AssignType(111, new[] { IfcModel.Handle(0) }, mapRepresentations: true),
+});
+// Wall B (#40) moves into the building (#13); without replace the
+// second containment is refused with invalid-model.
+model.Author(new[] { AuthorOp.Contain(13, new ulong[] { 40 }, replace: true) });
+```
+
+<!-- /SNIPPET -->
+
+The type assignment takes `mapRepresentations`, `mappingTarget`, `materialUsage`, `layerSetDirection`, `predefinedType` and `replace`. Every option is off by default: the
+operation then writes only the `IfcRelDefinesByType` and refuses an object
+that already has a type (`invalid-model`). With `replace: true` the previous
+type is unassigned and the representations and material usage it
+propagated are removed with what only they use; `AuthorOp.Contain` and `AuthorOp.Aggregate` take the
+same flag. `materialUsage` derives an `IfcMaterialLayerSetUsage` (walls
+`AXIS2`, slabs and plates `AXIS3`, `POSITIVE`, offset 0) or an
+`IfcMaterialProfileSetUsage` from the type's set; `PredefinedTypeMode.Validate` refuses an
+object whose own `PredefinedType` contradicts the type's. The
+[binding page](/bindings/dotnet#assigning-types) lists the rules.
+
 ## Create a model
 
 <!-- SNIPPET:cookbook-dotnet-create -->
