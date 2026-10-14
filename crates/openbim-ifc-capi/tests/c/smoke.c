@@ -1041,10 +1041,11 @@ static int geometry(void) {
     CHECK(status == OPENBIM_IFC_STATUS_OK, "meshes compile");
     OK(openbim_ifc_v0_1_meshes_records(meshes, &count, nodes, 128, &node_count, strings,
                                        sizeof strings, &string_len));
-    CHECK(count == 1 && nodes[1].child_count == 9, "one ProductMesh record");
+    CHECK(count == 1 && nodes[1].child_count == 10, "one ProductMesh record");
     /* id, global id, type, transform (17 nodes), vertex and triangle
      * counts, refusal, then colour: red, green, blue, transparency,
-     * source, source entity, surface style; colour refusal (#449). */
+     * source, source entity, surface style; colour refusal (#449); and
+     * closure (#458). */
     CHECK(nodes[24].kind == OPENBIM_IFC_KIND_NULL, "no refusal");
     CHECK(nodes[25].kind == OPENBIM_IFC_KIND_LIST && nodes[25].child_count == 7,
           "a SurfaceColour record");
@@ -1054,6 +1055,9 @@ static int geometry(void) {
           "from the material");
     CHECK(nodes[31].kind == OPENBIM_IFC_KIND_REF && nodes[31].int_value == 18, "the material");
     CHECK(nodes[33].kind == OPENBIM_IFC_KIND_NULL, "no colour refusal");
+    CHECK(nodes[34].kind == OPENBIM_IFC_KIND_TEXT && nodes[34].str_len == 5 &&
+              memcmp(strings + nodes[34].str_offset, "solid", 5) == 0,
+          "a solid");
     size_t need = 0;
     CHECK(openbim_ifc_v0_1_meshes_indices(meshes, 0, NULL, 0, &need) ==
               OPENBIM_IFC_STATUS_BUFFER_TOO_SMALL && need >= 36,
