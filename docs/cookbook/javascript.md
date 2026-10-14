@@ -368,6 +368,42 @@ all. `IfcModel.newGuid()` draws an RFC 9562 version-4 UUID from the host's
 Node 18); `IfcModel.nameBasedGuid(parts)` is version 8, the same for the
 same parts in every binding. Both are IFC's 22-character form.
 
+## Select entities and read values by path
+
+A [selector](/guide/selectors) picks entities by class, attribute,
+property, type, material, classification, location and group; a value path
+reads (and writes) one value of an entity. Read from
+`test/fixtures/synthetic-relations/selector_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-js-selectors -->
+
+```js
+const walls = model.select("IfcWall, Pset_WallCommon.FireRating=F90"); // [17n, 18n]
+log(model.select('IfcDoor + location="Level 1"')); // [19n, 28n, 38n, 40n]
+
+log(model.getValue(walls[0], "type.Name")); // { kind: "text", value: "WT-200" }
+const pset = model.getValue(walls[0], "Pset_WallCommon");
+log(Object.fromEntries(pset.entries.map(([name, value]) => [name, value.value])));
+// { IsExternal: true, FireRating: "F90", AcousticRating: "R45" }
+
+model.setValue(walls[0], "type.Name", "WT-300"); // one checked transaction
+try {
+  model.select("IfcWall, colour=red");
+} catch (error) {
+  log(error.code, error.span); // "invalid-selector" [9, 15]
+}
+```
+
+<!-- /SNIPPET -->
+
+`select` returns ids as `bigint`s in ascending order; a second argument
+restricts it to given ids. `getValue` returns the tagged encoding, with a
+list as `{ kind: "list", items }` and a property set as
+`{ kind: "properties", entries }` of `[name, value]` pairs. `setValue`
+takes a plain value or an `IfcValue`. A selector that does not parse
+throws `IfcError` with `code` `invalid-selector` and `span`, the byte range
+it refuses in the UTF-8 query.
+
 ## Remove a product and purge
 
 A door with what it alone owns, a wall whose openings place their fillings,

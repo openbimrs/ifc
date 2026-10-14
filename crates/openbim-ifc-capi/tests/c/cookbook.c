@@ -27,6 +27,7 @@ static char properties_path[4096];
 static char geometry_path[4096];
 static char relations_path[4096];
 static char cascade_path[4096];
+static char selector_path[4096];
 /* What the recipes print, so each test can check it. */
 static char out[16384];
 static size_t out_len;
@@ -713,6 +714,50 @@ static int recipe_remove_product(OpenbimIfcModel model) {
   return 0;
 }
 
+static int recipe_selectors(OpenbimIfcModel model) {
+  out_len = 0;
+  out[0] = 0;
+  // docs:snippet cookbook-c-selectors
+  /* The ids a selector selects, ascending, into a buffer of the caller's. */
+  const char *query = "IfcWall, Pset_WallCommon.FireRating=F90";
+  uint64_t ids[16];
+  size_t count = 0;
+  if (openbim_ifc_v0_1_model_select(model, (const uint8_t *)query, strlen(query), ids, 16,
+                                    &count) != OPENBIM_IFC_STATUS_OK) {
+    print_error(model);
+    return 1;
+  }
+  for (size_t i = 0; i < count; i++) {
+    /* A value by path, as a tape: a size query, then the fetch. */
+    const char *path = "type.Name";
+    size_t need_nodes = 0, need_strings = 0;
+    openbim_ifc_v0_1_entity_get_value(model, ids[i], (const uint8_t *)path, strlen(path), NULL,
+                                      0, &need_nodes, NULL, 0, &need_strings);
+    Tape t = tape_alloc(need_nodes, need_strings);
+    openbim_ifc_v0_1_entity_get_value(model, ids[i], (const uint8_t *)path, strlen(path),
+                                      t.nodes, t.node_count, &need_nodes, t.strings,
+                                      t.string_len, &need_strings);
+    printf("#%llu type ", (unsigned long long)ids[i]);
+    tape_print(&t, 0);
+    printf("\n");
+    tape_free(&t);
+  }
+  /* #17 type WT-200
+   * #18 type WT-200 */
+
+  /* A selector that does not parse is INVALID_SELECTOR, with the byte span. */
+  const char *bad = "IfcWall, colour=red";
+  size_t start = 0, end = 0;
+  if (openbim_ifc_v0_1_model_select(model, (const uint8_t *)bad, strlen(bad), ids, 16,
+                                    &count) == OPENBIM_IFC_STATUS_INVALID_SELECTOR &&
+      openbim_ifc_v0_1_last_error_span(model, &start, &end) == OPENBIM_IFC_STATUS_OK) {
+    printf("refused at bytes %zu..%zu\n", start, end); /* refused at bytes 9..15 */
+  }
+  // docs:end
+  CHECK(strcmp(out, "#17 type WT-200\n#18 type WT-200\nrefused at bytes 9..15\n") == 0, out);
+  return 0;
+}
+
 int main(int argc, char **argv) {
   if (argc != 3) {
     fprintf(stderr, "usage: cookbook <test/fixtures directory> <scratch directory>\n");
@@ -775,6 +820,13 @@ int main(int argc, char **argv) {
   OK(openbim_ifc_v0_1_model_open((const uint8_t *)cascade_path, strlen(cascade_path), &model,
                                  NULL, 0));
   if (recipe_remove_product(model) != 0) return 1;
+  OK(openbim_ifc_v0_1_model_destroy(model));
+
+  snprintf(selector_path, sizeof selector_path, "%s/synthetic-relations/selector_ifc4.ifc",
+           argv[1]);
+  OK(openbim_ifc_v0_1_model_open((const uint8_t *)selector_path, strlen(selector_path), &model,
+                                 NULL, 0));
+  if (recipe_selectors(model) != 0) return 1;
   OK(openbim_ifc_v0_1_model_destroy(model));
 
   if (recipe_create() != 0) return 1;

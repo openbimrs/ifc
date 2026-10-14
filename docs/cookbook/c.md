@@ -534,6 +534,62 @@ none. `openbim_ifc_v0_1_new_guid` draws an RFC 9562 version-4 UUID from
 the operating system; `openbim_ifc_v0_1_name_based_guid` is version 8, the
 same for the same parts in every binding. Both need no model.
 
+## Select entities and read values by path
+
+A [selector](/guide/selectors) picks entities by class, attribute,
+property, type, material, classification, location and group; a value path
+reads (and writes) one value of an entity. Read from
+`test/fixtures/synthetic-relations/selector_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-c-selectors -->
+
+```c
+/* The ids a selector selects, ascending, into a buffer of the caller's. */
+const char *query = "IfcWall, Pset_WallCommon.FireRating=F90";
+uint64_t ids[16];
+size_t count = 0;
+if (openbim_ifc_v0_1_model_select(model, (const uint8_t *)query, strlen(query), ids, 16,
+                                  &count) != OPENBIM_IFC_STATUS_OK) {
+  print_error(model);
+  return 1;
+}
+for (size_t i = 0; i < count; i++) {
+  /* A value by path, as a tape: a size query, then the fetch. */
+  const char *path = "type.Name";
+  size_t need_nodes = 0, need_strings = 0;
+  openbim_ifc_v0_1_entity_get_value(model, ids[i], (const uint8_t *)path, strlen(path), NULL,
+                                    0, &need_nodes, NULL, 0, &need_strings);
+  Tape t = tape_alloc(need_nodes, need_strings);
+  openbim_ifc_v0_1_entity_get_value(model, ids[i], (const uint8_t *)path, strlen(path),
+                                    t.nodes, t.node_count, &need_nodes, t.strings,
+                                    t.string_len, &need_strings);
+  printf("#%llu type ", (unsigned long long)ids[i]);
+  tape_print(&t, 0);
+  printf("\n");
+  tape_free(&t);
+}
+/* #17 type WT-200
+ * #18 type WT-200 */
+
+/* A selector that does not parse is INVALID_SELECTOR, with the byte span. */
+const char *bad = "IfcWall, colour=red";
+size_t start = 0, end = 0;
+if (openbim_ifc_v0_1_model_select(model, (const uint8_t *)bad, strlen(bad), ids, 16,
+                                  &count) == OPENBIM_IFC_STATUS_INVALID_SELECTOR &&
+    openbim_ifc_v0_1_last_error_span(model, &start, &end) == OPENBIM_IFC_STATUS_OK) {
+  printf("refused at bytes %zu..%zu\n", start, end); /* refused at bytes 9..15 */
+}
+```
+
+<!-- /SNIPPET -->
+
+`openbim_ifc_v0_1_model_select_from` restricts a selector to given ids.
+`openbim_ifc_v0_1_entity_get_value` writes a value tape: several values as a
+`LIST`, a property set as a `LIST` of two-item `LIST`s (the member's name
+and its value). `openbim_ifc_v0_1_entity_set_value` takes a one-value tape
+of plain values. The grammar version is
+`OPENBIM_IFC_SELECTOR_GRAMMAR_MAJOR`.`OPENBIM_IFC_SELECTOR_GRAMMAR_MINOR`.
+
 ## Remove a product and purge
 
 A door with what it alone owns, a wall whose openings place their fillings,

@@ -8,6 +8,19 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#464, selectors and values by path)
+
+- `model.select(query, base?)`, `model.getValue(id, path)` (an
+  `IfcSelectedValue`: a tagged value, a list, or a property set as
+  `{ kind: "properties", entries }`) and `model.setValue(id, path,
+  value)`; `IfcModel.canonicalSelector(query)` and
+  `IfcModel.selectorGrammarVersion()`.
+- The code `invalid-selector`, with `error.span`, the byte range an
+  invalid selector refuses. The pattern engine (`regex-lite`) is in every
+  build.
+
+Semver: additive, a minor release while 0.x.
+
 ## [0.9.0] - 2026-10-13
 
 ### Added (#478, cascading delete and purge)

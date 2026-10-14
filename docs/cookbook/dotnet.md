@@ -313,6 +313,39 @@ them all. `IfcModel.NewGuid()` draws an RFC 9562 version-4 UUID from the
 operating system; `IfcModel.NameBasedGuid(parts)` is version 8, the same
 for the same parts in every binding. Both are IFC's 22-character form.
 
+## Select entities and read values by path
+
+A [selector](/guide/selectors) picks entities by class, attribute,
+property, type, material, classification, location and group; a value path
+reads (and writes) one value of an entity. Read from
+`test/fixtures/synthetic-relations/selector_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-dotnet-selectors -->
+
+```csharp
+var walls = model.Select("IfcWall, Pset_WallCommon.FireRating=F90"); // 17, 18
+Print(string.Join(", ", model.Select("IfcDoor + location=\"Level 1\""))); // 19, 28, 38, 40
+
+Print(((Value.Text)model.GetValue(walls[0], "type.Name")).Value); // WT-200
+// A property set is a list of [name, value] pairs.
+var pset = (Value.List)model.GetValue(walls[0], "Pset_WallCommon");
+Print(string.Join(", ", pset.Items.Select(pair => ((Value.Text)((Value.List)pair).Items[0]).Value)));
+// IsExternal, FireRating, AcousticRating
+
+model.SetValue(walls[0], "type.Name", "WT-300"); // one checked transaction
+var error = Assert.Throws<IfcException>(() => model.Select("IfcWall, colour=red"));
+Print($"{error.Code} {error.Span}"); // invalid-selector (9, 15)
+```
+
+<!-- /SNIPPET -->
+
+`Select(query, baseIds)` restricts a selector to given ids. `GetValue`
+returns a `Value`: several values as a `Value.List`, a property set as a
+`Value.List` of two-item lists, each the member's name and its value.
+`SetValue` takes a plain .NET value or a `Value`. A selector that does not
+parse throws `IfcException` with `Code` `invalid-selector` and `Span`, the
+byte range it refuses in the UTF-8 query.
+
 ## Remove a product and purge
 
 A door with what it alone owns, a wall whose openings place their fillings,

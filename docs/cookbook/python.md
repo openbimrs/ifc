@@ -297,6 +297,43 @@ them all. `new_guid()` draws an RFC 9562 version-4 UUID from the operating
 system; `name_based_guid(*parts)` is version 8, the same for the same parts
 in every binding. Both are IFC's 22-character form.
 
+## Select entities and read values by path
+
+A [selector](/guide/selectors) picks entities by class, attribute,
+property, type, material, classification, location and group; a value path
+reads (and writes) one value of an entity. Read from
+`test/fixtures/synthetic-relations/selector_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-py-selectors -->
+
+```python
+walls = model.select("IfcWall, Pset_WallCommon.FireRating=F90")  # Entity views
+print([wall.Name for wall in walls])  # ['Wall A', 'Wall B']
+print(model.select_ids('IfcDoor + location="Level 1"'))  # [19, 28, 38, 40]
+
+print(model.get_value(walls[0], "type.Name"))  # 'WT-200'
+print(model.get_value(walls[0], "materials.Name"))  # ('Concrete',)
+print(dict(model.get_value(walls[0], "Pset_WallCommon")))
+# {'IsExternal': True, 'FireRating': 'F90', 'AcousticRating': 'R45'}
+
+model.set_value(walls[0], "type.Name", "WT-300")  # one checked transaction
+try:
+    model.select("IfcWall, colour=red")
+except openbim_ifc.IfcError as error:
+    print((error.code, error.span))  # ('invalid-selector', (9, 15))
+```
+
+<!-- /SNIPPET -->
+
+`select` returns `Entity` views and `select_ids` the ids, in ascending id
+order; `base=` restricts both to given entities. A property set reads as a
+read-only mapping, several values as a tuple, a reference as an `Entity`.
+`set_value` writes an attribute coerced as `wall.Name = ...` is, or a
+property in the type the property already states. A selector that does not
+parse, or names a class or attribute the release does not declare, raises
+`IfcError` with `code` `invalid-selector` and `span`, the byte range it
+refuses.
+
 ## Remove a product and purge
 
 A door with what it alone owns, a wall whose openings place their fillings,

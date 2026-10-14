@@ -9,6 +9,18 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#464, selectors and values by path)
+
+- `model.Select(query)`, `model.Select(query, baseIds)`,
+  `model.GetValue(id, path)` (a property set as a `Value.List` of name and
+  value pairs) and `model.SetValue(id, path, value)`;
+  `IfcModel.SelectorGrammarVersion`.
+- `IfcStatus.InvalidSelector` and the code `invalid-selector`, with
+  `IfcException.Span`, the byte range an invalid selector refuses.
+- Requires the C ABI 0.1.13 (`openbim-ifc-capi` with #464).
+
+Semver: additive, a minor release while 0.x.
+
 ## [0.6.0] - 2026-10-13
 
 ### Added (#478, cascading delete and purge)

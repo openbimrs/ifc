@@ -133,6 +133,7 @@ and `.github/workflows/nix.yml` builds the flake.
 | `psets FILE ENTITY` | Property and quantity sets of one object or type object | `table`, `json`, `csv` |
 | `tree FILE` | Project, site, building, storey and space, with their elements | `human`, `json` |
 | `lint FILE...` | Products with geometry that no model viewer will draw | `human`, `json`, `sarif` |
+| `select FILE QUERY` | The entities a [selector](/guide/selectors) selects, with values read by path | `table`, `json`, `csv` |
 
 `openbim-ifc <command> --help` lists every option. Each command reads STEP or
 ifcXML, chosen by content first and extension second, and an ifcZIP archive
@@ -226,6 +227,24 @@ the spatial structure, or with geometry only in contexts a model viewer
 skips. Openings, parts, containers and products without a shape are
 legitimately outside the containment tree and are not reported. Any finding
 fails the run.
+
+### select
+
+```bash
+openbim-ifc select model.ifc 'IfcWall, Pset_WallCommon.IsExternal=TRUE'
+openbim-ifc select model.ifc 'IfcDoor + location="Level 1"' --value type.Name --value storey.Name
+openbim-ifc select model.ifc 'IfcWall, material=Concrete' --value Qto_WallBaseQuantities.Length --format csv
+```
+
+Lists the entities a [selector](/guide/selectors) selects, in ascending id
+order, with their class, `GlobalId` and `Name`, and one column per
+`--value` path (`type.Name`, `Pset_WallCommon.FireRating`,
+`materials.Name`). The selector is evaluated against the release the
+header declares; one that does not parse, or that names a class or
+attribute the release does not declare, is refused as `invalid-selector`
+with the byte span it refuses, never answered with an empty list. JSON
+gives the query in its canonical form and the grammar version beside the
+entities. Quote the selector in the shell: it holds spaces, `!` and `$`.
 
 ## Exit codes
 

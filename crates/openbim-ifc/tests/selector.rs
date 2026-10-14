@@ -574,3 +574,42 @@ fn catalog_property_writes_override_the_type_s_value() {
         );
     });
 }
+
+#[test]
+fn the_guide_example_runs() -> Result<(), Box<dyn std::error::Error>> {
+    let model = read("selector_ifc4.ifc");
+    let schema = ifc::schema::ifc4();
+    let mut printed = Vec::new();
+    // docs:snippet selector-rust
+    use ifc::selector::{set_value, Selector, SelectorIndex, ValuePath};
+
+    // One index per model: each relationship and property scan runs once,
+    // on first use, for every query and path after it.
+    let index = SelectorIndex::new(&model, schema);
+    let query = Selector::parse("IfcWall, Pset_WallCommon.FireRating=F90 + IfcDoor")?;
+    let type_name = ValuePath::parse("type.Name")?;
+    for id in index.select(&query)? {
+        printed.push(format!("#{} {:?}", id.0, index.value(id, &type_name)?));
+    }
+    // #17 Text("WT-200"), #18 Text("WT-200"), #28 Text("D-90")
+
+    // A refusal names the byte span of what it refuses.
+    let error = Selector::parse("IfcWall, colour=red").unwrap_err();
+    assert_eq!(error.span, 9..15);
+
+    // Writes are checked against the release and staged on one transaction.
+    let mut model = model.clone();
+    let renamed = ifc::Value::Text("WT-300".into());
+    set_value(&mut model, schema, EntityId(17), &type_name, &renamed)?;
+    // docs:end
+    assert_eq!(
+        printed,
+        [
+            "#17 Text(\"WT-200\")",
+            "#18 Text(\"WT-200\")",
+            "#28 Text(\"D-90\")"
+        ]
+    );
+    assert_eq!(value(&model, schema, 16, "Name"), text("WT-300"));
+    Ok(())
+}

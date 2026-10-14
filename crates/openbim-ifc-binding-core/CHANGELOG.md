@@ -8,6 +8,24 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#464, selectors and values by path)
+
+- `IfcModel::select(query)`, `select_from(query, base)`,
+  `get_value(id, path)` (a `Selected`: a tagged value, a list or a
+  property set's named members; `Selected::to_tagged` for the C tape) and
+  `set_value(id, path, Plain)`, which coerces a plain value against an
+  attribute's declared type or wraps it in the type of the property
+  already stated. `canonical_selector`, `SELECTOR_GRAMMAR_VERSION`.
+- The error code `invalid-selector` (`BindingError::InvalidSelector`, with
+  `BindingError::span`) for a selector or path that does not parse or
+  names a class or attribute the release lacks.
+- The facade's `selector` feature is always on; property writes by path
+  need `properties-write` (`feature-disabled` otherwise), so a read-only
+  browser build links no edit code.
+
+Semver: additive (internal crate, not published); a minor change of every
+binding.
+
 ### Added (#478, cascading delete and purge)
 
 - `IfcModel::remove_product(id, RemoveProductOptions)` and

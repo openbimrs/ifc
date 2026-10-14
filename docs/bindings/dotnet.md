@@ -314,6 +314,17 @@ version-8 one. The
 [cookbook](/cookbook/dotnet#find-entities-by-globalid-types-and-openings)
 has a recipe.
 
+## Selectors and values by path
+
+`model.Select(query)` and `model.Select(query, baseIds)` return the ids a
+[selector](/guide/selectors) selects, in ascending order.
+`model.GetValue(id, path)` reads a value by path as a `Value` (a property
+set as a list of name and value pairs) and `model.SetValue(id, path,
+value)` writes one as a single checked transaction. A selector that does
+not parse throws `IfcException` with `Code` `invalid-selector` and `Span`.
+The [cookbook](/cookbook/dotnet#select-entities-and-read-values-by-path)
+has a recipe.
+
 ## Geometry
 
 Geometry crosses at three levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)):
@@ -583,6 +594,11 @@ and `MeshedProduct` included, from its XML documentation comments.
 | `ulong? VoidedElementOf(ulong id)` | The element opening `id` voids (`IfcRelVoidsElement`), or null. |
 | `static string NewGuid()` | A new random `GlobalId`: an RFC 9562 version-4 UUID from the operating system's generator, in IFC's 22-character form (#463). |
 | `static string NameBasedGuid(params string[] parts)` | The `GlobalId` named by `parts` (RFC 9562 version 8): the same parts give the same `GlobalId` in every binding and release, for a reproducible export. Choose parts unique together, such as a tool name and a stable key. |
+| `const string SelectorGrammarVersion = "1.0" { get; }` | The version of the selector grammar this binding parses (#464). |
+| `IReadOnlyList<ulong> Select(string query)` | The ids selector `query` selects, ascending (#464). |
+| `IReadOnlyList<ulong> Select(string query, IEnumerable<ulong> baseIds)` | The ids selector `query` selects from `baseIds` alone, ascending; `missing-entity` for an id the model lacks. |
+| `Value GetValue(ulong id, string path)` | The value `path` reads from entity `id` (#464): `type.Name`, `Pset_WallCommon.FireRating`, `materials.Name`, `occurrences.count`. |
+| `void SetValue(ulong id, string path, object? value)` | Write `value` at `path` of entity `id` as one checked transaction (#464). |
 | `string TypeOf(ulong id)` | The upper-case type name of entity `id`. |
 | `IReadOnlyList<Value> Attributes(ulong id)` | Every attribute of entity `id`, in declaration order. |
 | `Value Attribute(ulong id, int index)` | Attribute `index` of entity `id`; `Value.Null` past the end. |

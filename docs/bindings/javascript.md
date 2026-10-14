@@ -421,6 +421,19 @@ several entities carry throws `invalid-model` naming them all, and
 [cookbook](/cookbook/javascript#find-entities-by-globalid-types-and-openings)
 has a recipe.
 
+## Selectors and values by path
+
+`model.select(query, base?)` returns the ids a
+[selector](/guide/selectors) selects, in ascending order.
+`model.getValue(id, path)` reads a value by path as an `IfcSelectedValue`
+(a property set as `{ kind: "properties", entries }`) and
+`model.setValue(id, path, value)` writes one as a single checked
+transaction. `IfcModel.canonicalSelector(query)` prints a selector in
+canonical form and `IfcModel.selectorGrammarVersion()` names the grammar.
+A selector that does not parse throws `invalid-selector` with `span`. The
+[cookbook](/cookbook/javascript#select-entities-and-read-values-by-path)
+has a recipe.
+
 ## Geometry
 
 Geometry crosses at three levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)):
@@ -1031,7 +1044,17 @@ export type IfcErrorCode =
   | "missing-attribute"
   | "still-referenced"
   | "type-mismatch"
-  | "ambiguous-value";
+  | "ambiguous-value"
+  | "invalid-selector";
+
+/**
+ * A value `IfcModel.getValue` reads by path (#464): a tagged value, a list
+ * of them, or a property set's members as `[name, value]` pairs.
+ */
+export type IfcSelectedValue =
+  | IfcValue
+  | { kind: "list"; items: IfcSelectedValue[] }
+  | { kind: "properties"; entries: [string, IfcSelectedValue][] };
 
 /**
  * Where `IfcModel.loadCatalog` reads a catalog snapshot from. By default
