@@ -197,8 +197,21 @@ bytes and resolve it against the release the file's header declares:
 inherited first: name (`TEXT`), index (`INTEGER`), type name (`TEXT`),
 optional, aggregate and derived (`BOOL`), declared by (`TEXT`). Names
 match case-insensitively and come back in the schema's spelling.
-`INVERSE` attributes hold no slot and are unknown names
-(`OPENBIM_IFC_STATUS_UNKNOWN_ATTRIBUTE`, `unknown-attribute`). A derived
+An `INVERSE` name (#462) reads through
+`openbim_ifc_v0_1_entity_attribute_by_name` as well, following the
+declared release's `FOR` clause: a `LIST` of `REF`s in ascending id order
+for a `SET` or `BAG` (`SET [0:1]` included: zero or one element), a `REF`
+or `NULL` for a single-valued inverse, where two referrers are
+`OPENBIM_IFC_STATUS_INVALID_MODEL`. A write to one is
+`OPENBIM_IFC_STATUS_INVERSE_ATTRIBUTE` (`inverse-attribute`).
+`openbim_ifc_v0_1_entity_inverse_attribute_names` lists the declarations
+as `InverseAttributeInfo` records (name, entity, for attribute, aggregate,
+lower, upper or `NULL` for `?`, declared by);
+`openbim_ifc_v0_1_entity_inverse_references` lists every referrer as an
+`InverseReference` record (`REF` id, `INTEGER` attribute index), and
+`openbim_ifc_v0_1_entity_total_inverses` counts the distinct referrers.
+A name that is neither is `OPENBIM_IFC_STATUS_UNKNOWN_ATTRIBUTE`
+(`unknown-attribute`). A derived
 slot reads as stored (`OPENBIM_IFC_KIND_DERIVED`) and refuses a write
 (`OPENBIM_IFC_STATUS_DERIVED_ATTRIBUTE`, `derived-attribute`). An entity
 type the declared release does not have is

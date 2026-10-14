@@ -100,6 +100,12 @@ internal static unsafe partial class NativeMethods
     internal static extern IfcStatus openbim_ifc_v0_1_entity_fillings(ulong model, ulong id, ulong* buffer, nuint capacity, nuint* out_required);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_entity_inverse_attribute_names(ulong model, ulong id, nuint* out_count, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_entity_inverse_references(ulong model, ulong id, nuint* out_count, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_entity_occurrences(ulong model, ulong id, ulong* buffer, nuint capacity, nuint* out_required);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
@@ -119,6 +125,9 @@ internal static unsafe partial class NativeMethods
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_entity_set_attribute_by_name_plain(ulong model, ulong id, byte* name, nuint name_len, ValueNode* nodes, nuint node_count, byte* strings, nuint string_len);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_entity_total_inverses(ulong model, ulong id, nuint* out_count);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_entity_type(ulong model, ulong id, byte* buffer, nuint capacity, nuint* out_required);

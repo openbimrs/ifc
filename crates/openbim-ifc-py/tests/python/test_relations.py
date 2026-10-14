@@ -7,7 +7,16 @@ import os
 import unittest
 
 import openbim_ifc
-from openbim_ifc import DuplicateGlobalId, Entity, IfcError, IfcModel
+from openbim_ifc import (
+    DuplicateGlobalId,
+    Entity,
+    IfcError,
+    IfcModel,
+    InverseAttributeInfo,
+    InverseReference,
+    List,
+    Ref,
+)
 
 FIXTURES = os.path.join(
     os.path.dirname(__file__), "..", "..", "..", "..", "test", "fixtures", "synthetic-relations"
@@ -93,6 +102,60 @@ class Relations(unittest.TestCase):
             with self.assertRaises(IfcError) as raised:
                 call()
             self.assertEqual(raised.exception.code, code)
+
+
+class Inverses(unittest.TestCase):
+    """INVERSE attributes by name (#462): how the answers cross into Python."""
+
+    def test_an_inverse_name_reads_entities_through_the_declared_release(self) -> None:
+        for name in RELEASES:
+            with self.subTest(name):
+                model = fixture(name)
+                wall = model[17]
+                if name == "relations_ifc2x3.ifc":
+                    self.assertEqual(wall.IsDefinedBy, (model[20], model[36]))
+                    self.assertFalse(hasattr(wall, "IsTypedBy"))
+                else:
+                    self.assertEqual(wall.IsDefinedBy, (model[36],))
+                    self.assertEqual(wall.istypedby, (model[20],))
+                self.assertEqual(wall.ContainedInStructure, (model[33],))
+                self.assertEqual(model[11].Decomposes, ())
+                self.assertEqual(model[21].VoidsElements, model[24])
+                self.assertEqual(model.attribute_by_name(17, "HasOpenings"), List([Ref(24), Ref(25)]))
+                with self.assertRaises(IfcError) as refused:
+                    wall.HasOpenings = ()
+                self.assertEqual(refused.exception.code, "inverse-attribute")
+
+    def test_references_totals_and_declarations(self) -> None:
+        for name in RELEASES:
+            with self.subTest(name):
+                model = fixture(name)
+                self.assertEqual(
+                    model.inverse_references(21),
+                    [InverseReference(24, 5), InverseReference(30, 4)],
+                )
+                self.assertEqual(model[21].inverse_references(), [(model[24], 5), (model[30], 4)])
+                self.assertEqual(model.total_inverses(17), 5)
+                self.assertEqual(model[36].total_inverses(), 0)
+                voids = next(i for i in model.inverse_attribute_names(21) if i.name == "VoidsElements")
+                self.assertIsInstance(voids, InverseAttributeInfo)
+                self.assertEqual(
+                    voids,
+                    InverseAttributeInfo(
+                        "VoidsElements",
+                        "IfcRelVoidsElement",
+                        "RelatedOpeningElement",
+                        False,
+                        1,
+                        1,
+                        "IfcFeatureElementSubtraction",
+                    ),
+                )
+                defined = next(i for i in model[17].inverse_attribute_names() if i.name == "IsDefinedBy")
+                self.assertIsNone(defined.upper)
+                with self.assertRaises(IfcError) as missing:
+                    model.total_inverses(999)
+                self.assertEqual(missing.exception.code, "missing-entity")
 
 
 if __name__ == "__main__":

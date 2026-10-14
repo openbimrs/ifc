@@ -107,8 +107,18 @@ against the release the file's header declares, so the same code reads
 `attributeNames(id)` lists every explicit attribute in slot order,
 inherited first, as `{ name, index, typeName, optional, aggregate,
 derived, declaredBy }`. Names match case-insensitively and come back in
-the schema's spelling. `INVERSE` attributes hold no slot and are unknown
-names (`unknown-attribute`). A slot the entity's type derives is listed
+the schema's spelling. An `INVERSE` name (#462) reads through
+`attributeByName` too, following the declared release's `FOR` clause
+(IFC2X3's `IsDefinedBy` holds type and property relationships, IFC4's
+only property ones beside `IsTypedBy`): a `{ kind: "list" }` of `ref`s
+in ascending id order for a `SET` or `BAG`, `SET [0:1]` inverses such as
+`ContainedInStructure` included (zero or one item, never unwrapped); a
+`ref` or `{ kind: "null" }` for a single-valued inverse (`VoidsElements`),
+where two referrers throw `invalid-model`. Writing one throws
+`inverse-attribute`. `inverseAttributeNames(id)` lists the declarations
+as `{ name, entity, forAttribute, aggregate, lower, upper, declaredBy }`,
+`inverseReferences(id)` every referrer as `{ id, index }`, and
+`totalInverses(id)` counts the distinct referrers. A slot the entity's type derives is listed
 with `derived: true`, reads as stored (`{ kind: "derived" }`) and refuses
 a write (`derived-attribute`). An entity type the declared release does
 not have, or a release the build leaves out, is `unsupported-schema`.
@@ -963,7 +973,10 @@ class, interface and type the package's `.d.ts` declares.
 | `model.setAttribute(id: bigint, slot: number, value: IfcValue): IfcValue` | yes | Set attribute `index` of entity `id`; returns the previous value. |
 | `model.attributeNames(id: bigint): AttributeInfo[]` | yes | Every explicit attribute of entity `id` in slot order, inherited first, as the release the header declares defines them. |
 | `model.attributeByName(id: bigint, name: string): IfcValue` | yes | Attribute `name` of entity `id` (case-insensitive, e.g. `"Name"`), resolved against the declared release, as a tagged value. |
-| `model.setAttributeByName(id: bigint, name: string, value: IfcValue \| IfcPlainValue): IfcValue` | yes | Set attribute `name` of entity `id`; returns the previous value. A derived attribute is refused (`derived-attribute`). |
+| `model.inverseAttributeNames(id: bigint): InverseAttributeInfo[]` | yes | Every `INVERSE` attribute of entity `id`, inherited ones first, as the declared release defines them (#462). |
+| `model.inverseReferences(id: bigint): InverseReference[]` | yes | Every reference to entity `id`: the referencing entity and the attribute index it references through, in ascending order (#462). |
+| `model.totalInverses(id: bigint): number` | yes | How many distinct entities reference entity `id` (#462). |
+| `model.setAttributeByName(id: bigint, name: string, value: IfcValue \| IfcPlainValue): IfcValue` | yes | Set attribute `name` of entity `id`; returns the previous value. A derived attribute is refused (`derived-attribute`), an `INVERSE` one (`inverse-attribute`). |
 | `model.add(typeName: string, attributes: IfcValue[]): bigint` | yes | Append an entity; returns its id (`bigint`). |
 | `model.remove(id: bigint): void` | yes | Remove entity `id`, leaving references to it dangling. |
 | `model.author(ops: AuthorOp[]): AuthoringResult` | yes | Apply authoring operations as one checked transaction against the release the header declares: every operation, in order, or none, and a refused batch leaves the model unchanged. An operation names the entity an earlier one produced by `IfcModel.handle(index)`. `result.ids` holds, per operation, the id of the entity it produced. |
@@ -1031,7 +1044,8 @@ export type IfcErrorCode =
   | "missing-attribute"
   | "still-referenced"
   | "type-mismatch"
-  | "ambiguous-value";
+  | "ambiguous-value"
+  | "inverse-attribute";
 
 /**
  * Where `IfcModel.loadCatalog` reads a catalog snapshot from. By default
@@ -1139,6 +1153,32 @@ export interface AttributeInfo {
   derived: boolean;
   /** The entity that declares the attribute, e.g. `IfcRoot`. */
   declaredBy: string;
+}
+
+/** One `INVERSE` attribute of an entity, from `IfcModel.inverseAttributeNames`. */
+export interface InverseAttributeInfo {
+  /** The declared name in the schema's spelling, e.g. `IsDefinedBy`. */
+  name: string;
+  /** The referencing entity type before `FOR`; its subtypes count too. */
+  entity: string;
+  /** The attribute of `entity` after `FOR`, e.g. `RelatedObjects`. */
+  forAttribute: string;
+  /** A `SET` or `BAG` (read as a `list`), not a single `ref`. */
+  aggregate: boolean;
+  /** The declared lower bound; `1` for a single-valued inverse. */
+  lower: number;
+  /** The declared upper bound, `undefined` for `?`. */
+  upper?: number;
+  /** The entity that declares the inverse, e.g. `IfcObject`. */
+  declaredBy: string;
+}
+
+/** One reference to an entity, from `IfcModel.inverseReferences`. */
+export interface InverseReference {
+  /** The referencing entity. */
+  id: bigint;
+  /** The attribute index of `id` holding the reference. */
+  index: number;
 }
 ```
 

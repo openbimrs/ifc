@@ -69,9 +69,9 @@ pub enum BindingError {
     /// PSD/QTO catalog was loaded, in a build that loads it at runtime
     /// (`property-catalog-runtime`, #318). Load it and retry.
     CatalogNotLoaded(String),
-    /// A by-name attribute access (#326) named no explicit attribute of
-    /// the entity's type in the declared release (an `INVERSE` attribute
-    /// has no slot and is unknown too).
+    /// A by-name attribute access (#326) named no attribute of the
+    /// entity's type in the declared release: neither an explicit one nor,
+    /// for a read, an `INVERSE` one (#462).
     UnknownAttribute(String),
     /// A by-name attribute write (#326) named a slot the entity's type
     /// derives: the file writes it `*` and it holds no value to set.
@@ -91,6 +91,9 @@ pub enum BindingError {
     /// of the attribute's SELECT, such as a string for `IfcValue`; the
     /// detail names the candidates. Wrap the value explicitly instead.
     AmbiguousValue(String),
+    /// A by-name attribute write (#462) named an `INVERSE` attribute of the
+    /// entity's type: it holds no slot; write the referencing attribute.
+    InverseAttribute(String),
 }
 
 impl BindingError {
@@ -120,6 +123,7 @@ impl BindingError {
             Self::StillReferenced(_) => "still-referenced",
             Self::TypeMismatch(_) => "type-mismatch",
             Self::AmbiguousValue(_) => "ambiguous-value",
+            Self::InverseAttribute(_) => "inverse-attribute",
         }
     }
 }
@@ -165,6 +169,7 @@ impl fmt::Display for BindingError {
                 f,
                 "ambiguous value: {detail}; pass an explicit typed value instead"
             ),
+            Self::InverseAttribute(detail) => write!(f, "inverse attribute: {detail}"),
         }
     }
 }
@@ -203,6 +208,7 @@ mod tests {
         "still-referenced",
         "type-mismatch",
         "ambiguous-value",
+        "inverse-attribute",
     ];
 
     /// One value of every variant, in declaration order.
@@ -231,6 +237,7 @@ mod tests {
             BindingError::StillReferenced(String::new()),
             BindingError::TypeMismatch(String::new()),
             BindingError::AmbiguousValue(String::new()),
+            BindingError::InverseAttribute(String::new()),
         ];
         // Exhaustive on purpose: a new variant does not compile until it is
         // listed above, so its code cannot escape the snapshot.
@@ -258,7 +265,8 @@ mod tests {
                 | BindingError::MissingAttribute(_)
                 | BindingError::StillReferenced(_)
                 | BindingError::TypeMismatch(_)
-                | BindingError::AmbiguousValue(_) => {}
+                | BindingError::AmbiguousValue(_)
+                | BindingError::InverseAttribute(_) => {}
             }
         }
         all

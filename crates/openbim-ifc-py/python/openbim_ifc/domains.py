@@ -527,6 +527,40 @@ class AttributeInfo:
     declared_by: str
 
 
+@dataclass(frozen=True)
+class InverseAttributeInfo:
+    """One ``INVERSE`` attribute of an entity, from
+    :meth:`IfcModel.inverse_attribute_names` (#462), as the release the
+    header declares defines it: ``name : SET [lower:upper] OF entity FOR
+    for_attribute``.
+
+    ``entity`` is the referencing type (its subtypes count too) and
+    ``for_attribute`` its attribute that references this entity, directly
+    or as an aggregate member. An ``aggregate`` inverse (a ``SET`` or
+    ``BAG``, ``SET [0:1]`` included) reads as a ``List``; a single-valued
+    one as a ``Ref`` or ``Null``. ``upper`` is ``None`` for ``?``;
+    ``declared_by`` names the entity that introduces it (``IfcObject``).
+    """
+
+    name: str
+    entity: str
+    for_attribute: str
+    aggregate: bool
+    lower: int
+    upper: Optional[int]
+    declared_by: str
+
+
+@dataclass(frozen=True)
+class InverseReference:
+    """One reference to an entity, from :meth:`IfcModel.inverse_references`
+    (#462): entity ``id`` holds it in attribute ``index``, directly or
+    inside an aggregate."""
+
+    id: int
+    index: int
+
+
 #: The first id of the handle range (2**62): ``HANDLE_BASE + i`` names the
 #: entity operation ``i`` of an :meth:`IfcModel.author` batch produced.
 HANDLE_BASE = 1 << 62
@@ -813,6 +847,8 @@ _RECORDS = {
         MapConversion,
         PropertyEditResult,
         AttributeInfo,
+        InverseAttributeInfo,
+        InverseReference,
         AuthoringResult,
         RemovedEntity,
         KeptEntity,

@@ -8,6 +8,23 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#462, INVERSE attributes by name)
+
+- `entity.IsDefinedBy` and every other `INVERSE` name, resolved against
+  the file's release: a tuple of `Entity` views for a `SET` or `BAG`
+  (`SET [0:1]` included), an `Entity` or `None` for a single-valued
+  inverse; also through `model.attribute_by_name` (`List` of `Ref`, or
+  `Ref`/`Null`). `dir(entity)` lists them.
+- `model.inverse_attribute_names(id)` (`InverseAttributeInfo`),
+  `model.inverse_references(id)` (`InverseReference(id, index)`),
+  `model.total_inverses(id)`, and `entity.inverse_attribute_names()`,
+  `entity.inverse_references()` (`(Entity, index)` pairs),
+  `entity.total_inverses()`.
+- A write to an `INVERSE` name raises `IfcError` with the new code
+  `inverse-attribute`. Reading one no longer raises `unknown-attribute`.
+
+Semver: additive, a minor release while 0.x.
+
 ## [0.9.0] - 2026-10-13
 
 ### Added (#478, cascading delete and purge)

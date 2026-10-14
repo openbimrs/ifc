@@ -42,8 +42,22 @@ against the release the file's header declares, so the same code reads
 `attribute_names(id)` lists every explicit attribute in slot order,
 inherited first, as frozen `AttributeInfo(name, index, type_name,
 optional, aggregate, derived, declared_by)` records. Names match
-case-insensitively and come back in the schema's spelling. `INVERSE`
-attributes hold no slot and are unknown names (`unknown-attribute`). A
+case-insensitively and come back in the schema's spelling. An `INVERSE`
+name (#462) reads through the same call: `attribute_by_name(wall,
+"IsDefinedBy")` follows the declared release's `FOR` clause (IFC2X3's
+`IsDefinedBy` holds type and property relationships, IFC4's only property
+ones beside `IsTypedBy`) and answers a `List` of `Ref`s in ascending id
+order for a `SET` or `BAG`; `SET [0:1]` inverses such as
+`ContainedInStructure` are a list of zero or one, never unwrapped. A
+single-valued inverse (`VoidsElements`) is a `Ref` or `Null`; two
+referrers raise `invalid-model`. A write to one raises
+`inverse-attribute`. `inverse_attribute_names(id)` lists the declarations
+as `InverseAttributeInfo(name, entity, for_attribute, aggregate, lower,
+upper, declared_by)`; `inverse_references(id)` lists every referrer as
+`InverseReference(id, index)`, the attribute index included, and
+`total_inverses(id)` counts the distinct referrers. The reverse index
+behind them is built on the first such call and again only after an
+edit. A
 slot the entity's type derives is listed with `derived=True`, reads as
 stored (`Derived()`) and refuses a write (`derived-attribute`). An entity
 type the declared release does not have, or a release the build leaves
@@ -96,7 +110,10 @@ for the type and its subtypes, per the file's schema.
 
 `entity.Name` reads through `attribute_by_name`, so names resolve against
 the declared release and match case-insensitively (`entity.name` works
-too). An unknown name, an `INVERSE` attribute included, raises
+too), and so do `INVERSE` names: `wall.IsDefinedBy` is a tuple of the
+relationship entities, `opening.VoidsElements` an `Entity` or `None`.
+`entity.inverse_references()` gives `(Entity, index)` pairs and
+`entity.total_inverses()` the count. An unknown name raises
 `AttributeError`, chained from the `unknown-attribute` `IfcError`, so
 `hasattr` and `getattr(entity, name, default)` work. `entity.get(name)`
 is the same read with a precise return type (`PlainValue`; `entity.Name`
@@ -278,7 +295,10 @@ to this package.
 | (no equivalent) | `openbim_ifc.name_based_guid(*parts)` | Reproducible: the same parts give the same `GlobalId` |
 | `util.element.get_type(entity)` | `model.type_object(entity.id)` | An id or `None`; two types for one object raise `invalid-model` |
 | `util.element.get_types(type)` | `model.occurrences_of(type.id)` | Ids |
-| `entity.HasOpenings`, `opening.HasFillings`, `opening.VoidsElements` | `model.openings_of(id)`, `model.fillings_of(id)`, `model.voided_element_of(id)` | Ids, read from the relationships; no inverse attributes |
+| `entity.HasOpenings`, `opening.HasFillings`, `opening.VoidsElements` | the same, or `model.openings_of(id)`, `model.fillings_of(id)`, `model.voided_element_of(id)` | The inverse reads relationship entities; the queries return the elements' ids |
+| `entity.IsDefinedBy`, any `INVERSE` name | `entity.IsDefinedBy` | Resolved against the file's release; a single-valued inverse (`VoidsElements`) is an `Entity` or `None`, not a tuple (IfcOpenShell's `unpack_non_aggregate_inverses`) |
+| `file.get_inverse(entity, True, True)` | `entity.inverse_references()` | `(Entity, index)` pairs in ascending order; `model.inverse_references(id)` gives `InverseReference(id, index)` |
+| `file.get_total_inverses(entity)` | `entity.total_inverses()` | Distinct referencing entities |
 
 ## Beyond the record model
 
@@ -772,9 +792,12 @@ class, record and function of the package with its docstring and types.
 | `model.attributes(id: int) -> List[Value]` | Every attribute of entity `id`, in declaration order. |
 | `model.attribute(id: int, index: int) -> Value` | Attribute `index` of entity `id`; `Null` past the end. |
 | `model.set_attribute(id: int, index: int, value: Value) -> Value` | Set attribute `index` of entity `id`; returns the old value. |
-| `model.attribute_names(id: int) -> List[AttributeInfo]` | Every explicit attribute of entity `id` in slot order, inherited first, as the release the header declares defines them. `INVERSE` attributes hold no slot and are not listed. |
+| `model.attribute_names(id: int) -> List[AttributeInfo]` | Every explicit attribute of entity `id` in slot order, inherited first, as the release the header declares defines them. `INVERSE` attributes hold no slot and are listed by :meth:`inverse_attribute_names`. |
 | `model.attribute_by_name(id: int, name: str) -> Value` | Attribute `name` of entity `id`, matched case-insensitively (`"Name"`) and resolved against the declared release; `Null` when the record stops before its slot. |
-| `model.set_attribute_by_name(id: int, name: str, value: Value) -> Value` | Set attribute `name` of entity `id`; returns the old value. A derived attribute raises `derived-attribute`, an unknown name `unknown-attribute`, and a refused write changes nothing. |
+| `model.inverse_attribute_names(id: int) -> List[InverseAttributeInfo]` | Every `INVERSE` attribute of entity `id`, inherited ones first, with its `FOR` clause and bounds, as the declared release defines them. |
+| `model.inverse_references(id: int) -> List[InverseReference]` | Every reference to entity `id`: the referencing entity and the attribute index holding the reference, in ascending order, one per entity and attribute. IfcOpenShell's `file.get_inverse(entity, allow_duplicate=True, with_attribute_indices=True)`. |
+| `model.total_inverses(id: int) -> int` | How many distinct entities reference entity `id`, through any attribute. IfcOpenShell's `file.get_total_inverses`. |
+| `model.set_attribute_by_name(id: int, name: str, value: Value) -> Value` | Set attribute `name` of entity `id`; returns the old value. A derived attribute raises `derived-attribute`, an `INVERSE` one `inverse-attribute`, an unknown name `unknown-attribute`, and a refused write changes nothing. |
 | `model.set_attribute_by_name_plain(id: int, name: str, value: Assignable) -> Value` | Set attribute `name` of entity `id` from a plain Python value, coerced against the attribute's declared type in the declared release; returns the old tagged value. `wall.Name = "x"` calls this. |
 | `model.add(type_name: str, attributes: Iterable[Value]) -> int` | Append an entity; returns its new id. |
 | `model.remove(id: int) -> None` | Remove entity `id`, leaving references to it dangling. |
@@ -804,6 +827,9 @@ An `Entity` (from `model[id]`, `by_id`, `by_type` or `iter(model)`) also reads a
 | `entity.raw(name: str) -> Value` | Attribute `name` as the exact tagged value, e.g. `Typed("IFCLABEL", Text("W1"))` or `Derived()`. |
 | `entity.set(name: str, value: Assignable) -> Value` | Write attribute `name` (`entity.Name = value`); returns the old tagged value. A plain value is coerced against the declared type (:meth:`openbim_ifc.IfcModel.set_attribute_by_name_plain`); a tagged one is written as given. A refused write changes nothing. |
 | `entity.attribute_names() -> list[AttributeInfo]` | Every explicit attribute, in slot order, as :meth:`IfcModel.attribute_names` lists them. |
+| `entity.inverse_attribute_names() -> list[InverseAttributeInfo]` | Every `INVERSE` attribute, as :meth:`IfcModel.inverse_attribute_names` lists them. |
+| `entity.inverse_references() -> list[Tuple[Entity, int]]` | Every entity referencing this one, with the attribute index holding the reference: :meth:`IfcModel.inverse_references` as `(Entity, index)` pairs. |
+| `entity.total_inverses() -> int` | How many distinct entities reference this one: :meth:`IfcModel.total_inverses`. |
 | `entity.property_sets() -> list[PropertySet]` | The exact records :meth:`IfcModel.property_sets` returns. |
 | `entity.psets: Mapping[str, Mapping[str, PropertyValue]]` | Property sets and predefined property sets by name, each a read-only mapping of property name to :data:`PropertyValue`. |
 | `entity.qtos: Mapping[str, Mapping[str, PropertyValue]]` | Quantity sets (`IfcElementQuantity`) by name, as :attr:`psets`. |

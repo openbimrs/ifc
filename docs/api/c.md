@@ -147,6 +147,12 @@ Attribute `name` (UTF-8, `name_len` bytes, any case, e.g. `Name`) of
 entity `id` as a value tape; `NULL` when the record stops before its
 slot.
 
+An `INVERSE` name (`IsDefinedBy`, #462) reads the entities referencing
+`id` through the declared release's `FOR` clause: a `LIST` of `REF`s
+in ascending id order for a `SET` or `BAG` (`SET 0:1` included: zero
+or one element), a `REF` or `NULL` for a single-valued inverse, which
+two referrers refuse with `InvalidModel`.
+
 `MissingEntity`, `UnknownAttribute`, `UnsupportedSchema` as for
 `openbim_ifc_v0_1_entity_attribute_names`.
 
@@ -166,7 +172,7 @@ a `LIST` of `AttributeInfo` records, their number in `out_count`.
 (`INTEGER`, the slot), type name (`TEXT`), optional (`BOOL`), aggregate
 (`BOOL`), derived (`BOOL`: written `*`, not writable), declared by
 (`TEXT`, the entity introducing it). `INVERSE` attributes hold no slot
-and are not listed.
+and are listed by `openbim_ifc_v0_1_entity_inverse_attribute_names`.
 
 `MissingEntity`; `UnsupportedSchema` when the header names no bundled
 release or the release does not declare the entity's type.
@@ -200,6 +206,43 @@ order. Refusals as for `openbim_ifc_v0_1_entity_type_object`
 
 **Safety.**
 As for `openbim_ifc_v0_1_model_ids`.
+
+### `openbim_ifc_v0_1_entity_inverse_attribute_names`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_entity_inverse_attribute_names(OpenbimIfcModel model, uint64_t id, size_t *out_count, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+Every `INVERSE` attribute of entity `id`, inherited ones first: a
+`LIST` of `InverseAttributeInfo` records, their number in `out_count`.
+`InverseAttributeInfo`: name (`TEXT`, the schema's spelling), entity
+(`TEXT`, the referencing type before `FOR`), for attribute (`TEXT`, its
+attribute after `FOR`), aggregate (`BOOL`: a `SET` or `BAG`, read as a
+`LIST`), lower (`INTEGER`), upper (`INTEGER`, or `NULL` for `?`),
+declared by (`TEXT`, the entity introducing it).
+
+`MissingEntity`; `UnsupportedSchema` as for
+`openbim_ifc_v0_1_entity_attribute_names`.
+
+**Safety.**
+As for `openbim_ifc_v0_1_entity_attribute_names`.
+
+### `openbim_ifc_v0_1_entity_inverse_references`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_entity_inverse_references(OpenbimIfcModel model, uint64_t id, size_t *out_count, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+Every reference to entity `id`, in ascending order: a `LIST` of
+`InverseReference` records, their number in `out_count`, one per
+referencing entity and attribute. `InverseReference`: id (`REF`, the
+referencing entity), index (`INTEGER`, its attribute holding the
+reference, directly or inside an aggregate). Needs no schema.
+
+`MissingEntity`.
+
+**Safety.**
+As for `openbim_ifc_v0_1_entity_attribute_names`.
 
 ### `openbim_ifc_v0_1_entity_occurrences`
 
@@ -275,7 +318,7 @@ Set attribute `name` (UTF-8, any case) of entity `id` from a one-value
 tape. Every check runs before the write, so a refusal changes nothing.
 
 `DerivedAttribute` for a slot the entity's type derives (written `*`);
-otherwise as for `openbim_ifc_v0_1_entity_attribute_by_name` and
+`InverseAttribute` for an `INVERSE` name, which holds no slot; otherwise as for `openbim_ifc_v0_1_entity_attribute_by_name` and
 `openbim_ifc_v0_1_entity_set_attribute`.
 
 **Safety.**
@@ -311,6 +354,18 @@ nothing.
 
 **Safety.**
 As for `openbim_ifc_v0_1_entity_set_attribute_by_name`.
+
+### `openbim_ifc_v0_1_entity_total_inverses`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_entity_total_inverses(OpenbimIfcModel model, uint64_t id, size_t *out_count);
+```
+
+How many distinct entities reference entity `id`, through any
+attribute, written to `out_count`. Needs no schema. `MissingEntity`.
+
+**Safety.**
+`out_count` must be null or valid for one write.
 
 ### `openbim_ifc_v0_1_entity_type`
 
@@ -1344,12 +1399,13 @@ Write the ABI and crate versions.
 | `OPENBIM_IFC_STATUS_TEMPLATE_VIOLATION` | 25 | A property edit wrote a value its PSD/QTO template or property enumeration refuses (`template-violation`). |
 | `OPENBIM_IFC_STATUS_MISSING_PROPERTY` | 26 | A property edit removed a property the object does not state (`missing-property`). |
 | `OPENBIM_IFC_STATUS_CATALOG_NOT_LOADED` | 27 | A property edit wrote to a `Pset_`/`Qto_` set before its release's catalog was loaded (`catalog-not-loaded`). This library embeds the catalog, so it never returns this; the value is reserved so every binding code has one. |
-| `OPENBIM_IFC_STATUS_UNKNOWN_ATTRIBUTE` | 28 | A by-name attribute access named no explicit attribute of the entity's type in the declared release (`unknown-attribute`). |
+| `OPENBIM_IFC_STATUS_UNKNOWN_ATTRIBUTE` | 28 | A by-name attribute access named no attribute of the entity's type in the declared release, explicit or (for a read) `INVERSE` (`unknown-attribute`). |
 | `OPENBIM_IFC_STATUS_DERIVED_ATTRIBUTE` | 29 | A by-name attribute write named a slot the entity's type derives, written `*` (`derived-attribute`). |
 | `OPENBIM_IFC_STATUS_MISSING_ATTRIBUTE` | 30 | An authoring batch left a required attribute of the declared release unset (`missing-attribute`). |
 | `OPENBIM_IFC_STATUS_STILL_REFERENCED` | 31 | An authoring batch removed an entity that an entity other than a relationship still references (`still-referenced`). |
 | `OPENBIM_IFC_STATUS_TYPE_MISMATCH` | 32 | A plain value written by name does not fit the attribute's declared type (`type-mismatch`). |
 | `OPENBIM_IFC_STATUS_AMBIGUOUS_VALUE` | 33 | A plain value written by name fits several members of the attribute's SELECT; write it exactly instead (`ambiguous-value`). |
+| `OPENBIM_IFC_STATUS_INVERSE_ATTRIBUTE` | 34 | A by-name attribute write named an `INVERSE` attribute, which holds no slot (`inverse-attribute`). |
 | `OPENBIM_IFC_STATUS_PANIC` | 255 | A Rust panic was contained at the boundary. Report it as a bug. |
 
 <!-- API:C:END -->

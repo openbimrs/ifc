@@ -95,6 +95,19 @@ calls stay raw slot access. An unknown name is refused with
 `unknown-attribute`, a write to a slot the entity's type derives (written
 `*`) with `derived-attribute`, and a refused write changes nothing.
 
+`AttributeByName` reads `INVERSE` names too (#462), following the
+declared release's `FOR` clause: IFC2X3's `IsDefinedBy` holds type and
+property relationships, IFC4's only property ones beside `IsTypedBy`. A
+`SET` or `BAG` inverse is a `Value.List` of `Value.Ref` in ascending id
+order, `SET [0:1]` ones such as `ContainedInStructure` included (zero or
+one item, never unwrapped); a single-valued inverse (`VoidsElements`) is
+a `Value.Ref` or `Value.Null`, and two referrers are refused with
+`invalid-model`. Writing one is refused with `inverse-attribute`
+(`IfcStatus.InverseAttribute`). `InverseAttributeNames(id)` lists the
+declarations as `InverseAttributeInfo` records, `InverseReferences(id)`
+every referrer with the attribute index it references through, and
+`TotalInverses(id)` counts the distinct referrers.
+
 `SetAttributeByNamePlain(id, name, value)` (#342) takes a plain .NET
 value and coerces it against the attribute's declared type: a `string`
 becomes a label (written bare) or the enumeration item it names in any
@@ -587,9 +600,12 @@ and `MeshedProduct` included, from its XML documentation comments.
 | `IReadOnlyList<Value> Attributes(ulong id)` | Every attribute of entity `id`, in declaration order. |
 | `Value Attribute(ulong id, int index)` | Attribute `index` of entity `id`; `Value.Null` past the end. |
 | `Value SetAttribute(ulong id, int index, Value value)` | Set attribute `index` of entity `id`, padding a gap past the end with `$`; returns the old value. |
-| `IReadOnlyList<AttributeInfo> AttributeNames(ulong id)` | Every explicit attribute of entity `id` in slot order, inherited first, as the release the header declares defines them; `INVERSE` attributes hold no slot and are not listed. |
+| `IReadOnlyList<AttributeInfo> AttributeNames(ulong id)` | Every explicit attribute of entity `id` in slot order, inherited first, as the release the header declares defines them; `INVERSE` attributes hold no slot and are listed by `InverseAttributeNames`. |
 | `Value AttributeByName(ulong id, string name)` | Attribute `name` of entity `id`, matched case-insensitively (`Name`) and resolved against the declared release; `Value.Null` when the record stops before its slot. |
-| `Value SetAttributeByName(ulong id, string name, Value value)` | Set attribute `name` of entity `id`; returns the old value. A derived attribute is refused with `derived-attribute`, an unknown name with `unknown-attribute`, and a refused write changes nothing. |
+| `IReadOnlyList<InverseAttributeInfo> InverseAttributeNames(ulong id)` | Every `INVERSE` attribute of entity `id`, inherited ones first, with its `FOR` clause and bounds, as the declared release defines them (#462). |
+| `IReadOnlyList<InverseReference> InverseReferences(ulong id)` | Every reference to entity `id`: the referencing entity and the attribute index holding the reference, in ascending order, one per entity and attribute (#462). IfcOpenShell's `get_inverse` with attribute indices. |
+| `int TotalInverses(ulong id)` | How many distinct entities reference entity `id`, through any attribute (#462). IfcOpenShell's `get_total_inverses`. |
+| `Value SetAttributeByName(ulong id, string name, Value value)` | Set attribute `name` of entity `id`; returns the old value. A derived attribute is refused with `derived-attribute`, an `INVERSE` one with `inverse-attribute`, an unknown name with `unknown-attribute`, and a refused write changes nothing. |
 | `Value SetAttributeByNamePlain(ulong id, string name, object? value)` | Set attribute `name` of entity `id` from a plain .NET value, coerced against the attribute's declared type in the declared release (#342); returns the old value. |
 | `ulong Add(string typeName, IEnumerable<Value> attributes)` | Append an entity of `typeName`; returns its new id. |
 | `void Remove(ulong id)` | Remove entity `id`, leaving references to it dangling. |

@@ -203,7 +203,10 @@ test("attributes resolve by name against the declared release", () => {
   }
 
   const before = model.write();
-  throwsCode(() => model.attributeByName(5n, "IsDefinedBy"), "unknown-attribute");
+  assert.deepEqual(model.attributeByName(5n, "IsDefinedBy"), {
+    kind: "list",
+    items: [{ kind: "ref", id: 6n }],
+  });
   throwsCode(() => model.setAttributeByName(5n, "Nmae", { kind: "null" }), "unknown-attribute");
   throwsCode(() => model.attributeNames(99n), "missing-entity");
   throwsCode(() => ifc4.attributeByName(9n, "TaskId"), "unknown-attribute");
@@ -907,6 +910,36 @@ test("types, openings and fillings follow the relationships in every release", (
   throwsCode(() => model.typeObject(999n), "missing-entity");
   throwsCode(() => model.typeObject(8n), "wrong-entity-type");
   throwsCode(() => model.occurrencesOf(17n), "wrong-entity-type");
+});
+
+test("INVERSE attributes read by name through the declared release", () => {
+  const refs = (...ids) => ({ kind: "list", items: ids.map((id) => ({ kind: "ref", id })) });
+  for (const name of RELEASES) {
+    const model = relations(name);
+    const ifc2x3 = name === "relations_ifc2x3.ifc";
+    if (ifc2x3) {
+      assert.deepEqual(model.attributeByName(17n, "IsDefinedBy"), refs(20n, 36n), name);
+      throwsCode(() => model.attributeByName(17n, "IsTypedBy"), "unknown-attribute");
+    } else {
+      assert.deepEqual(model.attributeByName(17n, "isDefinedBy"), refs(36n), name);
+      assert.deepEqual(model.attributeByName(17n, "IsTypedBy"), refs(20n), name);
+    }
+    assert.deepEqual(model.attributeByName(17n, "ContainedInStructure"), refs(33n), name);
+    assert.deepEqual(model.attributeByName(11n, "Decomposes"), refs(), name);
+    assert.deepEqual(model.attributeByName(21n, "VoidsElements"), { kind: "ref", id: 24n }, name);
+    throwsCode(() => model.setAttributeByName(17n, "HasOpenings", []), "inverse-attribute");
+    assert.deepEqual(model.inverseReferences(21n), [
+      { id: 24n, index: 5 },
+      { id: 30n, index: 4 },
+    ]);
+    assert.equal(model.totalInverses(17n), 5, name);
+    const defined = model.inverseAttributeNames(17n).find((info) => info.name === "IsDefinedBy");
+    assert.equal(defined.entity, ifc2x3 ? "IfcRelDefines" : "IfcRelDefinesByProperties");
+    assert.equal(defined.forAttribute, "RelatedObjects");
+    assert.equal(defined.upper, undefined);
+    const voids = model.inverseAttributeNames(21n).find((info) => info.name === "VoidsElements");
+    assert.deepEqual([voids.aggregate, voids.lower, voids.upper], [false, 1, 1]);
+  }
 });
 
 // --- Removing a product with what it owns, and purging (#478) ---------------

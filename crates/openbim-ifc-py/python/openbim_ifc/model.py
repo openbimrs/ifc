@@ -10,6 +10,8 @@ from ._native import NativeModel
 from . import domains, geometry
 from .domains import (
     AttributeInfo,
+    InverseAttributeInfo,
+    InverseReference,
     AuthorOp,
     AuthoringResult,
     RemovalReport,
@@ -390,19 +392,47 @@ class IfcModel(ModelAccess):
     def attribute_names(self, id: int) -> List[AttributeInfo]:
         """Every explicit attribute of entity ``id`` in slot order,
         inherited first, as the release the header declares defines them.
-        ``INVERSE`` attributes hold no slot and are not listed."""
+        ``INVERSE`` attributes hold no slot and are listed by
+        :meth:`inverse_attribute_names`."""
         return list(domains._from_wire(self._native.attribute_names(id)))
 
     def attribute_by_name(self, id: int, name: str) -> Value:
         """Attribute ``name`` of entity ``id``, matched case-insensitively
         (``"Name"``) and resolved against the declared release; ``Null``
-        when the record stops before its slot."""
+        when the record stops before its slot.
+
+        An ``INVERSE`` name (``"IsDefinedBy"``, #462) reads the entities
+        referencing ``id`` through the release's ``FOR`` clause: a ``List``
+        of ``Ref`` for a ``SET`` or ``BAG`` -- ``SET [0:1]`` included, so
+        ``ContainedInStructure`` is a list of zero or one -- in ascending
+        id order; a ``Ref`` or ``Null`` for a single-valued inverse
+        (``VoidsElements``), which two referrers refuse with
+        ``invalid-model``."""
         return from_wire(self._native.attribute_by_name(id, name))
+
+    def inverse_attribute_names(self, id: int) -> List[InverseAttributeInfo]:
+        """Every ``INVERSE`` attribute of entity ``id``, inherited ones
+        first, with its ``FOR`` clause and bounds, as the declared release
+        defines them."""
+        return list(domains._from_wire(self._native.inverse_attribute_names(id)))
+
+    def inverse_references(self, id: int) -> List[InverseReference]:
+        """Every reference to entity ``id``: the referencing entity and the
+        attribute index holding the reference, in ascending order, one per
+        entity and attribute. IfcOpenShell's ``file.get_inverse(entity,
+        allow_duplicate=True, with_attribute_indices=True)``."""
+        return list(domains._from_wire(self._native.inverse_references(id)))
+
+    def total_inverses(self, id: int) -> int:
+        """How many distinct entities reference entity ``id``, through
+        any attribute. IfcOpenShell's ``file.get_total_inverses``."""
+        return self._native.total_inverses(id)
 
     def set_attribute_by_name(self, id: int, name: str, value: Value) -> Value:
         """Set attribute ``name`` of entity ``id``; returns the old value.
-        A derived attribute raises ``derived-attribute``, an unknown name
-        ``unknown-attribute``, and a refused write changes nothing."""
+        A derived attribute raises ``derived-attribute``, an ``INVERSE``
+        one ``inverse-attribute``, an unknown name ``unknown-attribute``,
+        and a refused write changes nothing."""
         return from_wire(self._native.set_attribute_by_name(id, name, to_wire(value)))
 
     def set_attribute_by_name_plain(self, id: int, name: str, value: Assignable) -> Value:

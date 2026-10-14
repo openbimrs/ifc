@@ -825,16 +825,28 @@ static int named_attributes(void) {
                                                strings, sizeof strings, &string_len));
   CHECK(nodes[0].kind == OPENBIM_IFC_KIND_DERIVED, "a `*` reads as stored");
 
+  /* An INVERSE name (#462) reads its referrers: none reference the wall. */
   const char inverse[] = "IsDefinedBy";
-  CHECK(openbim_ifc_v0_1_entity_attribute_by_name(model, 1, (const uint8_t *)inverse,
-                                                  strlen(inverse), nodes, 128, &node_count,
-                                                  strings, sizeof strings, &string_len) ==
-            OPENBIM_IFC_STATUS_UNKNOWN_ATTRIBUTE,
-        "an inverse attribute has no slot");
+  OK(openbim_ifc_v0_1_entity_attribute_by_name(model, 1, (const uint8_t *)inverse,
+                                               strlen(inverse), nodes, 128, &node_count,
+                                               strings, sizeof strings, &string_len));
+  CHECK(nodes[0].kind == OPENBIM_IFC_KIND_LIST && nodes[0].child_count == 0,
+        "an unreferenced SET inverse is an empty LIST");
+  OpenbimIfcValueNode empty = node(OPENBIM_IFC_KIND_LIST, 0, 0, 0, 0);
+  CHECK(openbim_ifc_v0_1_entity_set_attribute_by_name(model, 1, (const uint8_t *)inverse,
+                                                      strlen(inverse), &empty, 1, NULL, 0) ==
+            OPENBIM_IFC_STATUS_INVERSE_ATTRIBUTE,
+        "an inverse attribute has no slot to write");
   char code[64];
   size_t need = 0;
   OK(openbim_ifc_v0_1_last_error_code(model, (uint8_t *)code, sizeof code, &need));
-  CHECK(strcmp(code, "unknown-attribute") == 0, "shared code");
+  CHECK(strcmp(code, "inverse-attribute") == 0, "shared code");
+  const char misspelt[] = "IsDefinedByy";
+  CHECK(openbim_ifc_v0_1_entity_attribute_by_name(model, 1, (const uint8_t *)misspelt,
+                                                  strlen(misspelt), nodes, 128, &node_count,
+                                                  strings, sizeof strings, &string_len) ==
+            OPENBIM_IFC_STATUS_UNKNOWN_ATTRIBUTE,
+        "an unknown name is refused");
 
   /* IfcSIUnit derives Dimensions: refused, nothing written. */
   static const char UNIT[] = "LENGTHUNITMETRE";

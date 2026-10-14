@@ -1009,7 +1009,7 @@ public sealed unsafe class IfcModel : IDisposable
         return old;
     }
 
-    /// <summary>Every explicit attribute of entity <paramref name="id"/> in slot order, inherited first, as the release the header declares defines them; <c>INVERSE</c> attributes hold no slot and are not listed.</summary>
+    /// <summary>Every explicit attribute of entity <paramref name="id"/> in slot order, inherited first, as the release the header declares defines them; <c>INVERSE</c> attributes hold no slot and are listed by <see cref="InverseAttributeNames"/>.</summary>
     public IReadOnlyList<AttributeInfo> AttributeNames(ulong id)
     {
         using var lease = handle.Acquire();
@@ -1022,6 +1022,7 @@ public sealed unsafe class IfcModel : IDisposable
     }
 
     /// <summary>Attribute <paramref name="name"/> of entity <paramref name="id"/>, matched case-insensitively (<c>Name</c>) and resolved against the declared release; <see cref="Value.Null"/> when the record stops before its slot.</summary>
+    /// <remarks>An <c>INVERSE</c> name (<c>IsDefinedBy</c>, #462) reads the entities referencing <paramref name="id"/> through the release's <c>FOR</c> clause: a <see cref="Value.List"/> of <see cref="Value.Ref"/> in ascending id order for a <c>SET</c> or <c>BAG</c> (<c>SET [0:1]</c> included: zero or one element), a <see cref="Value.Ref"/> or <see cref="Value.Null"/> for a single-valued inverse, which two referrers refuse with <c>invalid-model</c>.</remarks>
     public Value AttributeByName(ulong id, string name)
     {
         var bytes = Calls.Encode(name);
@@ -1036,7 +1037,40 @@ public sealed unsafe class IfcModel : IDisposable
         }).One();
     }
 
-    /// <summary>Set attribute <paramref name="name"/> of entity <paramref name="id"/>; returns the old value. A derived attribute is refused with <c>derived-attribute</c>, an unknown name with <c>unknown-attribute</c>, and a refused write changes nothing.</summary>
+    /// <summary>Every <c>INVERSE</c> attribute of entity <paramref name="id"/>, inherited ones first, with its <c>FOR</c> clause and bounds, as the declared release defines them (#462).</summary>
+    public IReadOnlyList<InverseAttributeInfo> InverseAttributeNames(ulong id)
+    {
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return RecordDecoder.DecodeList<InverseAttributeInfo>(Tape(m, (n, nc, nr, s, sc, sr) =>
+        {
+            nuint count;
+            return NativeMethods.openbim_ifc_v0_1_entity_inverse_attribute_names(m, id, &count, n, nc, nr, s, sc, sr);
+        }).One());
+    }
+
+    /// <summary>Every reference to entity <paramref name="id"/>: the referencing entity and the attribute index holding the reference, in ascending order, one per entity and attribute (#462). IfcOpenShell's <c>get_inverse</c> with attribute indices.</summary>
+    public IReadOnlyList<InverseReference> InverseReferences(ulong id)
+    {
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return RecordDecoder.DecodeList<InverseReference>(Tape(m, (n, nc, nr, s, sc, sr) =>
+        {
+            nuint count;
+            return NativeMethods.openbim_ifc_v0_1_entity_inverse_references(m, id, &count, n, nc, nr, s, sc, sr);
+        }).One());
+    }
+
+    /// <summary>How many distinct entities reference entity <paramref name="id"/>, through any attribute (#462). IfcOpenShell's <c>get_total_inverses</c>.</summary>
+    public int TotalInverses(ulong id)
+    {
+        using var lease = handle.Acquire();
+        nuint count = 0;
+        Calls.Check(lease.Model, NativeMethods.openbim_ifc_v0_1_entity_total_inverses(lease.Model, id, &count));
+        return checked((int)count);
+    }
+
+    /// <summary>Set attribute <paramref name="name"/> of entity <paramref name="id"/>; returns the old value. A derived attribute is refused with <c>derived-attribute</c>, an <c>INVERSE</c> one with <c>inverse-attribute</c>, an unknown name with <c>unknown-attribute</c>, and a refused write changes nothing.</summary>
     public Value SetAttributeByName(ulong id, string name, Value value)
     {
         var old = AttributeByName(id, name);
