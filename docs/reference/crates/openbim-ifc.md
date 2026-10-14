@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.33.0 (2026-10-14) |
+| Latest release | 0.34.0 (2026-10-14) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -100,165 +100,34 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.33.0 (2026-10-14):
+Latest release, 0.34.0 (2026-10-14):
 
-### Changed
+### Added (#458, curves and surfaces as output primitives)
 
-- Requires `ifc-author` 0.3.2, whose builder accepts nested aggregates
-  that the #481 representation ops write.
+Semver: minor (additive; `ProductMesh` is `#[non_exhaustive]`).
 
-### Added (#462, INVERSE attributes by name)
+- `product_curves(model, products, purpose)` (feature `mesh`): each
+  product's curves for a `RepresentationPurpose` as `ProductCurves`
+  (world placement, one `ProductPolyline` per curve: the IFC `curve`,
+  `f32` positions relative to the placement, `closed`, `chord_bound` and
+  `chord_requested`). `Plan` takes the drawing curves (`Plan`, then
+  `Annotation`, `FootPrint`, `Axis`), and `Axis`, `FootPrint`,
+  `Annotation` one identifier. A trimmed, composite, offset or intrinsic
+  curve refuses the product with `GeometryError::PolylineUnsupported`
+  until the reference compiler polylines it (#506).
+- `product_meshes_for(model, products, purpose)`: the surfaces and solids
+  of another representation, such as `Surface`, as one mesh; its curves
+  are left to `product_curves`. `product_meshes` is it with `Body`.
+- `ProductMesh::closure`: `Solid`, `Surface` (an area, no volume) or
+  `Unknown` for an empty mesh. Only a Body mesh resolves a colour; a mesh
+  of another representation carries `Ok(None)`.
+- `RepresentationPurpose` and `select_product_representation` are
+  re-exported at the root.
 
-- `attribute_value_by_name(&model, schema, &reverse, id, name)` reads an
-  explicit attribute (`AttributeValue::Explicit`) or an `INVERSE` one
-  (`AttributeValue::Inverse`): every referrer whose type is the `FOR`
-  entity or a subtype in the declared release and whose `FOR` attribute
-  (the slot that release gives it) holds the entity, directly or as an
-  aggregate member, read from a `ReverseIndex` the caller builds once.
-  `InverseValue::Aggregate(ids)` for a `SET` or `BAG`, `SET [0:1]`
-  included (zero or one id, never unwrapped), in ascending id order;
-  `InverseValue::Single(Option<EntityId>)` for a non-aggregate inverse
-  (`VoidsElements`, IFC2X3's `IfcGroup.IsGroupedBy`), refused with
-  `NamedAttributeError::InverseCardinality` naming every referrer when
-  more than one references it. Both enums are `#[non_exhaustive]`.
-- `inverse_slots(schema, type_name)` and `inverse_slot(..)`: every
-  `INVERSE` attribute of a type, inherited first, as `InverseSlot` (name,
-  `FOR` entity and attribute, aggregation with `lower()`/`upper()`,
-  declaring entity); a subtype's redeclaration replaces the inherited one.
-  The bundled tables' answers equal the normative EXPRESS's for every
-  entity of IFC2X3, IFC4 and IFC4X3 (a spec-backed test).
-- `total_inverses(&reverse, id)`: the distinct entities referencing one
-  (IfcOpenShell's `get_total_inverses`). `ReverseIndex` and `Referrer`
-  are re-exported at the root; `ReverseIndex::referrers` is the
-  `get_inverse(.., with_attribute_indices=True)` equivalent.
+### Changed (#458)
 
-### Changed (#462)
-
-- `attribute_slot`, `attribute_by_name`, `set_attribute_by_name` and
-  `attribute_type` refuse an `INVERSE` name with the new
-  `NamedAttributeError::InverseAttribute` instead of `UnknownAttribute`;
-  `UnknownAttribute` now reads "has no attribute".
-
-Semver: additive (`NamedAttributeError` is `#[non_exhaustive]`), a minor
-release while 0.x.
-
-### Added (#481, shape representations)
-
-- `AuthorOp::ShapeRepresentation { context, items, identifier,
-  representation_type }` assembles an `IfcShapeRepresentation` of existing
-  items in a geometric representation context. A given
-  `RepresentationType` is checked against the items by the declared
-  release's `IfcShapeRepresentationTypes` (`CorrectItemsForType`, IFC2X3
-  `WR24`), transcribed per release family (IFC2X3; IFC4, IFC4X1, IFC4X2;
-  IFC4X3), with `IfcCurve.Dim` derived as `IfcCurveDim` does; without one,
-  the most specific listed type admitting every item is inferred. A label
-  the release does not list is written as given (its rule returns `?`).
-  The identifier defaults to the context's `ContextIdentifier` and is
-  required from IFC4 on (`HasRepresentationIdentifier`); `CorrectContext`
-  and `NoTopologicalItem` are checked.
-- `AuthorOp::AssignRepresentation { representation, to }`: to an
-  `IfcProduct`, appended to its `IfcProductDefinitionShape` (created when
-  missing; produces it); to an `IfcTypeProduct`, wrapped in a new
-  `IfcRepresentationMap` at the origin and appended to `RepresentationMaps`
-  (produces the map). A representation already in a product shape,
-  representation map or shape aspect is refused (`IfcShapeModel.WR11`).
-- `AuthorOp::UnassignRepresentation { representation, from }`: off the
-  product shape (an emptied one goes, with its shape aspects, and the
-  product's `Representation` is unset) or the type (its map goes with its
-  origin); the representation stays, unassigned. Reports what went.
-- `AuthorOp::CopyRepresentation { representation }`: a copy of every
-  representation item and profile definition it reaches, and of the styled
-  items and colour or texture maps attached to them; the context, styles,
-  presentation items, the type maps mapped items map and every other
-  resource are shared. The copy joins the original's layers.
-- `AuthorOp::RemoveRepresentation { representation }`: taken off its uses,
-  then removed by the #478 cascade, shared items, profiles, points and
-  styles kept and reported. `AuthoringOutcome::reports` and
-  `StagedAuthoring::reports` carry the report of an unassignment or a
-  representation removal.
-- `AuthoringFailure::RepresentationTypeMismatch`, `NoRepresentationType`,
-  `UndecidableRepresentationType`, `MissingRepresentationIdentifier`,
-  `InvalidRepresentationItem`, `SharedProductShape` and `NotAssigned`.
-
-Semver: additive (`AuthorOp` and `AuthoringFailure` are
-`#[non_exhaustive]`): minor.
-
-### Added (#464, selector query language)
-
-- `ifc::selector` (feature `selector`; in `full`): a selector grammar,
-  version 1.0 (`GRAMMAR_VERSION`), close to IfcOpenShell's
-  `util.selector`: class facets (subtypes included) and `GlobalId` facets
-  with `!` negation, explicit attribute facets, property and quantity
-  facets (`Pset_WallCommon.FireRating=F90`, names or `/patterns/`),
-  `type`, `material`, `classification`, `location` (alias `container`)
-  and `group` keywords, `query:` value paths, comparisons `=`, `!=`, `*=`,
-  `!*=`, `>`, `>=`, `<`, `<=` against text, numbers, `NULL`, `TRUE`,
-  `FALSE` and patterns, `,` facet lists, `+` unions and `/* */` comments.
-  `Selector::parse` and `ValuePath::parse` give a typed AST that prints
-  back in canonical form; every `ParseError` carries the byte span it
-  refuses.
-- `SelectorIndex` evaluates a selector (`select`, `select_from`) over the
-  model's type index, a `GlobalIdIndex`, the exact resolver's
-  `PropertyIndex` (feature `properties`; `FeatureDisabled` without) and
-  one scan per relationship kind, each built on first use. A class or
-  attribute the release does not declare is refused with its span before
-  any entity is read; contradictory or dangling relationships are
-  refused, never skipped. Results are in ascending id order.
-- Values by path (`SelectorIndex::value`, `get_value`): attributes,
-  property sets and properties, `type`, `material(s)`, `container`,
-  `parent`, `space`, `storey`, `building`, `site`, `occurrences`,
-  `classification`, `group`, `class`, `id`, `predefined_type`, `count`
-  and list indices, as `SelectedValue`s.
-- Writes by path (`set_value`, `SelectorIndex::stage_set_value`,
-  `set_targets`, `stage_attributes`, `property_edits`): an attribute of
-  every entity the path reaches, checked against its declared type in the
-  release, or a property through the checked property edit, staged on one
-  transaction; `SelectorError` names every refusal.
-- Depends on `regex-lite` (optional, with `selector`).
-
-Semver: minor (additive).
-
-### Added (#480, type propagation on assignment)
-
-- `AuthorOp::AssignType` takes `options: AssignTypeOptions`. With
-  `map_representations`, each of the type's `RepresentationMaps` is mapped
-  onto every object as an `IfcShapeRepresentation` (the map's context and
-  `RepresentationIdentifier`, `RepresentationType` `MappedRepresentation`)
-  holding one `IfcMappedItem`, whose `MappingTarget` is `mapping_target`
-  or a fresh identity `IfcCartesianTransformationOperator3D` (`2D` for a
-  2D `MappingOrigin`); the representations join the object's
-  `IfcProductDefinitionShape`, created when it has none. With
-  `material_usage`, an `IfcMaterialLayerSetUsage` (`LayerSetDirection`
-  from `layer_set_direction` or the class: `AXIS2` for `IfcWall`, `AXIS3`
-  for `IfcSlab` and `IfcPlate`, as the IFC4 ADD2 TC1 documentation fixes
-  them; `POSITIVE`; offset 0) or an `IfcMaterialProfileSetUsage` (no
-  `CardinalPoint`) is derived from the type's set, one per object in its
-  own `IfcRelAssociatesMaterial`; any other material applies through the
-  type. `predefined_type: PredefinedTypeMode` is `Ignore` (default),
-  `Validate` (refuse an object whose own `PredefinedType` is set, not
-  `NOTDEFINED` and differs from the one the type provides; `USERDEFINED`
-  compares `ObjectType` with the type's `ElementType`) or `Sync` (unset
-  the object's, and its `USERDEFINED` `ObjectType`, where the type
-  provides one). `replace` unassigns each object's previous type: it
-  leaves its `IfcRelDefinesByType` (removed when emptied), and the
-  representations mapped from the previous type's maps and the usage
-  derived from its set are removed with what only they use, by the #478
-  cascade's ownership rules. `AssignTypeOptions::propagate()` sets the
-  three propagations.
-- `AuthorOp::Contain` and `AuthorOp::Aggregate` take
-  `options: RelateOptions` with `replace`, which moves an object out of
-  its previous container or whole instead of refusing it.
-- `AssignTypeOptions`, `RelateOptions`, `PredefinedTypeMode`, `LayerAxis`.
-- `AuthoringFailure::RepresentationConflict`,
-  `UnsupportedRepresentationMap`, `MaterialUsageUndetermined` and
-  `PredefinedTypeConflict`; a material on an object that already has one
-  is `AlreadyRelated` with `IFCRELASSOCIATESMATERIAL`.
-
-Refusing a second type, container or parent stays the default, and every
-option is off by default: a batch that sets none writes what it wrote
-before. Semver: minor while 0.x. The three operations gain a field, so a
-struct literal of them needs `options` (`AssignTypeOptions::new()`,
-`RelateOptions::new()`); new variants of `#[non_exhaustive]` enums and new
-`#[non_exhaustive]` types are additive.
+- A Body whose items mix curves with solids or surfaces now meshes those
+  and leaves the curves to `product_curves`; before, the reference backend
+  refused the whole Body. A Body with no curves meshes exactly as before.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

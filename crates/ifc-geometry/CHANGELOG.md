@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-10-14
+
 ### Added (#458, curves and surfaces as output primitives)
 
 Semver: minor. Every item below is new; `RepresentationPurpose` and
@@ -2141,7 +2143,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.26.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.27.0...HEAD
+[0.27.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.27.0
 [0.26.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.26.1
 [0.26.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.26.0
 [0.25.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.25.1

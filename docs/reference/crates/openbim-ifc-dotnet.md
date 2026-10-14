@@ -11,7 +11,7 @@ The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned 
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.7.0 (2026-10-14) |
+| Latest release | 0.8.0 (2026-10-14) |
 | Registries | [NuGet `OpenBim.Ifc`](https://www.nuget.org/packages/OpenBim.Ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_dotnet/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-dotnet/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-dotnet) |
@@ -44,54 +44,20 @@ The behaviour is tested from C# against the packed `.nupkg` by
 
 ## Changes
 
-Latest release, 0.7.0 (2026-10-14):
+Latest release, 0.8.0 (2026-10-14):
 
-### Added (#462, INVERSE attributes by name)
+### Added (#458, curves and surfaces as output primitives)
 
-- `model.AttributeByName(id, "IsDefinedBy")` and every other `INVERSE`
-  name: a `Value.List` of `Value.Ref` for a `SET` or `BAG` (`SET [0:1]`
-  included), a `Value.Ref` or `Value.Null` for a single-valued inverse.
-- `model.InverseAttributeNames(id)` (`InverseAttributeInfo`),
-  `model.InverseReferences(id)` (`InverseReference(Id, Index)`) and
-  `model.TotalInverses(id)`.
-- `IfcStatus.InverseAttribute` (35, `inverse-attribute`) for a write to
-  an `INVERSE` name.
-- Requires the C ABI 0.1.16 (`openbim-ifc-capi` with #462).
+Semver: minor (additive).
 
-### Added (#481, shape representations)
-
-- `AuthorOp.ShapeRepresentation(context, items, identifier, representationType)`,
-  `AuthorOp.AssignRepresentation(representation, to)`,
-  `AuthorOp.UnassignRepresentation(representation, from)`,
-  `AuthorOp.CopyRepresentation(representation)` and
-  `AuthorOp.RemoveRepresentation(representation)` for `IfcModel.Author`.
-- `IfcModel.RemoveRepresentation(id, dryRun)`, returning a
-  `RemovalReport`.
-- Requires the C ABI 0.1.15 (`openbim-ifc-capi` with #481).
-
-### Added (#464, selectors and values by path)
-
-- `model.Select(query)`, `model.Select(query, baseIds)`,
-  `model.GetValue(id, path)` (a property set as a `Value.List` of name and
-  value pairs) and `model.SetValue(id, path, value)`;
-  `IfcModel.SelectorGrammarVersion`.
-- `IfcStatus.InvalidSelector` and the code `invalid-selector`, with
-  `IfcException.Span`, the byte range an invalid selector refuses.
-- Requires the C ABI 0.1.14 (`openbim-ifc-capi` with #464).
-
-Semver: additive, a minor release while 0.x.
-
-### Added (#480, type propagation on assignment)
-
-- `AuthorOp.AssignType(typeObject, objects, ownerHistory,
-  mapRepresentations, mappingTarget, materialUsage, layerSetDirection,
-  predefinedType, replace)` with the enums `PredefinedTypeMode` and
-  `LayerAxis`, and a `replace` parameter on `AuthorOp.Contain` and
-  `AuthorOp.Aggregate`. Every new parameter is optional and off by
-  default.
-- Requires the C ABI 0.1.13 (`openbim-ifc-capi` with #480).
-
-Semver: additive (new optional parameters; source-compatible), a minor
-release while 0.x.
+- `model.ProductCurves(ids, representation = "Plan")`: a `CurvedProduct`
+  per product, its `ProductCurves` record (with a `ProductPolyline` per
+  curve: `Curve`, `FirstVertex`, `VertexCount`, `Closed`, `ChordBound`,
+  `ChordRequested`) and `float[] Positions`. A trimmed, composite, offset
+  or intrinsic curve is an `unsupported` refusal (#506).
+- `model.ProductMeshes(ids, representation)` meshes a named
+  representation, such as `"Surface"`; `ProductMesh.Closure` is `solid`,
+  `surface` or `unknown`.
+- Requires the C ABI 0.1.17 (`openbim-ifc-capi` with #458).
 
 Full history: [`crates/openbim-ifc-dotnet/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-dotnet/CHANGELOG.md)

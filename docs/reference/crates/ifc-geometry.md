@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.26.1 (2026-10-14) |
+| Latest release | 0.27.0 (2026-10-14) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -43,44 +43,85 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.26.1 (2026-10-14):
+Latest release, 0.27.0 (2026-10-14):
 
-### Changed (#443, stations along offset runs compile through the reference kernel)
+### Added (#458, curves and surfaces as output primitives)
 
-Semver: patch. No public item, refusal kind, refusal text or lowered graph
-changes. Only the dependency floors of the opt-in `compile` feature rise,
-as in 0.25.1, and stations the reference kernel used to refuse now resolve.
+Semver: minor. Every item below is new; `RepresentationPurpose` and
+`GeometryError` are `#[non_exhaustive]`, so their new variants are
+additive. One refusal text changes (below); no lowered graph changes.
 
-- Requires `axiolid-mesh-compile` 0.3.25 and
-  `axiolid-mesh-boolean-boolmesh` 0.3.6 (and `axiolid-evaluate` 0.3.15
-  for the tests).
-- A windowed station along an `IfcOffsetCurveByDistances` that lowers to
-  `CurveRelation::OffsetsAtStations` beside an ellipse or a B-spline now
-  resolves through the reference kernel (axiolid/kernel#307). The kernel
-  now certifies an offset law that varies along such a basis. 0.25.0
-  lowered these stations (#444), but the kernel refused them.
-  - axioval/engine's deck (an `IfcSectionedSolidHorizontal` from 0 to 5 m
-    along such a run beside an ellipse) now compiles with its 1e-5 m
-    windows. Its mesh is bit for bit the one it compiles to with the
-    windows set to zero: a closed solid of 9.99945 m3, against
-    2 m2 x 5 m = 10 m3 by Pappus. The kernel's deviation report for it
-    stays unbounded: the frame law along an offset beside an ellipse has
-    no certified derivative bounds yet (axiolid/kernel#316). This crate
-    does not read that report.
-  - Derived `IfcLinearPlacement`s 10 m and 30 m along such a run now
-    derive and equal the kernel's resolved stations. Before, they were
-    refused as `PlacementSeamWindowRefused` with `UncertifiedLength` or
-    `CertificationBudgetExceeded`.
-- `SeamWindowRefusal::UncertifiedLength` and `CertificationBudgetExceeded`
-  stay. Their docs no longer name the cases the kernel now certifies. A
-  station just past a coarsely bounded B-spline piece now pins the
-  `CertificationBudgetExceeded` resource name.
-- The kernel text this crate repeats to recognise `UncertifiedLength`
-  follows `axiolid-evaluate` 0.3.15, which no longer lists an offset by
-  distances along an ellipse or a B-spline.
-- The same kernel release snaps a boolean's residues to the scale of the
-  coordinates its result is placed at (axiolid/kernel#312). A cut placed
-  far from the origin, as with georeferenced coordinates, no longer leaves
-  a hairline skin.
+- `RepresentationPurpose::{Axis, FootPrint, Annotation, Surface}`: each
+  selects the first representation the product authors with that
+  `RepresentationIdentifier`, in authored order, whatever its context.
+  `Body` and `Plan` keep their policies. `RepresentationPurpose::identifier`,
+  `name` and `from_name` map a purpose to and from the IFC spelling.
+- `compile::compile_product_polylines(_with)`: the curves of a product's
+  representation for a purpose as `CompiledPolyline`s (the IFC `curve`,
+  world `points`, `closed`, and the backend's `ChordDeviation`: the chord
+  budget asked for and a certified bound on the distance from the exact
+  curve to the polyline). It takes any `PolylineCompiler`, the reference
+  backend's new operation (axiolid/kernel#311). A collection is opened,
+  and a mapped item holding a curve places each curve on its own by the
+  same composed transform (an exact regrouping; nothing is evaluated).
+- `compile::compile_product_mesh_for(_with)`: the surfaces and solids of
+  a product's representation for a purpose as one `CompiledMesh` with its
+  `MeshClosure`. A representation with no curve compiles from its own
+  root, so a Body's mesh is the one `compile_product_mesh_reported` gives.
+  Rectangular trimmed surfaces and B-reps of loose faces now compile as
+  `MeshClosure::Surface` (axiolid/kernel#311).
+- `GeometryError::PolylineUnsupported { product, curve, family, reason }`
+  with `compile::UnpolylinedCurve::{Trimmed, Composite, Offset,
+  Intrinsic}`: a trimmed, composite, offset or intrinsic curve the
+  backend refuses to polyline is refused by that name, `is_unsupported()`,
+  never approximated here. The reference compiler refuses them until
+  axiolid/kernel#317 (#506).
+- `compile` re-exports `ChordDeviation`, `MeshClosure`, `Point3` and
+  `PolylineCompiler`, so a caller names no `axiolid-*` crate.
+- Tests: an `IfcPolyline` axis, a placed `IfcCircle` footprint far from
+  the origin, a mapped axis, an annotation curve set, a rectangular
+  trimmed surface, a lone `IfcFaceSurface`, a representation mixing both,
+  and the trimmed and composite refusals, each in IFC2X3, IFC4 and IFC4X3.
+
+### Changed (#458)
+
+- Uses the `PolylineCompiler` of `axiolid-mesh-compile` 0.3.26 and
+  `axiolid-mesh-compile-contract` 0.3.4, the floors #454 raised.
+- `GeometryError::CompilationRefused` reads "could not be compiled: ..."
+  instead of "could not be compiled to a mesh: ...": it is now also the
+  polyline compiler's refusal.
+
+### Changed (#454, curved advanced B-rep faces bounded by 3D edge curves compile)
+
+Semver: patch. No public item, refusal kind or lowered graph changes. Only
+the dependency floors of the opt-in `compile` feature rise, as in 0.26.1,
+and bodies the reference kernel used to refuse now compile.
+
+- Requires `axiolid-mesh-compile` 0.3.26 and
+  `axiolid-mesh-compile-contract` 0.3.4.
+- An `IfcAdvancedBrep` whose curved faces are bounded only by 3D edge
+  curves now compiles through the reference kernel. That is how IFC writes
+  them: `IfcAdvancedFace` admits no `IfcPcurve` as edge geometry. Before,
+  the kernel refused such a face. Now it inverts each edge's shared 3D
+  samples onto the face's surface (axiolid/kernel#310). The lowering is
+  unchanged and still projects nothing (ADR 0004). A seamed cylinder with
+  two circular caps compiles as a watertight solid. So does a B-spline face
+  bounded by B-spline edges over planar walls.
+- A curved face's certified deviation may come out slightly above the
+  requested chord budget. The kernel adds the face's triangle bound to its
+  boundary terms, so check `DeviationReport::meets_requested`. The B-spline
+  fixture reports 1.075 mm at a 1 mm request.
+- The kernel refuses some 3D-bounded faces, and each refusal reaches the
+  caller as `GeometryError::CompilationRefused` with the kernel's reason:
+  - an edge through a sphere pole (or a cone apex);
+  - an edge curve whose whole domain does not run from its start vertex to
+    its end vertex. This includes an `IfcLine` with a unit `IfcVector`, or
+    a part of an `IfcCircle`: without a p-curve the kernel reads the
+    curve's whole domain as the edge;
+  - an edge off its B-spline surface. The kernel's certified inversion
+    gives up on it as `BudgetExceeded` ("certified surface projection").
+- The same kernel release bounds instanced bodies with the rounding of
+  their placement. A chord budget at or below that rounding, about
+  `1e-9` at `6e6`, is refused (axiolid/kernel#295).
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
