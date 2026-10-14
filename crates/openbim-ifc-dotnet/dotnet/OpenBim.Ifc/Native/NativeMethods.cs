@@ -97,6 +97,9 @@ internal static unsafe partial class NativeMethods
     internal static extern IfcStatus openbim_ifc_v0_1_entity_attributes(ulong model, ulong id, nuint* out_count, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_entity_get_value(ulong model, ulong id, byte* path, nuint path_len, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_entity_fillings(ulong model, ulong id, ulong* buffer, nuint capacity, nuint* out_required);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
@@ -121,6 +124,9 @@ internal static unsafe partial class NativeMethods
     internal static extern IfcStatus openbim_ifc_v0_1_entity_set_attribute_by_name_plain(ulong model, ulong id, byte* name, nuint name_len, ValueNode* nodes, nuint node_count, byte* strings, nuint string_len);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_entity_set_value(ulong model, ulong id, byte* path, nuint path_len, ValueNode* nodes, nuint node_count, byte* strings, nuint string_len);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_entity_type(ulong model, ulong id, byte* buffer, nuint capacity, nuint* out_required);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
@@ -143,6 +149,9 @@ internal static unsafe partial class NativeMethods
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_last_error_message(ulong model, byte* buffer, nuint capacity, nuint* out_required);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_last_error_span(ulong model, nuint* out_start, nuint* out_end);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_live_models(nuint* out_count);
@@ -257,6 +266,12 @@ internal static unsafe partial class NativeMethods
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_model_schema(ulong model, byte* buffer, nuint capacity, nuint* out_required);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_model_select(ulong model, byte* query, nuint query_len, ulong* buffer, nuint capacity, nuint* out_required);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_model_select_from(ulong model, byte* query, nuint query_len, ulong* @base, nuint base_count, ulong* buffer, nuint capacity, nuint* out_required);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_model_set_header(ulong model, ValueNode* nodes, nuint node_count, byte* strings, nuint string_len);

@@ -65,6 +65,7 @@ from .values import (
     Typed,
     Unknown,
     Value,
+    from_wire,
     to_wire,
 )
 
@@ -116,6 +117,23 @@ def plain(value: Value, model: "IfcModel") -> PlainValue:
     if isinstance(value, Typed):
         return plain(value.value, model)
     raise TypeError(f"expected an openbim_ifc value, got {type(value).__name__}")
+
+
+SelectedValue = Any
+"""What :meth:`openbim_ifc.IfcModel.get_value` returns: a plain value as
+:func:`plain` gives it, a tuple of them, or a read-only mapping of a
+property set's names to them."""
+
+
+def _selected(data: Dict[str, Any], model: "IfcModel") -> SelectedValue:
+    """A value read by path from the native layer's tagged dict."""
+    kind = data["kind"]
+    if kind == "properties":
+        entries = data["entries"]
+        return MappingProxyType({name: _selected(value, model) for name, value in entries})
+    if kind == "list":
+        return tuple(_selected(item, model) for item in data["items"])
+    return plain(from_wire(data), model)
 
 
 def _plain_wire(value: Assignable, model: "IfcModel") -> Any:

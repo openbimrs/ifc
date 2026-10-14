@@ -87,6 +87,11 @@ pub enum OpenbimIfcStatus {
     /// A plain value written by name fits several members of the
     /// attribute's SELECT; write it exactly instead (`ambiguous-value`).
     AmbiguousValue = 33,
+    /// A selector or value path does not follow the grammar, or names a
+    /// class or attribute the declared release does not declare
+    /// (`invalid-selector`); `openbim_ifc_v0_1_last_error_span` gives the
+    /// byte range it refuses.
+    InvalidSelector = 34,
     /// A Rust panic was contained at the boundary. Report it as a bug.
     Panic = 255,
 }
@@ -117,6 +122,7 @@ impl From<&BindingError> for OpenbimIfcStatus {
             BindingError::StillReferenced(_) => Self::StillReferenced,
             BindingError::TypeMismatch(_) => Self::TypeMismatch,
             BindingError::AmbiguousValue(_) => Self::AmbiguousValue,
+            BindingError::InvalidSelector { .. } => Self::InvalidSelector,
         }
     }
 }
@@ -239,6 +245,13 @@ mod tests {
             (
                 BindingError::AmbiguousValue(String::new()),
                 OpenbimIfcStatus::AmbiguousValue,
+            ),
+            (
+                BindingError::InvalidSelector {
+                    detail: String::new(),
+                    span: (0, 0),
+                },
+                OpenbimIfcStatus::InvalidSelector,
             ),
         ];
         for (error, status) in cases {

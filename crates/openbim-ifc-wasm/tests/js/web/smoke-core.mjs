@@ -82,6 +82,11 @@ export async function smoke(IfcModel) {
   check(/^[0-3][0-9A-Za-z_$]{21}$/.test(drawn), `newGuid ${drawn}`);
   check(drawn !== IfcModel.newGuid(), "newGuid draws a new one");
 
+  // Selectors (#464), whose pattern engine every packaged target carries.
+  const walls = model.select("IfcWall, Name=/W/");
+  check(walls.length === 1 && walls[0] === 5n, `select ${walls}`);
+  check(model.getValue(5n, "Name").value === "Wall", "getValue");
+
   // The domain views (#123) are compiled into every packaged target.
   check(model.propertySets(5n).length === 0, "propertySets");
   check(model.spatialTree().nodes.length === 1, "spatialTree");

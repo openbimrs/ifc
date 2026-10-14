@@ -16,7 +16,8 @@ namespace OpenBim.Ifc;
 /// <c>budget-exceeded</c>, <c>unsupported</c> and <c>wrong-entity-type</c>,
 /// from a property edit <c>template-violation</c> and
 /// <c>missing-property</c>, and from a by-name attribute access
-/// <c>unknown-attribute</c> and <c>derived-attribute</c>. A status that only the C boundary has carries
+/// <c>unknown-attribute</c> and <c>derived-attribute</c>, and from a selector
+/// <c>invalid-selector</c> with its <see cref="Span"/>. A status that only the C boundary has carries
 /// its own name (<c>panic</c>, <c>invalid-argument</c>, ...).
 /// </remarks>
 public sealed class IfcException : Exception
@@ -28,6 +29,18 @@ public sealed class IfcException : Exception
         Code = code;
         Status = status;
     }
+
+    /// <summary>A refusal that names the byte range of the selector or value
+    /// path it refuses (<c>invalid-selector</c>, #464).</summary>
+    public IfcException(string code, IfcStatus status, string message, (int Start, int End)? span)
+        : this(code, status, message)
+    {
+        Span = span;
+    }
+
+    /// <summary>For <c>invalid-selector</c>, the byte range in the UTF-8
+    /// selector or value path the error refuses; otherwise null.</summary>
+    public (int Start, int End)? Span { get; }
 
     /// <summary>The stable error code, e.g. <c>missing-entity</c>.</summary>
     public string Code { get; }
@@ -61,6 +74,7 @@ public sealed class IfcException : Exception
         IfcStatus.StillReferenced => "still-referenced",
         IfcStatus.TypeMismatch => "type-mismatch",
         IfcStatus.AmbiguousValue => "ambiguous-value",
+        IfcStatus.InvalidSelector => "invalid-selector",
         IfcStatus.NullPointer => "null-pointer",
         IfcStatus.InvalidArgument => "invalid-argument",
         IfcStatus.InvalidHandle => "invalid-handle",
@@ -73,5 +87,5 @@ public sealed class IfcException : Exception
     /// <summary>Whether the C ABI records this status as the model's last
     /// error: the shared binding errors do, boundary misuse does not.</summary>
     internal static bool IsBindingError(IfcStatus status) =>
-        status is >= IfcStatus.Parse and <= IfcStatus.AmbiguousValue and not IfcStatus.NoValue;
+        status is >= IfcStatus.Parse and <= IfcStatus.InvalidSelector and not IfcStatus.NoValue;
 }

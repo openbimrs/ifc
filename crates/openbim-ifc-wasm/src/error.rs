@@ -14,5 +14,10 @@ pub(crate) fn js_error(error: BindingError) -> JsValue {
     // `Reflect::set` only fails on a frozen or proxied target, which a fresh
     // `Error` is not; the message is still correct without it.
     let _ = js_sys::Reflect::set(&js, &"code".into(), &error.code().into());
+    // An `invalid-selector` error names the byte range it refuses (#464).
+    if let Some((start, end)) = error.span() {
+        let span = js_sys::Array::of2(&start.into(), &end.into());
+        let _ = js_sys::Reflect::set(&js, &"span".into(), &span);
+    }
     js.into()
 }
