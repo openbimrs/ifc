@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-14
+
 ### Added (#458, curves and surfaces as output primitives)
 
 Semver: minor (additive).

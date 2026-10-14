@@ -11,7 +11,7 @@ Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.10.0 (2026-10-14) |
+| Latest release | 0.11.0 (2026-10-14) |
 | Registries | [PyPI `openbim-ifc`](https://pypi.org/project/openbim-ifc/) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_py/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-py/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-py) |
@@ -42,54 +42,21 @@ This crate adds calling-convention glue only. IFC behaviour belongs in
 
 ## Changes
 
-Latest release, 0.10.0 (2026-10-14):
+Latest release, 0.11.0 (2026-10-14):
 
-### Added (#462, INVERSE attributes by name)
+### Added (#458, curves and surfaces as output primitives)
 
-- `entity.IsDefinedBy` and every other `INVERSE` name, resolved against
-  the file's release: a tuple of `Entity` views for a `SET` or `BAG`
-  (`SET [0:1]` included), an `Entity` or `None` for a single-valued
-  inverse; also through `model.attribute_by_name` (`List` of `Ref`, or
-  `Ref`/`Null`). `dir(entity)` lists them.
-- `model.inverse_attribute_names(id)` (`InverseAttributeInfo`),
-  `model.inverse_references(id)` (`InverseReference(id, index)`),
-  `model.total_inverses(id)`, and `entity.inverse_attribute_names()`,
-  `entity.inverse_references()` (`(Entity, index)` pairs),
-  `entity.total_inverses()`.
-- A write to an `INVERSE` name raises `IfcError` with the new code
-  `inverse-attribute`. Reading one no longer raises `unknown-attribute`.
+Semver: minor (additive).
 
-### Added (#481, shape representations)
-
-- `AuthorOp.shape_representation(context, items, *, identifier=None,
-  representation_type=None)`, `AuthorOp.assign_representation(representation,
-  to)`, `AuthorOp.unassign_representation(representation, from_)`,
-  `AuthorOp.copy_representation(representation)` and
-  `AuthorOp.remove_representation(representation)` for `model.author`.
-- `model.remove_representation(id, *, dry_run=False)`, returning a
-  `RemovalReport`.
-
-### Added (#464, selectors and values by path)
-
-- `model.select(query, base=None)` (`Entity` views) and
-  `model.select_ids(...)`, `model.get_value(entity, path)` (plain values,
-  a property set as a read-only mapping) and
-  `model.set_value(entity, path, value)`;
-  `openbim_ifc.canonical_selector(query)`,
-  `openbim_ifc.SELECTOR_GRAMMAR_VERSION`, `SelectedValue`.
-- The code `invalid-selector`, with `IfcError.span`, the byte range an
-  invalid selector refuses.
-
-Semver: additive, a minor release while 0.x.
-
-### Added (#480, type propagation on assignment)
-
-- `AuthorOp.assign_type(type_object, objects, *, owner_history=None,
-  map_representations=False, mapping_target=None, material_usage=False,
-  layer_set_direction=None, predefined_type=None, replace=False)`, and
-  `replace=False` on `AuthorOp.contain` and `AuthorOp.aggregate`. Every
-  new argument is keyword-only and off by default.
-
-Semver: additive, a minor release while 0.x.
+- `model.product_curves(ids=None, representation="Plan")` (mesh wheel):
+  a `ProductCurves` per product, its positions one `array('f')` relative
+  to its transform and a `ProductPolyline` per curve (`first_vertex`,
+  `vertex_count`, `closed`, `curve`, `chord_bound`, `chord_requested`).
+  `representation` is `Plan`, `Axis`, `FootPrint`, `Annotation`, `Body`
+  or `Surface`; another raises `invalid-value`. A trimmed, composite,
+  offset or intrinsic curve is an `unsupported` refusal (#506).
+- `model.product_meshes(ids=None, representation="Body")` meshes another
+  representation on request, such as `"Surface"`, and every
+  `ProductMesh` has `closure`: `"solid"`, `"surface"` or `"unknown"`.
 
 Full history: [`crates/openbim-ifc-py/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-py/CHANGELOG.md)

@@ -11,8 +11,8 @@ Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP file
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.1.12 (2026-10-14) |
-| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.12) |
+| Latest release | 0.1.13 (2026-10-14) |
+| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.13) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_capi/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-capi/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-capi) |
 
@@ -67,72 +67,29 @@ than altering a `v0_1_` one.
 
 ## Changes
 
-Latest release, 0.1.12 (2026-10-14):
+Latest release, 0.1.13 (2026-10-14):
 
-### Added (#462, INVERSE attributes by name)
+### Added (#458, curves and surfaces as output primitives)
 
-- `openbim_ifc_v0_1_entity_attribute_by_name` reads an `INVERSE` name: a
-  `LIST` of `REF`s for a `SET` or `BAG` (`SET [0:1]` included), a `REF` or
-  `NULL` for a single-valued inverse (`InvalidModel` for two referrers).
-  It no longer answers `UnknownAttribute` for one.
-- `openbim_ifc_v0_1_entity_inverse_attribute_names` (`InverseAttributeInfo`
-  records), `openbim_ifc_v0_1_entity_inverse_references`
-  (`InverseReference` records: `REF` id, `INTEGER` attribute index) and
-  `openbim_ifc_v0_1_entity_total_inverses` (`out_count`).
-- `OPENBIM_IFC_STATUS_INVERSE_ATTRIBUTE` (35, `inverse-attribute`) for a
-  by-name write to an `INVERSE` name. The header is regenerated.
-- ABI version 0.1.16 (on top of #481's 0.1.15); every export above is
+- `openbim_ifc_v0_1_model_product_curves(model, ids, id_count,
+  representation, representation_len, out_curves)` (feature `mesh`)
+  compiles the curves of each product's representation into an
+  `OpenbimIfcCurves` set; `openbim_ifc_v0_1_curves_records`
+  (`ProductCurves` records with `ProductPolyline` records: curve, first
+  vertex, vertex count, closed, chord bound, chord requested),
+  `openbim_ifc_v0_1_curves_positions` and
+  `openbim_ifc_v0_1_curves_destroy` read and free it. `representation`
+  is UTF-8: `Plan`, `Axis`, `FootPrint`, `Annotation`, `Body` or
+  `Surface`; another is `INVALID_VALUE`. A trimmed, composite, offset or
+  intrinsic curve is a record refused `unsupported` (#506).
+- `openbim_ifc_v0_1_model_product_meshes_for(..., representation,
+  representation_len, out_meshes)` meshes a named representation; every
+  `ProductMesh` record ends with its closure (`TEXT`: `solid`, `surface`
+  or `unknown`). The header is regenerated.
+- ABI version 0.1.17 (on top of #462's 0.1.16); every export above is
   new, no `v0_1` symbol changed.
 
-### Added (#481, shape representations)
-
-- The batch tape (`openbim_ifc_v0_1_model_author`) reads
-  `SHAPE_REPRESENTATION`, `ASSIGN_REPRESENTATION`,
-  `UNASSIGN_REPRESENTATION`, `COPY_REPRESENTATION` and
-  `REMOVE_REPRESENTATION`.
-- `openbim_ifc_v0_1_model_remove_representation(model, representation,
-  flags, ...)`, answering the `RemovalReport` tape;
-  `OPENBIM_IFC_REMOVE_DRY_RUN` is its one flag, another is
-  `InvalidArgument`. A size query or a short buffer plans the removal and
-  answers `BufferTooSmall` without applying it. The header is regenerated.
-- ABI version 0.1.15 (on top of #464's 0.1.14); every export above is new,
-  no `v0_1` symbol changed.
-
-Semver: additive, released on the 0.1 line: the `v0_1` ABI only gains a
-symbol, and the C package keeps 0.1.x.
-
-### Added (#464, selectors and values by path)
-
-- `openbim_ifc_v0_1_model_select(model, query, query_len, buffer,
-  capacity, out_required)` and `openbim_ifc_v0_1_model_select_from(...,
-  base, base_count, ...)` fill the caller's buffer with the ids a
-  selector selects, ascending; `openbim_ifc_v0_1_entity_get_value(model,
-  id, path, path_len, ...)` writes a value tape (a property set as a
-  `LIST` of name and value pairs); `openbim_ifc_v0_1_entity_set_value(model,
-  id, path, path_len, nodes, node_count, strings, string_len)` writes a
-  one-value plain tape as one checked transaction.
-- Status `OPENBIM_IFC_STATUS_INVALID_SELECTOR` (34) and
-  `openbim_ifc_v0_1_last_error_span(model, out_start, out_end)`, the byte
-  range an invalid selector refuses; `OPENBIM_IFC_SELECTOR_GRAMMAR_MAJOR`
-  and `_MINOR`. The header is regenerated.
-- ABI version 0.1.14 (on top of #480's 0.1.13); every export above is new,
-  no `v0_1` symbol changed.
-
-Semver: additive, released on the 0.1 line: the C package keeps 0.1.x while
-the `v0_1` ABI is unchanged, because CMake's `find_package(openbim_ifc 0.1)`
-does not accept 0.2.
-
-### Added (#480, type propagation on assignment)
-
-- `openbim_ifc_v0_1_model_author` reads `BOOL` fields: `ASSIGN_TYPE`
-  takes `map_representations`, `material_usage`, `replace`, the id
-  `mapping_target` and the texts `layer_set_direction` and
-  `predefined_type`; `CONTAIN` and `AGGREGATE` take `replace`. The new
-  refusals are `InvalidModel` and `Unsupported`. The header is
-  regenerated; only its documentation changed.
-- ABI version 0.1.13 (on top of #478's 0.1.12); no `v0_1` symbol changed.
-
-Semver: additive, released on the 0.1 line (the `v0_1` ABI is unchanged:
-a tape without the new fields means what it meant).
+Semver: additive, released on the 0.1 line: the `v0_1` ABI only gains
+symbols and a trailing record field, and the C package keeps 0.1.x.
 
 Full history: [`crates/openbim-ifc-capi/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-capi/CHANGELOG.md)

@@ -11,7 +11,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.10.0 (2026-10-14) |
+| Latest release | 0.11.0 (2026-10-14) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_wasm/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-wasm) |
@@ -68,56 +68,22 @@ suites here cover only the JS conversion itself.
 
 ## Changes
 
-Latest release, 0.10.0 (2026-10-14):
+Latest release, 0.11.0 (2026-10-14):
 
-### Added (#462, INVERSE attributes by name)
+### Added (#458, curves and surfaces as output primitives)
 
-- `model.attributeByName(id, "IsDefinedBy")` and every other `INVERSE`
-  name, resolved against the file's release: a `list` of `ref`s for a
-  `SET` or `BAG` (`SET [0:1]` included), a `ref` or `null` for a
-  single-valued inverse.
-- `model.inverseAttributeNames(id)` (`InverseAttributeInfo[]`),
-  `model.inverseReferences(id)` (`InverseReference[]`, `{ id, index }`)
-  and `model.totalInverses(id)`.
-- Error code `inverse-attribute` (`IfcErrorCode`) for a write to an
-  `INVERSE` name. Reading one no longer throws `unknown-attribute`.
+Semver: minor (additive).
 
-### Added (#481, shape representations)
-
-- `author` operations `shapeRepresentation` (`context`, `items`,
-  `identifier?`, `representationType?`), `assignRepresentation`
-  (`representation`, `to`), `unassignRepresentation` (`representation`,
-  `from`), `copyRepresentation` and `removeRepresentation`
-  (`representation`), in the `AuthorOp` declaration.
-- `model.removeRepresentation(id, { dryRun })`, returning a
-  `RemovalReport`; `RemoveRepresentationOptions`.
-
-### Changed (#481)
-
-- The reporting removals (`removeProduct`, `purge`, `removeRepresentation`)
-  live in their own source module; the JavaScript API is unchanged.
-
-### Added (#464, selectors and values by path)
-
-- `model.select(query, base?)`, `model.getValue(id, path)` (an
-  `IfcSelectedValue`: a tagged value, a list, or a property set as
-  `{ kind: "properties", entries }`) and `model.setValue(id, path,
-  value)`; `IfcModel.canonicalSelector(query)` and
-  `IfcModel.selectorGrammarVersion()`.
-- The code `invalid-selector`, with `error.span`, the byte range an
-  invalid selector refuses. The pattern engine (`regex-lite`) is in every
-  build.
-
-Semver: additive, a minor release while 0.x.
-
-### Added (#480, type propagation on assignment)
-
-- The `assignType` operation takes `mapRepresentations`,
-  `mappingTarget`, `materialUsage`, `layerSetDirection`,
-  `predefinedType` and `replace`; `contain` and `aggregate` take
-  `replace` (declared in `AuthorOp`). Every new field is optional and off
-  by default.
-
-Semver: additive, a minor release while 0.x.
+- `model.productCurves(ids?, representation?)` (mesh entry): a
+  `ProductCurves` per product, its `positions` one `Float32Array`
+  relative to its transform and a `ProductPolyline` per curve
+  (`firstVertex`, `vertexCount`, `closed`, `curve`, `chordBound`,
+  `chordRequested`). `representation` (`RepresentationName`) is `"Plan"`
+  by default, or `"Axis"`, `"FootPrint"`, `"Annotation"`, `"Body"`,
+  `"Surface"`; another throws `invalid-value`. A trimmed, composite,
+  offset or intrinsic curve is an `unsupported` refusal (#506).
+- `model.productMeshes(ids?, representation?)` meshes another
+  representation on request, and `ProductMesh.closure` is `"solid"`,
+  `"surface"` or `"unknown"`.
 
 Full history: [`crates/openbim-ifc-wasm/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-wasm/CHANGELOG.md)

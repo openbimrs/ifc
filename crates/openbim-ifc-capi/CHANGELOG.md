@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.13] - 2026-10-14
+
 ### Added (#458, curves and surfaces as output primitives)
 
 - `openbim_ifc_v0_1_model_product_curves(model, ids, id_count,

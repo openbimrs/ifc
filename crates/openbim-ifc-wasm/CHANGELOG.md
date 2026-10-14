@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-14
+
 ### Added (#458, curves and surfaces as output primitives)
 
 Semver: minor (additive).
@@ -479,7 +481,8 @@ Published to npm by hand, before the release workflow existed.
 - `scripts/build-node-pkg.sh` builds a Node package with the pinned
   `wasm-bindgen` CLI and runs the Node smoke and corpus suites.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.10.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.11.0...HEAD
+[0.11.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.11.0
 [0.10.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.10.0
 [0.9.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.9.0
 [0.8.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.8.0
