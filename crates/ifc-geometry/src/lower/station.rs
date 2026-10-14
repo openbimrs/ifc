@@ -149,9 +149,9 @@
 //! #433, `RunStation::at_basis_end`, axiolid/kernel#303; format 1.3). A
 //! station along such a run (`OffsetsAtStations`) carries the window too
 //! (#443, `relation::offset::by_stations`); the reference kernel
-//! (`axiolid-evaluate` 0.3.13) certifies no offset law that varies along
-//! an ellipse or a B-spline, so it refuses a window past the run's first
-//! stated offset there by name (`TODO(#443)`).
+//! certifies an offset law that varies along an ellipse or a B-spline
+//! since `axiolid-evaluate` 0.3.15 (axiolid/kernel#307), so such a window
+//! resolves.
 //!
 //! # Frames
 //!

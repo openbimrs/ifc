@@ -12,6 +12,44 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#443, stations along offset runs compile through the reference kernel)
+
+Semver: patch. No public item, refusal kind, refusal text or lowered graph
+changes. Only the dependency floors of the opt-in `compile` feature rise,
+as in 0.25.1, and stations the reference kernel used to refuse now resolve.
+
+- Requires `axiolid-mesh-compile` 0.3.25 and
+  `axiolid-mesh-boolean-boolmesh` 0.3.6 (and `axiolid-evaluate` 0.3.15
+  for the tests).
+- A windowed station along an `IfcOffsetCurveByDistances` that lowers to
+  `CurveRelation::OffsetsAtStations` beside an ellipse or a B-spline now
+  resolves through the reference kernel (axiolid/kernel#307). The kernel
+  now certifies an offset law that varies along such a basis. 0.25.0
+  lowered these stations (#444), but the kernel refused them.
+  - axioval/engine's deck (an `IfcSectionedSolidHorizontal` from 0 to 5 m
+    along such a run beside an ellipse) now compiles with its 1e-5 m
+    windows. Its mesh is bit for bit the one it compiles to with the
+    windows set to zero: a closed solid of 9.99945 m3, against
+    2 m2 x 5 m = 10 m3 by Pappus. The kernel's deviation report for it
+    stays unbounded: the frame law along an offset beside an ellipse has
+    no certified derivative bounds yet (axiolid/kernel#316). This crate
+    does not read that report.
+  - Derived `IfcLinearPlacement`s 10 m and 30 m along such a run now
+    derive and equal the kernel's resolved stations. Before, they were
+    refused as `PlacementSeamWindowRefused` with `UncertifiedLength` or
+    `CertificationBudgetExceeded`.
+- `SeamWindowRefusal::UncertifiedLength` and `CertificationBudgetExceeded`
+  stay. Their docs no longer name the cases the kernel now certifies. A
+  station just past a coarsely bounded B-spline piece now pins the
+  `CertificationBudgetExceeded` resource name.
+- The kernel text this crate repeats to recognise `UncertifiedLength`
+  follows `axiolid-evaluate` 0.3.15, which no longer lists an offset by
+  distances along an ellipse or a B-spline.
+- The same kernel release snaps a boolean's residues to the scale of the
+  coordinates its result is placed at (axiolid/kernel#312). A cut placed
+  far from the origin, as with georeferenced coordinates, no longer leaves
+  a hairline skin.
+
 ## [0.26.0] - 2026-10-13
 
 ### Changed
