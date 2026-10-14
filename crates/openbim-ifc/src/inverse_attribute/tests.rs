@@ -1,6 +1,7 @@
 //! Resolution rules on hand-built models: the `FOR` slot, the referencing
 //! type, cardinality and the total count. The release fixtures are in
-//! `tests/inverse_attributes.rs`.
+//! `tests/inverse_attributes.rs`. Every case reads IFC4's tables.
+#![cfg(feature = "ifc4")]
 
 use super::*;
 use crate::named_attribute::{attribute_by_name, set_attribute_by_name};
@@ -30,7 +31,6 @@ fn read(
     }
 }
 
-#[cfg(feature = "ifc4")]
 #[test]
 fn a_single_valued_inverse_is_one_entity_none_or_refused() {
     let schema = ifc_schema::ifc4();
@@ -62,7 +62,6 @@ fn a_single_valued_inverse_is_one_entity_none_or_refused() {
     );
 }
 
-#[cfg(feature = "ifc4")]
 #[test]
 fn only_the_for_slot_of_the_named_type_counts() {
     let schema = ifc_schema::ifc4();
@@ -93,7 +92,6 @@ fn only_the_for_slot_of_the_named_type_counts() {
     assert_eq!(total_inverses(&reverse, other), 2);
 }
 
-#[cfg(feature = "ifc4")]
 #[test]
 fn an_aggregate_for_attribute_matches_by_membership_once_per_referrer() {
     let schema = ifc_schema::ifc4();
@@ -153,7 +151,6 @@ fn is_grouped_by_is_single_in_ifc2x3_and_a_set_in_ifc4() {
     }
 }
 
-#[cfg(feature = "ifc4")]
 #[test]
 fn an_inverse_name_is_refused_by_the_slot_operations() {
     let schema = ifc_schema::ifc4();
@@ -185,7 +182,6 @@ fn an_inverse_name_is_refused_by_the_slot_operations() {
     );
 }
 
-#[cfg(feature = "ifc4")]
 #[test]
 fn slots_list_inherited_inverses_first_with_bounds() {
     let schema = ifc_schema::ifc4();
