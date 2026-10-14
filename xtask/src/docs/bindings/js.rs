@@ -14,14 +14,20 @@ use crate::workspace::Workspace;
 
 const MODEL: &str = "crates/openbim-ifc-wasm/src/model.rs";
 const TYPES: &str = "crates/openbim-ifc-wasm/src/model/types.rs";
+/// Submodules of `model.rs` that add `#[wasm_bindgen] impl IfcModel`
+/// blocks, listed after it in this order.
+const MODEL_PARTS: &[&str] = &["crates/openbim-ifc-wasm/src/model/inverse.rs"];
 
 pub(super) fn reference(workspace: &Workspace) -> Result<String, String> {
-    let model = parse(workspace, MODEL)?;
+    let mut files = vec![parse(workspace, MODEL)?];
+    for part in MODEL_PARTS {
+        files.push(parse(workspace, part)?);
+    }
     let mut rows = vec![
         "| Member | Throws `IfcError` | Description |".to_owned(),
         "| --- | --- | --- |".to_owned(),
     ];
-    for item in &model.items {
+    for item in files.iter().flat_map(|file| &file.items) {
         let Item::Impl(block) = item else { continue };
         if !block
             .attrs

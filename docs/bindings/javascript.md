@@ -973,9 +973,6 @@ class, interface and type the package's `.d.ts` declares.
 | `model.setAttribute(id: bigint, slot: number, value: IfcValue): IfcValue` | yes | Set attribute `index` of entity `id`; returns the previous value. |
 | `model.attributeNames(id: bigint): AttributeInfo[]` | yes | Every explicit attribute of entity `id` in slot order, inherited first, as the release the header declares defines them. |
 | `model.attributeByName(id: bigint, name: string): IfcValue` | yes | Attribute `name` of entity `id` (case-insensitive, e.g. `"Name"`), resolved against the declared release, as a tagged value. |
-| `model.inverseAttributeNames(id: bigint): InverseAttributeInfo[]` | yes | Every `INVERSE` attribute of entity `id`, inherited ones first, as the declared release defines them (#462). |
-| `model.inverseReferences(id: bigint): InverseReference[]` | yes | Every reference to entity `id`: the referencing entity and the attribute index it references through, in ascending order (#462). |
-| `model.totalInverses(id: bigint): number` | yes | How many distinct entities reference entity `id` (#462). |
 | `model.setAttributeByName(id: bigint, name: string, value: IfcValue \| IfcPlainValue): IfcValue` | yes | Set attribute `name` of entity `id`; returns the previous value. A derived attribute is refused (`derived-attribute`), an `INVERSE` one (`inverse-attribute`). |
 | `model.add(typeName: string, attributes: IfcValue[]): bigint` | yes | Append an entity; returns its id (`bigint`). |
 | `model.remove(id: bigint): void` | yes | Remove entity `id`, leaving references to it dangling. |
@@ -986,6 +983,9 @@ class, interface and type the package's `.d.ts` declares.
 | `model.purge(options: PurgeOptions \| undefined): RemovalReport` | yes | Remove unreferenced entities as one checked transaction; with `dryRun`, only report. Without `classes`, every resource entity no `IfcRoot` reaches (nor annotates something reached); with them, the entities of those classes nothing references, an `IfcRoot` only with `includeRoots`. The owner history stays unless `includeOwnerHistory`. Refused with `unsupported-schema` for a class the release does not declare. |
 | `IfcModel.handle(index: number): bigint` |  | The handle of the entity operation `index` of an `author` batch produces, usable wherever a later operation takes an id (`bigint`). |
 | `model.danglingReferences(): [bigint, bigint][]` |  | Every `[from, to]` pair (`bigint`s) where `to` does not exist. |
+| `model.inverseAttributeNames(id: bigint): InverseAttributeInfo[]` | yes | Every `INVERSE` attribute of entity `id`, inherited ones first, as the declared release defines them (#462). |
+| `model.inverseReferences(id: bigint): InverseReference[]` | yes | Every reference to entity `id`: the referencing entity and the attribute index it references through, in ascending order (#462). |
+| `model.totalInverses(id: bigint): number` | yes | How many distinct entities reference entity `id` (#462). |
 
 Attribute values and error codes are typed by the package's `.d.ts`:
 
