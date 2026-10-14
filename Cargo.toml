@@ -163,8 +163,13 @@ axiolid-contracts = { version = "0.3.1" }
 # the windowed stations of an offset by distances beside an ellipse
 # (axiolid/kernel#307; #443), and snaps a boolean's residues to the scale
 # of the coordinates its result is placed at (axiolid/kernel#312).
-axiolid-mesh-compile = { version = "0.3.25" }
-axiolid-mesh-compile-contract = { version = "0.3.3" }
+# 0.3.26 compiles curved and planar B-rep faces whose edges carry only 3D
+# curves, as IFC advanced B-reps write them, by inverting each edge's shared
+# samples onto its face's surface (axiolid/kernel#310; #454), and bounds
+# instanced bodies with the rounding of their placement (axiolid/kernel#295).
+# It needs contract 0.3.4.
+axiolid-mesh-compile = { version = "0.3.26" }
+axiolid-mesh-compile-contract = { version = "0.3.4" }
 # 0.3.5: batch booleans keep their memory budget (axiolid/kernel#259).
 # 0.3.6: a boolean whose result outgrows its operands keeps its memory
 # budget (axiolid/kernel#308); the release `axiolid-mesh-compile` 0.3.25 is
