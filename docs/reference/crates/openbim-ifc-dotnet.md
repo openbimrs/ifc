@@ -11,7 +11,7 @@ The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned 
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.6.0 (2026-10-13) |
+| Latest release | 0.7.0 (2026-10-14) |
 | Registries | [NuGet `OpenBim.Ifc`](https://www.nuget.org/packages/OpenBim.Ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_dotnet/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-dotnet/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-dotnet) |
@@ -44,64 +44,54 @@ The behaviour is tested from C# against the packed `.nupkg` by
 
 ## Changes
 
-Latest release, 0.6.0 (2026-10-13):
+Latest release, 0.7.0 (2026-10-14):
 
-### Added (#478, cascading delete and purge)
+### Added (#462, INVERSE attributes by name)
 
-- `model.RemoveProduct(id, rebasePlacements, untypeOccurrences, dryRun)`
-  and `model.Purge(classes, includeRoots, includeOwnerHistory, dryRun)`,
-  returning a `RemovalReport` (`RemovedEntity`, `KeptEntity`).
-- Requires the C ABI 0.1.12 (`openbim-ifc-capi` with #478).
+- `model.AttributeByName(id, "IsDefinedBy")` and every other `INVERSE`
+  name: a `Value.List` of `Value.Ref` for a `SET` or `BAG` (`SET [0:1]`
+  included), a `Value.Ref` or `Value.Null` for a single-valued inverse.
+- `model.InverseAttributeNames(id)` (`InverseAttributeInfo`),
+  `model.InverseReferences(id)` (`InverseReference(Id, Index)`) and
+  `model.TotalInverses(id)`.
+- `IfcStatus.InverseAttribute` (35, `inverse-attribute`) for a write to
+  an `INVERSE` name.
+- Requires the C ABI 0.1.16 (`openbim-ifc-capi` with #462).
 
-### Deprecated (#478)
+### Added (#481, shape representations)
 
-- `model.Remove(id)` is `[Obsolete]`: it leaves references dangling. Use
-  `RemoveWithRelationships` or `RemoveProduct`. It keeps working; a caller
-  building with warnings as errors sees CS0618.
+- `AuthorOp.ShapeRepresentation(context, items, identifier, representationType)`,
+  `AuthorOp.AssignRepresentation(representation, to)`,
+  `AuthorOp.UnassignRepresentation(representation, from)`,
+  `AuthorOp.CopyRepresentation(representation)` and
+  `AuthorOp.RemoveRepresentation(representation)` for `IfcModel.Author`.
+- `IfcModel.RemoveRepresentation(id, dryRun)`, returning a
+  `RemovalReport`.
+- Requires the C ABI 0.1.15 (`openbim-ifc-capi` with #481).
 
-Semver: additive, a minor release while 0.x.
+### Added (#464, selectors and values by path)
 
-### Added (#450)
-
-- `IfcModel.WriteIfcZip(inner = "step", xsdProfile = null)`, and ifcZIP
-  input to `IfcModel.Parse`, recognized by the ZIP signature and read
-  within a decompression budget (`parse`, `unsupported` or
-  `budget-exceeded` otherwise).
-
-Semver: minor (additive).
-
-### Added (#449)
-
-- `ProductMesh` gains `Colour` (`SurfaceColour`: `Red`, `Green`, `Blue`,
-  `Transparency`, `Source` `item`/`layer`/`material`, `SourceEntity`,
-  `SurfaceStyle`) and `ColourRefusal` (a `GeometryRefusal`, code
-  `ambiguous` or a geometry code) as its last positional parameters, in a
-  native library built with `mesh`: the colour of the Body's item style,
-  else its presentation layer's, else its material's styled
-  representation.
-
-Semver: additive, a minor release while 0.x (a caller that constructs
-`ProductMesh` itself passes the two new parameters).
-
-### Added (#463, GlobalIds, types and openings)
-
-- `model.ByGuid(globalId)` (`ulong?`), through an index built on the first
-  lookup; a `GlobalId` several entities carry throws `invalid-model`, and
-  `model.DuplicateGlobalIds()` lists them (`DuplicateGlobalId`).
-- `model.TypeObject(id)`, `OccurrencesOf`, `OpeningsOf`, `FillingsOf` and
-  `VoidedElementOf`, in IFC2X3, IFC4 and IFC4X3.
-- `IfcModel.NewGuid()` and `IfcModel.NameBasedGuid(params string[])`.
-- Requires the C ABI 0.1.10 (`openbim-ifc-capi` with #463).
+- `model.Select(query)`, `model.Select(query, baseIds)`,
+  `model.GetValue(id, path)` (a property set as a `Value.List` of name and
+  value pairs) and `model.SetValue(id, path, value)`;
+  `IfcModel.SelectorGrammarVersion`.
+- `IfcStatus.InvalidSelector` and the code `invalid-selector`, with
+  `IfcException.Span`, the byte range an invalid selector refuses.
+- Requires the C ABI 0.1.14 (`openbim-ifc-capi` with #464).
 
 Semver: additive, a minor release while 0.x.
 
-### Changed
+### Added (#480, type propagation on assignment)
 
-- `IfcModel.Georeferencing()` reads IFC2X3 files through their `ePSet_MapConversion` and
-  `ePSet_ProjectedCRS` property sets instead of refusing them as
-  `unsupported-schema` (#451); such a record's source kind is
-  `property-set`. Through `openbim-ifc-binding-core`.
+- `AuthorOp.AssignType(typeObject, objects, ownerHistory,
+  mapRepresentations, mappingTarget, materialUsage, layerSetDirection,
+  predefinedType, replace)` with the enums `PredefinedTypeMode` and
+  `LayerAxis`, and a `replace` parameter on `AuthorOp.Contain` and
+  `AuthorOp.Aggregate`. Every new parameter is optional and off by
+  default.
+- Requires the C ABI 0.1.13 (`openbim-ifc-capi` with #480).
 
-Semver: minor (ADR 0021).
+Semver: additive (new optional parameters; source-compatible), a minor
+release while 0.x.
 
 Full history: [`crates/openbim-ifc-dotnet/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-dotnet/CHANGELOG.md)
