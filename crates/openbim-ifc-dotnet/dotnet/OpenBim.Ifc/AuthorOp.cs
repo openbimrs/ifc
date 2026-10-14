@@ -134,6 +134,26 @@ public sealed class AuthorOp
             ("change_action", changeAction),
             ("last_modified_date", lastModifiedDate));
 
+    /// <summary>An <c>IfcShapeRepresentation</c> of <paramref name="items"/> in <paramref name="context"/>, unassigned. <paramref name="representationType"/> is checked against the items by the release's <c>CorrectItemsForType</c> rule, or inferred (the most specific type admitting them all); <paramref name="identifier"/> defaults to the context's <c>ContextIdentifier</c>.</summary>
+    public static AuthorOp ShapeRepresentation(ulong context, IEnumerable<ulong> items, string? identifier = null, string? representationType = null) =>
+        new("shape_representation", ("context", context), ("items", Ids(items)), ("identifier", identifier), ("representation_type", representationType));
+
+    /// <summary>Assign a shape representation to a product (its <c>IfcProductDefinitionShape</c>, created when missing) or a type (a new <c>IfcRepresentationMap</c>); a representation already used is refused.</summary>
+    public static AuthorOp AssignRepresentation(ulong representation, ulong to) =>
+        new("assign_representation", ("representation", representation), ("to", to));
+
+    /// <summary>Take a shape representation off a product or type; it stays, unassigned, for the batch to assign elsewhere or remove.</summary>
+    public static AuthorOp UnassignRepresentation(ulong representation, ulong from) =>
+        new("unassign_representation", ("representation", representation), ("from", from));
+
+    /// <summary>A copy of a shape representation with copies of its items, sharing its context, styles and mapped type geometry; unassigned.</summary>
+    public static AuthorOp CopyRepresentation(ulong representation) =>
+        new("copy_representation", ("representation", representation));
+
+    /// <summary>Remove a shape representation with what only it uses (see <see cref="IfcModel.RemoveRepresentation"/>).</summary>
+    public static AuthorOp RemoveRepresentation(ulong representation) =>
+        new("remove_representation", ("representation", representation));
+
     private static Value? Pairs(IEnumerable<KeyValuePair<string, Value>>? attributes) =>
         attributes is null
             ? null

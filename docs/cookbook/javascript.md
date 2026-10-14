@@ -407,6 +407,57 @@ true })` purges unreferenced entities of the named classes only. The
 [binding page](/bindings/javascript#removing-products-and-purging) lists
 what the cascade removes and keeps.
 
+## Assemble, assign, copy and remove representations
+
+A body for a window from new items, a wall's body swapped for a copy of
+another's, and the dry run of removing a door's body, on the same fixture:
+
+<!-- SNIPPET:cookbook-js-representation -->
+
+```js
+const h = IfcModel.handle; // h(i): the entity operation i of the batch produces
+const ref = (id) => ({ kind: "ref", id });
+const real = (value) => ({ kind: "real", value });
+const result = model.author([
+  // The items first: a profile swept 1 m up, through the generic create.
+  { op: "create", type: "IfcCartesianPoint", attributes: { Coordinates: { kind: "list", items: [real(0.6), real(0.05)] } } },
+  { op: "create", type: "IfcAxis2Placement2D", attributes: { Location: ref(h(0)) } },
+  {
+    op: "create",
+    type: "IfcRectangleProfileDef",
+    attributes: { ProfileType: { kind: "enum", value: "AREA" }, Position: ref(h(1)), XDim: real(1.2), YDim: real(0.1) },
+  },
+  {
+    op: "create",
+    type: "IfcExtrudedAreaSolid",
+    attributes: { SweptArea: ref(h(2)), Position: ref(9n), ExtrudedDirection: ref(31n), Depth: real(1) },
+  },
+  // Context #11 is the 'Body' sub-context: the identifier is 'Body', and
+  // the type is inferred from the item.
+  { op: "shapeRepresentation", context: 11n, items: [h(3)] }, // 4
+  { op: "assignRepresentation", representation: h(4), to: 130n }, // 5: window #130's shape
+  // Wall #20's body swapped for a copy of wall #40's.
+  { op: "copyRepresentation", representation: 45n }, // 6
+  { op: "unassignRepresentation", representation: 25n, from: 20n },
+  { op: "removeRepresentation", representation: 25n },
+  { op: "assignRepresentation", representation: h(6), to: 20n },
+]);
+log(model.attributeByName(result.ids[4], "RepresentationType").value); // "SweptSolid"
+// One alone, with a report of what went and what stayed:
+const report = model.removeRepresentation(105n, { dryRun: true }); // the door's body
+log(report.removed.map((entity) => entity.id)); // [104n, 105n, 106n, 107n, 108n]
+```
+
+<!-- /SNIPPET -->
+
+`shapeRepresentation` checks a given `representationType` against the items
+by the release's `CorrectItemsForType` rule, and refuses a mismatch with
+`invalid-value`. A representation belongs to one product shape, map or shape
+aspect, so assigning one already used throws `invalid-model`; on a type it
+becomes a new `IfcRepresentationMap`. A copy shares its context, styles and
+the type geometry a mapped item maps, and copies everything else. The
+[binding page](/bindings/javascript#shape-representations) has the rules.
+
 ## Create a model
 
 <!-- SNIPPET:cookbook-js-create -->

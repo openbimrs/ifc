@@ -663,6 +663,9 @@ its release first (`setHeader`).
 | `assignType`, `contain`, `aggregate` | one relationship; an object already related is refused |
 | `placement` | an `IfcLocalPlacement` over an `IfcAxis2Placement3D` at `location`, relative to `relativeTo`; `axis` and `refDirection` both or neither |
 | `ownerHistory` | an `IfcOwnerHistory` with its person, organization and application |
+| `shapeRepresentation` | an `IfcShapeRepresentation` of `items` in `context`, its type checked or inferred ([below](#shape-representations)) |
+| `assignRepresentation`, `unassignRepresentation` | a shape representation on or off a product (its `IfcProductDefinitionShape`) or a type (an `IfcRepresentationMap`), by `representation` and `to` or `from` |
+| `copyRepresentation`, `removeRepresentation` | a copy of `representation`; its removal with what only it uses |
 
 Every record is built by attribute name through `ifc-author` against the
 declared release, and refused with the shared codes: a type the release does
@@ -682,6 +685,37 @@ creates, and IFC2X3, which requires it, refuses a record without
 (`missing-attribute`). The module has no entropy of its own, so the seed
 fresh `GlobalId`s derive from is drawn from `Math.random`; the TypeScript
 declarations type every operation as `AuthorOp`.
+
+## Shape representations
+
+`shapeRepresentation` assembles an `IfcShapeRepresentation` of existing items (built
+in the same batch with `create`) in a geometric representation context or
+sub-context. Its `representationType` is checked against the items by the release's
+`IfcShapeRepresentationTypes` (`CorrectItemsForType`): a mismatch, items no
+listed type admits, a topological item other than a vertex point, edge curve
+or face surface, and a missing identifier are `invalid-value`; a label the
+release does not list is written as given. Without a type the most specific
+one admitting every item is inferred (`SweptSolid`, `AdvancedSweptSolid`,
+`Brep`, `Clipping`, `CSG`, `Tessellation`, `Curve2D`, `Curve3D`,
+`MappedRepresentation`, ...; IFC2X3 lists fewer). The identifier defaults
+to the context's `ContextIdentifier`; IFC4 and IFC4X3 require one.
+
+A shape representation belongs to exactly one product definition shape,
+representation map or shape aspect (`IfcShapeModel.WR11`). Assigning adds it
+to a product's `IfcProductDefinitionShape` (created when missing; one several
+products share is refused) or wraps it in a new `IfcRepresentationMap` of a
+type, at the origin; one already used is `invalid-model`. Unassigning takes
+it off again (an emptied product shape, or the type's map with its origin,
+goes) and leaves it for the batch to assign elsewhere or remove. A copy
+copies every item, profile, point, direction and placement it reaches and
+the styled items of the copied items, and shares the context, styles,
+colours and the type map a mapped item maps; it joins the layers of the
+original. Removal takes it off what uses it and removes it with its items
+down to what nothing else uses, by the cascade rules below; a type map an
+occurrence still maps is `still-referenced`.
+
+`model.removeRepresentation(id, { dryRun })` is the one-operation removal,
+returning its `RemovalReport`.
 
 ## Removing products and purging
 
@@ -969,8 +1003,6 @@ class, interface and type the package's `.d.ts` declares.
 | `model.author(ops: AuthorOp[]): AuthoringResult` | yes | Apply authoring operations as one checked transaction against the release the header declares: every operation, in order, or none, and a refused batch leaves the model unchanged. An operation names the entity an earlier one produced by `IfcModel.handle(index)`. `result.ids` holds, per operation, the id of the entity it produced. |
 | `model.createEntity(typeName: string, attributes: Record<string, IfcValue>): bigint` | yes | Create one entity of `typeName` from named attributes, checked against the declared release (`author` with one `create`); an `IfcRoot` without a `GlobalId` gets one. Returns its id (`bigint`). |
 | `model.removeWithRelationships(id: bigint): void` | yes | Remove entity `id` with its relationships, leaving nothing dangling (`author` with one `remove`); refused with `still-referenced` while an entity other than a relationship needs it. |
-| `model.removeProduct(id: bigint, options: RemoveProductOptions \| undefined): RemovalReport` | yes | Remove product (or type object) `id` with everything it solely owns -- its placement, representation, own property and quantity sets, material usage, openings and ports, and the relationships left without an end -- as one checked transaction, keeping what is shared (a property set another object uses, a type's representation maps). The report says what went, what stayed and why; with `dryRun` nothing changes. Refused with `still-referenced` while other placements are relative to its placement (unless `rebasePlacements`) or a type object types objects (unless `untypeOccurrences`), `wrong-entity-type` for neither a product nor a type object, `unsupported` for a placement that cannot be re-based. |
-| `model.purge(options: PurgeOptions \| undefined): RemovalReport` | yes | Remove unreferenced entities as one checked transaction; with `dryRun`, only report. Without `classes`, every resource entity no `IfcRoot` reaches (nor annotates something reached); with them, the entities of those classes nothing references, an `IfcRoot` only with `includeRoots`. The owner history stays unless `includeOwnerHistory`. Refused with `unsupported-schema` for a class the release does not declare. |
 | `IfcModel.handle(index: number): bigint` |  | The handle of the entity operation `index` of an `author` batch produces, usable wherever a later operation takes an id (`bigint`). |
 | `model.danglingReferences(): [bigint, bigint][]` |  | Every `[from, to]` pair (`bigint`s) where `to` does not exist. |
 

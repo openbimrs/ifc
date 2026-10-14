@@ -3,7 +3,10 @@
 //! A batch crosses as one value tape: a `LIST` of operations, each a `LIST`
 //! of an `ENUM` naming it (`CREATE`, `EDIT`, `REMOVE`, `PROJECT`, `SPATIAL`,
 //! `PRODUCT`, `TYPE_OBJECT`, `ASSIGN_TYPE`, `CONTAIN`, `AGGREGATE`,
-//! `PLACEMENT`, `OWNER_HISTORY`), then alternating field names (`TEXT`,
+//! `PLACEMENT`, `OWNER_HISTORY`, and the shape representation operations
+//! of #481: `SHAPE_REPRESENTATION`, `ASSIGN_REPRESENTATION`,
+//! `UNASSIGN_REPRESENTATION`, `COPY_REPRESENTATION`,
+//! `REMOVE_REPRESENTATION`), then alternating field names (`TEXT`,
 //! snake case) and values; a `NULL` value is an absent field. Ids are `REF`
 //! (or non-negative `INTEGER`), points and directions a `LIST` of three
 //! `REAL`s, attributes a `LIST` of `LIST(TEXT name, value)`. The core reads
@@ -44,8 +47,14 @@ const _: () = assert!(OPENBIM_IFC_HANDLE_BASE == openbim_ifc_binding_core::autho
 /// schema cannot hold; `WrongEntityType` for an abstract type, a builder's
 /// type of the wrong kind or a reference the attribute does not accept;
 /// `MissingEntity`, `MissingReference`; `InvalidModel` for a second
-/// containment, decomposition, typing or `IfcProject`; `StillReferenced`
-/// for a removal an entity other than a relationship still needs.
+/// containment, decomposition, typing or `IfcProject`, a shape
+/// representation that already has its one use, a product definition shape
+/// other products share, or a representation not assigned where it is
+/// unassigned from; `InvalidValue` also for a representation type its items
+/// do not fit, items no type fits, or a missing representation identifier;
+/// `Unsupported` for a type check needing a curve dimension that cannot be
+/// derived; `StillReferenced` for a removal an entity other than a
+/// relationship still needs.
 ///
 /// # Safety
 /// `nodes` valid for `node_count` reads and `strings` for `string_len`

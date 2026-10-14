@@ -1,7 +1,8 @@
 //! Removing a product with what it solely owns, and purging what nothing
-//! uses (#478).
+//! uses (#478); removing a shape representation with what only it uses
+//! (#481).
 //!
-//! Both answer with a `RemovalReport` record tape: removed (`LIST` of
+//! Each answers with a `RemovalReport` record tape: removed (`LIST` of
 //! `RemovedEntity`: id `REF`, type name `TEXT`), kept (`LIST` of
 //! `KeptEntity`: id, type name, reason `TEXT` -- `shared`,
 //! `related-object`, `definition` or `protected` -- and users, a `LIST` of
@@ -125,6 +126,54 @@ pub unsafe extern "C" fn openbim_ifc_v0_1_model_remove_product(
             options.untype_occurrences = flags & OPENBIM_IFC_REMOVE_UNTYPE_OCCURRENCES != 0;
             options.dry_run = plan;
             m.remove_product(product, options)
+        })
+    }
+}
+
+/// Remove shape representation `representation` with what only it uses, as
+/// one checked transaction: taken off its product definition shape (which
+/// goes when left empty), representation map or shape aspects, then removed
+/// with its items down to what nothing else uses; shared items, profiles,
+/// points and styles stay. `flags`: `OPENBIM_IFC_REMOVE_DRY_RUN` alone. The
+/// answer is the `RemovalReport` tape of
+/// `openbim_ifc_v0_1_model_remove_product`; a size query or a short buffer
+/// plans the removal and answers `BufferTooSmall` without applying it.
+///
+/// `MissingEntity`; `WrongEntityType` for an entity that is not an
+/// `IfcShapeModel`; `StillReferenced` for a representation map an
+/// `IfcMappedItem` still maps; `InvalidArgument` for another flag;
+/// `FeatureDisabled`.
+///
+/// # Safety
+/// As for `openbim_ifc_v0_1_entity_attribute`.
+#[no_mangle]
+pub unsafe extern "C" fn openbim_ifc_v0_1_model_remove_representation(
+    model: OpenbimIfcModel,
+    representation: u64,
+    flags: u32,
+    nodes: *mut OpenbimIfcValueNode,
+    node_capacity: usize,
+    out_nodes_required: *mut usize,
+    strings: *mut u8,
+    string_capacity: usize,
+    out_strings_required: *mut usize,
+) -> OpenbimIfcStatus {
+    if flags & !OPENBIM_IFC_REMOVE_DRY_RUN != 0 {
+        return OpenbimIfcStatus::InvalidArgument;
+    }
+    let out = Out {
+        nodes,
+        node_capacity,
+        out_nodes_required,
+        strings,
+        string_capacity,
+        out_strings_required,
+    };
+    let dry_run = flags & OPENBIM_IFC_REMOVE_DRY_RUN != 0;
+    // SAFETY: caller contract above.
+    unsafe {
+        removal_export(model, &out, dry_run, |m, plan| {
+            m.remove_representation(representation, plan)
         })
     }
 }

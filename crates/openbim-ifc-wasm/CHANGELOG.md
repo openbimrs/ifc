@@ -8,6 +8,23 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#481, shape representations)
+
+- `author` operations `shapeRepresentation` (`context`, `items`,
+  `identifier?`, `representationType?`), `assignRepresentation`
+  (`representation`, `to`), `unassignRepresentation` (`representation`,
+  `from`), `copyRepresentation` and `removeRepresentation`
+  (`representation`), in the `AuthorOp` declaration.
+- `model.removeRepresentation(id, { dryRun })`, returning a
+  `RemovalReport`; `RemoveRepresentationOptions`.
+
+### Changed (#481)
+
+- The reporting removals (`removeProduct`, `purge`, `removeRepresentation`)
+  live in their own source module; the JavaScript API is unchanged.
+
+Semver: additive, a minor release while 0.x.
+
 ## [0.9.0] - 2026-10-13
 
 ### Added (#478, cascading delete and purge)

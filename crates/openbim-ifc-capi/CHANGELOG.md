@@ -8,6 +8,21 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#481, shape representations)
+
+- The batch tape (`openbim_ifc_v0_1_model_author`) reads
+  `SHAPE_REPRESENTATION`, `ASSIGN_REPRESENTATION`,
+  `UNASSIGN_REPRESENTATION`, `COPY_REPRESENTATION` and
+  `REMOVE_REPRESENTATION`.
+- `openbim_ifc_v0_1_model_remove_representation(model, representation,
+  flags, ...)`, answering the `RemovalReport` tape;
+  `OPENBIM_IFC_REMOVE_DRY_RUN` is its one flag, another is
+  `InvalidArgument`. A size query or a short buffer plans the removal and
+  answers `BufferTooSmall` without applying it. The header is regenerated.
+
+Semver: additive, released on the 0.1 line: the `v0_1` ABI only gains a
+symbol, and the C package keeps 0.1.x.
+
 ## [0.1.11] - 2026-10-13
 
 ### Added (#478, cascading delete and purge)

@@ -191,7 +191,23 @@ export type AuthorOp =
       changeAction?: string;
       creationDate: bigint | number;
       lastModifiedDate?: bigint | number;
-    };
+    }
+  /** An `IfcShapeRepresentation` of `items` in `context`, unassigned; `representationType` checked against the items (`CorrectItemsForType`) or inferred, `identifier` defaulting to the context's `ContextIdentifier`. */
+  | {
+      op: "shapeRepresentation";
+      context: bigint;
+      items: bigint[];
+      identifier?: string;
+      representationType?: string;
+    }
+  /** Assign a shape representation to a product (its `IfcProductDefinitionShape`) or a type (a new `IfcRepresentationMap`). */
+  | { op: "assignRepresentation"; representation: bigint; to: bigint }
+  /** Take a shape representation off a product or type; it stays, unassigned. */
+  | { op: "unassignRepresentation"; representation: bigint; from: bigint }
+  /** Copy a shape representation and its items, sharing its context, styles and mapped type geometry. */
+  | { op: "copyRepresentation"; representation: bigint }
+  /** Remove a shape representation with what only it uses. */
+  | { op: "removeRepresentation"; representation: bigint };
 
 /** What a committed `IfcModel.author` batch did. */
 export interface AuthoringResult {
@@ -207,6 +223,12 @@ export interface RemoveProductOptions {
   rebasePlacements?: boolean;
   /** Remove a type object's typing relationship, leaving its occurrences untyped, instead of refusing. */
   untypeOccurrences?: boolean;
+  /** Report only; the model is unchanged. */
+  dryRun?: boolean;
+}
+
+/** Options of `IfcModel.removeRepresentation`. */
+export interface RemoveRepresentationOptions {
   /** Report only; the model is unchanged. */
   dryRun?: boolean;
 }
@@ -239,7 +261,7 @@ export interface KeptEntity {
   users: bigint[];
 }
 
-/** What `IfcModel.removeProduct` or `IfcModel.purge` did, or, for a dry run, would do. */
+/** What `IfcModel.removeProduct`, `IfcModel.removeRepresentation` or `IfcModel.purge` did, or, for a dry run, would do. */
 export interface RemovalReport {
   removed: RemovedEntity[];
   kept: KeptEntity[];

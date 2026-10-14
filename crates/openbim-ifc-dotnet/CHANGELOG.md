@@ -9,6 +9,18 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#481, shape representations)
+
+- `AuthorOp.ShapeRepresentation(context, items, identifier, representationType)`,
+  `AuthorOp.AssignRepresentation(representation, to)`,
+  `AuthorOp.UnassignRepresentation(representation, from)`,
+  `AuthorOp.CopyRepresentation(representation)` and
+  `AuthorOp.RemoveRepresentation(representation)` for `IfcModel.Author`.
+- `IfcModel.RemoveRepresentation(id, dryRun)`, returning a
+  `RemovalReport`.
+
+Semver: additive, a minor release while 0.x.
+
 ## [0.6.0] - 2026-10-13
 
 ### Added (#478, cascading delete and purge)

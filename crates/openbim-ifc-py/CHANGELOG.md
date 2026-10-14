@@ -8,6 +8,18 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#481, shape representations)
+
+- `AuthorOp.shape_representation(context, items, *, identifier=None,
+  representation_type=None)`, `AuthorOp.assign_representation(representation,
+  to)`, `AuthorOp.unassign_representation(representation, from_)`,
+  `AuthorOp.copy_representation(representation)` and
+  `AuthorOp.remove_representation(representation)` for `model.author`.
+- `model.remove_representation(id, *, dry_run=False)`, returning a
+  `RemovalReport`.
+
+Semver: additive, a minor release while 0.x.
+
 ## [0.9.0] - 2026-10-13
 
 ### Added (#478, cascading delete and purge)

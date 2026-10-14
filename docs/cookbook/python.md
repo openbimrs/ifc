@@ -336,6 +336,59 @@ unreferenced entities of the named classes only. The
 [binding page](/bindings/python#removing-products-and-purging) lists what
 the cascade removes and keeps.
 
+## Assemble, assign, copy and remove representations
+
+A body for a window from new items, a wall's body swapped for a copy of
+another's, and the dry run of removing a door's body, on the same fixture:
+
+<!-- SNIPPET:cookbook-py-representation -->
+
+```python
+from openbim_ifc import AuthorOp, Enum, Real, Ref, handle
+from openbim_ifc import List as Aggregate  # an IFC aggregate value
+
+h = handle  # h(i): the entity operation i of the batch produces
+result = model.author(
+    [
+        # The items first: a profile swept 1 m up, through the generic create.
+        AuthorOp.create("IfcCartesianPoint", {"Coordinates": Aggregate((Real(0.6), Real(0.05)))}),
+        AuthorOp.create("IfcAxis2Placement2D", {"Location": Ref(h(0))}),
+        AuthorOp.create(
+            "IfcRectangleProfileDef",
+            {"ProfileType": Enum("AREA"), "Position": Ref(h(1)), "XDim": Real(1.2), "YDim": Real(0.1)},
+        ),
+        AuthorOp.create(
+            "IfcExtrudedAreaSolid",
+            {"SweptArea": Ref(h(2)), "Position": Ref(9), "ExtrudedDirection": Ref(31), "Depth": Real(1.0)},
+        ),
+        # Context #11 is the 'Body' sub-context: the identifier is
+        # 'Body', and the type is inferred from the item.
+        AuthorOp.shape_representation(11, [h(3)]),  # 4
+        AuthorOp.assign_representation(h(4), 130),  # 5: window #130's shape
+        # Wall #20's body swapped for a copy of wall #40's.
+        AuthorOp.copy_representation(45),  # 6
+        AuthorOp.unassign_representation(25, 20),
+        AuthorOp.remove_representation(25),
+        AuthorOp.assign_representation(h(6), 20),
+    ]
+)
+print(model.attribute_by_name(result.ids[4], "RepresentationType"))  # Text('SweptSolid')
+# One alone, with a report of what went and what stayed:
+report = model.remove_representation(105, dry_run=True)  # the door's body
+print([entity.id for entity in report.removed])  # [104, 105, 106, 107, 108]
+```
+
+<!-- /SNIPPET -->
+
+`shape_representation` checks a given `representation_type` against the
+items by the release's `CorrectItemsForType` rule, and refuses a mismatch
+with `invalid-value`. A representation belongs to one product shape, map or
+shape aspect, so assigning one already used raises `invalid-model`; on a
+type (`IfcTypeProduct`) it becomes a new `IfcRepresentationMap`. A copy
+shares its context, styles and the type geometry a mapped item maps, and
+copies everything else. The
+[binding page](/bindings/python#shape-representations) has the rules.
+
 ## Create a model
 
 <!-- SNIPPET:cookbook-py-create -->

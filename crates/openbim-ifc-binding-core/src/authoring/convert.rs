@@ -72,6 +72,17 @@ pub(super) fn op(mut fields: Fields) -> Result<AuthorOp, BindingError> {
                 axes,
             }
         }
+        "shape_representation" => {
+            let identifier = text("identifier");
+            let representation_type = text("representation_type");
+            AuthorOp::ShapeRepresentation {
+                context: id(&mut fields, "context")
+                    .ok_or_else(|| invalid("`shape_representation` needs `context`"))?,
+                items: ids(&mut fields, "items"),
+                identifier,
+                representation_type,
+            }
+        }
         _ => structural(name, fields)?,
     })
 }
@@ -143,6 +154,20 @@ fn structural(name: &str, mut fields: Fields) -> Result<AuthorOp, BindingError> 
             parts: ids(&mut fields, "parts"),
             owner_history,
         },
+        "assign_representation" => AuthorOp::AssignRepresentation {
+            representation: required("representation")?,
+            to: required("to")?,
+        },
+        "unassign_representation" => AuthorOp::UnassignRepresentation {
+            representation: required("representation")?,
+            from: required("from")?,
+        },
+        "copy_representation" => AuthorOp::CopyRepresentation {
+            representation: required("representation")?,
+        },
+        "remove_representation" => AuthorOp::RemoveRepresentation {
+            representation: required("representation")?,
+        },
         other => return Err(invalid(format!("no operation `{other}`"))),
     })
 }
@@ -184,8 +209,17 @@ pub(super) fn error(error: AuthoringError) -> BindingError {
         F::StillReferenced { .. }
         | F::PlacementHasDependents { .. }
         | F::TypeHasOccurrences { .. } => BindingError::StillReferenced(detail),
-        F::UnsupportedRebase { .. } => BindingError::Unsupported(detail),
-        F::AlreadyRelated { .. } | F::Conflict(_) => BindingError::InvalidModel(detail),
+        F::UnsupportedRebase { .. } | F::UndecidableRepresentationType { .. } => {
+            BindingError::Unsupported(detail)
+        }
+        F::AlreadyRelated { .. }
+        | F::Conflict(_)
+        | F::SharedProductShape { .. }
+        | F::NotAssigned { .. } => BindingError::InvalidModel(detail),
+        F::RepresentationTypeMismatch { .. }
+        | F::NoRepresentationType { .. }
+        | F::MissingRepresentationIdentifier { .. }
+        | F::InvalidRepresentationItem { .. } => BindingError::InvalidValue(detail),
         F::IdRangeExhausted { .. } => BindingError::OutOfRange(detail),
         F::Cardinality { .. }
         | F::DuplicateGlobalId { .. }

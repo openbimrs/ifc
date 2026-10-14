@@ -100,6 +100,7 @@ use FieldKind as K;
 const TYPE: FieldSpec = required("type", "type", K::Text);
 const ATTRIBUTES: FieldSpec = field("attributes", "attributes", K::Attributes);
 const OWNER: FieldSpec = field("owner_history", "ownerHistory", K::Id);
+const REPRESENTATION: FieldSpec = required("representation", "representation", K::Id);
 
 /// Every operation, with its fields.
 pub const OPS: &[OpSpec] = &[
@@ -190,6 +191,36 @@ pub const OPS: &[OpSpec] = &[
             field("axis", "axis", K::Reals),
             field("ref_direction", "refDirection", K::Reals),
         ],
+    },
+    OpSpec {
+        name: "shape_representation",
+        camel: "shapeRepresentation",
+        fields: &[
+            required("context", "context", K::Id),
+            required("items", "items", K::Ids),
+            field("identifier", "identifier", K::Text),
+            field("representation_type", "representationType", K::Text),
+        ],
+    },
+    OpSpec {
+        name: "assign_representation",
+        camel: "assignRepresentation",
+        fields: &[REPRESENTATION, required("to", "to", K::Id)],
+    },
+    OpSpec {
+        name: "unassign_representation",
+        camel: "unassignRepresentation",
+        fields: &[REPRESENTATION, required("from", "from", K::Id)],
+    },
+    OpSpec {
+        name: "copy_representation",
+        camel: "copyRepresentation",
+        fields: &[REPRESENTATION],
+    },
+    OpSpec {
+        name: "remove_representation",
+        camel: "removeRepresentation",
+        fields: &[REPRESENTATION],
     },
     OpSpec {
         name: "owner_history",

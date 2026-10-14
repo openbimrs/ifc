@@ -516,8 +516,14 @@ duplicate `GlobalId`, a malformed tape or handle, or a placement the
 schema cannot hold; `WrongEntityType` for an abstract type, a builder's
 type of the wrong kind or a reference the attribute does not accept;
 `MissingEntity`, `MissingReference`; `InvalidModel` for a second
-containment, decomposition, typing or `IfcProject`; `StillReferenced`
-for a removal an entity other than a relationship still needs.
+containment, decomposition, typing or `IfcProject`, a shape
+representation that already has its one use, a product definition shape
+other products share, or a representation not assigned where it is
+unassigned from; `InvalidValue` also for a representation type its items
+do not fit, items no type fits, or a missing representation identifier;
+`Unsupported` for a type check needing a curve dimension that cannot be
+derived; `StillReferenced` for a removal an entity other than a
+relationship still needs.
 
 **Safety.**
 `nodes` valid for `node_count` reads and `strings` for `string_len`
@@ -1069,6 +1075,29 @@ Remove one property from `object`'s own set:
 
 **Safety.**
 `set` and `name` valid for their lengths (null only for 0).
+
+### `openbim_ifc_v0_1_model_remove_representation`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_remove_representation(OpenbimIfcModel model, uint64_t representation, uint32_t flags, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+Remove shape representation `representation` with what only it uses, as
+one checked transaction: taken off its product definition shape (which
+goes when left empty), representation map or shape aspects, then removed
+with its items down to what nothing else uses; shared items, profiles,
+points and styles stay. `flags`: `OPENBIM_IFC_REMOVE_DRY_RUN` alone. The
+answer is the `RemovalReport` tape of
+`openbim_ifc_v0_1_model_remove_product`; a size query or a short buffer
+plans the removal and answers `BufferTooSmall` without applying it.
+
+`MissingEntity`; `WrongEntityType` for an entity that is not an
+`IfcShapeModel`; `StillReferenced` for a representation map an
+`IfcMappedItem` still maps; `InvalidArgument` for another flag;
+`FeatureDisabled`.
+
+**Safety.**
+As for `openbim_ifc_v0_1_entity_attribute`.
 
 ### `openbim_ifc_v0_1_model_resolve_unit`
 
