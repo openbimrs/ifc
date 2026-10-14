@@ -165,25 +165,39 @@ impl SelectorIndex<'_> {
         value: &Value,
     ) -> Result<Transaction, SelectorError> {
         let targets = self.set_targets(entity, path)?;
+        if targets
+            .iter()
+            .all(|target| matches!(target, SetTarget::Attribute { .. }))
+        {
+            return self.stage_attributes(&targets, value);
+        }
+        self.stage_properties(&targets, value)
+    }
+
+    /// Stage writing `value` to every attribute target, each checked as
+    /// [`Self::stage_set_value`] checks it.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::stage_set_value`], and [`SelectorError::NotSettable`] for
+    /// a property target.
+    pub fn stage_attributes(
+        &self,
+        targets: &[SetTarget],
+        value: &Value,
+    ) -> Result<Transaction, SelectorError> {
         let mut transaction = Transaction::new(self.model);
-        let mut edits = Vec::new();
         for target in targets {
-            match target {
-                SetTarget::Attribute { entity, name } => {
-                    let index = self.checked_slot(entity, &name, value)?;
-                    transaction.set_attribute(entity, index, value.clone());
-                }
-                SetTarget::Property {
-                    object,
-                    set,
-                    property,
-                } => edits.push((object, set, property)),
-            }
+            let SetTarget::Attribute { entity, name } = target else {
+                return Err(SelectorError::NotSettable {
+                    path: format!("{target:?}"),
+                    reason: "a property is written by a property edit".to_owned(),
+                });
+            };
+            let index = self.checked_slot(*entity, name, value)?;
+            transaction.set_attribute(*entity, index, value.clone());
         }
-        if edits.is_empty() {
-            return Ok(transaction);
-        }
-        self.stage_properties(edits, value)
+        Ok(transaction)
     }
 
     /// The slot `value` may be written to, after every check.
@@ -222,38 +236,58 @@ impl SelectorIndex<'_> {
         Ok(slot.index)
     }
 
+    /// The property edits writing `value` to every property target: a
+    /// typed value as given, a bare one wrapped in the type of the
+    /// property the object already states.
+    ///
+    /// # Errors
+    ///
+    /// [`SelectorError::UntypedValue`] for a bare value no stated property
+    /// types; [`SelectorError::Property`] when the resolver refuses the
+    /// object; [`SelectorError::NotSettable`] for an attribute target.
     #[cfg(feature = "properties")]
-    fn stage_properties(
+    pub fn property_edits(
         &self,
-        edits: Vec<(EntityId, String, String)>,
+        targets: &[SetTarget],
         value: &Value,
-    ) -> Result<Transaction, SelectorError> {
+    ) -> Result<Vec<crate::PropertyEdit>, SelectorError> {
         use ifc_properties::{ExactPropertyError, ExactResolution};
 
-        let mut staged = Vec::with_capacity(edits.len());
-        for (object, set, property) in edits {
+        let mut edits = Vec::with_capacity(targets.len());
+        for target in targets {
+            let SetTarget::Property {
+                object,
+                set,
+                property,
+            } = target
+            else {
+                return Err(SelectorError::NotSettable {
+                    path: format!("{target:?}"),
+                    reason: "an attribute is written by an attribute write".to_owned(),
+                });
+            };
             let typed = match value {
                 Value::Typed { .. } | Value::Null | Value::List(_) => value.clone(),
                 bare => {
                     let stated =
                         match self
                             .properties()
-                            .exact_property(object, Some(&set), &property)
+                            .exact_property(*object, Some(set), property)
                         {
                             Ok(ExactResolution::Present(found)) => found.value_type,
                             Ok(_) | Err(ExactPropertyError::InvalidQueryObject { .. }) => None,
                             Err(error) => {
                                 return Err(SelectorError::Property {
-                                    entity: Some(object),
+                                    entity: Some(*object),
                                     error,
                                 })
                             }
                         };
                     let Some(type_name) = stated else {
                         return Err(SelectorError::UntypedValue {
-                            object,
-                            set,
-                            property,
+                            object: *object,
+                            set: set.clone(),
+                            property: property.clone(),
                         });
                     };
                     Value::Typed {
@@ -262,18 +296,28 @@ impl SelectorIndex<'_> {
                     }
                 }
             };
-            staged.push(crate::PropertyEdit::set(object, set, property, typed));
+            edits.push(crate::PropertyEdit::set(*object, set, property, typed));
         }
-        crate::stage_property_edits(self.model, &staged)
+        Ok(edits)
+    }
+
+    #[cfg(feature = "properties")]
+    fn stage_properties(
+        &self,
+        targets: &[SetTarget],
+        value: &Value,
+    ) -> Result<Transaction, SelectorError> {
+        let edits = self.property_edits(targets, value)?;
+        crate::stage_property_edits(self.model, &edits)
             .map(|staged| staged.transaction)
             .map_err(SelectorError::PropertyEdit)
     }
 
     #[cfg(not(feature = "properties"))]
-    #[allow(clippy::unused_self, clippy::needless_pass_by_value)]
+    #[allow(clippy::unused_self)]
     fn stage_properties(
         &self,
-        _edits: Vec<(EntityId, String, String)>,
+        _targets: &[SetTarget],
         _value: &Value,
     ) -> Result<Transaction, SelectorError> {
         Err(SelectorError::FeatureDisabled("properties"))
