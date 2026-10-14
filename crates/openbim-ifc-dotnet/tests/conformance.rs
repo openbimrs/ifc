@@ -73,7 +73,8 @@ fn csharp_type(c_param: &str) -> String {
         .unwrap_or_default()
         .to_owned();
     let mapped = match base.as_str() {
-        "OpenbimIfcModel" | "OpenbimIfcMeshes" | "OpenbimIfcGraphs" | "uint64_t" => "ulong",
+        "OpenbimIfcModel" | "OpenbimIfcMeshes" | "OpenbimIfcCurves" | "OpenbimIfcGraphs"
+        | "uint64_t" => "ulong",
         "float" => "float",
         "size_t" => "nuint",
         "uint32_t" => "uint",
