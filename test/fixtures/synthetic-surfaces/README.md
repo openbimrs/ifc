@@ -27,6 +27,19 @@ revolution angle is authored in degrees, the fixed reference is `+Z` rather
 than the `+X` a lowerer would default to, and the polygonal disk appears
 BOTH with and without `FilletRadius`, so a dropped fillet is observable), and `IfcSectionedSpine` (`synthetic_sectioned_spine.ifc`: three
 different profiles at three distinct stations along a composite curve).
+`advanced_brep_3d_edges_ifc4.ifc` and `advanced_brep_3d_edges_ifc4x3.ifc`
+are hand-authored too (#454), one model in IFC4 (millimetres) and
+IFC4X3_ADD2 (metres) with the same ids. Their `IfcAdvancedBrep`s state every
+edge as a 3D curve and no `IfcPcurve`, as `IfcAdvancedFace.ApplicableEdgeCurves`
+requires: `CYLINDER`, radius 0.5 m and height 2 m at `(3, 4, 0)`, a seamed
+`IfcCylindricalSurface` wall and two `IfcPlane` caps bounded by closed
+`IfcCircle` rims and an `IfcLine` seam whose vector spans the height; and
+`PILLOW`, `[0, 2] x [0, 1.5]` at `(0, -4, 0)`, a biquadratic
+`IfcBSplineSurfaceWithKnots` top `z = 1 + 1.2u(1-u) + 0.8v(1-v)` bounded by
+four `IfcBSplineCurveWithKnots` edges, over four planar walls and a floor
+bounded by `IfcPolyline` edges, volume exactly 4 m3. Every edge curve runs
+from its start vertex to its end vertex over its whole domain. IFC2X3 has
+no `IfcAdvancedBrep`, so there is no IFC2X3 twin.
 `synthetic_space_boundary_face_surface.ifc` is hand-authored, not generated:
 one `IfcSpace` placed off-origin with two `IfcRelSpaceBoundary`s whose
 `IfcConnectionSurfaceGeometry` is an `IfcFaceSurface` on an `IfcPlane` -- a
