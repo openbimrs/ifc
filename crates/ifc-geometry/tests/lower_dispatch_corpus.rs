@@ -410,6 +410,16 @@ fn typed_refusals() -> Vec<String> {
         .collect()
 }
 
+/// Whether `type_name` is a [`PARTIAL`] family with a refused variant.
+///
+/// [`PARTIAL`]: ifc_geometry::lower::dispatch::PARTIAL
+fn declares_refused_variant(type_name: &str) -> bool {
+    use ifc_geometry::lower::dispatch::{Support, PARTIAL};
+    PARTIAL
+        .iter()
+        .any(|v| v.support == Support::Refused && v.family.eq_ignore_ascii_case(type_name))
+}
+
 #[test]
 fn implemented_families_lower_and_lowering_families_are_claimed() {
     let mut files = Vec::new();
@@ -448,6 +458,15 @@ fn implemented_families_lower_and_lowering_families_are_claimed() {
                         // the documented behaviour, not a coverage gap.
                     }
                     Err(error) if is_pinned_collapsed_loop(path, &model, &error) => {}
+                    Err(GeometryError::Unsupported { type_name, .. })
+                        if declares_refused_variant(&type_name) =>
+                    {
+                        // A nested entity of a PARTIAL family whose refused
+                        // variants are catalogued, e.g. an oblique
+                        // IfcPolygonalBoundedHalfSpace (#515). The catalog
+                        // test below holds each such family to at least one
+                        // admitted variant too.
+                    }
                     Err(error) => panic!(
                         "{family} is listed IMPLEMENTED but {id:?} in {} failed: {error}",
                         path.display()
