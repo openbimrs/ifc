@@ -27,22 +27,11 @@ mod lower_dispatch_corpus {
     pub mod corpus;
     pub mod probes;
 }
-use lower_dispatch_corpus::corpus::{collect_ifc, fixture_root, is_pinned_collapsed_loop};
+use lower_dispatch_corpus::corpus::{
+    collect_ifc, declares_refused_variant, disposition_rows, fixture_root,
+    is_pinned_collapsed_loop, typed_refusals,
+};
 use lower_dispatch_corpus::probes::irregular_network;
-
-const DISPOSITIONS: &str = include_str!("../data/ifc4-representation-item-dispositions.tsv");
-
-fn disposition_rows() -> Vec<[&'static str; 4]> {
-    DISPOSITIONS
-        .lines()
-        .skip(1)
-        .map(|line| {
-            let fields: Vec<_> = line.split('\t').collect();
-            assert_eq!(fields.len(), 4, "malformed disposition row: {line}");
-            [fields[0], fields[1], fields[2], fields[3]]
-        })
-        .collect()
-}
 
 /// The schema, not the hand-maintained dispatch arrays, defines the complete
 /// set of concrete representation-item families that need a disposition.
@@ -395,29 +384,6 @@ fn every_implemented_family_has_committed_corpus_evidence() {
         missing.is_empty(),
         "IMPLEMENTED families without committed corpus instances: {missing:?}"
     );
-}
-
-/// Entities the disposition ledger classifies as a typed refusal.
-///
-/// Read from the TSV rather than hard-coded so the escape hatch below can
-/// never admit a family the ledger does not actually
-/// classify that way.
-fn typed_refusals() -> Vec<String> {
-    disposition_rows()
-        .iter()
-        .filter(|row| row[1] == "typed-refusal")
-        .map(|row| row[0].to_owned())
-        .collect()
-}
-
-/// Whether `type_name` is a [`PARTIAL`] family with a refused variant.
-///
-/// [`PARTIAL`]: ifc_geometry::lower::dispatch::PARTIAL
-fn declares_refused_variant(type_name: &str) -> bool {
-    use ifc_geometry::lower::dispatch::{Support, PARTIAL};
-    PARTIAL
-        .iter()
-        .any(|v| v.support == Support::Refused && v.family.eq_ignore_ascii_case(type_name))
 }
 
 #[test]
