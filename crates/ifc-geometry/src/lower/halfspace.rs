@@ -30,6 +30,32 @@
 //! is different: its positioned boundary limits the cutting volume, so it
 //! lowers to `SolidOperation::BoundedHalfSpace` carrying `Position` and a
 //! `Curve2` boundary (see `boundary`), never widened to an infinite half-space.
+//!
+//! # The prism axis, and the clips that used to vanish (#515)
+//!
+//! IFC bounds the half space by the boundary's infinite prism along
+//! `Position`'s Z axis, in both directions, whatever the plane's slope.
+//! Axiolid's `BoundedHalfSpace` is a different solid: its prism runs along
+//! the clip plane's NORMAL, and its in-plane frame is `Position`'s X axis
+//! projected into the plane (direction only) and `normal x X`
+//! (axiolid-model 0.3.13 `SolidOperation::BoundedHalfSpace`,
+//! axiolid-construct 0.3.18 `half_space::bounded_half_space_in_frame`). The
+//! two are the same set only when `Position`'s Z is along the normal and its
+//! X and Y project to an unscaled frame about it. Otherwise the node lowered
+//! cleanly and compiled to another tool, with no error:
+//!
+//! - **Oblique** (a sloped roof plane over a vertical prism, the usual
+//!   gable-wall clip): the boundary was laid into the slope and, the normal
+//!   pointing down, mirrored off the wall, so the wall meshed uncut.
+//! - **Against** (a normal opposite `Position`'s Z, the usual way to say
+//!   "remove what is above"): `normal x X` is `-Y`, so the footprint was
+//!   mirrored across `Position`'s X axis.
+//!
+//! `prism_orientation` decides which case holds. *Against* has an exact
+//! answer here: the plane with its normal reversed and its side flipped is
+//! the same half space, now framed by `(X, Y)`. *Oblique* and a scaled or
+//! sheared frame have none in the neutral model and are refused by name;
+//! they wait on a kernel node whose prism runs along its own placement's Z.
 
 use axiolid_core::{Plane3, Point3, Vec3};
 use axiolid_model::{GeometryNode, NodeId, SolidOperation};
@@ -92,20 +118,7 @@ fn build_polygonal(
 
     // The infinite half space, exactly as the unbounded case builds it.
     let plane = plane_of(session, id, &type_name, base.base_surface()?, frame)?;
-    let half_space = session.node_for(
-        id,
-        GeometryNode::HalfSpace(HalfSpace {
-            boundary: plane,
-            agreement: flip(base.agreement_flag()?),
-        }),
-    )?;
-
-    // The 2D boundary is a closed bounded curve in Position's XY plane. It
-    // lowers as a curve, not a profile: the kernel extrudes it along +Z itself,
-    // and a profile would assert a filled region this entity does not author.
-    // It must be a `Curve2`: that is the kernel's contract, and the 3D curve
-    // path produced graphs that lowered but never compiled (#45).
-    let boundary = boundary::lower_boundary_curve(session, id, view.polygonal_boundary()?)?;
+    let agreement = flip(base.agreement_flag()?);
 
     // Position is independent of BaseSurface and must survive: it both places
     // the prism and orients the authored profile within its own plane.
@@ -115,6 +128,33 @@ fn build_polygonal(
         .to_metres(session.units());
     let placed = frame.compose(&local);
 
+    // The neutral node holds the IFC prism only for some frames; orient the
+    // plane so it does, or refuse (#515, see "The prism axis" above).
+    let half_space = match prism_orientation(&placed, plane.normal) {
+        PrismOrientation::Along => HalfSpace {
+            boundary: plane,
+            agreement,
+        },
+        PrismOrientation::Against => HalfSpace {
+            boundary: Plane3 {
+                origin: plane.origin,
+                normal: -plane.normal,
+            },
+            agreement: !agreement,
+        },
+        PrismOrientation::Oblique => return Err(session.unsupported(id, &type_name, OBLIQUE)),
+        PrismOrientation::Distorted => return Err(session.unsupported(id, &type_name, DISTORTED)),
+    };
+    let half_space = session.node_for(id, GeometryNode::HalfSpace(half_space))?;
+
+    // The 2D boundary is a closed bounded curve in Position's XY plane. It
+    // lowers as a curve, not a profile: the kernel extrudes it along the plane
+    // normal itself, which is Position's Z up to sign once checked above,
+    // and a profile would assert a filled region this entity does not author.
+    // It must be a `Curve2`: that is the kernel's contract, and the 3D curve
+    // path produced graphs that lowered but never compiled (#45).
+    let boundary = boundary::lower_boundary_curve(session, id, view.polygonal_boundary()?)?;
+
     session.node_for(
         id,
         GeometryNode::SolidOperation(SolidOperation::BoundedHalfSpace {
@@ -123,6 +163,67 @@ fn build_polygonal(
             placement: placed.to_geom(),
         }),
     )
+}
+
+/// How a bounded half-space's placed `Position` relates to its plane normal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PrismOrientation {
+    /// The neutral node holds the IFC prism as written.
+    Along,
+    /// It does once the plane is described from its other side.
+    Against,
+    /// `Position`'s Z is not along the normal: no neutral equivalent.
+    Oblique,
+    /// `Position`'s XY frame is scaled or sheared in the plane, or singular.
+    Distorted,
+}
+
+/// Refusal for [`PrismOrientation::Oblique`].
+const OBLIQUE: &str = "a boundary prism oblique to the base plane: Position's Z axis is not \
+                       along the plane normal, and the neutral bounded half-space sweeps its \
+                       boundary along the normal";
+
+/// Refusal for [`PrismOrientation::Distorted`].
+const DISTORTED: &str = "a scaled or sheared boundary frame: the neutral bounded half-space \
+                         reads only the direction of Position's X axis, so the boundary would \
+                         keep its authored size";
+
+/// Parallelism, unit length and orthogonality are decided to this bound (a
+/// sine, or a relative length). It is above the rounding of directions
+/// written to eight or more significant digits and far below any authored
+/// tilt: at 100 m from the plane it moves the prism by 10 µm.
+const PRISM_FRAME_TOLERANCE: f64 = 1e-7;
+
+/// Classify `placed` (`Position` in the plane's world frame, metres) against
+/// the plane's unit `normal`.
+///
+/// The neutral node frames the boundary by `X` projected into the plane,
+/// normalised, and `normal x X`, and sweeps it along `normal`. The IFC prism
+/// is along `Z`, framed by `X` and `Y`. They agree when `Z` is along the
+/// normal (either sign: the prism is infinite both ways), the projections of
+/// `X` and `Y` are orthonormal, and `normal x X = Y`, which holds for exactly
+/// one sign of the normal.
+fn prism_orientation(placed: &Transform, normal: Vec3) -> PrismOrientation {
+    let axis = |v: [f64; 3]| Vec3::from_array(placed.apply_direction(v));
+    let [x, y, z] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]].map(axis);
+    let n = normal.normalize_or_zero();
+    let z_unit = z.normalize_or_zero();
+    if n == Vec3::ZERO || z_unit == Vec3::ZERO || !z_unit.is_finite() {
+        return PrismOrientation::Distorted;
+    }
+    if z_unit.cross(n).length() > PRISM_FRAME_TOLERANCE {
+        return PrismOrientation::Oblique;
+    }
+    let [xp, yp] = [x, y].map(|v| v - n * v.dot(n));
+    let unit = |v: Vec3| (v.length() - 1.0).abs() <= PRISM_FRAME_TOLERANCE;
+    if !unit(xp) || !unit(yp) || xp.dot(yp).abs() > PRISM_FRAME_TOLERANCE {
+        return PrismOrientation::Distorted;
+    }
+    if n.dot(xp.cross(yp)) > 0.0 {
+        PrismOrientation::Along
+    } else {
+        PrismOrientation::Against
+    }
 }
 
 fn build(
