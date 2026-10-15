@@ -425,3 +425,149 @@ fn a_non_planar_base_surface_is_reported_as_unsupported() {
         "the error must name the offending surface, got {text}"
     );
 }
+
+/// [`super::prism_orientation`] for each relation of `Position` to the plane
+/// (#515). A unit `+Z` normal throughout; `Position` varies.
+#[test]
+fn the_prism_orientation_names_every_frame_relation() {
+    use super::{prism_orientation, PrismOrientation};
+    use axiolid_core::Vec3;
+
+    let up = Vec3::new(0.0, 0.0, 1.0);
+    let frame = |axis: [f64; 3], reference: [f64; 3]| {
+        Transform::from_axes([3.0, 4.0, 5.0], Some(axis), Some(reference)).expect("valid axes")
+    };
+    let cases = [
+        (
+            frame([0.0, 0.0, 1.0], [1.0, 0.0, 0.0]),
+            PrismOrientation::Along,
+        ),
+        // Turned about the normal: still along.
+        (
+            frame([0.0, 0.0, 1.0], [0.0, 1.0, 0.0]),
+            PrismOrientation::Along,
+        ),
+        // Upside down: Y = Z x X = -Y, so the plane must be read from below.
+        (
+            frame([0.0, 0.0, -1.0], [1.0, 0.0, 0.0]),
+            PrismOrientation::Against,
+        ),
+        // The #515 shape, rotated: the prism is tilted off the normal.
+        (
+            frame([0.0, 0.6, 0.8], [1.0, 0.0, 0.0]),
+            PrismOrientation::Oblique,
+        ),
+        // A tilt of 1e-9 rad is rounding, not authoring.
+        (
+            frame([0.0, 1e-9, 1.0], [1.0, 0.0, 0.0]),
+            PrismOrientation::Along,
+        ),
+        (
+            Transform::identity().scaled(2.0),
+            PrismOrientation::Distorted,
+        ),
+        (
+            Transform::identity().scaled_nonuniform([1.0, 3.0, 1.0]),
+            PrismOrientation::Distorted,
+        ),
+    ];
+    for (index, (placed, expected)) in cases.into_iter().enumerate() {
+        assert_eq!(prism_orientation(&placed, up), expected, "case {index}");
+    }
+    // A normal pointing down reverses the sign test, nothing else.
+    assert_eq!(
+        prism_orientation(&Transform::identity(), -up),
+        PrismOrientation::Against
+    );
+}
+
+/// The `#5` bounded half-space of [`bounded_with_boundary`] with the base
+/// plane's normal and `Position`'s Z set, lowered under `frame`.
+fn lower_bounded(
+    plane_axis: [f64; 3],
+    position_axis: [f64; 3],
+    frame: Transform,
+) -> Result<axiolid_primitive::HalfSpace, crate::error::GeometryError> {
+    let mut model = bounded_with_boundary([
+        point2(0.0, 0.0),
+        point2(1.0, 0.0),
+        point2(1.0, 2.0),
+        point2(0.0, 2.0),
+    ]);
+    let direction = |v: [f64; 3]| {
+        entity(
+            "IFCDIRECTION",
+            vec![Value::List(v.iter().map(|c| n(*c)).collect())],
+        )
+    };
+    model.insert(EntityId(2), direction(plane_axis));
+    model.insert(EntityId(9), direction(position_axis));
+    model.insert(
+        EntityId(7),
+        entity("IFCAXIS2PLACEMENT3D", vec![r(8), r(9), Value::Null]),
+    );
+    let scale = UnitScale::default();
+    let mut session = LoweringSession::new(&model, &scale);
+    let node = lower_half_space_node(&mut session, EntityId(5), frame)?;
+    let lowered = session.finish(node).expect("finishes");
+    let Some(GeometryNode::SolidOperation(SolidOperation::BoundedHalfSpace { half_space, .. })) =
+        lowered.graph.get(lowered.root)
+    else {
+        panic!("expected a BoundedHalfSpace operation");
+    };
+    let Some(GeometryNode::HalfSpace(hs)) = lowered.graph.get(*half_space) else {
+        panic!("expected a HalfSpace plane");
+    };
+    Ok(*hs)
+}
+
+/// A normal against `Position`'s Z is the same half space read from the
+/// other side: the node's normal is reversed and its side flipped, so the
+/// kernel's `normal x X` is `Position`'s own Y and the footprint is not
+/// mirrored (#515).
+#[test]
+fn a_normal_against_position_z_is_reversed_with_its_side() {
+    // `.T.` on a downward normal keeps the material above the plane.
+    let hs =
+        lower_bounded([0.0, 0.0, -1.0], [0.0, 0.0, 1.0], Transform::identity()).expect("lowers");
+    assert_eq!(hs.boundary.normal.to_array(), [0.0, 0.0, 1.0]);
+    assert!(hs.agreement, "the kept side is still above the plane");
+    // Aligned, the flag converts as for any half space.
+    let hs =
+        lower_bounded([0.0, 0.0, 1.0], [0.0, 0.0, 1.0], Transform::identity()).expect("lowers");
+    assert_eq!(hs.boundary.normal.to_array(), [0.0, 0.0, 1.0]);
+    assert!(!hs.agreement);
+}
+
+/// The neutral node cannot hold an oblique or rescaled prism: each is
+/// refused by name, never lowered to a node that compiles to another tool.
+#[test]
+fn an_oblique_or_scaled_prism_is_refused_by_name() {
+    for (plane, position, frame, needle) in [
+        (
+            [0.6, 0.0, -0.8],
+            [0.0, 0.0, 1.0],
+            Transform::identity(),
+            "oblique",
+        ),
+        (
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+            Transform::identity().scaled(2.0),
+            "scaled or sheared",
+        ),
+    ] {
+        let error = lower_bounded(plane, position, frame).expect_err("must refuse");
+        let crate::error::GeometryError::Unsupported {
+            entity,
+            type_name,
+            detail,
+        } = &error
+        else {
+            panic!("expected Unsupported, got {error:?}");
+        };
+        assert_eq!(*entity, EntityId(5));
+        assert_eq!(type_name, "IFCPOLYGONALBOUNDEDHALFSPACE");
+        assert!(detail.contains(needle), "{needle}: {detail}");
+    }
+}

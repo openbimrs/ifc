@@ -12,6 +12,34 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#515, polygonal bounded half-space clips that compiled to another tool)
+
+Semver: patch. No public item changes; `dispatch::PARTIAL` gains three
+`IFCPOLYGONALBOUNDEDHALFSPACE` rows. Two lowered graphs change, both of
+which compiled to a wrong mesh before, with no error.
+
+- IFC bounds `IfcPolygonalBoundedHalfSpace` by the boundary's prism along
+  `Position`'s Z axis. Axiolid's `BoundedHalfSpace` sweeps the boundary
+  along the clip plane's normal and frames it by `Position`'s X projected
+  into the plane and `normal x X`. Lowering now checks that the two agree
+  before emitting the node (`lower::halfspace`, `prism_orientation`).
+- A base plane whose normal points against `Position`'s Z (the usual
+  "remove what is above" clip) mirrored the footprint across `Position`'s
+  X axis. It now lowers as the same half space read from the other side,
+  normal reversed and side flipped, so the footprint is the authored one.
+- A prism oblique to its plane (a sloped roof plane over a vertical
+  prism: the usual IFC2X3 gable-wall clip) has no neutral equivalent. The
+  boundary was laid into the slope and mirrored off the wall, so
+  `compile_product_mesh` and `compile_product_mesh_net` returned the uncut
+  body. It is now `GeometryError::Unsupported` naming the half space,
+  until the kernel has a bounded half-space whose prism runs along its own
+  placement. A scaled or sheared `Position` frame, whose boundary the
+  kernel would not scale, is refused the same way.
+- New fixtures `synthetic-compile/gable_wall_polygonal_clip_ifc2x3.ifc`
+  and `_ifc4.ifc` (the #515 wall), and `tests/bounded_halfspace_prism_axis.rs`,
+  which accepts the gable's analytic volume or a refusal naming a clip, and
+  never the uncut body.
+
 ## [0.27.0] - 2026-10-14
 
 ### Added (#458, curves and surfaces as output primitives)

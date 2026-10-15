@@ -346,6 +346,33 @@ pub const PARTIAL: &[Variant] = &[
         rationale: "the documentation defines no meaning for it",
     },
     Variant {
+        family: "IFCPOLYGONALBOUNDEDHALFSPACE",
+        variant: "Position's Z axis is along the base plane normal, either \
+                  sign, and its frame is unscaled",
+        support: Support::Admitted,
+        rationale: "the boundary prism is then the neutral BoundedHalfSpace's \
+                    prism along the normal; a normal against Position's Z is \
+                    lowered as the same half space read from the other side, \
+                    so the boundary is framed by Position's own X and Y (#515)",
+    },
+    Variant {
+        family: "IFCPOLYGONALBOUNDEDHALFSPACE",
+        variant: "Position's Z axis is oblique to the base plane normal (a \
+                  sloped plane over a vertical prism)",
+        support: Support::Refused,
+        rationale: "kernel: the IFC prism runs along Position's Z; the neutral \
+                    BoundedHalfSpace sweeps its boundary along the plane \
+                    normal, so it holds a different solid (#515)",
+    },
+    Variant {
+        family: "IFCPOLYGONALBOUNDEDHALFSPACE",
+        variant: "Position's frame is scaled or sheared in the plane",
+        support: Support::Refused,
+        rationale: "kernel: the neutral BoundedHalfSpace reads only the \
+                    direction of the placement's X axis, so the boundary \
+                    would keep its authored size (#515)",
+    },
+    Variant {
         family: "IFCSURFACECURVE",
         variant: "MasterRepresentation is Curve3D, PCurveS1, or PCurveS2 with \
                   the named side present",
