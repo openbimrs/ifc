@@ -51,7 +51,7 @@
 //!   "remove what is above"): `normal x X` is `-Y`, so the footprint was
 //!   mirrored across `Position`'s X axis.
 //!
-//! [`prism_orientation`] decides which case holds. *Against* has an exact
+//! `prism_orientation` decides which case holds. *Against* has an exact
 //! answer here: the plane with its normal reversed and its side flipped is
 //! the same half space, now framed by `(X, Y)`. *Oblique* and a scaled or
 //! sheared frame have none in the neutral model and are refused by name;
