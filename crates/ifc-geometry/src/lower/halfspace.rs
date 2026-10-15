@@ -130,39 +130,26 @@ fn build_polygonal(
 
     // The neutral node holds the IFC prism only for some frames; orient the
     // plane so it does, or refuse (#515, see "The prism axis" above).
-    let half_space =
-        match prism_orientation(&placed, plane.normal) {
-            PrismOrientation::Along => HalfSpace {
-                boundary: plane,
-                agreement,
+    let half_space = match prism_orientation(&placed, plane.normal) {
+        PrismOrientation::Along => HalfSpace {
+            boundary: plane,
+            agreement,
+        },
+        PrismOrientation::Against => HalfSpace {
+            boundary: Plane3 {
+                origin: plane.origin,
+                normal: -plane.normal,
             },
-            PrismOrientation::Against => HalfSpace {
-                boundary: Plane3 {
-                    origin: plane.origin,
-                    normal: -plane.normal,
-                },
-                agreement: !agreement,
-            },
-            PrismOrientation::Oblique => {
-                return Err(session.unsupported(
-                    id,
-                    &type_name,
-                    "a boundary prism oblique to the base plane: Position's Z axis is not along \
-                 the plane normal, and the neutral bounded half-space sweeps its boundary \
-                 along the normal",
-                ))
-            }
-            PrismOrientation::Distorted => return Err(session.unsupported(
-                id,
-                &type_name,
-                "a scaled or sheared boundary frame: the neutral bounded half-space reads only \
-                 the direction of Position's X axis, so the boundary would keep its authored size",
-            )),
-        };
+            agreement: !agreement,
+        },
+        PrismOrientation::Oblique => return Err(session.unsupported(id, &type_name, OBLIQUE)),
+        PrismOrientation::Distorted => return Err(session.unsupported(id, &type_name, DISTORTED)),
+    };
     let half_space = session.node_for(id, GeometryNode::HalfSpace(half_space))?;
 
     // The 2D boundary is a closed bounded curve in Position's XY plane. It
-    // lowers as a curve, not a profile: the kernel extrudes it along +Z itself,
+    // lowers as a curve, not a profile: the kernel extrudes it along the plane
+    // normal itself, which is Position's Z up to sign once checked above,
     // and a profile would assert a filled region this entity does not author.
     // It must be a `Curve2`: that is the kernel's contract, and the 3D curve
     // path produced graphs that lowered but never compiled (#45).
@@ -190,6 +177,16 @@ enum PrismOrientation {
     /// `Position`'s XY frame is scaled or sheared in the plane, or singular.
     Distorted,
 }
+
+/// Refusal for [`PrismOrientation::Oblique`].
+const OBLIQUE: &str = "a boundary prism oblique to the base plane: Position's Z axis is not \
+                       along the plane normal, and the neutral bounded half-space sweeps its \
+                       boundary along the normal";
+
+/// Refusal for [`PrismOrientation::Distorted`].
+const DISTORTED: &str = "a scaled or sheared boundary frame: the neutral bounded half-space \
+                         reads only the direction of Position's X axis, so the boundary would \
+                         keep its authored size";
 
 /// Parallelism, unit length and orthogonality are decided to this bound (a
 /// sine, or a relative length). It is above the rounding of directions
