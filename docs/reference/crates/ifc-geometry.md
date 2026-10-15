@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.27.0 (2026-10-14) |
+| Latest release | 0.27.1 (2026-10-15) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -43,85 +43,34 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.27.0 (2026-10-14):
+Latest release, 0.27.1 (2026-10-15):
 
-### Added (#458, curves and surfaces as output primitives)
+### Fixed (#515, polygonal bounded half-space clips that compiled to another tool)
 
-Semver: minor. Every item below is new; `RepresentationPurpose` and
-`GeometryError` are `#[non_exhaustive]`, so their new variants are
-additive. One refusal text changes (below); no lowered graph changes.
+Semver: patch. No public item changes; `dispatch::PARTIAL` gains three
+`IFCPOLYGONALBOUNDEDHALFSPACE` rows. Two lowered graphs change, both of
+which compiled to a wrong mesh before, with no error.
 
-- `RepresentationPurpose::{Axis, FootPrint, Annotation, Surface}`: each
-  selects the first representation the product authors with that
-  `RepresentationIdentifier`, in authored order, whatever its context.
-  `Body` and `Plan` keep their policies. `RepresentationPurpose::identifier`,
-  `name` and `from_name` map a purpose to and from the IFC spelling.
-- `compile::compile_product_polylines(_with)`: the curves of a product's
-  representation for a purpose as `CompiledPolyline`s (the IFC `curve`,
-  world `points`, `closed`, and the backend's `ChordDeviation`: the chord
-  budget asked for and a certified bound on the distance from the exact
-  curve to the polyline). It takes any `PolylineCompiler`, the reference
-  backend's new operation (axiolid/kernel#311). A collection is opened,
-  and a mapped item holding a curve places each curve on its own by the
-  same composed transform (an exact regrouping; nothing is evaluated).
-- `compile::compile_product_mesh_for(_with)`: the surfaces and solids of
-  a product's representation for a purpose as one `CompiledMesh` with its
-  `MeshClosure`. A representation with no curve compiles from its own
-  root, so a Body's mesh is the one `compile_product_mesh_reported` gives.
-  Rectangular trimmed surfaces and B-reps of loose faces now compile as
-  `MeshClosure::Surface` (axiolid/kernel#311).
-- `GeometryError::PolylineUnsupported { product, curve, family, reason }`
-  with `compile::UnpolylinedCurve::{Trimmed, Composite, Offset,
-  Intrinsic}`: a trimmed, composite, offset or intrinsic curve the
-  backend refuses to polyline is refused by that name, `is_unsupported()`,
-  never approximated here. The reference compiler refuses them until
-  axiolid/kernel#317 (#506).
-- `compile` re-exports `ChordDeviation`, `MeshClosure`, `Point3` and
-  `PolylineCompiler`, so a caller names no `axiolid-*` crate.
-- Tests: an `IfcPolyline` axis, a placed `IfcCircle` footprint far from
-  the origin, a mapped axis, an annotation curve set, a rectangular
-  trimmed surface, a lone `IfcFaceSurface`, a representation mixing both,
-  and the trimmed and composite refusals, each in IFC2X3, IFC4 and IFC4X3.
-
-### Changed (#458)
-
-- Uses the `PolylineCompiler` of `axiolid-mesh-compile` 0.3.26 and
-  `axiolid-mesh-compile-contract` 0.3.4, the floors #454 raised.
-- `GeometryError::CompilationRefused` reads "could not be compiled: ..."
-  instead of "could not be compiled to a mesh: ...": it is now also the
-  polyline compiler's refusal.
-
-### Changed (#454, curved advanced B-rep faces bounded by 3D edge curves compile)
-
-Semver: patch. No public item, refusal kind or lowered graph changes. Only
-the dependency floors of the opt-in `compile` feature rise, as in 0.26.1,
-and bodies the reference kernel used to refuse now compile.
-
-- Requires `axiolid-mesh-compile` 0.3.26 and
-  `axiolid-mesh-compile-contract` 0.3.4.
-- An `IfcAdvancedBrep` whose curved faces are bounded only by 3D edge
-  curves now compiles through the reference kernel. That is how IFC writes
-  them: `IfcAdvancedFace` admits no `IfcPcurve` as edge geometry. Before,
-  the kernel refused such a face. Now it inverts each edge's shared 3D
-  samples onto the face's surface (axiolid/kernel#310). The lowering is
-  unchanged and still projects nothing (ADR 0004). A seamed cylinder with
-  two circular caps compiles as a watertight solid. So does a B-spline face
-  bounded by B-spline edges over planar walls.
-- A curved face's certified deviation may come out slightly above the
-  requested chord budget. The kernel adds the face's triangle bound to its
-  boundary terms, so check `DeviationReport::meets_requested`. The B-spline
-  fixture reports 1.075 mm at a 1 mm request.
-- The kernel refuses some 3D-bounded faces, and each refusal reaches the
-  caller as `GeometryError::CompilationRefused` with the kernel's reason:
-  - an edge through a sphere pole (or a cone apex);
-  - an edge curve whose whole domain does not run from its start vertex to
-    its end vertex. This includes an `IfcLine` with a unit `IfcVector`, or
-    a part of an `IfcCircle`: without a p-curve the kernel reads the
-    curve's whole domain as the edge;
-  - an edge off its B-spline surface. The kernel's certified inversion
-    gives up on it as `BudgetExceeded` ("certified surface projection").
-- The same kernel release bounds instanced bodies with the rounding of
-  their placement. A chord budget at or below that rounding, about
-  `1e-9` at `6e6`, is refused (axiolid/kernel#295).
+- IFC bounds `IfcPolygonalBoundedHalfSpace` by the boundary's prism along
+  `Position`'s Z axis. Axiolid's `BoundedHalfSpace` sweeps the boundary
+  along the clip plane's normal and frames it by `Position`'s X projected
+  into the plane and `normal x X`. Lowering now checks that the two agree
+  before emitting the node (`lower::halfspace`, `prism_orientation`).
+- A base plane whose normal points against `Position`'s Z (the usual
+  "remove what is above" clip) mirrored the footprint across `Position`'s
+  X axis. It now lowers as the same half space read from the other side,
+  normal reversed and side flipped, so the footprint is the authored one.
+- A prism oblique to its plane (a sloped roof plane over a vertical
+  prism: the usual IFC2X3 gable-wall clip) has no neutral equivalent. The
+  boundary was laid into the slope and mirrored off the wall, so
+  `compile_product_mesh` and `compile_product_mesh_net` returned the uncut
+  body. It is now `GeometryError::Unsupported` naming the half space,
+  until the kernel has a bounded half-space whose prism runs along its own
+  placement. A scaled or sheared `Position` frame, whose boundary the
+  kernel would not scale, is refused the same way.
+- New fixtures `synthetic-compile/gable_wall_polygonal_clip_ifc2x3.ifc`
+  and `_ifc4.ifc` (the #515 wall), and `tests/bounded_halfspace_prism_axis.rs`,
+  which accepts the gable's analytic volume or a refusal naming a clip, and
+  never the uncut body.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
