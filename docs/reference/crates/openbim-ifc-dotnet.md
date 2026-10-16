@@ -11,7 +11,7 @@ The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned 
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.8.0 (2026-10-14) |
+| Latest release | 0.9.0 (2026-10-16) |
 | Registries | [NuGet `OpenBim.Ifc`](https://www.nuget.org/packages/OpenBim.Ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_dotnet/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-dotnet/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-dotnet) |
@@ -44,20 +44,22 @@ The behaviour is tested from C# against the packed `.nupkg` by
 
 ## Changes
 
-Latest release, 0.8.0 (2026-10-14):
+Latest release, 0.9.0 (2026-10-16):
 
-### Added (#458, curves and surfaces as output primitives)
+### Changed (#515, wire format 1.4)
 
-Semver: minor (additive).
+- The geometry graph payload (#367) may be Axiolid's wire format 1.4
+  (`axiolid-model` 0.3.14), a minor version of the format (ADR 0021,
+  amended): every `IfcPolygonalBoundedHalfSpace` now lowers to
+  `BoundedHalfSpaceAlongZ`, the half space bounded along its `Position`'s
+  Z (axiolid/kernel#321), so an oblique clip such as a gable wall's under
+  a sloped roof is carried as authored. An envelope carries the lowest
+  version its content needs: a payload with such a clip is 1.4 (it was
+  1.0), every other is unchanged. A reader on `axiolid-model` 0.3.13 or
+  older refuses 1.4.
+  `ProductGraph.FormatVersion` is `"1.4"`, the newest version the package
+  writes.
 
-- `model.ProductCurves(ids, representation = "Plan")`: a `CurvedProduct`
-  per product, its `ProductCurves` record (with a `ProductPolyline` per
-  curve: `Curve`, `FirstVertex`, `VertexCount`, `Closed`, `ChordBound`,
-  `ChordRequested`) and `float[] Positions`. A trimmed, composite, offset
-  or intrinsic curve is an `unsupported` refusal (#506).
-- `model.ProductMeshes(ids, representation)` meshes a named
-  representation, such as `"Surface"`; `ProductMesh.Closure` is `solid`,
-  `surface` or `unknown`.
-- Requires the C ABI 0.1.17 (`openbim-ifc-capi` with #458).
+Semver: minor, as ADR 0021 states for a minor version of the wire format.
 
 Full history: [`crates/openbim-ifc-dotnet/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-dotnet/CHANGELOG.md)

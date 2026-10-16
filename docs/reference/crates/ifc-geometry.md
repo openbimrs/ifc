@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.27.2 (2026-10-16) |
+| Latest release | 0.28.0 (2026-10-16) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -43,35 +43,50 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.27.2 (2026-10-16):
+Latest release, 0.28.0 (2026-10-16):
 
-### Fixed (#515, oblique polygonal bounded half-space clips)
+### Changed (#515, #519: polygonal bounded half-spaces along `Position`'s Z)
 
-Semver: patch. No public item changes; two `IFCPOLYGONALBOUNDEDHALFSPACE`
-rows of `dispatch::PARTIAL` are rewritten (an oblique or rescaled prism is
-now admitted for a convex boundary). Only graphs that were refused before
-change.
+Semver: minor. `axiolid-model` 0.3.14 is a normal dependency whose types
+(`GeometryGraph`, `SolidOperation`) are exposed, and every lowered
+`IfcPolygonalBoundedHalfSpace` changes node; the three
+`IFCPOLYGONALBOUNDEDHALFSPACE` rows leave `dispatch::PARTIAL`.
 
-- A prism oblique to its plane, or under a scaled or sheared `Position`,
-  now lowers when the half space is the second operand of a difference or
-  an intersection and its boundary is a convex polygon. The prism of a
-  convex polygon is the intersection of one half space per edge (the plane
-  through the edge along `Position`'s Z), so the subject's intersection
-  with the tool is a chain of intersections with unbounded half spaces,
-  and a difference is the subject minus that chain. These are identities
-  of sets; nothing is computed in the bridge (ADR 0004). The #515 gable
-  wall (`synthetic-compile/gable_wall_polygonal_clip_ifc2x3.ifc` and
-  `_ifc4.ifc`) compiles to 49.999912042537 m³, IfcOpenShell 0.8.5's
-  volume, gross and net.
-- Limits, from axiolid-mesh-compile 0.3.26: the exact compiler takes no
-  boolean as a difference's tool, so such a mesh's deviation report is
-  unbounded and names the missing exact result; and a prism that misses
-  its subject is refused by the mesh compiler (`CompilationRefused`), not
-  kept as the subject.
-- Still `GeometryError::Unsupported` naming the half space: a non-convex
-  boundary, a boundary with an arc, a union with the tool, and the tool
-  anywhere but a boolean's second operand. A kernel bounded half-space
-  whose prism runs along its own placement (axiolid/kernel#321) is what
-  covers these.
+- Requires `axiolid-model` 0.3.14 (axiolid/kernel#321, #322) and, behind
+  `compile-reference-backend`, `axiolid-mesh-compile` 0.3.27 and
+  `axiolid-construct` 0.3.19 (axiolid/kernel#321, #322, #325), which
+  brings `axiolid-evaluate` 0.3.16: offsets beside a 3D intrinsic curve
+  without torsion in a level plane are now certified (axiolid/kernel#302),
+  and `compile::window`'s repeated `UNCERTIFIED_LENGTH` text follows it.
+- Every `IfcPolygonalBoundedHalfSpace` lowers to
+  `SolidOperation::BoundedHalfSpaceAlongZ`: the half space within the
+  boundary's prism along `Position`'s Z, infinite both ways, `Position`
+  carried whole (its scale, shear and handedness under a mapped item).
+  That is the IFC set for every frame, so one path replaces three:
+  aligned clips no longer lower to `BoundedHalfSpace`, a normal against
+  `Position`'s Z is no longer re-read from its other side, and the 0.27.2
+  chain of unbounded half spaces for oblique or rescaled prisms
+  (`lower_prism_clip`, `prism_walls`, the boolean hook) and its frame
+  classification are deleted.
+- Now compiled, where 0.27.2 refused them with `GeometryError::Unsupported`:
+  a non-convex boundary or one with a circular arc under an oblique or
+  rescaled prism. Lowering refuses no frame any more; what the kernel
+  cannot compile it refuses by name (`GeometryError::CompilationRefused`):
+  a `Position` Z lying in the plane, and the tool as a union's operand, a
+  first operand or a root.
+- The #515 gable wall (`synthetic-compile/gable_wall_polygonal_clip_*.ifc`)
+  compiles exactly, at 49.999912042537 m³, and its mesh is certified
+  against that body (bound about 4e-12 m); in 0.27.2 the mesh had no
+  exact result to be measured against.
+- #519: both compilers size the cut from the subject (axiolid/kernel#325),
+  so `synthetic-compile/tall_wall_small_bounded_clip_ifc2x3.ifc` meshes to
+  the analytic 56.887388852960 m³, certified; the tests accept nothing
+  else, and their `TODO(#519)` is resolved.
+- Wire format: a lowered graph holding a polygonal bounded clip is Axiolid
+  wire format 1.4 (it was 1.0); every other graph keeps its version.
+- Tests: the gable (IFC2X3 and IFC4, gross, net and exact, certified), an
+  L-shaped and an arc boundary under an oblique prism (analytic volumes,
+  exact and certified), uniformly and unevenly scaled and mirrored mapped
+  clips, and the named refusals of a Z in the plane and of a union.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)

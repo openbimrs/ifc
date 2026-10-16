@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-10-16
+
 ### Changed (#515, #519: polygonal bounded half-spaces along `Position`'s Z)
 
 Semver: minor. `axiolid-model` 0.3.14 is a normal dependency whose types
@@ -2248,7 +2250,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.27.2...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.28.0...HEAD
+[0.28.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.28.0
 [0.27.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.27.2
 [0.27.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.27.1
 [0.27.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.27.0
