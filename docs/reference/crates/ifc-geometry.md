@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.27.1 (2026-10-15) |
+| Latest release | 0.27.2 (2026-10-16) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -43,34 +43,35 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.27.1 (2026-10-15):
+Latest release, 0.27.2 (2026-10-16):
 
-### Fixed (#515, polygonal bounded half-space clips that compiled to another tool)
+### Fixed (#515, oblique polygonal bounded half-space clips)
 
-Semver: patch. No public item changes; `dispatch::PARTIAL` gains three
-`IFCPOLYGONALBOUNDEDHALFSPACE` rows. Two lowered graphs change, both of
-which compiled to a wrong mesh before, with no error.
+Semver: patch. No public item changes; two `IFCPOLYGONALBOUNDEDHALFSPACE`
+rows of `dispatch::PARTIAL` are rewritten (an oblique or rescaled prism is
+now admitted for a convex boundary). Only graphs that were refused before
+change.
 
-- IFC bounds `IfcPolygonalBoundedHalfSpace` by the boundary's prism along
-  `Position`'s Z axis. Axiolid's `BoundedHalfSpace` sweeps the boundary
-  along the clip plane's normal and frames it by `Position`'s X projected
-  into the plane and `normal x X`. Lowering now checks that the two agree
-  before emitting the node (`lower::halfspace`, `prism_orientation`).
-- A base plane whose normal points against `Position`'s Z (the usual
-  "remove what is above" clip) mirrored the footprint across `Position`'s
-  X axis. It now lowers as the same half space read from the other side,
-  normal reversed and side flipped, so the footprint is the authored one.
-- A prism oblique to its plane (a sloped roof plane over a vertical
-  prism: the usual IFC2X3 gable-wall clip) has no neutral equivalent. The
-  boundary was laid into the slope and mirrored off the wall, so
-  `compile_product_mesh` and `compile_product_mesh_net` returned the uncut
-  body. It is now `GeometryError::Unsupported` naming the half space,
-  until the kernel has a bounded half-space whose prism runs along its own
-  placement. A scaled or sheared `Position` frame, whose boundary the
-  kernel would not scale, is refused the same way.
-- New fixtures `synthetic-compile/gable_wall_polygonal_clip_ifc2x3.ifc`
-  and `_ifc4.ifc` (the #515 wall), and `tests/bounded_halfspace_prism_axis.rs`,
-  which accepts the gable's analytic volume or a refusal naming a clip, and
-  never the uncut body.
+- A prism oblique to its plane, or under a scaled or sheared `Position`,
+  now lowers when the half space is the second operand of a difference or
+  an intersection and its boundary is a convex polygon. The prism of a
+  convex polygon is the intersection of one half space per edge (the plane
+  through the edge along `Position`'s Z), so the subject's intersection
+  with the tool is a chain of intersections with unbounded half spaces,
+  and a difference is the subject minus that chain. These are identities
+  of sets; nothing is computed in the bridge (ADR 0004). The #515 gable
+  wall (`synthetic-compile/gable_wall_polygonal_clip_ifc2x3.ifc` and
+  `_ifc4.ifc`) compiles to 49.999912042537 m³, IfcOpenShell 0.8.5's
+  volume, gross and net.
+- Limits, from axiolid-mesh-compile 0.3.26: the exact compiler takes no
+  boolean as a difference's tool, so such a mesh's deviation report is
+  unbounded and names the missing exact result; and a prism that misses
+  its subject is refused by the mesh compiler (`CompilationRefused`), not
+  kept as the subject.
+- Still `GeometryError::Unsupported` naming the half space: a non-convex
+  boundary, a boundary with an arc, a union with the tool, and the tool
+  anywhere but a boolean's second operand. A kernel bounded half-space
+  whose prism runs along its own placement (axiolid/kernel#321) is what
+  covers these.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
