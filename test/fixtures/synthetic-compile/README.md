@@ -31,5 +31,6 @@ executable; a mutation run confirmed that branch is dead code without it.
   each to 14 vertices and 49.999912 m³, the top at 11537.10 mm (x = 0),
   13536.68 mm, 16165.03 mm (the ridge, x = 4925), 13536.68 mm and
   11809.43 mm (x = 9775). Every prism is oblique to its plane, which the
-  neutral bounded half-space cannot hold, so the compiler must refuse
-  rather than return the uncut wall (`tests/bounded_halfspace_prism_axis.rs`).
+  neutral bounded half-space cannot hold; each clip lowers to the wall
+  minus its intersection with five unbounded half spaces, and the wall
+  compiles to IfcOpenShell's volume (`tests/bounded_halfspace_prism_axis.rs`).

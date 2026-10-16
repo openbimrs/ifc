@@ -59,6 +59,32 @@ use crate::lower::profile::{curve_to_contour, BoundaryRole};
 use crate::lower::session::LoweringSession;
 use crate::resource::point::CartesianPoint;
 
+/// `PolygonalBoundary`, read in `Position`'s XY plane, in metres.
+#[derive(Debug, Clone)]
+pub(super) enum Boundary {
+    /// Straight edges only: the vertices, as wound, without a closing
+    /// duplicate. `closed` is the polyline's own claim; an open one is
+    /// carried through for the kernel to refuse, as before.
+    Polygon { points: Vec<Point2>, closed: bool },
+    /// A closed contour with a circular arc (#398).
+    Contour(Contour),
+}
+
+impl Boundary {
+    /// The node the neutral `BoundedHalfSpace` takes as its boundary.
+    fn into_node(self) -> GeometryNode {
+        match self {
+            Self::Polygon { points, closed } => {
+                GeometryNode::Curve2(Curve2::Polyline(Polyline2 { points, closed }))
+            }
+            Self::Contour(outer) => GeometryNode::Profile(Profile::Contour(ContourProfile {
+                outer,
+                holes: Vec::new(),
+            })),
+        }
+    }
+}
+
 /// Lower `PolygonalBoundary` to a node in the boundary's own plane.
 ///
 /// `IfcPolyline` is lowered point for point to a `Polyline2`.
@@ -71,6 +97,17 @@ pub(super) fn lower_boundary_curve(
     owner: EntityId,
     id: EntityId,
 ) -> GeometryResult<NodeId> {
+    let boundary = read_boundary(session, owner, id)?;
+    session.node_for(id, boundary.into_node())
+}
+
+/// Read `PolygonalBoundary` (`id`, owned by `owner`) without appending a
+/// node. [`lower_boundary_curve`] is this plus the node.
+pub(super) fn read_boundary(
+    session: &mut LoweringSession<'_>,
+    owner: EntityId,
+    id: EntityId,
+) -> GeometryResult<Boundary> {
     let type_name = session.type_name(id)?;
     match type_name.as_str() {
         "IFCPOLYLINE" => {}
@@ -81,20 +118,16 @@ pub(super) fn lower_boundary_curve(
                 session.units(),
                 BoundaryRole::HalfSpace,
             )?;
-            let node = match straight_vertices(&contour) {
+            return match straight_vertices(&contour) {
                 Some(points) => {
                     check_edge_count(id, &type_name, points.len())?;
-                    GeometryNode::Curve2(Curve2::Polyline(Polyline2 {
+                    Ok(Boundary::Polygon {
                         points,
                         closed: true,
-                    }))
+                    })
                 }
-                None => GeometryNode::Profile(Profile::Contour(ContourProfile {
-                    outer: contour,
-                    holes: Vec::new(),
-                })),
+                None => Ok(Boundary::Contour(contour)),
             };
-            return session.node_for(id, node);
         }
         _ => {
             return Err(session.unsupported(
@@ -120,10 +153,7 @@ pub(super) fn lower_boundary_curve(
     if closed && points.len() > 1 {
         points.pop();
     }
-    session.node_for(
-        id,
-        GeometryNode::Curve2(Curve2::Polyline(Polyline2 { points, closed })),
-    )
+    Ok(Boundary::Polygon { points, closed })
 }
 
 /// The vertices of a closed contour whose edges are all straight, in
