@@ -353,13 +353,10 @@ pub const PARTIAL: &[Variant] = &[
         rationale: "the boundary prism is then the neutral BoundedHalfSpace's \
                     prism along the normal; a normal against Position's Z is \
                     lowered as the same half space read from the other side, \
-                    so the boundary is framed by Position's own X and Y (#515). \
-                    Kernel limit: the exact compiler bounds the prism by the \
-                    subject, but the reference mesh compiler sizes its slab \
-                    at twice the boundary's largest coordinate, so a subject \
-                    reaching farther from the plane is under-cut in the mesh \
-                    and its deviation report misses the requested tolerance \
-                    (#519, axiolid/kernel#325)",
+                    so the boundary is framed by Position's own X and Y (#515). Kernel \
+                    limit: the mesh compiler's slab is twice the boundary's extent deep, \
+                    so a taller subject is under-cut there, flagged by its deviation \
+                    report (#519, axiolid/kernel#325)",
     },
     Variant {
         family: "IFCPOLYGONALBOUNDEDHALFSPACE",
