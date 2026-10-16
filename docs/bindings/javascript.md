@@ -644,7 +644,8 @@ for (const product of model.productGeometry(undefined, "object")) {
   const { format, version, graph } = product.payload;
   // The lowest wire version the content needs: "1.0"; "1.1" when a
   // station carries a seam-snapping window, "1.2" when a run's sections do,
-  // "1.3" when an offset run continues to a basis end the kernel measures.
+  // "1.3" when an offset run continues to a basis end the kernel measures,
+  // "1.4" when a polygonal bounded half-space clips.
   console.log(product.typeName, format, version, Object.keys(graph.nodes.at(-1))[0]);
 }
 ```
@@ -660,10 +661,14 @@ run's sections do ([#429](https://github.com/openbimrs/ifc/issues/429),
 a sectioned solid or surface along such an offset), then `1.2`, or an
 offset run continues to a basis end the kernel measures
 ([#433](https://github.com/openbimrs/ifc/issues/433), an
-`IfcOffsetCurveByDistances` along such an offset), then `1.3`
-(axiolid/kernel#297, #301, #303). A reader on `axiolid-model` 0.3.8 or
+`IfcOffsetCurveByDistances` along such an offset), then `1.3`, or a
+polygonal bounded half-space clips
+([#515](https://github.com/openbimrs/ifc/issues/515), an
+`IfcPolygonalBoundedHalfSpace` bounded along its `Position`'s Z), then
+`1.4` (axiolid/kernel#297, #301, #303, #321). A reader on `axiolid-model` 0.3.8 or
 older reads a `1.0` payload and refuses `1.1`; one on 0.3.10 or older
-refuses `1.2`, one on 0.3.11 or older `1.3`. Nodes come in
+refuses `1.2`, one on 0.3.11 or older `1.3`, one on 0.3.13 or older
+`1.4`. Nodes come in
 insertion order, which is topological; each is tagged by its kind
 (`Profile`, `SolidOperation`, `Instance`, ...) and a reference to another
 node is that node's index. The graph is in world coordinates, metres,
@@ -1086,7 +1091,7 @@ class, interface and type the package's `.d.ts` declares.
 | `model.validate(maxFindings: number \| undefined): ValidationReport` | yes | Validate against the schema the header declares; findings are sorted by severity, rule, entity and slot. `maxFindings` caps the report (default 10,000) and sets `truncated` when reached. |
 | `model.unreachableProducts(): UnreachableProduct[]` | yes | Products no viewer will draw (outside the spatial structure, or with geometry only in non-model contexts), with a stable `reason`. |
 | `model.productPlacements(ids: bigint[] \| BigUint64Array \| undefined): ProductPlacement[]` | yes | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or, without, for every product with a shape. A product that cannot be placed is a record with a typed `refusal`; the call itself throws only `unsupported-schema` or `feature-disabled` (feature `placements`). |
-| `model.productGeometry(ids: bigint[] \| BigUint64Array \| undefined, encoding: GeometryPayloadEncoding \| undefined): ProductGeometry[]` | yes | Each product's Body as Axiolid's neutral geometry graph (#367), exact (extrusions, sweeps, B-splines, unevaluated booleans), for `ids` or, without, every product with a shape, in Axiolid's versioned wire format: `{ format: "axiolid-geometry-graph", version: "1.0", graph: { nodes, roots } }` (the lowest version the content needs, `"1.0"` to `"1.3"`), in world coordinates, metres. `encoding` picks the `payload`: `"json"` (the default) the text, `"object"` the text parsed, `"cbor"` the CBOR bytes as a `Uint8Array`. A product that cannot be lowered has a typed `refusal`; the call itself throws only `unsupported-schema`, `feature-disabled` (feature `graph`) or `invalid-value` for an unknown encoding. |
+| `model.productGeometry(ids: bigint[] \| BigUint64Array \| undefined, encoding: GeometryPayloadEncoding \| undefined): ProductGeometry[]` | yes | Each product's Body as Axiolid's neutral geometry graph (#367), exact (extrusions, sweeps, B-splines, unevaluated booleans), for `ids` or, without, every product with a shape, in Axiolid's versioned wire format: `{ format: "axiolid-geometry-graph", version: "1.0", graph: { nodes, roots } }` (the lowest version the content needs, `"1.0"` to `"1.4"`), in world coordinates, metres. `encoding` picks the `payload`: `"json"` (the default) the text, `"object"` the text parsed, `"cbor"` the CBOR bytes as a `Uint8Array`. A product that cannot be lowered has a typed `refusal`; the call itself throws only `unsupported-schema`, `feature-disabled` (feature `graph`) or `invalid-value` for an unknown encoding. |
 | `model.productMeshes(ids: bigint[] \| BigUint64Array \| undefined, representation: RepresentationName \| undefined): ProductMesh[]` | yes | Each product's Body as triangles from the reference backend: `positions` (`Float32Array`, metres, relative to `transform`) and `indices` (`Uint32Array`), for `ids` or, without, every product with a shape. A product that cannot be meshed has a typed `refusal`. `representation` meshes another one instead (#458), such as `"Surface"`; its curves are left to `productCurves`, and `closure` says `"solid"` or `"surface"`. Only a Body mesh carries a colour. Opt-in: a build without the `mesh` feature (the npm package's default entry) throws `feature-disabled`; import `@openbim/ifc/mesh` for it. |
 | `model.productCurves(ids: bigint[] \| BigUint64Array \| undefined, representation: RepresentationName \| undefined): ProductCurves[]` | yes | Each product's curves as polylines from the reference backend (#458), for `ids` or, without, every product with a shape: `positions` (`Float32Array`, metres, relative to `transform`), every polyline's vertices in turn, and per curve its slice, whether it is closed and its certified chord bound. `representation` is `"Plan"` by default (the best drawing curves), or `"Axis"`, `"FootPrint"`, `"Annotation"`, `"Body"`, `"Surface"`; another throws `invalid-value`. A trimmed, composite, offset or intrinsic curve is an `unsupported` refusal until the reference compiler polylines it (#506). Opt-in with the meshes: import `@openbim/ifc/mesh`. |
 | `model.propertySets(id: bigint): PropertySet[]` | yes | The property sets, quantity sets and predefined property sets that apply to object `id`: its own first, then those inherited from its type object, an occurrence property overriding an inherited one. Values keep their declared IFC type (`typed IFCLENGTHMEASURE(...)`). |

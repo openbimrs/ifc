@@ -9,6 +9,22 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#515, wire format 1.4)
+
+- The geometry graph payload (#367) may be Axiolid's wire format 1.4
+  (`axiolid-model` 0.3.14), a minor version of the format (ADR 0021,
+  amended): every `IfcPolygonalBoundedHalfSpace` now lowers to
+  `BoundedHalfSpaceAlongZ`, the half space bounded along its `Position`'s
+  Z (axiolid/kernel#321), so an oblique clip such as a gable wall's under
+  a sloped roof is carried as authored. An envelope carries the lowest
+  version its content needs: a payload with such a clip is 1.4 (it was
+  1.0), every other is unchanged. A reader on `axiolid-model` 0.3.13 or
+  older refuses 1.4.
+  `ProductGraph.FormatVersion` is `"1.4"`, the newest version the package
+  writes.
+
+Semver: minor, as ADR 0021 states for a minor version of the wire format.
+
 ## [0.8.0] - 2026-10-14
 
 ### Added (#458, curves and surfaces as output primitives)

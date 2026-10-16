@@ -12,31 +12,49 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
-### Documented (#519, the bounded half-space's depth in the mesh)
+### Changed (#515, #519: polygonal bounded half-spaces along `Position`'s Z)
 
-Semver: patch. No code path changes; the rationale of the aligned
-`IFCPOLYGONALBOUNDEDHALFSPACE` row of `dispatch::PARTIAL` gains the kernel
-limit below.
+Semver: minor. `axiolid-model` 0.3.14 is a normal dependency whose types
+(`GeometryGraph`, `SolidOperation`) are exposed, and every lowered
+`IfcPolygonalBoundedHalfSpace` changes node; the three
+`IFCPOLYGONALBOUNDEDHALFSPACE` rows leave `dispatch::PARTIAL`.
 
-- An aligned polygonal bounded half-space (`Position`'s Z along the plane
-  normal) lowers to Axiolid's `BoundedHalfSpace`, which carries no depth.
-  The exact compiler bounds it by the subject; the reference mesh compiler
-  (axiolid-mesh-compile 0.3.26) builds a slab twice the boundary's largest
-  coordinate deep, so a small boundary over a tall subject is under-cut in
-  the mesh (axiolid/kernel#325). Its deviation report then does not meet
-  the requested tolerance. The fix is the kernel's; the bridge does not
-  size the cut (ADR 0004).
-- Lowering such a clip through the #515 half-space chain instead was
-  evaluated and rejected: it would drop the exact result of every aligned
-  difference certified today, and on the wall that showed the bug the
-  chain's intersection meets its subject tangentially, which the mesh
-  compiler refuses.
-- New fixture `synthetic-compile/tall_wall_small_bounded_clip_ifc2x3.ifc`
-  (synthetic, built from one clip's parameters) and
-  `tests/bounded_halfspace_depth.rs`: the exact body is pinned to the
-  analytic 56.887388853 m³ (IfcOpenShell 0.8.5 agrees); the mesh is
-  accepted as that body, certified, or as the #325 under-cut, flagged by
-  its report, and as nothing else (`TODO(#519)`).
+- Requires `axiolid-model` 0.3.14 (axiolid/kernel#321, #322) and, behind
+  `compile-reference-backend`, `axiolid-mesh-compile` 0.3.27 and
+  `axiolid-construct` 0.3.19 (axiolid/kernel#321, #322, #325), which
+  brings `axiolid-evaluate` 0.3.16: offsets beside a 3D intrinsic curve
+  without torsion in a level plane are now certified (axiolid/kernel#302),
+  and `compile::window`'s repeated `UNCERTIFIED_LENGTH` text follows it.
+- Every `IfcPolygonalBoundedHalfSpace` lowers to
+  `SolidOperation::BoundedHalfSpaceAlongZ`: the half space within the
+  boundary's prism along `Position`'s Z, infinite both ways, `Position`
+  carried whole (its scale, shear and handedness under a mapped item).
+  That is the IFC set for every frame, so one path replaces three:
+  aligned clips no longer lower to `BoundedHalfSpace`, a normal against
+  `Position`'s Z is no longer re-read from its other side, and the 0.27.2
+  chain of unbounded half spaces for oblique or rescaled prisms
+  (`lower_prism_clip`, `prism_walls`, the boolean hook) and its frame
+  classification are deleted.
+- Now compiled, where 0.27.2 refused them with `GeometryError::Unsupported`:
+  a non-convex boundary or one with a circular arc under an oblique or
+  rescaled prism. Lowering refuses no frame any more; what the kernel
+  cannot compile it refuses by name (`GeometryError::CompilationRefused`):
+  a `Position` Z lying in the plane, and the tool as a union's operand, a
+  first operand or a root.
+- The #515 gable wall (`synthetic-compile/gable_wall_polygonal_clip_*.ifc`)
+  compiles exactly, at 49.999912042537 m³, and its mesh is certified
+  against that body (bound about 4e-12 m); in 0.27.2 the mesh had no
+  exact result to be measured against.
+- #519: both compilers size the cut from the subject (axiolid/kernel#325),
+  so `synthetic-compile/tall_wall_small_bounded_clip_ifc2x3.ifc` meshes to
+  the analytic 56.887388852960 m³, certified; the tests accept nothing
+  else, and their `TODO(#519)` is resolved.
+- Wire format: a lowered graph holding a polygonal bounded clip is Axiolid
+  wire format 1.4 (it was 1.0); every other graph keeps its version.
+- Tests: the gable (IFC2X3 and IFC4, gross, net and exact, certified), an
+  L-shaped and an arc boundary under an oblique prism (analytic volumes,
+  exact and certified), uniformly and unevenly scaled and mirrored mapped
+  clips, and the named refusals of a Z in the plane and of a union.
 
 ## [0.27.2] - 2026-10-16
 

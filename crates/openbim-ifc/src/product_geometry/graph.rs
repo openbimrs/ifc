@@ -11,10 +11,12 @@
 //! payload's envelope carries the lowest version its content needs: 1.0
 //! unless a station carries a seam-snapping window (#423), then 1.1, or a
 //! run's sections do (#429), then 1.2, or an offset run continues to a
-//! basis end the kernel measures (#433), then 1.3 (axiolid/kernel#297,
-//! #301, #303). A window-free payload is readable by `axiolid-model`
-//! 0.3.8; readers on 0.3.8 or older refuse 1.1, readers on 0.3.10 or older
-//! refuse 1.2, readers on 0.3.11 or older refuse 1.3.
+//! basis end the kernel measures (#433), then 1.3, or a polygonal bounded
+//! half-space clips (#515), then 1.4 (axiolid/kernel#297, #301, #303,
+//! #321). A window-free payload is readable by `axiolid-model` 0.3.8;
+//! readers on 0.3.8 or older refuse 1.1, readers on 0.3.10 or older refuse
+//! 1.2, readers on 0.3.11 or older refuse 1.3, readers on 0.3.13 or older
+//! refuse 1.4.
 //!
 //! - **The graph is in world coordinates, metres.** Lowering composes the
 //!   product's placement chain into the graph (its `Instance` transforms),

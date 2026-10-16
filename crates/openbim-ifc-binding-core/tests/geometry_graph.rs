@@ -68,7 +68,7 @@ mod graph {
         assert!(FORMAT_VERSION.reads(FormatVersion::parse(version).unwrap()));
         assert_eq!(
             (GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION),
-            ("axiolid-geometry-graph", "1.3")
+            ("axiolid-geometry-graph", "1.4")
         );
         assert_eq!(GEOMETRY_FORMAT, FORMAT_NAME);
         assert_eq!(GEOMETRY_FORMAT_VERSION, FORMAT_VERSION.to_string());
@@ -193,9 +193,32 @@ mod graph {
         assert_eq!(record.refusal, None);
         let text = record.json().expect("JSON text");
         let envelope: serde_json::Value = serde_json::from_str(text).unwrap();
-        assert_eq!(envelope["version"], GEOMETRY_FORMAT_VERSION);
-        assert_eq!(GEOMETRY_FORMAT_VERSION, "1.3");
+        assert_eq!(envelope["version"], "1.3");
         assert!(text.contains("\"basis_end\":\"End\""), "{text}");
+        GeometryGraph::from_json(text).expect("reads back");
+    }
+
+    /// A wall clipped by polygonal bounded half-spaces holds Axiolid's
+    /// `BoundedHalfSpaceAlongZ` (#515, axiolid/kernel#321): its payload is
+    /// 1.4, the newest version this build writes.
+    #[test]
+    fn a_polygonal_bounded_clip_is_wire_format_1_4() {
+        let path = format!(
+            "{}/../../test/fixtures/synthetic-compile/gable_wall_polygonal_clip_ifc4.ifc",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let model = IfcModel::open(std::path::Path::new(&path)).expect("fixture reads");
+        let records = model
+            .product_geometry(Some(&[9031]), GeometryEncoding::Json)
+            .unwrap();
+        assert_eq!(records.len(), 1);
+        let record = &records[0];
+        assert_eq!(record.refusal, None);
+        let text = record.json().expect("JSON text");
+        let envelope: serde_json::Value = serde_json::from_str(text).unwrap();
+        assert_eq!(envelope["version"], GEOMETRY_FORMAT_VERSION);
+        assert_eq!(GEOMETRY_FORMAT_VERSION, "1.4");
+        assert!(text.contains("\"BoundedHalfSpaceAlongZ\""), "{text}");
         GeometryGraph::from_json(text).expect("reads back");
     }
 }

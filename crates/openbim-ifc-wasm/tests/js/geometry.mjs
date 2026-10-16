@@ -222,7 +222,8 @@ if (!mesh) {
       const { format, version, graph } = product.payload;
       // The lowest wire version the content needs: "1.0"; "1.1" when a
       // station carries a seam-snapping window, "1.2" when a run's sections do,
-      // "1.3" when an offset run continues to a basis end the kernel measures.
+      // "1.3" when an offset run continues to a basis end the kernel measures,
+      // "1.4" when a polygonal bounded half-space clips.
       console.log(product.typeName, format, version, Object.keys(graph.nodes.at(-1))[0]);
     }
     // docs:end
@@ -307,6 +308,23 @@ if (!mesh) {
       assert.ok(product.payload.includes('"seam_window"'), product.payload);
       assert.equal(product.payload.includes('"basis_end"'), i === 4);
     }
+  });
+
+  test("a polygonal bounded clip is wire format 1.4", () => {
+    // Each clip of the gable wall is a half-space bounded along its
+    // Position's Z (#515, axiolid/kernel#321).
+    const model = IfcModel.parse(
+      readFileSync(
+        path.resolve(
+          here,
+          "../../../../test/fixtures/synthetic-compile/gable_wall_polygonal_clip_ifc4.ifc",
+        ),
+      ),
+    );
+    const [wall] = model.productGeometry([9031n]);
+    assert.equal(wall.refusal, undefined);
+    assert.equal(JSON.parse(wall.payload).version, "1.4");
+    assert.ok(wall.payload.includes('"BoundedHalfSpaceAlongZ"'), wall.payload);
   });
 
   test("meshes come as typed arrays relative to each product", () => {

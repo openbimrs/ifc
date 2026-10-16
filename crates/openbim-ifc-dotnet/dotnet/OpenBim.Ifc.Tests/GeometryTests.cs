@@ -215,7 +215,7 @@ public class GeometryTests
             Assert.StartsWith(
                 "{\"format\":\"" + ProductGraph.Format + "\",\"version\":\"1.0\",\"graph\":{\"nodes\":[",
                 wall.Json!);
-            Assert.Equal("1.3", ProductGraph.FormatVersion);
+            Assert.Equal("1.4", ProductGraph.FormatVersion);
             Assert.Equal("axiolid-geometry-graph", ProductGraph.Format);
             // Three nodes (profile, extrusion, placed instance), the last the root.
             Assert.EndsWith("],\"roots\":[2]}}", wall.Json!);

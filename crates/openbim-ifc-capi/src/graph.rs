@@ -1,5 +1,5 @@
 //! Geometry, Level 2 (#367, ADR 0021): each product's Body as Axiolid's
-//! neutral geometry graph, in Axiolid's versioned wire format (1.0 to 1.3).
+//! neutral geometry graph, in Axiolid's versioned wire format (1.0 to 1.4).
 //!
 //! As for meshes, lowering and encoding are the expensive step and the C
 //! protocol sizes every buffer with a first call, so the graphs are
@@ -39,7 +39,7 @@ pub const OPENBIM_IFC_GEOMETRY_CBOR: u32 = 1;
 /// The payload is the envelope `{"format":"axiolid-geometry-graph",
 /// "version":"1.0","graph":{"nodes":[...],"roots":[...]}}`, in world
 /// coordinates, metres; its version is the lowest the content needs,
-/// "1.0"; "1.1" when a station carries a seam-snapping window, "1.2" when a run's sections do, "1.3" when an offset run continues to a basis end the kernel measures. A product that cannot be lowered is a record with
+/// "1.0"; "1.1" when a station carries a seam-snapping window, "1.2" when a run's sections do, "1.3" when an offset run continues to a basis end the kernel measures, "1.4" when a polygonal bounded half-space clips. A product that cannot be lowered is a record with
 /// a refusal, not a failed call. `InvalidArgument` for another `encoding`;
 /// `UnsupportedSchema`; `FeatureDisabled` in a library built without the
 /// `graph` feature.

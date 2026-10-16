@@ -428,10 +428,10 @@ fn implemented_families_lower_and_lowering_families_are_claimed() {
                         if declares_refused_variant(&type_name) =>
                     {
                         // A nested entity of a PARTIAL family whose refused
-                        // variants are catalogued, e.g. an oblique
-                        // IfcPolygonalBoundedHalfSpace (#515). The catalog
-                        // test below holds each such family to at least one
-                        // admitted variant too.
+                        // variants are catalogued, e.g. an IfcCurveSegment
+                        // of a refused form. The catalog test below holds
+                        // each such family to at least one admitted variant
+                        // too.
                     }
                     Err(error) => panic!(
                         "{family} is listed IMPLEMENTED but {id:?} in {} failed: {error}",

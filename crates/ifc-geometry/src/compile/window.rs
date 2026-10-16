@@ -37,7 +37,7 @@ pub(crate) const STRADDLED: &str =
 /// `axiolid_evaluate::station::UNCERTIFIED_LENGTH`.
 pub(crate) const UNCERTIFIED: &str =
     "a certified length of a station piece no bound here reaches: an offset of a banked curve, a \
-     3D intrinsic curve, a chain's parametric piece or an elevated curve with an intrinsic \
+     3D intrinsic curve with torsion or out of a level plane, a chain's parametric piece or an elevated curve with an intrinsic \
      profile in a leaning frame; a 3D offset direction that is not vertical beside a \
      plan-measured or intrinsic base; a base placed in a frame that tilts +Z; a skewed frame; or \
      a tolerance below the points' rounding";

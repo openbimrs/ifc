@@ -193,7 +193,7 @@ fn a_millimetre_file_clips_the_same_solid() {
 /// x in [1, 2], y in [2.75, 3] (clipped from [2.75, 3.25]) -> area 0.25,
 /// removed 0.125. Ignoring the translation removes 0.25.
 ///
-/// Lowering carries the translation on `BoundedHalfSpace.placement`.
+/// Lowering carries the translation on `BoundedHalfSpaceAlongZ.placement`.
 /// `axiolid-construct` 0.3.0 anchored the boundary at the clip plane's origin
 /// instead and compiled the wrong volume with no error (axiolid/kernel#164);
 /// 0.3.1, the floor this workspace pins, places it correctly.

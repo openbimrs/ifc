@@ -8,6 +8,17 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#515, wire format 1.4)
+
+- `GEOMETRY_FORMAT_VERSION` is `"1.4"`, the newest version a build writes
+  (`axiolid-model` 0.3.14: `BoundedHalfSpaceAlongZ`, axiolid/kernel#321).
+  An envelope still carries the lowest version its content needs: 1.4 only
+  when a polygonal bounded half-space clips. A reader on `axiolid-model`
+  0.3.13 or older refuses 1.4. Tests hold such a payload to 1.4.
+
+Semver: additive (internal crate, not published); a minor change of every
+binding (ADR 0021).
+
 ### Added (#458, curves and surfaces as output primitives)
 
 - `IfcModel::product_curves(products, representation)` (feature `mesh`):
