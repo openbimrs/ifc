@@ -18,10 +18,12 @@
 //! or a run's sections do (#429; a sectioned solid or surface along such
 //! an offset), then `1.2`, or an offset run continues to a basis end the
 //! kernel measures (#433; an `IfcOffsetCurveByDistances` along such an
-//! offset), then `1.3` (axiolid/kernel#297, #301, #303). A reader on
+//! offset), then `1.3`, or a polygonal bounded half-space clips (#515; an
+//! `IfcPolygonalBoundedHalfSpace`, bounded along its `Position`'s Z), then
+//! `1.4` (axiolid/kernel#297, #301, #303, #321). A reader on
 //! `axiolid-model` 0.3.8 or older reads a `1.0` payload and refuses a
-//! `1.1` one; a reader on 0.3.10 or older refuses a `1.2` one, and one on
-//! 0.3.11 or older a `1.3` one.
+//! `1.1` one; a reader on 0.3.10 or older refuses a `1.2` one, one on
+//! 0.3.11 or older a `1.3` one, and one on 0.3.13 or older a `1.4` one.
 //! [`GEOMETRY_FORMAT_VERSION`] is the newest version this build writes. A
 //! minor version of the wire format reaches every binding as a minor
 //! release, a major one is a breaking change of every binding (ADR 0021).
@@ -40,7 +42,7 @@ pub const GEOMETRY_FORMAT: &str = "axiolid-geometry-graph";
 /// payload's envelope carries the lowest version its content needs, so its
 /// `version` entry is this or an older minor of the same major (module
 /// documentation).
-pub const GEOMETRY_FORMAT_VERSION: &str = "1.3";
+pub const GEOMETRY_FORMAT_VERSION: &str = "1.4";
 
 /// How [`IfcModel::product_geometry`](crate::IfcModel::product_geometry)
 /// encodes each graph.

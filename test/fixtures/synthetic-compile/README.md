@@ -30,10 +30,10 @@ executable; a mutation run confirmed that branch is dead code without it.
   are `ifcopenshell.validate --rules` clean. IfcOpenShell 0.8.5 meshes
   each to 14 vertices and 49.999912 m³, the top at 11537.10 mm (x = 0),
   13536.68 mm, 16165.03 mm (the ridge, x = 4925), 13536.68 mm and
-  11809.43 mm (x = 9775). Every prism is oblique to its plane, which the
-  neutral bounded half-space cannot hold; each clip lowers to the wall
-  minus its intersection with five unbounded half spaces, and the wall
-  compiles to IfcOpenShell's volume (`tests/bounded_halfspace_prism_axis.rs`).
+  11809.43 mm (x = 9775). Every prism is oblique to its plane; each clip
+  lowers to Axiolid's `BoundedHalfSpaceAlongZ` (axiolid/kernel#321), and
+  the wall compiles to IfcOpenShell's volume, exactly and as a mesh
+  certified against it (`tests/bounded_halfspace_prism_axis.rs`).
 
 - tall_wall_small_bounded_clip_ifc2x3.ifc: synthetic, hand-written for
   #519. Only the clip's geometry parameters are taken from a third-party
@@ -44,7 +44,7 @@ executable; a mutation run confirmed that branch is dead code without it.
   wall's end, `Position` unrotated on the plane. It removes that strip
   from the plane to the top (4760.286 mm): 56.887388853 m³, matched by
   IfcOpenShell 0.8.5 (12 vertices); `ifcopenshell.validate --rules` clean.
-  Axiolid's exact compiler builds that volume; its reference mesh compiler
-  cuts the strip only 0.7 m deep (twice the boundary's largest coordinate,
-  axiolid/kernel#325) and flags the mesh in its deviation report
-  (`tests/bounded_halfspace_depth.rs`).
+  Both of Axiolid's compilers build that volume, the mesh certified
+  (`tests/bounded_halfspace_depth.rs`); up to axiolid-mesh-compile 0.3.26
+  the mesh cut the strip only 0.7 m deep (twice the boundary's largest
+  coordinate, axiolid/kernel#325).

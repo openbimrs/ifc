@@ -128,10 +128,11 @@ fn boundary_node(model: &Model, name: &str) -> GeometryResult<GeometryNode> {
     let mut session = LoweringSession::new(model, &scale);
     let node = lower_half_space_node(&mut session, half_space(model, name), Transform::identity())?;
     let lowered = session.finish(node).expect("session finishes");
-    let Some(GeometryNode::SolidOperation(SolidOperation::BoundedHalfSpace { boundary, .. })) =
-        lowered.graph.get(lowered.root)
+    let Some(GeometryNode::SolidOperation(SolidOperation::BoundedHalfSpaceAlongZ {
+        boundary, ..
+    })) = lowered.graph.get(lowered.root)
     else {
-        panic!("{name}: expected a BoundedHalfSpace operation");
+        panic!("{name}: expected a BoundedHalfSpaceAlongZ operation");
     };
     Ok(lowered
         .graph

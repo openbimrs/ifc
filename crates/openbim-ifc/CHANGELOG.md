@@ -12,6 +12,20 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#515, #519)
+
+- Requires `ifc-geometry` with #515: every `IfcPolygonalBoundedHalfSpace`
+  lowers to Axiolid's `BoundedHalfSpaceAlongZ`, its prism along
+  `Position`'s Z (axiolid/kernel#321). Oblique clips, such as gable walls
+  under sloped roofs, mesh and compile exactly, non-convex and arc
+  boundaries included; `product_meshes` cuts small clips over tall
+  subjects to their full depth (axiolid/kernel#325, #519).
+  `product_graphs` labels a payload with such a clip wire format 1.4
+  (`axiolid-model` 0.3.14); every other payload keeps its version and
+  bytes.
+
+Semver: minor, following the dependency.
+
 ## [0.34.0] - 2026-10-14
 
 ### Added (#458, curves and surfaces as output primitives)

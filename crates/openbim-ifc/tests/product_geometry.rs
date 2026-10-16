@@ -336,3 +336,29 @@ fn a_body_with_a_seam_window_is_labelled_wire_format_1_1() {
     assert!(text.contains("\"basis_end\":\"End\""), "{text}");
     GeometryGraph::from_json(&text).expect("reads back");
 }
+
+/// A wall clipped by polygonal bounded half-spaces, each bounded along its
+/// `Position`'s Z (`BoundedHalfSpaceAlongZ`, axiolid/kernel#321; #515), is
+/// wire format 1.4.
+#[cfg(feature = "geometry-wire")]
+#[test]
+fn a_polygonal_bounded_clip_is_labelled_wire_format_1_4() {
+    use ifc::geometry::GeometryGraph;
+
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test/fixtures/synthetic-compile/gable_wall_polygonal_clip_ifc2x3.ifc"
+    );
+    let model = StepCodec
+        .read_bytes(&std::fs::read(path).expect("fixture"))
+        .expect("parses");
+    let graphs = ifc::product_graphs(&model, Some(&[EntityId(9031)]));
+    let (_, graph) = graphs.into_iter().next().expect("the wall");
+    let graph = graph.expect("lowers").graph.expect("a Body");
+    let text = graph.to_json().expect("encodes");
+    let envelope: serde_json::Value = serde_json::from_str(&text).expect("JSON");
+    assert_eq!(envelope["version"], "1.4", "{text}");
+    assert!(text.contains("\"BoundedHalfSpaceAlongZ\""), "{text}");
+    let back = GeometryGraph::from_json(&text).expect("reads back");
+    assert_eq!(back.to_json().unwrap(), text);
+}

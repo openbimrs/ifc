@@ -82,7 +82,12 @@ axiolid-mesh = { version = "0.3.0" }
 # bounded-piece curve and evaluate crates (axiolid/kernel#304, #305; #436).
 # 0.3.13: JSON wire payloads read every real back bit for bit (`serde_json`
 # `float_roundtrip`); before it, about a quarter of doubles read one ulp off.
-axiolid-model = { version = "0.3.13" }
+# 0.3.14: `SolidOperation::BoundedHalfSpaceAlongZ`, the half space bounded by
+# a boundary's prism along its placement's Z with the full frame, IFC's
+# `IfcPolygonalBoundedHalfSpace` (axiolid/kernel#321; #515); wire format 1.4
+# carries it. `BoundedHalfSpace` now reads its placement whole
+# (axiolid/kernel#322).
+axiolid-model = { version = "0.3.14" }
 axiolid-primitive = { version = "0.3.0" }
 axiolid-profile = { version = "0.3.0" }
 axiolid-surface = { version = "0.3.0" }
@@ -123,7 +128,11 @@ axiolid-spatial = { version = "0.3.0" }
 # an ellipse or a B-spline, and adaptive chord panels (axiolid/kernel#307;
 # #443), released with axiolid-mesh-compile 0.3.25.
 axiolid-curve = { version = "0.3.9" }
-axiolid-evaluate = { version = "0.3.15" }
+# axiolid-evaluate 0.3.16: certified lengths of 3D intrinsic curves without
+# torsion in a level plane, the release `axiolid-construct` 0.3.19 is built
+# with; `UNCERTIFIED_LENGTH`, which `compile::window` repeats, names the
+# remaining ones.
+axiolid-evaluate = { version = "0.3.16" }
 axiolid-curve-evaluate-contract = { version = "0.3.7" }
 # Dev-only: the exact volume of a compiled body, to check an arc-bounded
 # half-space clip against its closed form (#398).
@@ -171,7 +180,10 @@ axiolid-contracts = { version = "0.3.1" }
 # The same release compiles curves to polylines with a certified chord
 # bound (`PolylineCompiler`), and rectangular trimmed surfaces and B-reps of
 # loose faces to surface meshes (axiolid/kernel#311; #458).
-axiolid-mesh-compile = { version = "0.3.26" }
+# 0.3.27 compiles `BoundedHalfSpaceAlongZ` in both compilers, with a
+# certified deviation (axiolid/kernel#321; #515), and sizes a bounded half
+# space's slab from its subject (axiolid/kernel#325; #519).
+axiolid-mesh-compile = { version = "0.3.27" }
 axiolid-mesh-compile-contract = { version = "0.3.4" }
 # 0.3.5: batch booleans keep their memory budget (axiolid/kernel#259).
 # 0.3.6: a boolean whose result outgrows its operands keeps its memory
@@ -185,8 +197,12 @@ axiolid-mesh-boolean-boolmesh = { version = "0.3.6" }
 # and to the release `axiolid-mesh-compile` 0.3.16 is built and tested
 # with (0.3.17: an exact right-cylinder wall per boundary arc,
 # axiolid/kernel#277; #398). 0.3.18: the closed-loop swept disk
-# (`pipe::swept_disk_along_loop`, axiolid/kernel#248) 0.3.24 calls.
-axiolid-construct = { version = "0.3.18" }
+# (`pipe::swept_disk_along_loop`, axiolid/kernel#248) 0.3.24 calls. 0.3.19:
+# the prism of a bounded half space along its placement's Z, slabs sized
+# from the subject, outward-facing clockwise boundary rings and closed
+# scaled arc contours (axiolid/kernel#321, #322, #325; #515, #519), the
+# release `axiolid-mesh-compile` 0.3.27 is built with.
+axiolid-construct = { version = "0.3.19" }
 
 # No default features: the default `runtime-rng` pulls getrandom 0.3, which
 # does not build on wasm32-unknown-unknown. Members opt into a seed source

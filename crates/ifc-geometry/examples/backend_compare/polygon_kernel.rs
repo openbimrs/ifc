@@ -128,6 +128,9 @@ fn family(node: &GeometryNode) -> &'static str {
         GeometryNode::SolidOperation(operation) => match operation {
             SolidOperation::Boolean { .. } => "SolidOperation::Boolean",
             SolidOperation::BoundedHalfSpace { .. } => "SolidOperation::BoundedHalfSpace",
+            SolidOperation::BoundedHalfSpaceAlongZ { .. } => {
+                "SolidOperation::BoundedHalfSpaceAlongZ"
+            }
             SolidOperation::Revolution { .. } => "SolidOperation::Revolution",
             SolidOperation::TaperedExtrusion { .. } => "SolidOperation::TaperedExtrusion",
             SolidOperation::SweptDisk { .. } => "SolidOperation::SweptDisk",

@@ -4,7 +4,7 @@
 //!
 //! The boundary is authored in `Position`'s XY plane: the schema's
 //! `BoundaryDim` rule fixes `PolygonalBoundary.Dim = 2`. Axiolid's
-//! `SolidOperation::BoundedHalfSpace` contract matches that -- graph
+//! `SolidOperation::BoundedHalfSpaceAlongZ` contract matches that -- graph
 //! validation admits a `Curve2` or a `Profile` node as `boundary` and
 //! refuses anything else.
 //! The general curve lowering emits `Curve3`, so routing the boundary through
@@ -35,12 +35,16 @@
 //!   leaves polyline boundaries unchanged).
 //! - **With a circular arc** (a trimmed `IfcCircle`, a non-collinear
 //!   `IfcArcIndex`): a `Profile::Contour` node of exact `Line2` and `Circle2`
-//!   segments, no holes. Axiolid's `SolidOperation::BoundedHalfSpace` takes a
-//!   profile boundary since axiolid-model 0.3.7 (axiolid/kernel#277, Axiolid
-//!   ADR 0084): the region is swept along the plane normal, so each arc
-//!   bounds the half-space by a right circular cylinder, exactly in the
-//!   exact compiler and within a certified deviation in the mesh compiler.
-//!   The arc is never chorded here; tessellation is the kernel's (ADR 0004).
+//!   segments, no holes. Axiolid's bounded half-spaces take a profile
+//!   boundary since axiolid-model 0.3.7 (axiolid/kernel#277, Axiolid ADR
+//!   0084); `SolidOperation::BoundedHalfSpaceAlongZ` (axiolid-model 0.3.14,
+//!   axiolid/kernel#321) sweeps the region along `Position`'s Z, so each arc
+//!   bounds the half-space by the cylinder of lines through it along that
+//!   axis, at any angle to the plane: exactly in the exact compiler (an
+//!   unevenly scaled `Position` makes it elliptic, which that compiler
+//!   refuses by name) and within a certified deviation in the mesh
+//!   compiler. The arc is never chorded here; tessellation is the kernel's
+//!   (ADR 0004).
 //!
 //! What the kernel checks of a profile boundary (that it closes, every arc
 //! has a radius, every segment a length, and no two edges meet other than
@@ -61,7 +65,7 @@ use crate::resource::point::CartesianPoint;
 
 /// `PolygonalBoundary`, read in `Position`'s XY plane, in metres.
 #[derive(Debug, Clone)]
-pub(super) enum Boundary {
+enum Boundary {
     /// Straight edges only: the vertices, as wound, without a closing
     /// duplicate. `closed` is the polyline's own claim; an open one is
     /// carried through for the kernel to refuse, as before.
@@ -71,7 +75,7 @@ pub(super) enum Boundary {
 }
 
 impl Boundary {
-    /// The node the neutral `BoundedHalfSpace` takes as its boundary.
+    /// The node the neutral bounded half-space takes as its boundary.
     fn into_node(self) -> GeometryNode {
         match self {
             Self::Polygon { points, closed } => {
@@ -103,7 +107,7 @@ pub(super) fn lower_boundary_curve(
 
 /// Read `PolygonalBoundary` (`id`, owned by `owner`) without appending a
 /// node. [`lower_boundary_curve`] is this plus the node.
-pub(super) fn read_boundary(
+fn read_boundary(
     session: &mut LoweringSession<'_>,
     owner: EntityId,
     id: EntityId,

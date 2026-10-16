@@ -255,6 +255,23 @@ four host APIs. The follow-up is
   rule is unchanged: only a payload holding a station at its basis's end
   is `1.3`, every other keeps `1.0`, `1.1` or `1.2`, and a reader on
   `axiolid-model` 0.3.11 or older refuses a `1.3` payload.
+- *Amended 2026-10-16 (#515): wire format 1.4 reaches the bindings as a
+  minor release.* `axiolid-model` 0.3.14 (axiolid/kernel#321) adds format
+  1.4: the node `SolidOperation::BoundedHalfSpaceAlongZ`, a half-space
+  bounded by its boundary's prism along its placement's Z, the set IFC's
+  `IfcPolygonalBoundedHalfSpace` states. `ifc-geometry` lowers every
+  `IfcPolygonalBoundedHalfSpace` to it, the aligned clips that were
+  `BoundedHalfSpace` before included, so one path holds every frame. Under
+  the stability rule above that is a minor version:
+  `GEOMETRY_FORMAT_VERSION` (and Python's constant, .NET's
+  `ProductGraph.FormatVersion`) is now `"1.4"`, and the npm package, the
+  wheel and the .NET package take a minor release; the C ABI keeps its
+  `v0_1` symbols, so the C package stays on 0.1.x. The lowest-version
+  rule is unchanged: a payload is `1.4` only when it holds a polygonal
+  bounded clip, every other keeps `1.0` to `1.3`. A payload with such a
+  clip was `1.0` before and is `1.4` now, so a reader on `axiolid-model`
+  0.3.13 or older, which refuses it, must be upgraded to read those
+  products at all.
 
 ## Relation to existing code
 

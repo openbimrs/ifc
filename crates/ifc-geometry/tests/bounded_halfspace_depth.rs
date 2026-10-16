@@ -1,5 +1,4 @@
-//! A small polygonal boundary clips a tall wall to its full height, or the
-//! mesh is flagged as off its exact result (#519).
+//! A small polygonal boundary clips a tall wall to its full height (#519).
 //!
 //! `tall_wall_small_bounded_clip_ifc2x3.ifc` is a 10125 x 350 mm wall
 //! extruded 16165.033 mm, minus an `IfcPolygonalBoundedHalfSpace`: the
@@ -9,16 +8,12 @@
 //! mm to the top, 4760.286 mm, and the wall keeps a 238.549 mm notch there.
 //! IfcOpenShell 0.8.5 meshes it to 12 vertices and 56.887388853 m³.
 //!
-//! `Position`'s Z is along the plane normal, so the clip lowers to Axiolid's
-//! `BoundedHalfSpace` as authored. Axiolid's exact compiler sizes that prism
-//! from the subject and builds the analytic body. Its mesh compiler sizes
-//! the slab from the boundary alone, at twice its largest coordinate
-//! (axiolid-construct 0.3.18 `half_space.rs`, axiolid/kernel#325): 0.7 m
-//! here, so the mesh removes only the strip's lowest 0.7 m and the notch
-//! reaches the wall's top again. That is wrong, but not silent: the mesh's
-//! deviation report, measured against the exact body, does not meet the
-//! requested tolerance. The mesh is accepted as that known kernel state
-//! only together with that flag, and as no other volume.
+//! The clip lowers to Axiolid's `BoundedHalfSpaceAlongZ`, which carries no
+//! depth. Up to axiolid-construct 0.3.18 the mesh compiler sized the slab
+//! from the boundary alone, at twice its largest coordinate (0.7 m here),
+//! so the mesh removed only the strip's lowest 0.7 m. Since 0.3.19
+//! (axiolid-mesh-compile 0.3.27, axiolid/kernel#325) both compilers size it
+//! from the subject: the mesh is the analytic body, certified.
 #![cfg(feature = "compile-reference-backend")]
 
 use std::path::PathBuf;
@@ -43,15 +38,19 @@ const HEIGHT: f64 = 16.165_033_064_627_303;
 const PLANE: f64 = 11.404_747_431_413_967;
 const STRIP: f64 = 0.238_549_352_729_28;
 
-/// The clipped wall: the extrusion minus the strip above the plane.
+/// The clipped wall: the extrusion minus the strip above the plane,
+/// 56.887388852960 m³.
 fn analytic() -> f64 {
     LENGTH * THICKNESS * HEIGHT - STRIP * THICKNESS * (HEIGHT - PLANE)
 }
 
-/// What axiolid/kernel#325's slab removes: the strip to a depth of twice
-/// the boundary's largest coordinate (0.35 m) above the plane.
-fn under_cut() -> f64 {
-    LENGTH * THICKNESS * HEIGHT - STRIP * THICKNESS * (2.0 * THICKNESS)
+#[test]
+fn the_analytic_volume_is_the_kernel_tests() {
+    assert!(
+        (analytic() - 56.887_388_852_960).abs() < 1e-11,
+        "{}",
+        analytic()
+    );
 }
 
 fn volume(mesh: &TriMesh) -> f64 {
@@ -80,34 +79,17 @@ fn end_heights(mesh: &TriMesh) -> Vec<f64> {
     z
 }
 
-/// The mesh is the analytic body, its end cut at the plane; or the known
-/// under-cut of axiolid/kernel#325, its end cut 0.7 m ABOVE the plane and
-/// standing to the wall's top again. Returns whether it is the analytic one.
-fn assert_analytic_or_under_cut(mesh: &TriMesh) -> bool {
+/// The mesh is the analytic body, its end cut at the plane and nowhere
+/// above it.
+fn assert_analytic(mesh: &TriMesh) {
     let round = |z: f64| (z * 1e6).round() / 1e6;
     let v = volume(mesh);
-    let heights = end_heights(mesh);
-    if (v - analytic()).abs() < 1e-9 {
-        assert_eq!(heights, [0.0, round(PLANE)], "volume {v}");
-        return true;
-    }
     assert!(
-        (v - under_cut()).abs() < 1e-9,
-        "mesh volume {v}: neither the analytic {} nor the #325 under-cut {}",
-        analytic(),
-        under_cut()
+        (v - analytic()).abs() < 1e-9,
+        "mesh volume {v}, expected the analytic {}",
+        analytic()
     );
-    assert_eq!(
-        heights,
-        [
-            0.0,
-            round(PLANE),
-            round(PLANE + 2.0 * THICKNESS),
-            round(HEIGHT)
-        ],
-        "the under-cut must lie above the plane"
-    );
-    false
+    assert_eq!(end_heights(mesh), [0.0, round(PLANE)], "volume {v}");
 }
 
 fn model() -> Model {
@@ -116,9 +98,9 @@ fn model() -> Model {
     StepCodec.read_path(&path).expect("fixture parses")
 }
 
-/// The exact compiler sizes the prism from the wall and builds the notch.
+/// Both compilers size the cut from the wall and build the notch.
 #[test]
-fn the_exact_body_is_cut_to_the_top_of_the_wall() {
+fn the_exact_body_and_the_mesh_are_cut_to_the_top_of_the_wall() {
     let model = model();
     let scale = units::resolve(&model);
     let mut session = LoweringSession::new(&model, &scale);
@@ -139,31 +121,20 @@ fn the_exact_body_is_cut_to_the_top_of_the_wall() {
         analytic()
     );
 
-    // The mesh: the analytic body, certified; or the known under-cut of
-    // axiolid/kernel#325, never certified.
-    // TODO(#519): once the kernel release with axiolid/kernel#325 is
-    // adopted, accept only the analytic volume, and require the report to
-    // meet the requested tolerance.
+    // The mesh: the analytic body, certified against the exact one.
     let (outcome, report) = compile::default_backend()
         .compile_mesh_with_deviation(&lowered.graph, lowered.root, &options)
         .expect("compiles with a report");
-    if assert_analytic_or_under_cut(&outcome.mesh) {
-        assert!(report.meets_requested(), "{report:?}");
-    } else {
-        assert!(
-            !report.meets_requested(),
-            "the #325 under-cut must not be certified: {report:?}"
-        );
-    }
+    assert_analytic(&outcome.mesh);
+    assert!(report.meets_requested(), "{report:?}");
 }
 
 /// The product entry point gives the same mesh, so the pin above covers what
 /// a consumer meshes.
 #[test]
-fn the_product_mesh_is_the_analytic_body_or_the_known_under_cut() {
+fn the_product_mesh_is_the_analytic_body() {
     let mesh = compile_product_mesh(&model(), WALL, Tolerance::MILLIMETRE)
         .expect("compiles")
         .expect("the wall has a Body");
-    // TODO(#519): only the analytic body once axiolid/kernel#325 is in.
-    assert_analytic_or_under_cut(&mesh);
+    assert_analytic(&mesh);
 }

@@ -13,7 +13,6 @@ use axiolid_model::{GeometryNode, NodeId, SolidOperation};
 use ifc_model::EntityId;
 
 use crate::error::{GeometryError, GeometryResult};
-use crate::lower::halfspace::lower_prism_clip;
 use crate::lower::session::LoweringSession;
 use crate::transform::Transform;
 
@@ -86,25 +85,6 @@ fn lower_operands(
     let second = slots.req_ref(slot::SECOND_OPERAND, "SecondOperand")?;
 
     let left = session.lower_operand(first, frame)?;
-    // A polygonal bounded half-space whose prism the neutral bounded node
-    // cannot hold lowers against its subject (#515): the subject's
-    // intersection with the tool, which is the whole result of an
-    // intersection and what a difference removes.
-    if operator != BooleanOperator::Union {
-        if let Some(cut) = lower_prism_clip(session, second, frame, left)? {
-            if operator == BooleanOperator::Intersection {
-                return Ok(cut);
-            }
-            return session.node_for(
-                id,
-                GeometryNode::SolidOperation(SolidOperation::Boolean {
-                    left,
-                    right: cut,
-                    operator,
-                }),
-            );
-        }
-    }
     let right = session.lower_operand(second, frame)?;
 
     session.node_for(

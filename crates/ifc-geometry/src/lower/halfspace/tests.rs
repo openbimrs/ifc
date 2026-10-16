@@ -241,13 +241,13 @@ fn a_polygonal_bound_is_never_dropped() {
     let node =
         lower_half_space_node(&mut session, EntityId(5), Transform::identity()).expect("lowers");
     let lowered = session.finish(node).expect("finishes");
-    let GeometryNode::SolidOperation(SolidOperation::BoundedHalfSpace {
+    let GeometryNode::SolidOperation(SolidOperation::BoundedHalfSpaceAlongZ {
         half_space,
         boundary,
         placement,
     }) = lowered.graph.get(lowered.root).expect("root")
     else {
-        panic!("expected a BoundedHalfSpace operation");
+        panic!("expected a BoundedHalfSpaceAlongZ operation");
     };
     assert_eq!(
         placement.translation.to_array(),
@@ -309,10 +309,11 @@ fn lower_boundary(model: &Model, scale: &UnitScale) -> Result<Vec<[f64; 2]>, Str
     let node = lower_half_space_node(&mut session, EntityId(5), Transform::identity())
         .map_err(|error| format!("{error:?}"))?;
     let lowered = session.finish(node).expect("finishes");
-    let Some(GeometryNode::SolidOperation(SolidOperation::BoundedHalfSpace { boundary, .. })) =
-        lowered.graph.get(lowered.root)
+    let Some(GeometryNode::SolidOperation(SolidOperation::BoundedHalfSpaceAlongZ {
+        boundary, ..
+    })) = lowered.graph.get(lowered.root)
     else {
-        panic!("expected a BoundedHalfSpace operation");
+        panic!("expected a BoundedHalfSpaceAlongZ operation");
     };
     let Some(GeometryNode::Curve2(Curve2::Polyline(curve))) = lowered.graph.get(*boundary) else {
         panic!("expected a Curve2 polyline boundary");
@@ -426,68 +427,13 @@ fn a_non_planar_base_surface_is_reported_as_unsupported() {
     );
 }
 
-/// [`super::prism_orientation`] for each relation of `Position` to the plane
-/// (#515). A unit `+Z` normal throughout; `Position` varies.
-#[test]
-fn the_prism_orientation_names_every_frame_relation() {
-    use super::{prism_orientation, PrismOrientation};
-    use axiolid_core::Vec3;
-
-    let up = Vec3::new(0.0, 0.0, 1.0);
-    let frame = |axis: [f64; 3], reference: [f64; 3]| {
-        Transform::from_axes([3.0, 4.0, 5.0], Some(axis), Some(reference)).expect("valid axes")
-    };
-    let cases = [
-        (
-            frame([0.0, 0.0, 1.0], [1.0, 0.0, 0.0]),
-            PrismOrientation::Along,
-        ),
-        // Turned about the normal: still along.
-        (
-            frame([0.0, 0.0, 1.0], [0.0, 1.0, 0.0]),
-            PrismOrientation::Along,
-        ),
-        // Upside down: Y = Z x X = -Y, so the plane must be read from below.
-        (
-            frame([0.0, 0.0, -1.0], [1.0, 0.0, 0.0]),
-            PrismOrientation::Against,
-        ),
-        // The #515 shape, rotated: the prism is tilted off the normal.
-        (
-            frame([0.0, 0.6, 0.8], [1.0, 0.0, 0.0]),
-            PrismOrientation::Oblique,
-        ),
-        // A tilt of 1e-9 rad is rounding, not authoring.
-        (
-            frame([0.0, 1e-9, 1.0], [1.0, 0.0, 0.0]),
-            PrismOrientation::Along,
-        ),
-        (
-            Transform::identity().scaled(2.0),
-            PrismOrientation::Distorted,
-        ),
-        (
-            Transform::identity().scaled_nonuniform([1.0, 3.0, 1.0]),
-            PrismOrientation::Distorted,
-        ),
-    ];
-    for (index, (placed, expected)) in cases.into_iter().enumerate() {
-        assert_eq!(prism_orientation(&placed, up), expected, "case {index}");
-    }
-    // A normal pointing down reverses the sign test, nothing else.
-    assert_eq!(
-        prism_orientation(&Transform::identity(), -up),
-        PrismOrientation::Against
-    );
-}
-
 /// The `#5` bounded half-space of [`bounded_with_boundary`] with the base
 /// plane's normal and `Position`'s Z set, lowered under `frame`.
 fn lower_bounded(
     plane_axis: [f64; 3],
     position_axis: [f64; 3],
     frame: Transform,
-) -> Result<axiolid_primitive::HalfSpace, crate::error::GeometryError> {
+) -> Result<(axiolid_primitive::HalfSpace, axiolid_core::Transform3), crate::error::GeometryError> {
     let mut model = bounded_with_boundary([
         point2(0.0, 0.0),
         point2(1.0, 0.0),
@@ -510,98 +456,27 @@ fn lower_bounded(
     let mut session = LoweringSession::new(&model, &scale);
     let node = lower_half_space_node(&mut session, EntityId(5), frame)?;
     let lowered = session.finish(node).expect("finishes");
-    let Some(GeometryNode::SolidOperation(SolidOperation::BoundedHalfSpace { half_space, .. })) =
-        lowered.graph.get(lowered.root)
+    let Some(GeometryNode::SolidOperation(SolidOperation::BoundedHalfSpaceAlongZ {
+        half_space,
+        placement,
+        ..
+    })) = lowered.graph.get(lowered.root)
     else {
-        panic!("expected a BoundedHalfSpace operation");
+        panic!("expected a BoundedHalfSpaceAlongZ operation");
     };
     let Some(GeometryNode::HalfSpace(hs)) = lowered.graph.get(*half_space) else {
         panic!("expected a HalfSpace plane");
     };
-    Ok(*hs)
+    Ok((*hs, *placement))
 }
 
-/// A normal against `Position`'s Z is the same half space read from the
-/// other side: the node's normal is reversed and its side flipped, so the
-/// kernel's `normal x X` is `Position`'s own Y and the footprint is not
-/// mirrored (#515).
+/// Every polygonal bounded half-space lowers to the one node whose prism
+/// runs along `Position`'s Z (#515): the plane and the flag exactly as an
+/// unbounded half space, and `Position` carried whole, whatever its angle to
+/// the plane, its handedness or its scale. Nothing is reoriented, mirrored
+/// or refused here; what the kernel cannot compile it refuses by name.
 #[test]
-fn a_normal_against_position_z_is_reversed_with_its_side() {
-    // `.T.` on a downward normal keeps the material above the plane.
-    let hs =
-        lower_bounded([0.0, 0.0, -1.0], [0.0, 0.0, 1.0], Transform::identity()).expect("lowers");
-    assert_eq!(hs.boundary.normal.to_array(), [0.0, 0.0, 1.0]);
-    assert!(hs.agreement, "the kept side is still above the plane");
-    // Aligned, the flag converts as for any half space.
-    let hs =
-        lower_bounded([0.0, 0.0, 1.0], [0.0, 0.0, 1.0], Transform::identity()).expect("lowers");
-    assert_eq!(hs.boundary.normal.to_array(), [0.0, 0.0, 1.0]);
-    assert!(!hs.agreement);
-}
-
-/// The neutral node cannot hold an oblique or rescaled prism: each is
-/// refused by name, never lowered to a node that compiles to another tool.
-#[test]
-fn an_oblique_or_scaled_prism_is_refused_by_name() {
-    for (plane, position, frame, needle) in [
-        (
-            [0.6, 0.0, -0.8],
-            [0.0, 0.0, 1.0],
-            Transform::identity(),
-            "oblique",
-        ),
-        (
-            [0.0, 0.0, 1.0],
-            [0.0, 0.0, 1.0],
-            Transform::identity().scaled(2.0),
-            "scaled or sheared",
-        ),
-    ] {
-        let error = lower_bounded(plane, position, frame).expect_err("must refuse");
-        let crate::error::GeometryError::Unsupported {
-            entity,
-            type_name,
-            detail,
-        } = &error
-        else {
-            panic!("expected Unsupported, got {error:?}");
-        };
-        assert_eq!(*entity, EntityId(5));
-        assert_eq!(type_name, "IFCPOLYGONALBOUNDEDHALFSPACE");
-        assert!(detail.contains(needle), "{needle}: {detail}");
-    }
-}
-
-/// Whether `point` is on the kept side of every wall, within `slack`.
-fn inside_walls(walls: &[axiolid_primitive::HalfSpace], point: [f64; 3], slack: f64) -> bool {
-    walls.iter().all(|wall| {
-        assert!(wall.agreement, "a wall keeps its normal side");
-        let offset = axiolid_core::Vec3::from_array(point) - wall.boundary.origin;
-        offset.dot(wall.boundary.normal) >= -slack
-    })
-}
-
-/// A convex polygon's walls hold its prism along `Position`'s Z, whichever
-/// way it winds, through collinear and repeated vertices, under a frame
-/// that tilts, scales or reflects it (#515).
-#[test]
-fn a_convex_boundary_becomes_one_wall_per_edge() {
-    use super::prism_walls;
-    use axiolid_core::Point2;
-
-    let square = [(0.0, 0.0), (2.0, 0.0), (2.0, 2.0), (0.0, 2.0)].map(|(x, y)| Point2::new(x, y));
-    let mut clockwise = square;
-    clockwise.reverse();
-    let with_collinear_and_repeat = [
-        (0.0, 0.0),
-        (1.0, 0.0),
-        (2.0, 0.0),
-        (2.0, 0.0),
-        (2.0, 2.0),
-        (0.0, 2.0),
-        (0.0, 0.0),
-    ]
-    .map(|(x, y)| Point2::new(x, y));
+fn every_frame_lowers_to_the_prism_along_position_z() {
     let tilted = Transform::from_axes(
         [1.0, 2.0, 3.0],
         Some([0.0, 0.6, 0.8]),
@@ -610,79 +485,65 @@ fn a_convex_boundary_becomes_one_wall_per_edge() {
     .expect("valid axes");
     let mut reflected = Transform::identity();
     reflected.basis[1] = [0.0, -1.0, 0.0];
-    for (name, frame) in [
-        ("identity", Transform::identity()),
-        ("tilted", tilted),
+    for (case, plane, position, frame) in [
+        (
+            "aligned",
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+            Transform::identity(),
+        ),
+        // Read from the other side before #515's single node.
+        (
+            "against",
+            [0.0, 0.0, -1.0],
+            [0.0, 0.0, 1.0],
+            Transform::identity(),
+        ),
+        // The gable shape: a sloped plane over a vertical prism.
+        (
+            "oblique",
+            [0.6, 0.0, -0.8],
+            [0.0, 0.0, 1.0],
+            Transform::identity(),
+        ),
+        ("tilted frame", [0.0, 0.0, 1.0], [0.0, 0.0, 1.0], tilted),
         (
             "scaled",
-            Transform::identity().scaled_nonuniform([2.0, 3.0, 0.5]),
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+            Transform::identity().scaled(2.0),
         ),
-        ("reflected", reflected),
-    ] {
-        for (case, points) in [
-            ("counter-clockwise", &square[..]),
-            ("clockwise", &clockwise[..]),
-            ("collinear and repeated", &with_collinear_and_repeat[..]),
-        ] {
-            let walls = prism_walls(points, &frame).expect("convex");
-            let edges = if points.len() == 4 { 4 } else { 5 };
-            assert_eq!(walls.len(), edges, "{name} {case}");
-            // The prism's axis through the centre, far along Z both ways, is
-            // inside; a point just past each edge's midpoint is not.
-            for z in [-1e3, 0.0, 1e3] {
-                let centre = frame.apply([1.0, 1.0, z]);
-                assert!(inside_walls(&walls, centre, 1e-9), "{name} {case}: z {z}");
-            }
-            for outside in [[1.0, -0.01], [2.01, 1.0], [1.0, 2.01], [-0.01, 1.0]] {
-                let point = frame.apply([outside[0], outside[1], 7.0]);
-                assert!(
-                    !inside_walls(&walls, point, 0.0),
-                    "{name} {case}: {outside:?} is outside"
-                );
-            }
-        }
-    }
-}
-
-/// A polygon whose edge half-planes do not hold it is refused: a reflex
-/// corner, a star that winds twice, no area.
-#[test]
-fn a_boundary_that_is_not_convex_is_refused() {
-    use super::{prism_walls, NON_CONVEX};
-    use axiolid_core::Point2;
-
-    let points = |p: &[(f64, f64)]| {
-        p.iter()
-            .map(|&(x, y)| Point2::new(x, y))
-            .collect::<Vec<_>>()
-    };
-    let star: Vec<(f64, f64)> = (0..5)
-        .map(|k| {
-            let angle =
-                std::f64::consts::FRAC_PI_2 + f64::from(2 * k) * std::f64::consts::TAU / 5.0;
-            (angle.cos(), angle.sin())
-        })
-        .collect();
-    for (name, polygon) in [
         (
-            "L",
-            points(&[
-                (0.0, 0.0),
-                (2.0, 0.0),
-                (2.0, 1.0),
-                (1.0, 1.0),
-                (1.0, 2.0),
-                (0.0, 2.0),
-            ]),
+            "sheared",
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+            Transform::identity().scaled_nonuniform([1.0, 3.0, 1.0]),
         ),
-        ("star", points(&star)),
-        ("flat", points(&[(0.0, 0.0), (1.0, 0.0), (2.0, 0.0)])),
-        ("two points", points(&[(0.0, 0.0), (1.0, 0.0)])),
+        ("mirrored", [0.0, 0.0, 1.0], [0.0, 0.0, 1.0], reflected),
+        // Z in the plane: lowered, and refused by name by the kernel.
+        (
+            "z in plane",
+            [1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0],
+            Transform::identity(),
+        ),
     ] {
+        let (hs, placement) = lower_bounded(plane, position, frame)
+            .unwrap_or_else(|error| panic!("{case}: must lower, got {error:?}"));
+        let unit = axiolid_core::Vec3::from_array(frame.apply_unit_normal(plane).expect("unit"));
+        assert!(
+            (hs.boundary.normal - unit).length() < 1e-12,
+            "{case}: the plane is carried as authored, {:?}",
+            hs.boundary.normal
+        );
+        assert!(
+            !hs.agreement,
+            "{case}: `.T.` converts as for any half space"
+        );
         assert_eq!(
-            prism_walls(&polygon, &Transform::identity()).expect_err(name),
-            NON_CONVEX,
-            "{name}"
+            placement,
+            frame.to_geom(),
+            "{case}: Position (the identity here) is carried whole"
         );
     }
 }

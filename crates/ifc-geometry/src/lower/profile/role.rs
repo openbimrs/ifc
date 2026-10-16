@@ -6,9 +6,10 @@
 //! - an arbitrary profile's `OuterCurve` and `InnerCurves`, which become a
 //!   [`axiolid_profile::Contour`] and may keep exact arcs;
 //! - `IfcPolygonalBoundedHalfSpace.PolygonalBoundary`, which also keeps
-//!   exact arcs (#398: Axiolid's `SolidOperation::BoundedHalfSpace` takes a
-//!   `Profile` contour of lines and arcs, axiolid/kernel#277, Axiolid ADR
-//!   0084), but whose points must lie in `Position`'s XY plane
+//!   exact arcs (#398: Axiolid's bounded half-spaces, now
+//!   `SolidOperation::BoundedHalfSpaceAlongZ` (#515), take a `Profile`
+//!   contour of lines and arcs, axiolid/kernel#277, Axiolid ADR 0084), but
+//!   whose points must lie in `Position`'s XY plane
 //!   (`BoundaryDim`), and whose segment joints are judged within the
 //!   model's `Precision`.
 //!

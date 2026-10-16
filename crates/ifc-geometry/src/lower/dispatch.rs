@@ -346,50 +346,6 @@ pub const PARTIAL: &[Variant] = &[
         rationale: "the documentation defines no meaning for it",
     },
     Variant {
-        family: "IFCPOLYGONALBOUNDEDHALFSPACE",
-        variant: "Position's Z axis is along the base plane normal, either \
-                  sign, and its frame is unscaled",
-        support: Support::Admitted,
-        rationale: "the boundary prism is then the neutral BoundedHalfSpace's \
-                    prism along the normal; a normal against Position's Z is \
-                    lowered as the same half space read from the other side, \
-                    so the boundary is framed by Position's own X and Y (#515). Kernel \
-                    limit: the mesh compiler's slab is twice the boundary's extent deep, \
-                    so a taller subject is under-cut there, flagged by its deviation \
-                    report (#519, axiolid/kernel#325)",
-    },
-    Variant {
-        family: "IFCPOLYGONALBOUNDEDHALFSPACE",
-        variant: "Position's Z axis is oblique to the base plane normal (a \
-                  sloped plane over a vertical prism) or its frame is scaled \
-                  or sheared, the boundary is a convex polygon, and the half \
-                  space is the second operand of a difference or an \
-                  intersection",
-        support: Support::Admitted,
-        rationale: "a convex prism is the intersection of one half space per \
-                    edge, through the edge and along Position's Z, so the \
-                    subject's intersection with the tool is a chain of \
-                    intersections with unbounded half spaces and a difference \
-                    is the subject minus that chain: identities of sets, \
-                    nothing computed. The mesh compiler builds it; the exact \
-                    compiler takes no boolean as a difference's tool yet, so \
-                    the mesh's deviation bound is unbounded by name (#515)",
-    },
-    Variant {
-        family: "IFCPOLYGONALBOUNDEDHALFSPACE",
-        variant: "Position's Z axis is oblique to the base plane normal or \
-                  its frame is scaled or sheared, and the boundary is not \
-                  convex or has an arc, or the half space is a union's \
-                  operand or a first operand",
-        support: Support::Refused,
-        rationale: "kernel: a non-convex prism is a union and an arc's wall a \
-                    cylinder, neither an intersection of half spaces, and a \
-                    union with the tool is unbounded; the neutral \
-                    BoundedHalfSpace sweeps its boundary along the plane \
-                    normal and reads only the direction of Position's X \
-                    (#515, axiolid/kernel#321)",
-    },
-    Variant {
         family: "IFCSURFACECURVE",
         variant: "MasterRepresentation is Curve3D, PCurveS1, or PCurveS2 with \
                   the named side present",
