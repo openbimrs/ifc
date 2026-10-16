@@ -58,6 +58,26 @@
 //! tool they lower to half spaces (below); anywhere else they are refused
 //! by name.
 //!
+//! # The bounded node's depth (#519)
+//!
+//! The bounded node carries no depth: it is the half space cut by an
+//! infinite prism, and the compiler bounds it. Axiolid's exact compiler
+//! bounds it by the subject's envelope. Its reference mesh compiler
+//! (axiolid-mesh-compile 0.3.26, axiolid-construct 0.3.18) builds a slab
+//! twice the boundary's largest coordinate deep instead, so a small
+//! boundary over a tall subject (a 238 x 350 mm strip at a wall's end, the
+//! wall reaching 4.8 m above the plane) is cut only 0.7 m deep in the mesh.
+//! The deviation report, measured against the exact body, then misses the
+//! requested tolerance; nothing in this bridge sizes the cut (ADR 0004),
+//! and the fix is the kernel's (axiolid/kernel#325).
+//!
+//! The half-space chain below would mesh the full cut, but it is no
+//! mitigation: it loses the exact result for every aligned difference that
+//! is certified today, and a prism that only grazes its subject (its corner
+//! on the subject's edge, as such a strip meets a sloped clip before it)
+//! meets tangentially in the chain's intersection, which the mesh compiler
+//! refuses.
+//!
 //! # The oblique prism as half spaces
 //!
 //! The infinite prism of a CONVEX polygon is the intersection of one half
