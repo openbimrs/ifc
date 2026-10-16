@@ -34,3 +34,17 @@ executable; a mutation run confirmed that branch is dead code without it.
   neutral bounded half-space cannot hold; each clip lowers to the wall
   minus its intersection with five unbounded half spaces, and the wall
   compiles to IfcOpenShell's volume (`tests/bounded_halfspace_prism_axis.rs`).
+
+- tall_wall_small_bounded_clip_ifc2x3.ifc: synthetic, hand-written for
+  #519. Only the clip's geometry parameters are taken from a third-party
+  IFC2X3 export (a wall's end clip); every entity, GUID and name is new.
+  One 10125 x 350 mm wall extruded 16165.033 mm, minus an
+  `IfcPolygonalBoundedHalfSpace`: the horizontal plane z = 11404.747 mm,
+  `AgreementFlag` `.F.`, bounded by the 238.549 x 350 mm strip at the
+  wall's end, `Position` unrotated on the plane. It removes that strip
+  from the plane to the top (4760.286 mm): 56.887388853 m³, matched by
+  IfcOpenShell 0.8.5 (12 vertices); `ifcopenshell.validate --rules` clean.
+  Axiolid's exact compiler builds that volume; its reference mesh compiler
+  cuts the strip only 0.7 m deep (twice the boundary's largest coordinate,
+  axiolid/kernel#325) and flags the mesh in its deviation report
+  (`tests/bounded_halfspace_depth.rs`).

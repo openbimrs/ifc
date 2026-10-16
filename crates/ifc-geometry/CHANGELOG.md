@@ -12,6 +12,32 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Documented (#519, the bounded half-space's depth in the mesh)
+
+Semver: patch. No code path changes; the rationale of the aligned
+`IFCPOLYGONALBOUNDEDHALFSPACE` row of `dispatch::PARTIAL` gains the kernel
+limit below.
+
+- An aligned polygonal bounded half-space (`Position`'s Z along the plane
+  normal) lowers to Axiolid's `BoundedHalfSpace`, which carries no depth.
+  The exact compiler bounds it by the subject; the reference mesh compiler
+  (axiolid-mesh-compile 0.3.26) builds a slab twice the boundary's largest
+  coordinate deep, so a small boundary over a tall subject is under-cut in
+  the mesh (axiolid/kernel#325). Its deviation report then does not meet
+  the requested tolerance. The fix is the kernel's; the bridge does not
+  size the cut (ADR 0004).
+- Lowering such a clip through the #515 half-space chain instead was
+  evaluated and rejected: it would drop the exact result of every aligned
+  difference certified today, and on the wall that showed the bug the
+  chain's intersection meets its subject tangentially, which the mesh
+  compiler refuses.
+- New fixture `synthetic-compile/tall_wall_small_bounded_clip_ifc2x3.ifc`
+  (synthetic, built from one clip's parameters) and
+  `tests/bounded_halfspace_depth.rs`: the exact body is pinned to the
+  analytic 56.887388853 m³ (IfcOpenShell 0.8.5 agrees); the mesh is
+  accepted as that body, certified, or as the #325 under-cut, flagged by
+  its report, and as nothing else (`TODO(#519)`).
+
 ## [0.27.2] - 2026-10-16
 
 ### Fixed (#515, oblique polygonal bounded half-space clips)

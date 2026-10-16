@@ -230,7 +230,8 @@ manifest is checked and the prose is not.
    editing the `.ifc` output; regenerate and commit both.
 
 `synthetic-compile/` is derived here from two `ifclite-geometry/` files, not
-copied from upstream, and holds two hand-authored gable-wall clips (#515);
+copied from upstream, and holds two hand-authored gable-wall clips (#515)
+and a synthetic wall-end clip (#519);
 see [`synthetic-compile/README.md`](synthetic-compile/README.md).
 `costing/` and `hostile/` are hand-authored here; git history is their only
 record, and the manifest cites the commits that introduced them.
