@@ -11,7 +11,7 @@ Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.11.0 (2026-10-14) |
+| Latest release | 0.12.0 (2026-10-16) |
 | Registries | [PyPI `openbim-ifc`](https://pypi.org/project/openbim-ifc/) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_py/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-py/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-py) |
@@ -42,21 +42,22 @@ This crate adds calling-convention glue only. IFC behaviour belongs in
 
 ## Changes
 
-Latest release, 0.11.0 (2026-10-14):
+Latest release, 0.12.0 (2026-10-16):
 
-### Added (#458, curves and surfaces as output primitives)
+### Changed (#515, wire format 1.4)
 
-Semver: minor (additive).
+- The geometry graph payload (#367) may be Axiolid's wire format 1.4
+  (`axiolid-model` 0.3.14), a minor version of the format (ADR 0021,
+  amended): every `IfcPolygonalBoundedHalfSpace` now lowers to
+  `BoundedHalfSpaceAlongZ`, the half space bounded along its `Position`'s
+  Z (axiolid/kernel#321), so an oblique clip such as a gable wall's under
+  a sloped roof is carried as authored. An envelope carries the lowest
+  version its content needs: a payload with such a clip is 1.4 (it was
+  1.0), every other is unchanged. A reader on `axiolid-model` 0.3.13 or
+  older refuses 1.4.
+  `GEOMETRY_FORMAT_VERSION` is `"1.4"`, the newest version the wheel
+  writes.
 
-- `model.product_curves(ids=None, representation="Plan")` (mesh wheel):
-  a `ProductCurves` per product, its positions one `array('f')` relative
-  to its transform and a `ProductPolyline` per curve (`first_vertex`,
-  `vertex_count`, `closed`, `curve`, `chord_bound`, `chord_requested`).
-  `representation` is `Plan`, `Axis`, `FootPrint`, `Annotation`, `Body`
-  or `Surface`; another raises `invalid-value`. A trimmed, composite,
-  offset or intrinsic curve is an `unsupported` refusal (#506).
-- `model.product_meshes(ids=None, representation="Body")` meshes another
-  representation on request, such as `"Surface"`, and every
-  `ProductMesh` has `closure`: `"solid"`, `"surface"` or `"unknown"`.
+Semver: minor, as ADR 0021 states for a minor version of the wire format.
 
 Full history: [`crates/openbim-ifc-py/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-py/CHANGELOG.md)

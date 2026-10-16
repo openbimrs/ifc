@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-10-16
+
 ### Changed (#515, #519)
 
 - Requires `ifc-geometry` with #515: every `IfcPolygonalBoundedHalfSpace`
@@ -1029,7 +1031,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.34.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.35.0...HEAD
+[0.35.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.35.0
 [0.34.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.34.0
 [0.33.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.33.0
 [0.32.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.32.0

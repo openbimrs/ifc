@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.34.0 (2026-10-14) |
+| Latest release | 0.35.0 (2026-10-16) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -100,34 +100,20 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.34.0 (2026-10-14):
+Latest release, 0.35.0 (2026-10-16):
 
-### Added (#458, curves and surfaces as output primitives)
+### Changed (#515, #519)
 
-Semver: minor (additive; `ProductMesh` is `#[non_exhaustive]`).
+- Requires `ifc-geometry` with #515: every `IfcPolygonalBoundedHalfSpace`
+  lowers to Axiolid's `BoundedHalfSpaceAlongZ`, its prism along
+  `Position`'s Z (axiolid/kernel#321). Oblique clips, such as gable walls
+  under sloped roofs, mesh and compile exactly, non-convex and arc
+  boundaries included; `product_meshes` cuts small clips over tall
+  subjects to their full depth (axiolid/kernel#325, #519).
+  `product_graphs` labels a payload with such a clip wire format 1.4
+  (`axiolid-model` 0.3.14); every other payload keeps its version and
+  bytes.
 
-- `product_curves(model, products, purpose)` (feature `mesh`): each
-  product's curves for a `RepresentationPurpose` as `ProductCurves`
-  (world placement, one `ProductPolyline` per curve: the IFC `curve`,
-  `f32` positions relative to the placement, `closed`, `chord_bound` and
-  `chord_requested`). `Plan` takes the drawing curves (`Plan`, then
-  `Annotation`, `FootPrint`, `Axis`), and `Axis`, `FootPrint`,
-  `Annotation` one identifier. A trimmed, composite, offset or intrinsic
-  curve refuses the product with `GeometryError::PolylineUnsupported`
-  until the reference compiler polylines it (#506).
-- `product_meshes_for(model, products, purpose)`: the surfaces and solids
-  of another representation, such as `Surface`, as one mesh; its curves
-  are left to `product_curves`. `product_meshes` is it with `Body`.
-- `ProductMesh::closure`: `Solid`, `Surface` (an area, no volume) or
-  `Unknown` for an empty mesh. Only a Body mesh resolves a colour; a mesh
-  of another representation carries `Ok(None)`.
-- `RepresentationPurpose` and `select_product_representation` are
-  re-exported at the root.
-
-### Changed (#458)
-
-- A Body whose items mix curves with solids or surfaces now meshes those
-  and leaves the curves to `product_curves`; before, the reference backend
-  refused the whole Body. A Body with no curves meshes exactly as before.
+Semver: minor, following the dependency.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)
