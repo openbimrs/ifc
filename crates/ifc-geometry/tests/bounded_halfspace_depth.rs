@@ -99,7 +99,12 @@ fn assert_analytic_or_under_cut(mesh: &TriMesh) -> bool {
     );
     assert_eq!(
         heights,
-        [0.0, round(PLANE), round(PLANE + 2.0 * THICKNESS), round(HEIGHT)],
+        [
+            0.0,
+            round(PLANE),
+            round(PLANE + 2.0 * THICKNESS),
+            round(HEIGHT)
+        ],
         "the under-cut must lie above the plane"
     );
     false
