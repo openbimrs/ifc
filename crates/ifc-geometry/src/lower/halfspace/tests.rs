@@ -571,3 +571,118 @@ fn an_oblique_or_scaled_prism_is_refused_by_name() {
         assert!(detail.contains(needle), "{needle}: {detail}");
     }
 }
+
+/// Whether `point` is on the kept side of every wall, within `slack`.
+fn inside_walls(walls: &[axiolid_primitive::HalfSpace], point: [f64; 3], slack: f64) -> bool {
+    walls.iter().all(|wall| {
+        assert!(wall.agreement, "a wall keeps its normal side");
+        let offset = axiolid_core::Vec3::from_array(point) - wall.boundary.origin;
+        offset.dot(wall.boundary.normal) >= -slack
+    })
+}
+
+/// A convex polygon's walls hold its prism along `Position`'s Z, whichever
+/// way it winds, through collinear and repeated vertices, under a frame
+/// that tilts, scales or reflects it (#515).
+#[test]
+fn a_convex_boundary_becomes_one_wall_per_edge() {
+    use super::prism_walls;
+    use axiolid_core::Point2;
+
+    let square = [(0.0, 0.0), (2.0, 0.0), (2.0, 2.0), (0.0, 2.0)].map(|(x, y)| Point2::new(x, y));
+    let mut clockwise = square;
+    clockwise.reverse();
+    let with_collinear_and_repeat = [
+        (0.0, 0.0),
+        (1.0, 0.0),
+        (2.0, 0.0),
+        (2.0, 0.0),
+        (2.0, 2.0),
+        (0.0, 2.0),
+        (0.0, 0.0),
+    ]
+    .map(|(x, y)| Point2::new(x, y));
+    let tilted = Transform::from_axes(
+        [1.0, 2.0, 3.0],
+        Some([0.0, 0.6, 0.8]),
+        Some([1.0, 0.0, 0.0]),
+    )
+    .expect("valid axes");
+    let mut reflected = Transform::identity();
+    reflected.basis[1] = [0.0, -1.0, 0.0];
+    for (name, frame) in [
+        ("identity", Transform::identity()),
+        ("tilted", tilted),
+        (
+            "scaled",
+            Transform::identity().scaled_nonuniform([2.0, 3.0, 0.5]),
+        ),
+        ("reflected", reflected),
+    ] {
+        for (case, points) in [
+            ("counter-clockwise", &square[..]),
+            ("clockwise", &clockwise[..]),
+            ("collinear and repeated", &with_collinear_and_repeat[..]),
+        ] {
+            let walls = prism_walls(points, &frame).expect("convex");
+            let edges = if points.len() == 4 { 4 } else { 5 };
+            assert_eq!(walls.len(), edges, "{name} {case}");
+            // The prism's axis through the centre, far along Z both ways, is
+            // inside; a point just past each edge's midpoint is not.
+            for z in [-1e3, 0.0, 1e3] {
+                let centre = frame.apply([1.0, 1.0, z]);
+                assert!(inside_walls(&walls, centre, 1e-9), "{name} {case}: z {z}");
+            }
+            for outside in [[1.0, -0.01], [2.01, 1.0], [1.0, 2.01], [-0.01, 1.0]] {
+                let point = frame.apply([outside[0], outside[1], 7.0]);
+                assert!(
+                    !inside_walls(&walls, point, 0.0),
+                    "{name} {case}: {outside:?} is outside"
+                );
+            }
+        }
+    }
+}
+
+/// A polygon whose edge half-planes do not hold it is refused: a reflex
+/// corner, a star that winds twice, no area.
+#[test]
+fn a_boundary_that_is_not_convex_is_refused() {
+    use super::{prism_walls, NON_CONVEX};
+    use axiolid_core::Point2;
+
+    let points = |p: &[(f64, f64)]| {
+        p.iter()
+            .map(|&(x, y)| Point2::new(x, y))
+            .collect::<Vec<_>>()
+    };
+    let star: Vec<(f64, f64)> = (0..5)
+        .map(|k| {
+            let angle =
+                std::f64::consts::FRAC_PI_2 + f64::from(2 * k) * std::f64::consts::TAU / 5.0;
+            (angle.cos(), angle.sin())
+        })
+        .collect();
+    for (name, polygon) in [
+        (
+            "L",
+            points(&[
+                (0.0, 0.0),
+                (2.0, 0.0),
+                (2.0, 1.0),
+                (1.0, 1.0),
+                (1.0, 2.0),
+                (0.0, 2.0),
+            ]),
+        ),
+        ("star", points(&star)),
+        ("flat", points(&[(0.0, 0.0), (1.0, 0.0), (2.0, 0.0)])),
+        ("two points", points(&[(0.0, 0.0), (1.0, 0.0)])),
+    ] {
+        assert_eq!(
+            prism_walls(&polygon, &Transform::identity()).expect_err(name),
+            NON_CONVEX,
+            "{name}"
+        );
+    }
+}

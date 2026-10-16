@@ -12,6 +12,35 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#515, oblique polygonal bounded half-space clips)
+
+Semver: patch. No public item changes; two `IFCPOLYGONALBOUNDEDHALFSPACE`
+rows of `dispatch::PARTIAL` are rewritten (an oblique or rescaled prism is
+now admitted for a convex boundary). Only graphs that were refused before
+change.
+
+- A prism oblique to its plane, or under a scaled or sheared `Position`,
+  now lowers when the half space is the second operand of a difference or
+  an intersection and its boundary is a convex polygon. The prism of a
+  convex polygon is the intersection of one half space per edge (the plane
+  through the edge along `Position`'s Z), so the subject's intersection
+  with the tool is a chain of intersections with unbounded half spaces,
+  and a difference is the subject minus that chain. These are identities
+  of sets; nothing is computed in the bridge (ADR 0004). The #515 gable
+  wall (`synthetic-compile/gable_wall_polygonal_clip_ifc2x3.ifc` and
+  `_ifc4.ifc`) compiles to 49.999912042537 m³, IfcOpenShell 0.8.5's
+  volume, gross and net.
+- Limits, from axiolid-mesh-compile 0.3.26: the exact compiler takes no
+  boolean as a difference's tool, so such a mesh's deviation report is
+  unbounded and names the missing exact result; and a prism that misses
+  its subject is refused by the mesh compiler (`CompilationRefused`), not
+  kept as the subject.
+- Still `GeometryError::Unsupported` naming the half space: a non-convex
+  boundary, a boundary with an arc, a union with the tool, and the tool
+  anywhere but a boolean's second operand. A kernel bounded half-space
+  whose prism runs along its own placement (axiolid/kernel#321) is what
+  covers these.
+
 ## [0.27.1] - 2026-10-15
 
 ### Fixed (#515, polygonal bounded half-space clips that compiled to another tool)

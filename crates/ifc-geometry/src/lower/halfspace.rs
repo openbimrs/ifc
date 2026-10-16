@@ -54,10 +54,44 @@
 //! `prism_orientation` decides which case holds. *Against* has an exact
 //! answer here: the plane with its normal reversed and its side flipped is
 //! the same half space, now framed by `(X, Y)`. *Oblique* and a scaled or
-//! sheared frame have none in the neutral model and are refused by name;
-//! they wait on a kernel node whose prism runs along its own placement's Z.
+//! sheared frame have no bounded node in the neutral model. As a boolean's
+//! tool they lower to half spaces (below); anywhere else they are refused
+//! by name.
+//!
+//! # The oblique prism as half spaces
+//!
+//! The infinite prism of a CONVEX polygon is the intersection of one half
+//! space per edge: the plane through the edge and parallel to `Position`'s
+//! Z, on the polygon's side. So the IFC tool is `T = H ∩ W1 ∩ ... ∩ Wn`,
+//! all unbounded half spaces, each exact in `Position`'s frame and placed
+//! as any IFC plane is. Neither of Axiolid's compilers takes an unbounded
+//! half space alone, but both take one as the TOOL of an intersection or a
+//! difference, bounded there by the subject (axiolid-mesh-compile 0.3.26:
+//! the mesh compiler's `build_boolean` with `half_space::for_subject`, the
+//! exact compiler's `exact::clip`). `lower_prism_clip` therefore lowers a
+//! boolean whose tool is `T`, given its subject `S`, as
+//!
+//! - `S ∩ T` = `(((S ∩ H) ∩ W1) ... ∩ Wn)`, and
+//! - `S - T` = `S - (S ∩ T)`, the same chain as the tool,
+//!
+//! identities of sets: nothing is tessellated, cut, bounded or measured
+//! here. What the kernel does with them today: the mesh compiler builds
+//! both, and the gable wall of #515 meets IfcOpenShell's volume to 1e-12
+//! m³. The exact compiler builds `S ∩ T` but takes no boolean as a
+//! difference's tool, so a difference's mesh carries no certified deviation
+//! bound (it names the missing exact result instead), and a chain whose
+//! subject empties before its last tool (a prism that misses the subject)
+//! is refused by the mesh compiler rather than kept as the subject.
+//!
+//! What is not an intersection of half spaces is refused by name: a
+//! non-convex polygon (its prism is a union; a convex decomposition would
+//! be a construction this bridge does not make, ADR 0004), an arc (its wall
+//! is a cylinder), a union with the tool (unbounded), and the tool lowered
+//! anywhere but as a boolean's second operand. A kernel node whose prism
+//! runs along its own placement's Z (axiolid/kernel#321) would make each of
+//! these one node again.
 
-use axiolid_core::{Plane3, Point3, Vec3};
+use axiolid_core::{BooleanOperator, Plane3, Point2, Point3, Vec3};
 use axiolid_model::{GeometryNode, NodeId, SolidOperation};
 use axiolid_primitive::HalfSpace;
 use ifc_model::EntityId;
@@ -100,17 +134,22 @@ pub fn lower_half_space_node(
     Ok(node)
 }
 
-/// `IfcPolygonalBoundedHalfSpace`: half space clipped by an extruded polygon.
-///
-/// `Position` is independent of `BaseSurface`, and the boundary is authored in
-/// that placement's XY plane. Axiolid's `BoundedHalfSpace` carries the boundary
-/// frame separately for exactly this reason, so the placement is preserved
-/// rather than folded into the clip plane, which would move the clip.
-fn build_polygonal(
+/// The parts of an `IfcPolygonalBoundedHalfSpace` every lowering reads.
+struct Polygonal {
+    type_name: String,
+    /// The unbounded half space, in the kernel's polarity.
+    half_space: HalfSpace,
+    /// `Position` in the frame of the plane (metres).
+    placed: Transform,
+    /// `PolygonalBoundary`.
+    boundary: EntityId,
+}
+
+fn read_polygonal(
     session: &mut LoweringSession<'_>,
     id: EntityId,
     frame: Transform,
-) -> GeometryResult<NodeId> {
+) -> GeometryResult<Polygonal> {
     let entity = session.entity(id, id)?;
     let view = PolygonalBoundedHalfSpace::new(id, entity);
     let base = view.base();
@@ -126,15 +165,45 @@ fn build_polygonal(
     let position = session.entity(id, position_ref)?;
     let local = axis_placement_transform(session.model(), position_ref, position)?
         .to_metres(session.units());
-    let placed = frame.compose(&local);
-
-    // The neutral node holds the IFC prism only for some frames; orient the
-    // plane so it does, or refuse (#515, see "The prism axis" above).
-    let half_space = match prism_orientation(&placed, plane.normal) {
-        PrismOrientation::Along => HalfSpace {
+    Ok(Polygonal {
+        type_name,
+        half_space: HalfSpace {
             boundary: plane,
             agreement,
         },
+        placed: frame.compose(&local),
+        boundary: view.polygonal_boundary()?,
+    })
+}
+
+/// `IfcPolygonalBoundedHalfSpace`: half space clipped by an extruded polygon.
+///
+/// `Position` is independent of `BaseSurface`, and the boundary is authored in
+/// that placement's XY plane. Axiolid's `BoundedHalfSpace` carries the boundary
+/// frame separately for exactly this reason, so the placement is preserved
+/// rather than folded into the clip plane, which would move the clip.
+fn build_polygonal(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<NodeId> {
+    let Polygonal {
+        type_name,
+        half_space,
+        placed,
+        boundary,
+    } = read_polygonal(session, id, frame)?;
+    let HalfSpace {
+        boundary: plane,
+        agreement,
+    } = half_space;
+
+    // The neutral node holds the IFC prism only for some frames; orient the
+    // plane so it does, or refuse (#515, see "The prism axis" above). The
+    // others lower only as a clip (`lower_prism_clip`), where the subject
+    // bounds the cut.
+    let half_space = match prism_orientation(&placed, plane.normal) {
+        PrismOrientation::Along => half_space,
         PrismOrientation::Against => HalfSpace {
             boundary: Plane3 {
                 origin: plane.origin,
@@ -153,7 +222,7 @@ fn build_polygonal(
     // and a profile would assert a filled region this entity does not author.
     // It must be a `Curve2`: that is the kernel's contract, and the 3D curve
     // path produced graphs that lowered but never compiled (#45).
-    let boundary = boundary::lower_boundary_curve(session, id, view.polygonal_boundary()?)?;
+    let boundary = boundary::lower_boundary_curve(session, id, boundary)?;
 
     session.node_for(
         id,
@@ -164,6 +233,172 @@ fn build_polygonal(
         }),
     )
 }
+
+/// `subject` intersected with the polygonal bounded half-space `id`, as an
+/// intersection of unbounded half spaces, when the neutral bounded node
+/// cannot hold its prism; `None` when it can (#515).
+///
+/// The caller is a boolean whose second operand is `id` and whose first is
+/// `subject`, under a difference or an intersection. For a convex straight
+/// boundary the IFC tool is `H ∩ W1 ∩ ... ∩ Wn`: `H` the base half space
+/// and `Wi` the side of edge `i`'s plane holding the polygon, the plane
+/// through the edge and parallel to `Position`'s Z. So `subject ∩ tool` is a
+/// chain of intersections whose every tool is an unbounded half space, the
+/// one form both of Axiolid's compilers bound by their subject, and
+/// `subject - tool = subject - (subject ∩ tool)`. See "The oblique prism as
+/// half spaces" in the module docs.
+pub(crate) fn lower_prism_clip(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+    frame: Transform,
+    subject: NodeId,
+) -> GeometryResult<Option<NodeId>> {
+    if !session
+        .type_name(id)?
+        .eq_ignore_ascii_case("IFCPOLYGONALBOUNDEDHALFSPACE")
+    {
+        return Ok(None);
+    }
+    session.enter(id, KIND)?;
+    let result = prism_clip(session, id, frame, subject);
+    session.exit(id);
+    result
+}
+
+fn prism_clip(
+    session: &mut LoweringSession<'_>,
+    id: EntityId,
+    frame: Transform,
+    subject: NodeId,
+) -> GeometryResult<Option<NodeId>> {
+    let Polygonal {
+        type_name,
+        half_space,
+        placed,
+        boundary,
+    } = read_polygonal(session, id, frame)?;
+    // TODO(#515): once Axiolid's BoundedHalfSpace takes a prism along its
+    // placement's Z with the full frame (axiolid/kernel#321, #322), emit
+    // that node here for every orientation and boundary, and drop this
+    // chain of half spaces.
+    match prism_orientation(&placed, half_space.boundary.normal) {
+        PrismOrientation::Along | PrismOrientation::Against => return Ok(None),
+        PrismOrientation::Oblique | PrismOrientation::Distorted => {}
+    }
+    let points = match boundary::read_boundary(session, id, boundary)? {
+        boundary::Boundary::Polygon {
+            points,
+            closed: true,
+        } => points,
+        boundary::Boundary::Polygon { closed: false, .. } => {
+            return Err(session.degenerate(
+                boundary,
+                "IFCPOLYLINE",
+                "a polygonal half-space boundary must close",
+            ))
+        }
+        boundary::Boundary::Contour(_) => {
+            return Err(session.unsupported(id, &type_name, OBLIQUE_ARC))
+        }
+    };
+    let walls = prism_walls(&points, &placed)
+        .map_err(|refusal| session.unsupported(id, &type_name, refusal))?;
+
+    let mut cut = subject;
+    for tool in std::iter::once(half_space).chain(walls) {
+        let tool = session.node_for(id, GeometryNode::HalfSpace(tool))?;
+        cut = session.node_for(
+            id,
+            GeometryNode::SolidOperation(SolidOperation::Boolean {
+                left: cut,
+                right: tool,
+                operator: BooleanOperator::Intersection,
+            }),
+        )?;
+    }
+    Ok(Some(cut))
+}
+
+/// Refusal for an oblique or rescaled prism around a circular arc.
+const OBLIQUE_ARC: &str = "a boundary with a circular arc whose prism is oblique to the base \
+                           plane or rescaled: an arc's prism wall is a cylinder, not a half \
+                           space, and the neutral bounded half-space sweeps along the normal";
+
+/// Refusal for an oblique or rescaled prism around a non-convex polygon.
+const NON_CONVEX: &str = "a non-convex boundary whose prism is oblique to the base plane or \
+                          rescaled: only a convex prism is an intersection of half spaces, and \
+                          the neutral bounded half-space sweeps along the normal";
+
+/// The half spaces whose intersection is the infinite prism of the convex
+/// polygon `points` (in `Position`'s XY plane) along `Position`'s Z, placed
+/// by `placed`; refused when the polygon is not convex.
+///
+/// Each wall is built in `Position`'s own frame, where it is exact: the edge
+/// line in the XY plane, its in-plane normal toward the polygon, and Z in
+/// the plane. It is then placed as any IFC plane is (`plane_of`): a point
+/// through the transform, the normal as a covector, so a scaled, sheared or
+/// reflected `Position` maps the prism and its sides alike.
+///
+/// Convexity is decided on the authored vertices: every vertex must lie on
+/// the inner side of every edge, or on it within the rounding of the
+/// orientation product. That also refuses a polygon that winds twice (a
+/// star), whose edge half-planes enclose less than it does.
+fn prism_walls(points: &[Point2], placed: &Transform) -> Result<Vec<HalfSpace>, &'static str> {
+    // A repeated vertex adds no edge.
+    let mut vertices: Vec<Point2> = Vec::with_capacity(points.len());
+    for &point in points {
+        if vertices.last() != Some(&point) {
+            vertices.push(point);
+        }
+    }
+    while vertices.len() > 1 && vertices.first() == vertices.last() {
+        vertices.pop();
+    }
+    if vertices.len() < 3 {
+        return Err(NON_CONVEX);
+    }
+    let n = vertices.len();
+    let edges = || (0..n).map(|i| (vertices[i], vertices[(i + 1) % n]));
+    // Twice the signed area; its sign says which side of each edge is inside.
+    let area: f64 = edges().map(|(p, q)| p.perp_dot(q)).sum();
+    let inside = if area > 0.0 {
+        1.0
+    } else if area < 0.0 {
+        -1.0
+    } else {
+        return Err(NON_CONVEX);
+    };
+    let mut walls = Vec::with_capacity(n);
+    for (p, q) in edges() {
+        let edge = q - p;
+        for &v in &vertices {
+            let offset = v - p;
+            let turn = inside * edge.perp_dot(offset);
+            let rounding = ORIENTATION_ROUNDING * edge.length() * offset.length();
+            if turn < -rounding {
+                return Err(NON_CONVEX);
+            }
+        }
+        // The left normal of a counter-clockwise polygon points inside.
+        let normal = [-edge.y * inside, edge.x * inside, 0.0];
+        let origin = placed.apply([p.x, p.y, 0.0]);
+        let normal = placed.apply_unit_normal(normal).ok_or(DISTORTED)?;
+        walls.push(HalfSpace {
+            boundary: Plane3 {
+                origin: Point3::from_array(origin),
+                normal: Vec3::from_array(normal),
+            },
+            // The kernel's `true` keeps the normal side: the polygon's.
+            agreement: true,
+        });
+    }
+    Ok(walls)
+}
+
+/// The relative rounding of a 2D orientation product `a x b`: its sign is
+/// certain where it exceeds this times `|a| |b|`. A few ulps, with room
+/// for the subtractions that formed `a` and `b`.
+const ORIENTATION_ROUNDING: f64 = 16.0 * f64::EPSILON;
 
 /// How a bounded half-space's placed `Position` relates to its plane normal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -358,19 +358,33 @@ pub const PARTIAL: &[Variant] = &[
     Variant {
         family: "IFCPOLYGONALBOUNDEDHALFSPACE",
         variant: "Position's Z axis is oblique to the base plane normal (a \
-                  sloped plane over a vertical prism)",
-        support: Support::Refused,
-        rationale: "kernel: the IFC prism runs along Position's Z; the neutral \
-                    BoundedHalfSpace sweeps its boundary along the plane \
-                    normal, so it holds a different solid (#515)",
+                  sloped plane over a vertical prism) or its frame is scaled \
+                  or sheared, the boundary is a convex polygon, and the half \
+                  space is the second operand of a difference or an \
+                  intersection",
+        support: Support::Admitted,
+        rationale: "a convex prism is the intersection of one half space per \
+                    edge, through the edge and along Position's Z, so the \
+                    subject's intersection with the tool is a chain of \
+                    intersections with unbounded half spaces and a difference \
+                    is the subject minus that chain: identities of sets, \
+                    nothing computed. The mesh compiler builds it; the exact \
+                    compiler takes no boolean as a difference's tool yet, so \
+                    the mesh's deviation bound is unbounded by name (#515)",
     },
     Variant {
         family: "IFCPOLYGONALBOUNDEDHALFSPACE",
-        variant: "Position's frame is scaled or sheared in the plane",
+        variant: "Position's Z axis is oblique to the base plane normal or \
+                  its frame is scaled or sheared, and the boundary is not \
+                  convex or has an arc, or the half space is a union's \
+                  operand or a first operand",
         support: Support::Refused,
-        rationale: "kernel: the neutral BoundedHalfSpace reads only the \
-                    direction of the placement's X axis, so the boundary \
-                    would keep its authored size (#515)",
+        rationale: "kernel: a non-convex prism is a union and an arc's wall a \
+                    cylinder, neither an intersection of half spaces, and a \
+                    union with the tool is unbounded; the neutral \
+                    BoundedHalfSpace sweeps its boundary along the plane \
+                    normal and reads only the direction of Position's X \
+                    (#515, axiolid/kernel#321)",
     },
     Variant {
         family: "IFCSURFACECURVE",
