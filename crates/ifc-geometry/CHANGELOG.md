@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-10-18
+
 ### Changed (#506, #509: `axiolid-mesh-compile` 0.3.28)
 
 Semver: minor. `GeometryError::PolylineUnsupported` and
@@ -2299,7 +2301,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.28.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.29.0...HEAD
+[0.29.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.29.0
 [0.28.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.28.0
 [0.27.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.27.2
 [0.27.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.27.1

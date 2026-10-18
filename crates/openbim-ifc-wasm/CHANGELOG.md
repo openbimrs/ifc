@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-10-18
+
 ### Changed (#506, #509)
 
 - `productCurves` returns polylines for trimmed, composite, offset and intrinsic
@@ -510,7 +512,8 @@ Published to npm by hand, before the release workflow existed.
 - `scripts/build-node-pkg.sh` builds a Node package with the pinned
   `wasm-bindgen` CLI and runs the Node smoke and corpus suites.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.12.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.12.1...HEAD
+[0.12.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.12.1
 [0.12.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.12.0
 [0.11.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.11.0
 [0.10.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.10.0

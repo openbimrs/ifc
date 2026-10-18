@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-10-18
+
 ### Changed (#506, #509)
 
 - Requires `ifc-geometry` with #506 and #509 (`axiolid-mesh-compile`
@@ -1046,7 +1048,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.35.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.36.0...HEAD
+[0.36.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.36.0
 [0.35.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.35.0
 [0.34.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.34.0
 [0.33.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.33.0
