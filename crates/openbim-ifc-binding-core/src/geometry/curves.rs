@@ -8,9 +8,11 @@
 //! matrix. Each [`ProductPolyline`] names its slice (`first_vertex`,
 //! `vertex_count`), whether it is closed (its last vertex repeats its
 //! first), and the certified bound on how far the exact curve lies from it.
-//! A product the backend refuses carries a typed [`GeometryRefusal`]; a
-//! trimmed, composite, offset or intrinsic curve is `unsupported`, naming
-//! the curve, until the reference compiler polylines it (#506).
+//! Trimmed, composite, offset and intrinsic curves compile (#506). A
+//! product the backend refuses carries a typed [`GeometryRefusal`]: a
+//! curve the reference compiler has no certified polyline for (an
+//! implicit curve, an offset of an offset) is `unsupported`, naming the
+//! product, its message the compiler's reason.
 
 use super::GeometryRefusal;
 use crate::record::{Field, Record, ToRecord};

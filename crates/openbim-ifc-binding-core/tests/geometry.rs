@@ -321,10 +321,12 @@ mod mesh {
         );
     }
 
-    /// A trimmed axis is refused by name until the reference compiler
-    /// polylines it (#506).
+    /// A trimmed axis is one certified polyline (#506); an offset of an
+    /// offset, which the reference compiler has no certified polyline for,
+    /// is an `unsupported` refusal naming the product, its message the
+    /// kernel's reason.
     #[test]
-    fn a_trimmed_axis_is_an_unsupported_refusal_naming_the_curve() {
+    fn a_trimmed_axis_is_a_polyline_and_an_offset_of_an_offset_is_refused() {
         let model = IfcModel::parse(
             b"ISO-10303-21;
 HEADER;FILE_DESCRIPTION((''),'2;1');FILE_NAME('','',(''),(''),'','','');FILE_SCHEMA(('IFC4'));ENDSEC;
@@ -340,23 +342,42 @@ DATA;
 #24=IFCCIRCLE(#25,1.);
 #25=IFCAXIS2PLACEMENT2D(#26,$);
 #26=IFCCARTESIANPOINT((0.,0.));
+#30=IFCWALL('0000000000000000000030',$,'W',$,$,#4,#31,$,$);
+#31=IFCPRODUCTDEFINITIONSHAPE($,$,(#32));
+#32=IFCSHAPEREPRESENTATION(#1,'Axis','Curve2D',(#33));
+#33=IFCOFFSETCURVE2D(#34,0.1,.F.);
+#34=IFCOFFSETCURVE2D(#23,0.1,.F.);
 ENDSEC;
 END-ISO-10303-21;
 ",
         )
         .unwrap();
         let curves = model.product_curves(None, "Axis").unwrap();
-        let refusal = curves[0].refusal.as_ref().expect("refused");
+        let arc = &curves[0];
+        assert_eq!(arc.id, 20);
+        assert!(arc.refusal.is_none(), "{:?}", arc.refusal);
+        assert_eq!(arc.polylines.len(), 1);
+        let line = &arc.polylines[0];
+        assert_eq!((line.curve, line.closed), (Some(23), false));
+        assert!(line.chord_bound > 0.0 && line.chord_bound <= line.chord_requested);
+        for vertex in arc.positions.chunks_exact(3) {
+            let radius = f64::from(vertex[0]).hypot(f64::from(vertex[1]));
+            assert!((radius - 1.0).abs() < 1e-6, "{vertex:?}");
+        }
+
+        let refused = &curves[1];
+        assert_eq!(refused.id, 30);
+        let refusal = refused.refusal.as_ref().expect("refused");
         assert_eq!(
             (refusal.code.as_str(), refusal.entity),
-            ("unsupported", Some(23))
+            ("unsupported", Some(30))
         );
         assert!(
-            refusal.message.contains("a trimmed curve"),
+            refusal.message.contains("an offset of an offset curve"),
             "{}",
             refusal.message
         );
-        assert!(curves[0].positions.is_empty() && curves[0].polylines.is_empty());
+        assert!(refused.positions.is_empty() && refused.polylines.is_empty());
     }
 
     #[test]

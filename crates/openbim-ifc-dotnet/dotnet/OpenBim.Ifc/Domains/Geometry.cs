@@ -126,7 +126,7 @@ public sealed record ProductPolyline(
 /// <param name="Transform">The world placement, a column-major 4x4 in metres: a vertex's world position is this matrix applied to it. Null when refused.</param>
 /// <param name="VertexCount">Vertices of every polyline together: a third of the positions.</param>
 /// <param name="Polylines">The curves in authored order. Empty with no refusal: a product without the representation, or with no curves.</param>
-/// <param name="Refusal">Why there are no polylines: a trimmed, composite, offset or intrinsic curve is <c>unsupported</c> until the reference compiler polylines it (#506).</param>
+/// <param name="Refusal">Why there are no polylines: a curve the reference compiler has no certified polyline for (an implicit curve, an offset of an offset) is <c>unsupported</c>, naming the product; trimmed, composite, offset and intrinsic curves compile (#506).</param>
 public sealed record ProductCurves(
     ulong Id,
     string? GlobalId,

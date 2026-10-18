@@ -20,14 +20,21 @@
 //!   polyline comes back alone;
 //! - a slab whose `Surface` is a lone `IfcFaceSurface` on a plane, a face
 //!   no closed shell gathers: 2 m2, a surface;
-//! - an `Axis` that is an `IfcTrimmedCurve` and a `FootPrint` that is an
-//!   `IfcCompositeCurve`, refused by family name (#506).
+//! - walls whose `Axis` is an `IfcTrimmedCurve` of the unit circle about
+//!   (2, 0), trimmed at the points (3, 0) and (2, 1): the quarter arc with
+//!   `SenseAgreement = .T.`, the other three quarters with `.F.`; an
+//!   `IfcOffsetCurve2D` 0.1 to the left of the quarter arc, an arc of radius
+//!   0.9; and an offset of that offset, which the reference compiler
+//!   refuses by name (#506);
+//! - a wall whose `FootPrint` is a closed `IfcCompositeCurve`: two
+//!   polylines (0, 0)-(1, 0)-(1, 1) and an `IfcTrimmedCurve` arc back to
+//!   (0, 0) about (0.5, 0.5) through (0, 1), enclosing `1/2 + pi/4` m2.
 #![cfg(feature = "compile-reference-backend")]
 
 use axiolid_core::Tolerance;
 use ifc_geometry::compile::{
     compile_product_mesh_for, compile_product_mesh_reported, compile_product_polylines,
-    CompiledPolyline, MeshClosure, UnpolylinedCurve,
+    CompiledPolyline, MeshClosure,
 };
 use ifc_geometry::error::GeometryError;
 use ifc_geometry::lower::RepresentationPurpose;
@@ -41,11 +48,16 @@ const ANNOTATION: EntityId = EntityId(70);
 const SLAB: EntityId = EntityId(90);
 const FACE_SLAB: EntityId = EntityId(120);
 const TRIMMED_WALL: EntityId = EntityId(140);
+const TRIMMED_BACK_WALL: EntityId = EntityId(150);
 const COMPOSITE_WALL: EntityId = EntityId(160);
+const OFFSET_WALL: EntityId = EntityId(180);
+const OFFSET_OFFSET_WALL: EntityId = EntityId(190);
 
 const AXIS_POLYLINE: EntityId = EntityId(16);
 const TRIMMED: EntityId = EntityId(145);
+const TRIMMED_BACK: EntityId = EntityId(155);
 const COMPOSITE: EntityId = EntityId(165);
+const OFFSET: EntityId = EntityId(185);
 
 const SCHEMAS: [&str; 3] = ["IFC2X3", "IFC4", "IFC4X3"];
 
@@ -137,15 +149,34 @@ fn fixture(schema: &str) -> Model {
 #141=IFCLOCALPLACEMENT($,#4);
 #142=IFCPRODUCTDEFINITIONSHAPE($,$,(#143));
 #143=IFCSHAPEREPRESENTATION(#2,'Axis','Curve2D',(#145));
-#145=IFCTRIMMEDCURVE(#146,(IFCPARAMETERVALUE(0.)),(IFCPARAMETERVALUE(90.)),.T.,.PARAMETER.);
+#145=IFCTRIMMEDCURVE(#146,(#147),(#148),.T.,.CARTESIAN.);
 #146=IFCCIRCLE(#23,1.);
+#147=IFCCARTESIANPOINT((3.,0.));
+#148=IFCCARTESIANPOINT((2.,1.));
+#151=IFCLOCALPLACEMENT($,#4);
+#152=IFCPRODUCTDEFINITIONSHAPE($,$,(#153));
+#153=IFCSHAPEREPRESENTATION(#2,'Axis','Curve2D',(#155));
+#155=IFCTRIMMEDCURVE(#146,(#147),(#148),.F.,.CARTESIAN.);
 #161=IFCLOCALPLACEMENT($,#4);
 #162=IFCPRODUCTDEFINITIONSHAPE($,$,(#163));
 #163=IFCSHAPEREPRESENTATION(#2,'FootPrint','Curve2D',(#165));
-#165=IFCCOMPOSITECURVE((#166,#167),.F.);
+#165=IFCCOMPOSITECURVE((#166,#167,#169),.F.);
 #166=IFCCOMPOSITECURVESEGMENT(.CONTINUOUS.,.T.,#75);
 #167=IFCCOMPOSITECURVESEGMENT(.CONTINUOUS.,.T.,#168);
 #168=IFCPOLYLINE((#77,#78));
+#169=IFCCOMPOSITECURVESEGMENT(.CONTINUOUS.,.T.,#170);
+#170=IFCTRIMMEDCURVE(#171,(#78),(#9),.T.,.CARTESIAN.);
+#171=IFCCIRCLE(#172,0.7071067811865476);
+#172=IFCAXIS2PLACEMENT2D(#173,$);
+#173=IFCCARTESIANPOINT((0.5,0.5));
+#181=IFCLOCALPLACEMENT($,#4);
+#182=IFCPRODUCTDEFINITIONSHAPE($,$,(#183));
+#183=IFCSHAPEREPRESENTATION(#2,'Axis','Curve2D',(#185));
+#185=IFCOFFSETCURVE2D(#145,0.1,.F.);
+#191=IFCLOCALPLACEMENT($,#4);
+#192=IFCPRODUCTDEFINITIONSHAPE($,$,(#193));
+#193=IFCSHAPEREPRESENTATION(#2,'Axis','Curve2D',(#195));
+#195=IFCOFFSETCURVE2D(#185,0.1,.F.);
 ",
     );
     data.push_str(&element(schema, WALL, "IFCWALL", 11, 12));
@@ -155,7 +186,10 @@ fn fixture(schema: &str) -> Model {
     data.push_str(&element(schema, SLAB, "IFCSLAB", 91, 92));
     data.push_str(&element(schema, FACE_SLAB, "IFCSLAB", 121, 122));
     data.push_str(&element(schema, TRIMMED_WALL, "IFCWALL", 141, 142));
+    data.push_str(&element(schema, TRIMMED_BACK_WALL, "IFCWALL", 151, 152));
     data.push_str(&element(schema, COMPOSITE_WALL, "IFCWALL", 161, 162));
+    data.push_str(&element(schema, OFFSET_WALL, "IFCWALL", 181, 182));
+    data.push_str(&element(schema, OFFSET_OFFSET_WALL, "IFCWALL", 191, 192));
     let text = format!(
         "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n\
          FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('{schema}'));\n\
@@ -388,53 +422,248 @@ fn a_lone_face_surface_is_a_surface_mesh() {
     }
 }
 
-/// Pins #506: until axiolid/kernel#317 these are refused by family name,
-/// never approximated in the bridge.
+/// The polyline of `product`'s single `Axis` or `FootPrint` curve.
+fn single(model: &Model, product: EntityId, purpose: RepresentationPurpose) -> CompiledPolyline {
+    let mut curves = polylines(model, product, purpose);
+    assert_eq!(curves.len(), 1, "{product:?}");
+    curves.remove(0)
+}
+
+/// Every vertex lies on the circle of `radius` about `centre` (z = 0), and
+/// every chord's sagitta, the exact arc's furthest point from it, is within
+/// the certified bound.
+fn assert_on_arc(what: &str, got: &[[f64; 3]], bound: f64, centre: [f64; 2], radius: f64) {
+    for p in got {
+        let r = (p[0] - centre[0]).hypot(p[1] - centre[1]);
+        assert!(
+            (r - radius).abs() < 1e-9 && p[2] == 0.0,
+            "{what}: {p:?} at {r}"
+        );
+    }
+    for pair in got.windows(2) {
+        let half = 0.5 * (pair[1][0] - pair[0][0]).hypot(pair[1][1] - pair[0][1]);
+        let sagitta = radius - (radius * radius - half * half).sqrt();
+        assert!(
+            sagitta <= bound + 1e-12,
+            "{what}: sagitta {sagitta} > {bound}"
+        );
+    }
+}
+
+/// The angle of `p` about `centre`, in `[0, 2 pi)`.
+fn angle(p: [f64; 3], centre: [f64; 2]) -> f64 {
+    (p[1] - centre[1])
+        .atan2(p[0] - centre[0])
+        .rem_euclid(2.0 * std::f64::consts::PI)
+}
+
+/// A trimmed-circle `Axis` is the arc between its trim points in its sense,
+/// certified (#506, axiolid/kernel#317): the quarter from (3, 0) to (2, 1)
+/// with `SenseAgreement = .T.`, and the other three quarters, clockwise
+/// through (2, -1), with `.F.`.
 #[test]
-fn trimmed_and_composite_curves_are_refused_by_name() {
+fn a_trimmed_circle_axis_is_its_arc_in_its_sense() {
+    use std::f64::consts::FRAC_PI_2;
+    let centre = [2.0, 0.0];
     for schema in SCHEMAS {
         let model = fixture(schema);
-        let trimmed = compile_product_polylines(
+        for (product, curve, sense) in [
+            (TRIMMED_WALL, TRIMMED, true),
+            (TRIMMED_BACK_WALL, TRIMMED_BACK, false),
+        ] {
+            let what = format!("{schema}, sense {sense}");
+            let arc = single(&model, product, RepresentationPurpose::Axis);
+            assert_eq!(arc.curve, Some(curve), "{what}");
+            assert!(!arc.closed, "{what}");
+            assert!(arc.deviation.bound > 0.0, "{what}: a chorded arc");
+            assert!(arc.deviation.meets_requested(), "{what}: {arc:?}");
+            let got = points(&arc);
+            assert_on_arc(&what, &got, arc.deviation.bound, centre, 1.0);
+            assert_near(got[0], [3.0, 0.0, 0.0], &what);
+            assert_near(got[got.len() - 1], [2.0, 1.0, 0.0], &what);
+            // Strictly between the ends, every vertex is on the arc's side.
+            for p in &got[1..got.len() - 1] {
+                let a = angle(*p, centre);
+                let inside = a > 0.0 && a < FRAC_PI_2;
+                assert_eq!(inside, sense, "{what}: {p:?} at {a}");
+            }
+            if !sense {
+                assert!(got.iter().any(|p| p[1] < -0.99), "{what}: through (2, -1)");
+            }
+        }
+    }
+}
+
+/// An `IfcOffsetCurve2D` 0.1 to the left of the counter-clockwise quarter
+/// arc is the concentric arc of radius 0.9, from (2.9, 0) to (2, 0.9),
+/// certified (#506).
+#[test]
+fn an_offset_of_a_trimmed_circle_is_the_concentric_arc() {
+    let centre = [2.0, 0.0];
+    for schema in SCHEMAS {
+        let model = fixture(schema);
+        let arc = single(&model, OFFSET_WALL, RepresentationPurpose::Axis);
+        assert_eq!(arc.curve, Some(OFFSET), "{schema}");
+        assert!(arc.deviation.meets_requested(), "{schema}: {arc:?}");
+        let got = points(&arc);
+        assert_on_arc(schema, &got, arc.deviation.bound, centre, 0.9);
+        assert_near(got[0], [2.9, 0.0, 0.0], schema);
+        assert_near(got[got.len() - 1], [2.0, 0.9, 0.0], schema);
+    }
+}
+
+/// A closed composite `FootPrint` of two polylines and a trimmed arc is
+/// one closed polyline: the polylines' vertices as authored, each joint
+/// one vertex, then the arc chorded within the certified bound (#506).
+/// Its shoelace area is under the exact `1/2 + pi/4` m2, by no more than
+/// the arc's length times the bound.
+#[test]
+fn a_composite_footprint_is_one_closed_polyline() {
+    use std::f64::consts::PI;
+    let (centre, radius) = ([0.5, 0.5], 0.5_f64.sqrt());
+    for schema in SCHEMAS {
+        let model = fixture(schema);
+        let footprint = single(&model, COMPOSITE_WALL, RepresentationPurpose::FootPrint);
+        assert_eq!(footprint.curve, Some(COMPOSITE), "{schema}");
+        assert!(footprint.closed, "{schema}");
+        let bound = footprint.deviation.bound;
+        assert!(
+            bound > 0.0 && footprint.deviation.meets_requested(),
+            "{schema}: {footprint:?}"
+        );
+        let got = points(&footprint);
+        assert_near(got[0], [0.0, 0.0, 0.0], schema);
+        assert_near(got[1], [1.0, 0.0, 0.0], schema);
+        assert_near(got[2], [1.0, 1.0, 0.0], schema);
+        assert_eq!(got.first(), got.last(), "{schema}: ends where it starts");
+        // The arc's vertices, joints included, lie on its circle through
+        // (0, 1), the upper-left side.
+        assert_on_arc(schema, &got[2..], bound, centre, radius);
+        assert!(
+            got[3..got.len() - 1].iter().all(|p| p[1] > p[0]),
+            "{schema}"
+        );
+        let shoelace = 0.5
+            * got
+                .windows(2)
+                .map(|w| w[0][0] * w[1][1] - w[1][0] * w[0][1])
+                .sum::<f64>();
+        let exact = 0.5 + PI / 4.0;
+        assert!(
+            shoelace <= exact && exact - shoelace <= PI * radius * bound,
+            "{schema}: area {shoelace}, exact {exact}, bound {bound}"
+        );
+    }
+}
+
+/// The IFC4X3 alignment fixture
+/// (`synthetic-surfaces/synthetic_ifc4x3_alignment_curves.ifc`): a
+/// `FootPrint` composite of a 100 m line, a 60 m clothoid and a 50 m arc
+/// of radius 200, and a gallery of six 60 m transition spirals as `Axis`
+/// curves. Each is one certified polyline (#506): the clothoid and the
+/// spirals are intrinsic curves, bounded by their curvature laws, their
+/// vertices certified positions (axiolid/kernel#317). The joints are the
+/// file's own segment placements, which it states to about 1e-14 m.
+#[test]
+fn ifc4x3_intrinsic_segments_are_certified_polylines() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test/fixtures/synthetic-surfaces/synthetic_ifc4x3_alignment_curves.ifc");
+    let model = StepCodec.read_path(&path).expect("fixture parses");
+    let length = |got: &[[f64; 3]]| -> f64 {
+        got.windows(2)
+            .map(|w| ((w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1])).hypot(w[1][2] - w[0][2]))
+            .sum()
+    };
+    let near =
+        |a: [f64; 3], b: [f64; 3], slack: f64| a.iter().zip(b).all(|(x, y)| (x - y).abs() <= slack);
+
+    let footprint = single(&model, EntityId(137), RepresentationPurpose::FootPrint);
+    assert_eq!(footprint.curve, Some(EntityId(35)));
+    assert!(!footprint.closed);
+    let bound = footprint.deviation.bound;
+    assert!(
+        bound > 0.0 && footprint.deviation.meets_requested(),
+        "{footprint:?}"
+    );
+    let got = points(&footprint);
+    assert_near(got[0], [0.0, 0.0, 0.0], "start");
+    // The line ends, and the clothoid starts, at one shared vertex.
+    let line_end = got
+        .iter()
+        .position(|p| near(*p, [100.0, 0.0, 0.0], 1e-9))
+        .expect("the line's end is a vertex");
+    assert!(got[..=line_end].iter().all(|p| p[1] == 0.0 && p[2] == 0.0));
+    let arc_start = [159.865_140_552_005_58, 2.995_182_021_777_423_7, 0.0];
+    let joint = got
+        .iter()
+        .position(|p| near(*p, arc_start, bound))
+        .expect("the clothoid ends where the arc's placement starts");
+    let end = got[got.len() - 1];
+    assert!(
+        near(
+            end,
+            [207.861_182_519_015_84, 16.537_198_808_408_853, 0.0],
+            1e-6
+        ),
+        "{end:?}"
+    );
+    // The arc's vertices lie on its circle: radius 200, to the left of its
+    // start tangent.
+    let tangent = [0.988_771_077_936_042_2, 0.149_438_132_473_599_22];
+    let centre = [
+        arc_start[0] - 200.0 * tangent[1],
+        arc_start[1] + 200.0 * tangent[0],
+    ];
+    for p in &got[joint + 1..] {
+        let r = (p[0] - centre[0]).hypot(p[1] - centre[1]);
+        assert!((r - 200.0).abs() < 1e-6, "{p:?} at {r}");
+    }
+    // Chords are no longer than the 210 m they span.
+    let chorded = length(&got);
+    assert!(
+        chorded <= 210.0 + 1e-9 && chorded > 210.0 - 1e-2,
+        "{chorded}"
+    );
+
+    let spirals = polylines(&model, EntityId(143), RepresentationPurpose::Axis);
+    assert_eq!(spirals.len(), 6);
+    for spiral in &spirals {
+        assert!(spiral.deviation.meets_requested(), "{spiral:?}");
+        let got = points(spiral);
+        assert_near(got[0], [0.0, 0.0, 0.0], "a spiral's start");
+        let chorded = length(&got);
+        assert!(
+            chorded <= 60.0 + 1e-9 && chorded > 60.0 - 1e-2,
+            "{spiral:?}: {chorded}"
+        );
+    }
+}
+
+/// The kernel still refuses by name the forms it has no certified polyline
+/// for, here an offset of an offset (axiolid/kernel#317). The refusal is
+/// the backend's, with its reason; nothing is approximated in its place.
+#[test]
+fn an_offset_of_an_offset_is_refused_by_name() {
+    for schema in SCHEMAS {
+        let model = fixture(schema);
+        let refused = compile_product_polylines(
             &model,
-            TRIMMED_WALL,
+            OFFSET_OFFSET_WALL,
             RepresentationPurpose::Axis,
             Tolerance::MILLIMETRE,
         )
-        .expect_err("a trimmed curve has no polyline yet");
-        assert!(
-            matches!(
-                &trimmed,
-                GeometryError::PolylineUnsupported {
-                    product: TRIMMED_WALL,
-                    curve: TRIMMED,
-                    family: UnpolylinedCurve::Trimmed,
-                    ..
-                }
-            ),
-            "{schema}: {trimmed:?}"
-        );
-        assert!(trimmed.is_unsupported());
-        assert_eq!(trimmed.entity(), Some(TRIMMED));
-        assert!(trimmed.to_string().contains("a trimmed curve"), "{trimmed}");
-
-        let composite = compile_product_polylines(
-            &model,
-            COMPOSITE_WALL,
-            RepresentationPurpose::FootPrint,
-            Tolerance::MILLIMETRE,
-        )
-        .expect_err("a composite curve has no polyline yet");
-        assert!(
-            matches!(
-                &composite,
-                GeometryError::PolylineUnsupported {
-                    curve: COMPOSITE,
-                    family: UnpolylinedCurve::Composite,
-                    ..
-                }
-            ),
-            "{schema}: {composite:?}"
-        );
+        .expect_err("an offset of an offset has no polyline");
+        match &refused {
+            GeometryError::CompilationRefused { entity, reason } => {
+                assert_eq!(*entity, OFFSET_OFFSET_WALL, "{schema}");
+                assert!(
+                    reason.contains("UnsupportedInput")
+                        && reason.contains("an offset of an offset curve"),
+                    "{schema}: {reason}"
+                );
+            }
+            other => panic!("{schema}: expected CompilationRefused, got {other:?}"),
+        }
     }
 }
 

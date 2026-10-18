@@ -55,7 +55,7 @@ mod window;
 pub use output::{compile_product_mesh_for, compile_product_polylines};
 pub use output::{
     compile_product_mesh_for_with, compile_product_polylines_with, ChordDeviation,
-    CompiledPolyline, MeshClosure, Point3, PolylineCompiler, UnpolylinedCurve,
+    CompiledPolyline, MeshClosure, Point3, PolylineCompiler,
 };
 pub use window::SeamWindowRefusal;
 

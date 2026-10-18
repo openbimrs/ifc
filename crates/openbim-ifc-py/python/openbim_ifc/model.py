@@ -319,8 +319,10 @@ class IfcModel(ModelAccess):
         or ``"Axis"``, ``"FootPrint"``, ``"Annotation"``, ``"Body"`` or
         ``"Surface"``; another name raises ``invalid-value``. A product
         whose curves cannot be compiled carries a typed ``refusal``: a
-        trimmed, composite, offset or intrinsic curve is ``unsupported``
-        until the reference compiler polylines it (#506). Needs a wheel
+        curve the reference compiler has no certified polyline for (an
+        implicit curve, an offset of an offset) is ``unsupported``;
+        trimmed, composite, offset and intrinsic curves compile (#506).
+        Needs a wheel
         built with the ``mesh`` feature."""
         wire = self._native.product_curves(None if ids is None else list(ids), representation)
         return [geometry._curves(row) for row in wire]

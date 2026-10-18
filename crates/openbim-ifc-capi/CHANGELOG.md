@@ -8,6 +8,18 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#506, #509)
+
+- `openbim_ifc_v0_1_model_product_curves` returns polylines for trimmed, composite, offset and intrinsic
+  curves (an `IfcTrimmedCurve` axis, an `IfcCompositeCurve` footprint, an
+  IFC4X3 clothoid), which were `unsupported` refusals. A curve the
+  reference compiler has no certified polyline for (an implicit curve, an
+  offset of an offset) is still `unsupported`, its refusal now naming the
+  product rather than the curve. Advanced B-reps whose edges cover part of
+  their line, circle or ellipse mesh (#509). No API change.
+
+Semver: patch.
+
 ## [0.1.14] - 2026-10-16
 
 ### Changed (#515, wire format 1.4)

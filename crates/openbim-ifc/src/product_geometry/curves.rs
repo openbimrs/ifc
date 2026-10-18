@@ -8,9 +8,11 @@
 //! world placement, mapped back in `f64` first -- so a host draws both with
 //! one matrix. The tolerance is [`Tolerance::MILLIMETRE`], the chord budget.
 //!
-//! Trimmed, composite, offset and intrinsic curves are refused by name
-//! ([`GeometryError::PolylineUnsupported`](ifc_geometry::GeometryError::PolylineUnsupported))
-//! until the reference compiler polylines them (#506).
+//! Trimmed, composite, offset and intrinsic curves compile too (#506). A
+//! curve the backend has no certified polyline for is refused with its
+//! reason
+//! ([`GeometryError::CompilationRefused`](ifc_geometry::GeometryError::CompilationRefused)),
+//! such as an implicit curve or an offset of an offset.
 
 #![cfg(feature = "mesh")]
 

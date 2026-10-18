@@ -335,7 +335,7 @@ fn refusal(error: &ifc::geometry::GeometryError) -> GeometryRefusal {
         }
         E::Unsupported { .. } => "unsupported",
         #[cfg(feature = "mesh")]
-        E::CompilationRefused { .. } | E::PolylineUnsupported { .. } => "unsupported",
+        E::CompilationRefused { .. } => "unsupported",
         // A net refusal is as typed as its cause; gross meshes never raise it.
         E::OpeningNotSubtracted { cause, .. } => return refusal(cause),
         E::MissingAttribute { .. }

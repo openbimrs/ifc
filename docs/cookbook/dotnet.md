@@ -274,9 +274,11 @@ foreach (var product in model.ProductCurves(null, "Axis"))
 
 <!-- /SNIPPET -->
 
-A trimmed, composite, offset or intrinsic curve is refused by name, code
-`unsupported`, until the reference compiler polylines it
-([#506](https://github.com/openbimrs/ifc/issues/506)).
+Trimmed, composite, offset and intrinsic curves compile
+([#506](https://github.com/openbimrs/ifc/issues/506)). A curve the
+reference compiler has no certified polyline for (an implicit curve, an
+offset of an offset) is refused with code `unsupported`, its message the
+compiler's reason.
 
 The exact representation instead of triangles
 ([#367](https://github.com/openbimrs/ifc/issues/367)): each Body as

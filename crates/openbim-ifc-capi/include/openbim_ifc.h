@@ -1496,9 +1496,11 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_parse_with_options(const uint8_t *data,
  * millimetre.
  *
  * A product whose curves cannot be compiled is a record with a refusal,
- * not a failed call: a trimmed, composite, offset or intrinsic curve is
- * `unsupported`, naming the curve, until the reference compiler
- * polylines it (#506). `InvalidValue` for another representation name,
+ * not a failed call: a curve the reference compiler has no certified
+ * polyline for (an implicit curve, an offset of an offset) is
+ * `unsupported`, naming the product; trimmed, composite, offset and
+ * intrinsic curves compile (#506). `InvalidValue` for another
+ * representation name,
  * `InvalidArgument` for text that is not UTF-8, `UnsupportedSchema`;
  * `FeatureDisabled` in a library built without the `mesh` feature.
  *
