@@ -12,6 +12,21 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#506, #509)
+
+- Requires `ifc-geometry` with #506 and #509 (`axiolid-mesh-compile`
+  0.3.28). `product_curves` returns certified polylines for trimmed,
+  composite, offset and intrinsic curves; a curve the reference compiler
+  has no certified polyline for is refused as
+  `GeometryError::CompilationRefused` with its reason, naming the product.
+  `product_meshes` compiles advanced B-reps whose edges cover part of
+  their line, circle or ellipse, with either `SameSense`.
+- `geometry::GeometryError::PolylineUnsupported` and
+  `geometry::compile::UnpolylinedCurve`, re-exported from `ifc-geometry`,
+  are gone.
+
+Semver: minor, following the dependency.
+
 ## [0.35.0] - 2026-10-16
 
 ### Changed (#515, #519)

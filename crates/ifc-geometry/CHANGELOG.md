@@ -12,6 +12,55 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#506, #509: `axiolid-mesh-compile` 0.3.28)
+
+Semver: minor. `GeometryError::PolylineUnsupported` and
+`compile::UnpolylinedCurve` are removed.
+
+- Requires, behind `compile-reference-backend`, `axiolid-mesh-compile`
+  0.3.28 (which brings `axiolid-brep-boolean` 0.1.11), and, for the
+  tests, `axiolid-evaluate` 0.3.17.
+- #506: `compile_product_polylines` returns certified polylines for
+  trimmed, composite, offset and intrinsic curves, and for open profiles
+  over them (axiolid/kernel#317): composite joints are shared vertices,
+  intrinsic-curve vertices certified positions. The reference compiler
+  still refuses by name implicit and banked curves, 3D intrinsic curves
+  with torsion, trims of relations or of placed curves, offsets of
+  offsets, of placed curves or of chains, offsets across a corner of
+  their basis, 3D offsets without a reference direction and offsets by
+  stations. Those refusals, like every other, are
+  `GeometryError::CompilationRefused` carrying the kernel's reason (for
+  example "an offset of an offset curve"), naming the product.
+  `PolylineUnsupported` named the top-level curve's family whatever the
+  kernel refused, so it would now misname a refusal inside a composite or
+  invalid data (a composite whose segments do not meet) as unsupported;
+  it is removed with `UnpolylinedCurve`, and the `TODO(#506)` with them.
+- #509: `IfcEdgeCurve` lowering stores an edge whose `SameSense` is `.F.`
+  from `EdgeEnd` to `EdgeStart`, used reversed. The kernel now trims a
+  line, circle or ellipse edge curve without a p-curve at its vertices,
+  taking the edge from `Edge::start` to `Edge::end` in the curve's own
+  sense (axiolid/kernel#319); keeping the file's vertex order with only a
+  reversed use selected the other arc of a closed curve. An `IfcSubedge`
+  of such an edge is stored the same way round. Advanced B-reps whose
+  edges cover part of their curve compile: an `IfcLine` seam with a unit
+  vector, and half-circle rim edges along and against their circles.
+  B-spline and polyline edge curves that do not run vertex to vertex are
+  still refused by the kernel by name (#525, axiolid/kernel#333).
+- The #443 ring deck's frame law along an ellipse's offset is now
+  certified (axiolid/kernel#316); its deviation stays unbounded at the
+  mitre its widening law makes at station 2 (`MITRED_SECTIONS`,
+  axiolid/kernel#335). Its mesh and volume are unchanged.
+- Tests: the unit-vector seam cylinder (IFC4, IFC4X3) compiles, certified;
+  a cylinder with split rims compiles to `pi r^2 h` with its half-circle
+  edges along and against their circles in four combinations (IFC4,
+  IFC4X3; mutation-checked against the old lowering); B-spline and
+  polyline seams past their vertex are refused by name (`TODO(#525)`); the
+  lowering of a false `SameSense` on an edge and a subedge; a trimmed
+  circle axis in both senses, an offset of it, and a closed composite
+  footprint with a trimmed arc (IFC2X3, IFC4, IFC4X3), and an IFC4X3
+  alignment footprint and spiral gallery, all against closed forms; an
+  offset of an offset refused by name.
+
 ## [0.28.0] - 2026-10-16
 
 ### Changed (#515, #519: polygonal bounded half-spaces along `Position`'s Z)

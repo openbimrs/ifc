@@ -308,9 +308,12 @@ mod kernel {
     /// which `axiolid-evaluate` 0.3.15 certifies (axiolid/kernel#307). It
     /// is a closed solid of 2 m2 x 5 m by Pappus, within the deck's surface
     /// area times the 1 mm tolerance. Its deviation from the exact solid is
-    /// not certified: the kernel names the frame law along the ellipse's
-    /// offset, read by quadrature, as having no certified derivative bounds
-    /// (axiolid/kernel#316). Only the compilation is asserted here.
+    /// not certified. Since `axiolid-mesh-compile` 0.3.28 the frame law
+    /// along the ellipse's offset, read by quadrature, is bounded
+    /// (axiolid/kernel#316); what stays unbounded is the cell beside the
+    /// mitre the deck's widening law makes at station 2, a 0.8 degree
+    /// corner on a curved piece (`MITRED_SECTIONS`, axiolid/kernel#335).
+    /// The mesh and its volume are unchanged.
     #[test]
     fn the_ring_deck_compiles_through_the_kernel() {
         let model = bases();
@@ -344,9 +347,17 @@ mod kernel {
             report.unbounded().any(|c| matches!(
                 c.bound,
                 DeviationBound::Unbounded(reason)
-                    if reason.contains("frame law along this basis has no certified derivative bounds")
+                    if reason.contains("a cell beside a mitred seam on a curved piece")
             )),
             "{report:?}"
+        );
+        assert!(
+            !report.unbounded().any(|c| matches!(
+                c.bound,
+                DeviationBound::Unbounded(reason)
+                    if reason.contains("frame law along this basis has no certified derivative bounds")
+            )),
+            "the frame law is certified (axiolid/kernel#316): {report:?}"
         );
     }
 

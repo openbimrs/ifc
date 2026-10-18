@@ -8,6 +8,18 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#506, #509)
+
+- `product_curves` polylines trimmed, composite, offset and intrinsic
+  curves, which were `unsupported` refusals naming the curve. A curve the
+  reference compiler has no certified polyline for (an implicit curve, an
+  offset of an offset) is still `unsupported`, now naming the product,
+  its message the compiler's reason. Advanced B-reps whose edges cover
+  part of their curve mesh (#509). No record or code changes.
+
+Semver: patch (internal crate, not published); fewer refusals for every
+binding.
+
 ### Changed (#515, wire format 1.4)
 
 - `GEOMETRY_FORMAT_VERSION` is `"1.4"`, the newest version a build writes

@@ -252,9 +252,11 @@ impl IfcModel {
     /// closed and its certified chord bound. `representation` is `"Plan"`
     /// by default (the best drawing curves), or `"Axis"`, `"FootPrint"`,
     /// `"Annotation"`, `"Body"`, `"Surface"`; another throws
-    /// `invalid-value`. A trimmed, composite, offset or intrinsic curve is
-    /// an `unsupported` refusal until the reference compiler polylines it
-    /// (#506). Opt-in with the meshes: import `@openbim/ifc/mesh`.
+    /// `invalid-value`. Trimmed, composite, offset and intrinsic curves
+    /// compile (#506); a curve the reference compiler has no certified
+    /// polyline for (an implicit curve, an offset of an offset) is an
+    /// `unsupported` refusal naming the product. Opt-in with the meshes:
+    /// import `@openbim/ifc/mesh`.
     #[wasm_bindgen(js_name = productCurves, unchecked_return_type = "ProductCurves[]")]
     pub fn product_curves_js(
         &self,

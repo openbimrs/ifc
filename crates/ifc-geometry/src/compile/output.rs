@@ -23,18 +23,21 @@
 //!
 //! # Refused by name
 //!
-//! A backend that cannot compile a curve to a polyline refuses it. When the
-//! curve is a trimmed, composite or offset curve, or an intrinsic one, the
-//! refusal is [`GeometryError::PolylineUnsupported`] naming that family:
-//! the reference compiler refuses them until axiolid/kernel#317, tracked
-//! here in #506. Anything else the backend refuses is
-//! [`GeometryError::CompilationRefused`].
+//! A backend that cannot compile a curve to a polyline refuses it, and
+//! the refusal is [`GeometryError::CompilationRefused`] carrying the
+//! backend's own reason. The reference compiler polylines trimmed,
+//! composite, offset and intrinsic curves since `axiolid-mesh-compile`
+//! 0.3.28 (axiolid/kernel#317; #506), and still refuses by name the forms
+//! it has no certified bound for: implicit and banked curves, a 3D
+//! intrinsic curve with torsion, a trim of a relation or of a placed
+//! curve, an offset of an offset, of a placed curve or of a chain, a 3D
+//! offset without a reference direction, an offset across a corner of its
+//! basis, and an offset by stations.
 
 use axiolid_contracts::ExecutionOptions;
 use axiolid_core::Transform3;
-use axiolid_curve::{Curve2, Curve3};
 use axiolid_mesh_compile_contract::MeshCompiler;
-use axiolid_model::{CurveRelation, GeometryGraph, GeometryNode, Instance, NodeId};
+use axiolid_model::{GeometryNode, Instance, NodeId};
 use ifc_model::{EntityId, Model};
 
 pub use axiolid_core::Point3;
@@ -53,35 +56,6 @@ use super::default_backend;
 
 /// Nesting of collections and placements followed before refusing.
 const MAX_DEPTH: usize = 256;
-
-/// The curve families the reference polyline compiler refuses by name
-/// (axiolid/kernel#317; #506).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum UnpolylinedCurve {
-    /// An `IfcTrimmedCurve`: a trim of a basis curve.
-    Trimmed,
-    /// An `IfcCompositeCurve` and its subtypes, or an `IfcIndexedPolyCurve`
-    /// with arcs: a chain of segments.
-    Composite,
-    /// An `IfcOffsetCurve2D`, `IfcOffsetCurve3D` or
-    /// `IfcOffsetCurveByDistances`.
-    Offset,
-    /// A curve integrated from its curvature, such as an IFC4X3 clothoid
-    /// segment.
-    Intrinsic,
-}
-
-impl std::fmt::Display for UnpolylinedCurve {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Self::Trimmed => "a trimmed curve",
-            Self::Composite => "a composite curve",
-            Self::Offset => "an offset curve",
-            Self::Intrinsic => "an intrinsic curve",
-        })
-    }
-}
 
 /// One curve of a representation as a 3D polyline.
 #[derive(Debug, Clone, PartialEq)]
@@ -126,11 +100,9 @@ pub fn compile_product_polylines(
 ///
 /// # Errors
 ///
-/// Any lowering error; [`GeometryError::PolylineUnsupported`] for a
-/// trimmed, composite, offset or intrinsic curve the backend refuses
-/// (#506), and [`GeometryError::CompilationRefused`] for any other
-/// refusal. One refused curve refuses the product: a partial outline is
-/// not returned as the whole.
+/// Any lowering error, and [`GeometryError::CompilationRefused`], with the
+/// backend's reason, for a curve the backend refuses. One refused curve
+/// refuses the product: a partial outline is not returned as the whole.
 pub fn compile_product_polylines_with<B: PolylineCompiler>(
     backend: &B,
     model: &Model,
@@ -155,7 +127,7 @@ pub fn compile_product_polylines_with<B: PolylineCompiler>(
                     deviation: outcome.deviation,
                     points: outcome.points,
                 })
-                .map_err(|error| polyline_refused(lowered, leaf, curve, product, error))
+                .map_err(|error| refused(product, error, &lowered.provenance))
         })
         .collect::<GeometryResult<Vec<_>>>()
         .map(Some)
@@ -359,59 +331,5 @@ fn place(
             product,
             GeometryNode::Instance(Instance { source, transform }),
         ),
-    }
-}
-
-/// The family of the curve under `node` the reference compiler refuses by
-/// name, through placements and open profiles.
-//
-// TODO(#506): trimmed, composite, offset and intrinsic curves compile to
-// polylines once the reference compiler does (axiolid/kernel#317). The
-// support belongs in the kernel, not here: this only names the refusal.
-fn unpolylined(graph: &GeometryGraph, mut node: NodeId) -> Option<UnpolylinedCurve> {
-    for _ in 0..=MAX_DEPTH {
-        match graph.get(node)? {
-            GeometryNode::CurveRelation(relation) => {
-                return match relation {
-                    CurveRelation::Trimmed { .. } => Some(UnpolylinedCurve::Trimmed),
-                    CurveRelation::Composite { .. } => Some(UnpolylinedCurve::Composite),
-                    CurveRelation::Offset { .. }
-                    | CurveRelation::OffsetByStations { .. }
-                    | CurveRelation::OffsetsAtStations { .. } => Some(UnpolylinedCurve::Offset),
-                    // A curve on a surface or in its parameter space is
-                    // none of the families #506 names.
-                    _ => None,
-                };
-            }
-            GeometryNode::Curve2(Curve2::Intrinsic(_))
-            | GeometryNode::Curve3(Curve3::Intrinsic(_)) => {
-                return Some(UnpolylinedCurve::Intrinsic);
-            }
-            GeometryNode::Instance(instance) => node = instance.source,
-            GeometryNode::InstanceAtStation(placed) => node = placed.source,
-            GeometryNode::OpenProfile(profile) => node = profile.path,
-            _ => return None,
-        }
-    }
-    None
-}
-
-/// The backend's refusal of curve `leaf`, named by its family when it is
-/// one #506 tracks.
-fn polyline_refused(
-    lowered: &LoweredGeometry,
-    leaf: NodeId,
-    curve: Option<EntityId>,
-    product: EntityId,
-    error: axiolid_contracts::GeomError,
-) -> GeometryError {
-    match unpolylined(&lowered.graph, leaf) {
-        Some(family) => GeometryError::PolylineUnsupported {
-            product,
-            curve: curve.unwrap_or(product),
-            family,
-            reason: format!("{error:?}"),
-        },
-        None => refused(product, error, &lowered.provenance),
     }
 }

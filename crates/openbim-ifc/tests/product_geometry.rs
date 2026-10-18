@@ -162,13 +162,13 @@ fn meshes_report_their_closure_and_select_a_representation() {
 }
 
 /// A slab whose `Surface` is a rectangular trimmed plane, 2 x 3 m, is a
-/// surface mesh of 6 m2; a wall whose `Axis` is an `IfcTrimmedCurve` is
-/// refused by name until the reference compiler polylines it (#506).
+/// surface mesh of 6 m2; a wall whose `Axis` is an `IfcTrimmedCurve` of a
+/// unit circle from 0 to 1.5 rad compiles to a certified polyline on that
+/// arc (#506).
 #[cfg(feature = "mesh")]
 #[test]
-fn a_trimmed_surface_meshes_as_a_surface_and_a_trimmed_axis_is_refused_by_name() {
-    use ifc::geometry::compile::{MeshClosure, UnpolylinedCurve};
-    use ifc::geometry::GeometryError;
+fn a_trimmed_surface_meshes_as_a_surface_and_a_trimmed_axis_is_a_polyline() {
+    use ifc::geometry::compile::MeshClosure;
     use ifc::RepresentationPurpose;
 
     let text = "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n\
@@ -220,19 +220,35 @@ ENDSEC;\nEND-ISO-10303-21;\n";
     assert!((area - 6.0).abs() < 1e-6, "{area}");
 
     let axis = ifc::product_curves(&model, Some(&[EntityId(20)]), RepresentationPurpose::Axis);
-    let refused = axis[0].1.as_ref().expect_err("no polyline for a trim yet");
+    let curves = axis[0].1.as_ref().expect("the trimmed axis compiles");
+    assert_eq!(curves.polylines.len(), 1);
+    let arc = &curves.polylines[0];
+    assert_eq!(arc.curve, Some(EntityId(23)));
+    assert!(!arc.closed);
     assert!(
-        matches!(
-            refused,
-            GeometryError::PolylineUnsupported {
-                curve: EntityId(23),
-                family: UnpolylinedCurve::Trimmed,
-                ..
-            }
-        ),
-        "{refused:?}"
+        arc.chord_bound > 0.0 && arc.chord_bound <= arc.chord_requested,
+        "{arc:?}"
     );
-    assert!(refused.is_unsupported());
+    let vertices: Vec<[f64; 3]> = arc
+        .positions
+        .chunks_exact(3)
+        .map(|v| [v[0], v[1], v[2]].map(f64::from))
+        .collect();
+    let (first, last) = (vertices[0], vertices[vertices.len() - 1]);
+    assert!(
+        (first[0] - 1.0).abs() < 1e-6 && first[1].abs() < 1e-6,
+        "{first:?}"
+    );
+    assert!(
+        (last[0] - 1.5_f64.cos()).abs() < 1e-6 && (last[1] - 1.5_f64.sin()).abs() < 1e-6,
+        "{last:?}"
+    );
+    for v in &vertices {
+        let angle = v[1].atan2(v[0]);
+        // f32 positions: on the unit circle and within the trim.
+        assert!((v[0].hypot(v[1]) - 1.0).abs() < 1e-6, "{v:?}");
+        assert!((-1e-6..=1.5 + 1e-6).contains(&angle), "{v:?}");
+    }
 }
 
 #[cfg(feature = "geometry-wire")]

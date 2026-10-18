@@ -585,10 +585,12 @@ in metres on how far the exact curve lies from the polyline, `0` for a
 polyline the file authored, and the one-millimetre budget);
 `openbim_ifc_v0_1_curves_positions` copies a product's `float` positions,
 every polyline's vertices in turn, relative to its transform; and
-`openbim_ifc_v0_1_curves_destroy` frees the set. A trimmed, composite,
-offset or intrinsic curve is a record refused `unsupported`, naming the
-curve, until the reference compiler polylines it
-([#506](https://github.com/openbimrs/ifc/issues/506)).
+`openbim_ifc_v0_1_curves_destroy` frees the set. Trimmed, composite,
+offset and intrinsic curves compile
+([#506](https://github.com/openbimrs/ifc/issues/506)); a curve the
+reference compiler has no certified polyline for (an implicit curve, an
+offset of an offset) is a record refused `unsupported`, naming the
+product.
 `openbim_ifc_v0_1_model_product_meshes_for` meshes a named representation
 instead of the Body, such as `Surface`, its curves left out; every
 `ProductMesh` record now ends with its closure, `solid`, `surface` (an

@@ -235,3 +235,34 @@ fn both_sense_flags_compose_across_shared_edges() {
         "five uses are reversed once both flags compose"
     );
 }
+
+/// An edge curve against its curve is stored from its curve's start.
+///
+/// The kernel takes an edge from `start` to `end` in its curve's own sense
+/// and trims the curve at those vertices (axiolid/kernel#319), so `#41`
+/// (`EdgeStart` #19 at z = 0, `EdgeEnd` #23 at z = 0.2, `SameSense = .F.`)
+/// is stored from #23 to #19 and its use reversed: the loop still walks it
+/// from #19 to #23, as the file states.
+#[test]
+fn a_false_edge_same_sense_stores_the_edge_from_its_curves_start() {
+    let brep = brep(&model());
+    let at = |id: axiolid_topology::VertexId| brep.vertices()[id.index()].position.to_array();
+    let lateral = &brep.loops()[0];
+    let (from, to) = (lateral.edges[0], lateral.edges[1]);
+    assert_eq!(
+        to.orientation,
+        Orientation::Reversed,
+        "#43 walks #41 reversed"
+    );
+    let edge = &brep.edges()[to.edge.index()];
+    let near = |a: [f64; 3], b: [f64; 3]| a.iter().zip(b).all(|(x, y)| (x - y).abs() < 1e-12);
+    assert!(
+        near(at(edge.start), [-0.12, 0.0, 0.2]),
+        "stored from EdgeEnd"
+    );
+    assert!(near(at(edge.end), [-0.12, 0.0, 0.0]), "to EdgeStart");
+    // The loop stays connected: #42 ends where the reversed #41 begins.
+    let previous = &brep.edges()[from.edge.index()];
+    assert_eq!(from.orientation, Orientation::Forward);
+    assert_eq!(previous.end, edge.end);
+}

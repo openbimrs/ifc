@@ -589,13 +589,18 @@ fn edge_curve(
         Some(curve_ref) => (Some(lower_curve_node(session, curve_ref, frame)?), None),
         None => (None, None),
     };
-    // SameSense false means the edge runs against its curve. Record that as
-    // the stored edge's orientation rather than swapping the vertices, so the
-    // curve handle and the vertex order stay consistent with the file.
-    let orientation = if view.same_sense() {
-        Orientation::Forward
+    // An Axiolid edge runs from `start` to `end` in its curve's own sense,
+    // and a curve without a p-curve is trimmed at those vertices: a circle
+    // or an ellipse is the arc going FORWARD from `start` to `end`
+    // (axiolid/kernel#319). `SameSense = .F.` says the IFC edge runs from
+    // EdgeStart to EdgeEnd against its curve, so the curve runs from
+    // EdgeEnd to EdgeStart: that is the stored edge, and the IFC edge is
+    // its reversed use. Keeping the file's vertex order with a reversed use
+    // would select the other arc of a closed curve.
+    let (start, end, orientation) = if view.same_sense() {
+        (start, end, Orientation::Forward)
     } else {
-        Orientation::Reversed
+        (end, start, Orientation::Reversed)
     };
     let edge = builder.brep.add_edge(Edge { start, end, curve });
     // IFC permits EdgeGeometry itself to be an IfcPCurve. Keep that
@@ -645,6 +650,14 @@ fn subedge(
         .get(parent.edge.index())
         .and_then(|parent_edge| parent_edge.curve);
 
+    // The subedge runs in its parent's sense. A parent that runs against
+    // its curve (`SameSense = .F.`) is stored from its curve's start and
+    // used reversed; the subedge is stored the same way round, so the
+    // kernel reads the piece of the curve between its own vertices.
+    let (start, end) = match parent.orientation {
+        Orientation::Forward => (start, end),
+        Orientation::Reversed => (end, start),
+    };
     let edge = builder.brep.add_edge(Edge { start, end, curve });
     let use_ = EdgeUse {
         edge,

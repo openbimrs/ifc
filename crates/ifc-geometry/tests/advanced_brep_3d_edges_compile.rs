@@ -28,6 +28,13 @@
 //!
 //! IFC2X3 has no `IfcAdvancedBrep`, so there is no IFC2X3 twin.
 //!
+//! An `IfcEdgeCurve` is bounded by its vertices, not by its curve's range.
+//! Since `axiolid-mesh-compile` 0.3.28 the kernel trims a line, circle or
+//! ellipse edge curve at its vertices (axiolid/kernel#319; #509): a seam
+//! `IfcLine` with a unit vector and half-circle rim edges, along and
+//! against their circles (`split_rim_cylinder`), compile. A B-spline or
+//! polyline edge curve must still run from vertex to vertex (#525).
+//!
 //! The kernel's refusals of 3D-bounded faces it cannot parametrise reach
 //! the caller as `GeometryError::CompilationRefused`, naming the reason.
 
@@ -246,24 +253,228 @@ fn the_pillow_is_certified_slightly_above_the_request() {
 }
 
 /// An `IfcLine` seam whose vector is a unit length, as many exporters write
-/// it, ends a millimetre above the bottom rim rather than at the top
-/// vertex. Without a p-curve the kernel reads the curve's whole domain as
-/// the edge, so it refuses the edge by name.
+/// it, ends a millimetre (IFC4) or a metre (IFC4X3) above the bottom rim
+/// rather than at the top vertex. IFC trims an edge's curve at its
+/// vertices, and so does the kernel since axiolid/kernel#319 (#509): the
+/// seam is the segment between its vertices' parameters, and the cylinder
+/// compiles as with the vector spanning the height, certified within the
+/// request (the kernel measured a bound of 4.52e-4 m against a measured
+/// 1.50e-4 m at the 1 mm request).
 #[test]
-fn a_seam_line_that_does_not_end_at_its_vertex_is_refused_by_name() {
-    let model = edited(
-        "ifc4",
-        &[("#117=IFCVECTOR(#101,2000.);", "#117=IFCVECTOR(#101,1.);")],
-    );
-    let id = product(&model, "CYLINDER");
-    let error = compile_product_mesh(&model, id, Tolerance::MILLIMETRE)
-        .expect_err("the seam does not end at its vertex");
-    match error {
-        GeometryError::CompilationRefused { entity, reason } => {
-            assert_eq!(entity, id);
-            assert!(reason.contains("from its vertex"), "{reason}");
+fn a_unit_vector_seam_line_is_trimmed_at_its_vertices() {
+    let (r, h) = (0.5_f64, 2.0_f64);
+    let exact = PI * r * r * h;
+    let area = 2.0 * PI * r * h + 2.0 * PI * r * r;
+    for (release, record) in [
+        ("ifc4", "#117=IFCVECTOR(#101,2000.);"),
+        ("ifc4x3", "#117=IFCVECTOR(#101,2.);"),
+    ] {
+        let model = edited(release, &[(record, "#117=IFCVECTOR(#101,1.);")]);
+        let mesh = solid(&model, "CYLINDER");
+        let volume = signed_volume(&mesh);
+        assert!(
+            volume <= exact && exact - volume <= area * 1e-3,
+            "{release}: volume {volume}, exact {exact}"
+        );
+        assert_bounds(
+            release,
+            &mesh,
+            [3.0 - r, 4.0 - r, 0.0],
+            [3.0 + r, 4.0 + r, h],
+            1e-3,
+        );
+        let report = report(&model, "CYLINDER");
+        assert!(report.meets_requested(), "{release}: {report:?}");
+        assert_eq!(report.unbounded().count(), 0, "{release}: {report:?}");
+        // The unit vector changes the seam's parameters, not its geometry.
+        let full = parse(&text(release));
+        assert_eq!(
+            solid(&full, "CYLINDER").positions.len(),
+            mesh.positions.len(),
+            "{release}: the same seam"
+        );
+    }
+}
+
+/// A cylinder (`SPLIT`): radius 1, height 2, metres, whose rims are each
+/// two half-circle edges over one `IfcCircle`, meeting at `A = (1, 0, z)`
+/// and `B = (-1, 0, z)`, with a seam at `A`. `against[i]` authors rim edge
+/// `i` (bottom `y >= 0`, bottom `y <= 0`, top `y <= 0`, top `y >= 0`)
+/// against its circle (`SameSense = .F.`, its vertices exchanged), its
+/// oriented edges flipped to match, so the solid is the same either way.
+/// `seam` is the seam's `EdgeGeometry`, record `#43`, from `A` up.
+fn split_rim_cylinder(schema: &str, against: [bool; 4], seam: &str) -> Model {
+    let flag = |b: bool| if b { ".T." } else { ".F." };
+    // Each half's (start, end) in the circle's sense, and the direction the
+    // side face walks it: bottom halves forward in angle, top halves back.
+    let halves = [
+        ("#50", "#34", "#35", "#40", true),
+        ("#51", "#35", "#34", "#40", true),
+        ("#52", "#37", "#36", "#41", false),
+        ("#53", "#36", "#37", "#41", false),
+    ];
+    let mut edges = String::new();
+    let mut side = Vec::new();
+    for ((record, start, end, circle, forward), against) in halves.into_iter().zip(against) {
+        if against {
+            edges.push_str(&format!(
+                "{record}=IFCEDGECURVE({end},{start},{circle},.F.);\n"
+            ));
+        } else {
+            edges.push_str(&format!(
+                "{record}=IFCEDGECURVE({start},{end},{circle},.T.);\n"
+            ));
         }
-        other => panic!("expected CompilationRefused, got {other:?}"),
+        // An edge against its circle is walked the other way round.
+        side.push(forward != against);
+    }
+    let text = format!(
+        "ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('ViewDefinition [DesignTransferView]'),'2;1');
+FILE_NAME('split_rim_cylinder.ifc','2026-10-18T00:00:00',(''),(''),'','','');
+FILE_SCHEMA(('{schema}'));
+ENDSEC;
+DATA;
+#1=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);
+#2=IFCUNITASSIGNMENT((#1));
+#3=IFCCARTESIANPOINT((0.,0.,0.));
+#4=IFCAXIS2PLACEMENT3D(#3,$,$);
+#5=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,#4,$);
+#6=IFCPROJECT('1Wq7nHx2X0Ef8Kw$3Jd9aC',$,'Split rims',$,$,$,$,(#5),#2);
+#10=IFCDIRECTION((0.,0.,1.));
+#11=IFCDIRECTION((1.,0.,0.));
+#12=IFCDIRECTION((0.,0.,-1.));
+#15=IFCCARTESIANPOINT((0.,0.,2.));
+#16=IFCAXIS2PLACEMENT3D(#3,#10,#11);
+#17=IFCAXIS2PLACEMENT3D(#15,#10,#11);
+#18=IFCCYLINDRICALSURFACE(#16,1.);
+#19=IFCAXIS2PLACEMENT3D(#3,#12,#11);
+#20=IFCPLANE(#19);
+#21=IFCPLANE(#17);
+#30=IFCCARTESIANPOINT((1.,0.,0.));
+#31=IFCCARTESIANPOINT((-1.,0.,0.));
+#32=IFCCARTESIANPOINT((1.,0.,2.));
+#33=IFCCARTESIANPOINT((-1.,0.,2.));
+#34=IFCVERTEXPOINT(#30);
+#35=IFCVERTEXPOINT(#31);
+#36=IFCVERTEXPOINT(#32);
+#37=IFCVERTEXPOINT(#33);
+#38=IFCCARTESIANPOINT((1.,0.,-1.));
+#40=IFCCIRCLE(#16,1.);
+#41=IFCCIRCLE(#17,1.);
+#42=IFCVECTOR(#10,1.);
+{seam}
+{edges}#54=IFCEDGECURVE(#34,#36,#43,.T.);
+#60=IFCORIENTEDEDGE(*,*,#50,{s0});
+#61=IFCORIENTEDEDGE(*,*,#51,{s1});
+#62=IFCORIENTEDEDGE(*,*,#54,.T.);
+#63=IFCORIENTEDEDGE(*,*,#52,{s2});
+#64=IFCORIENTEDEDGE(*,*,#53,{s3});
+#65=IFCORIENTEDEDGE(*,*,#54,.F.);
+#66=IFCEDGELOOP((#60,#61,#62,#63,#64,#65));
+#67=IFCFACEOUTERBOUND(#66,.T.);
+#68=IFCADVANCEDFACE((#67),#18,.T.);
+#70=IFCORIENTEDEDGE(*,*,#51,{c1});
+#71=IFCORIENTEDEDGE(*,*,#50,{c0});
+#72=IFCEDGELOOP((#70,#71));
+#73=IFCFACEOUTERBOUND(#72,.T.);
+#74=IFCADVANCEDFACE((#73),#20,.T.);
+#80=IFCORIENTEDEDGE(*,*,#53,{c3});
+#81=IFCORIENTEDEDGE(*,*,#52,{c2});
+#82=IFCEDGELOOP((#80,#81));
+#83=IFCFACEOUTERBOUND(#82,.T.);
+#84=IFCADVANCEDFACE((#83),#21,.T.);
+#100=IFCCLOSEDSHELL((#68,#74,#84));
+#101=IFCADVANCEDBREP(#100);
+#102=IFCSHAPEREPRESENTATION(#5,'Body','AdvancedBrep',(#101));
+#103=IFCPRODUCTDEFINITIONSHAPE($,$,(#102));
+#104=IFCLOCALPLACEMENT($,#4);
+#105=IFCBUILDINGELEMENTPROXY('0Hq7nHx2X0Ef8Kw$3Jd9aD',$,'SPLIT',$,$,#104,#103,$,$);
+ENDSEC;
+END-ISO-10303-21;
+",
+        s0 = flag(side[0]),
+        s1 = flag(side[1]),
+        s2 = flag(side[2]),
+        s3 = flag(side[3]),
+        c0 = flag(!side[0]),
+        c1 = flag(!side[1]),
+        c2 = flag(!side[2]),
+        c3 = flag(!side[3]),
+    );
+    parse(&text)
+}
+
+/// The seam as an `IfcLine` from `A` with a unit vector.
+const SEAM_LINE: &str = "#43=IFCLINE(#30,#42);";
+
+/// The split-rim cylinder compiles to `pi r^2 h` with its half-circle rim
+/// edges authored along and against their circles (#509). The kernel trims
+/// a circle edge to the arc going forward along the curve from the stored
+/// start vertex (axiolid/kernel#319), so an edge against its circle is
+/// stored from `EdgeEnd` to `EdgeStart` and used reversed. Stored the
+/// file's way round, it would be the other half of its circle: the two
+/// halves of a rim would cover the same arc, and the solid would neither
+/// close nor hold this volume.
+#[test]
+fn half_circle_edges_compile_along_and_against_their_circles() {
+    let (r, h) = (1.0_f64, 2.0_f64);
+    let exact = PI * r * r * h;
+    let area = 2.0 * PI * r * h + 2.0 * PI * r * r;
+    for schema in ["IFC4", "IFC4X3"] {
+        for against in [
+            [false; 4],
+            [true; 4],
+            [true, false, false, true],
+            [false, true, true, false],
+        ] {
+            let what = format!("{schema}, against {against:?}");
+            let model = split_rim_cylinder(schema, against, SEAM_LINE);
+            let mesh = solid(&model, "SPLIT");
+            let volume = signed_volume(&mesh);
+            assert!(
+                volume <= exact && exact - volume <= area * 1e-3,
+                "{what}: volume {volume}, exact {exact}"
+            );
+            assert_bounds(&what, &mesh, [-r, -r, 0.0], [r, r, h], 1e-3);
+            let report = report(&model, "SPLIT");
+            assert!(report.meets_requested(), "{what}: {report:?}");
+            assert_eq!(report.unbounded().count(), 0, "{what}: {report:?}");
+        }
+    }
+}
+
+/// The seam as a B-spline or a polyline from `(1, 0, -1)`, a metre below
+/// its start vertex `A`, to the top vertex. The kernel trims only lines,
+/// circles and ellipses at their vertices; any other family must already
+/// run from vertex to vertex, so this is refused by name, never meshed
+/// past its vertex.
+//
+// TODO(#525): compiles once the kernel trims B-spline and polyline edge
+// curves at their vertices (axiolid/kernel#333).
+#[test]
+fn a_bspline_or_polyline_edge_past_its_vertex_is_refused_by_name() {
+    for seam in [
+        "#43=IFCBSPLINECURVEWITHKNOTS(1,(#38,#32),.POLYLINE_FORM.,.F.,.F.,(2,2),(0.,1.),.UNSPECIFIED.);",
+        "#43=IFCPOLYLINE((#38,#32));",
+    ] {
+        for schema in ["IFC4", "IFC4X3"] {
+            let model = split_rim_cylinder(schema, [false; 4], seam);
+            let id = product(&model, "SPLIT");
+            let error = compile_product_mesh(&model, id, Tolerance::MILLIMETRE)
+                .expect_err("the seam runs past its vertex");
+            match error {
+                GeometryError::CompilationRefused { entity, reason } => {
+                    assert_eq!(entity, id);
+                    assert!(
+                        reason.contains("neither runs its whole domain from the edge's start vertex"),
+                        "{schema}, {seam}: {reason}"
+                    );
+                }
+                other => panic!("{schema}, {seam}: expected CompilationRefused, got {other:?}"),
+            }
+        }
     }
 }
 

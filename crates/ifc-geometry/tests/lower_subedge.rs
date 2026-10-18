@@ -207,3 +207,54 @@ fn a_subedge_chain_walks_to_the_carrier_curve() {
         "a two-hop parent chain must still reach the carrier curve"
     );
 }
+
+/// A parent edge that runs against its curve (`SameSense = .F.`) is stored
+/// from its curve's start and used reversed, and so is its subedge.
+///
+/// The kernel takes an edge from `start` to `end` in its curve's sense and
+/// trims the curve there (axiolid/kernel#319). The parent here runs from
+/// (0,0,0) to (10,0,0) along a line pointing -x from (10,0,0); the subedge
+/// carves (0,0,0)..(3,0,0). Stored the file's way round, the subedge would
+/// ask the line to run from 0 to 3 against its direction while its use
+/// reverses it a second time.
+#[test]
+fn a_subedge_of_an_edge_against_its_curve_is_stored_in_the_curves_sense() {
+    let mut m = model(false);
+    m.insert(
+        EntityId(30),
+        ent(
+            "IFCCARTESIANPOINT",
+            vec![Value::List(vec![n(10.0), n(0.0), n(0.0)])],
+        ),
+    );
+    m.insert(
+        EntityId(31),
+        ent(
+            "IFCDIRECTION",
+            vec![Value::List(vec![n(-1.0), n(0.0), n(0.0)])],
+        ),
+    );
+    m.insert(
+        EntityId(34),
+        ent(
+            "IFCEDGECURVE",
+            vec![r(11), r(12), r(33), Value::Bool(false)],
+        ),
+    );
+    let brep = brep(&m);
+    let first = &brep.loops()[0].edges[0];
+    let edge = &brep.edges()[first.edge.index()];
+    let at = |id: axiolid_topology::VertexId| brep.vertices()[id.index()].position.to_array();
+    assert_eq!(
+        at(edge.start),
+        [3.0, 0.0, 0.0],
+        "stored in the line's sense"
+    );
+    assert_eq!(at(edge.end), [0.0, 0.0, 0.0]);
+    assert!(edge.curve.is_some());
+    assert_eq!(
+        first.orientation,
+        axiolid_topology::Orientation::Reversed,
+        "the loop walks it from (0,0,0) to (3,0,0)"
+    );
+}

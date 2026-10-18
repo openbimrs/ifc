@@ -399,9 +399,11 @@ turn, relative to its transform. `representation` is `"Plan"` by default
 `VertexCount`), whether it is `Closed`, the IFC `Curve`, and
 `ChordBound`, the certified bound in metres on how far the exact curve
 lies from it (0 for a polyline the file authored), against
-`ChordRequested`, one millimetre. A trimmed, composite, offset or
-intrinsic curve is refused `unsupported`, naming the curve, until the
-reference compiler polylines it ([#506](https://github.com/openbimrs/ifc/issues/506)).
+`ChordRequested`, one millimetre. Trimmed, composite, offset and
+intrinsic curves compile ([#506](https://github.com/openbimrs/ifc/issues/506));
+a curve the reference compiler has no certified polyline for (an implicit
+curve, an offset of an offset) is refused `unsupported`, naming the
+product.
 
 <!-- SNIPPET:dotnet-geometry-curves -->
 
