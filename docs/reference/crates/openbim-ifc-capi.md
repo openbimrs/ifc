@@ -11,8 +11,8 @@ Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP file
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.1.14 (2026-10-16) |
-| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.14) |
+| Latest release | 0.1.15 (2026-10-18) |
+| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.15) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_capi/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-capi/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-capi) |
 
@@ -67,23 +67,18 @@ than altering a `v0_1_` one.
 
 ## Changes
 
-Latest release, 0.1.14 (2026-10-16):
+Latest release, 0.1.15 (2026-10-18):
 
-### Changed (#515, wire format 1.4)
+### Changed (#506, #509)
 
-- The geometry graph payload (#367) may be Axiolid's wire format 1.4
-  (`axiolid-model` 0.3.14), a minor version of the format (ADR 0021,
-  amended): every `IfcPolygonalBoundedHalfSpace` now lowers to
-  `BoundedHalfSpaceAlongZ`, the half space bounded along its `Position`'s
-  Z (axiolid/kernel#321), so an oblique clip such as a gable wall's under
-  a sloped roof is carried as authored. An envelope carries the lowest
-  version its content needs: a payload with such a clip is 1.4 (it was
-  1.0), every other is unchanged. A reader on `axiolid-model` 0.3.13 or
-  older refuses 1.4.
-  No `v0_1` symbol changed; the ABI version is unchanged.
+- `openbim_ifc_v0_1_model_product_curves` returns polylines for trimmed, composite, offset and intrinsic
+  curves (an `IfcTrimmedCurve` axis, an `IfcCompositeCurve` footprint, an
+  IFC4X3 clothoid), which were `unsupported` refusals. A curve the
+  reference compiler has no certified polyline for (an implicit curve, an
+  offset of an offset) is still `unsupported`, its refusal now naming the
+  product rather than the curve. Advanced B-reps whose edges cover part of
+  their line, circle or ellipse mesh (#509). No API change.
 
-Semver: a minor change in ADR 0021's terms, released on the 0.1 line (as 0.1.7
-was): the C package keeps 0.1.x while the `v0_1` ABI is unchanged, because
-CMake's `find_package(openbim_ifc 0.1)` does not accept 0.2.
+Semver: patch.
 
 Full history: [`crates/openbim-ifc-capi/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-capi/CHANGELOG.md)

@@ -11,7 +11,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.12.0 (2026-10-16) |
+| Latest release | 0.12.1 (2026-10-18) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_wasm/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-wasm) |
@@ -68,21 +68,18 @@ suites here cover only the JS conversion itself.
 
 ## Changes
 
-Latest release, 0.12.0 (2026-10-16):
+Latest release, 0.12.1 (2026-10-18):
 
-### Changed (#515, wire format 1.4)
+### Changed (#506, #509)
 
-- The geometry graph payload (#367) may be Axiolid's wire format 1.4
-  (`axiolid-model` 0.3.14), a minor version of the format (ADR 0021,
-  amended): every `IfcPolygonalBoundedHalfSpace` now lowers to
-  `BoundedHalfSpaceAlongZ`, the half space bounded along its `Position`'s
-  Z (axiolid/kernel#321), so an oblique clip such as a gable wall's under
-  a sloped roof is carried as authored. An envelope carries the lowest
-  version its content needs: a payload with such a clip is 1.4 (it was
-  1.0), every other is unchanged. A reader on `axiolid-model` 0.3.13 or
-  older refuses 1.4.
-  `GeometryGraphEnvelope.version` documents the rule.
+- `productCurves` returns polylines for trimmed, composite, offset and intrinsic
+  curves (an `IfcTrimmedCurve` axis, an `IfcCompositeCurve` footprint, an
+  IFC4X3 clothoid), which were `unsupported` refusals. A curve the
+  reference compiler has no certified polyline for (an implicit curve, an
+  offset of an offset) is still `unsupported`, its refusal now naming the
+  product rather than the curve. Advanced B-reps whose edges cover part of
+  their line, circle or ellipse mesh (#509). No API change.
 
-Semver: minor, as ADR 0021 states for a minor version of the wire format.
+Semver: patch.
 
 Full history: [`crates/openbim-ifc-wasm/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-wasm/CHANGELOG.md)

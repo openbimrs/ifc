@@ -9,6 +9,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-18
+
 ### Changed (#506, #509)
 
 - `ProductCurves` returns polylines for trimmed, composite, offset and intrinsic
