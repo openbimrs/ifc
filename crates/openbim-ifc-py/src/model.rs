@@ -2,7 +2,8 @@
 
 use openbim_ifc_binding_core::record::to_records;
 use openbim_ifc_binding_core::{
-    GeometryEncoding, IfcModel, ParseOptions, PurgeOptions, RemoveProductOptions, ToRecord,
+    AppendOptions, CopyProductOptions, GeometryEncoding, IfcModel, ParseOptions, PurgeOptions,
+    RemoveProductOptions, ToRecord,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -686,6 +687,66 @@ impl NativeModel {
         let report = self
             .inner
             .remove_representation(id, dry_run)
+            .map_err(py_err)?;
+        records::record_to_py(py, &report.to_record())
+    }
+
+    /// Copy a product with what it solely owns; the report (#479).
+    #[pyo3(signature = (id, offset = None, placement = None, openings = true, fillings = true, container = true, aggregate = true, dry_run = false))]
+    #[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
+    fn copy_product<'py>(
+        &mut self,
+        py: Python<'py>,
+        id: u64,
+        offset: Option<[f64; 3]>,
+        placement: Option<u64>,
+        openings: bool,
+        fillings: bool,
+        container: bool,
+        aggregate: bool,
+        dry_run: bool,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let mut options = CopyProductOptions::new();
+        options.offset = offset;
+        options.placement = placement;
+        options.openings = openings;
+        options.fillings = fillings;
+        options.container = container;
+        options.aggregate = aggregate;
+        options.dry_run = dry_run;
+        let report = self.inner.copy_product(id, options).map_err(py_err)?;
+        records::record_to_py(py, &report.to_record())
+    }
+
+    /// Copy entities of `source` into this model; the report (#479).
+    #[pyo3(signature = (source, ids, global_ids = "keep".to_owned(), reuse = Vec::new(), dry_run = false))]
+    fn append<'py>(
+        &mut self,
+        py: Python<'py>,
+        source: PyRef<'_, NativeModel>,
+        ids: Vec<u64>,
+        global_ids: String,
+        reuse: Vec<String>,
+        dry_run: bool,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let mut options = AppendOptions::new();
+        options.global_ids = global_ids;
+        let kinds = ["units", "contexts", "owner_history", "materials", "styles"];
+        if let Some(unknown) = reuse.iter().find(|kind| !kinds.contains(&kind.as_str())) {
+            return Err(py_err(openbim_ifc_binding_core::BindingError::InvalidValue(
+                format!("reuse kind `{unknown}` is not one of {}", kinds.join(", ")),
+            )));
+        }
+        let reused = |kind: &str| reuse.iter().any(|k| k == kind);
+        options.reuse_units = reused("units");
+        options.reuse_contexts = reused("contexts");
+        options.reuse_owner_history = reused("owner_history");
+        options.reuse_materials = reused("materials");
+        options.reuse_styles = reused("styles");
+        options.dry_run = dry_run;
+        let report = self
+            .inner
+            .append(&source.inner, &ids, &options)
             .map_err(py_err)?;
         records::record_to_py(py, &report.to_record())
     }

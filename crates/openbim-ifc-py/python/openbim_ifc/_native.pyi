@@ -121,6 +121,25 @@ class NativeModel:
         dry_run: bool = ...,
     ) -> Dict[str, Any]: ...
     def remove_representation(self, id: int, dry_run: bool = ...) -> Dict[str, Any]: ...
+    def copy_product(
+        self,
+        id: int,
+        offset: Optional[Tuple[float, float, float]] = ...,
+        placement: Optional[int] = ...,
+        openings: bool = ...,
+        fillings: bool = ...,
+        container: bool = ...,
+        aggregate: bool = ...,
+        dry_run: bool = ...,
+    ) -> Dict[str, Any]: ...
+    def append(
+        self,
+        source: "NativeModel",
+        ids: List[int],
+        global_ids: str = ...,
+        reuse: List[str] = ...,
+        dry_run: bool = ...,
+    ) -> Dict[str, Any]: ...
     @staticmethod
     def handle(index: int) -> int: ...
     def dangling_references(self) -> List[Tuple[int, int]]: ...

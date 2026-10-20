@@ -256,45 +256,57 @@ fn camel_case(name: &str) -> String {
 /// The boolean `key` of an options object; `false` when the object or the
 /// key is absent.
 pub(crate) fn flag(options: &JsValue, key: &str) -> Result<bool, BindingError> {
-    if options.is_undefined() || options.is_null() {
-        return Ok(false);
-    }
-    if !options.is_object() {
-        return Err(BindingError::InvalidValue(
-            "options must be an object".into(),
-        ));
-    }
-    let value = js_sys::Reflect::get(options, &key.into())
-        .map_err(|_| BindingError::InvalidValue(format!("cannot read `{key}`")))?;
+    flag_or(options, key, false)
+}
+
+/// The boolean `key` of an options object; `default` when the object or
+/// the key is absent.
+pub(crate) fn flag_or(options: &JsValue, key: &str, default: bool) -> Result<bool, BindingError> {
+    let value = option(options, key)?;
     if value.is_undefined() || value.is_null() {
-        return Ok(false);
+        return Ok(default);
     }
     value
         .as_bool()
         .ok_or_else(|| BindingError::InvalidValue(format!("`{key}` must be a boolean")))
 }
 
+/// The value of `key` in an options object; `undefined` when the object
+/// is absent.
+pub(crate) fn option(options: &JsValue, key: &str) -> Result<JsValue, BindingError> {
+    if options.is_undefined() || options.is_null() {
+        return Ok(JsValue::UNDEFINED);
+    }
+    if !options.is_object() {
+        return Err(BindingError::InvalidValue(
+            "options must be an object".into(),
+        ));
+    }
+    js_sys::Reflect::get(options, &key.into())
+        .map_err(|_| BindingError::InvalidValue(format!("cannot read `{key}`")))
+}
+
 /// The `classes` array of purge options; empty when absent.
 pub(crate) fn classes(options: &JsValue) -> Result<Vec<String>, BindingError> {
-    if options.is_undefined() || options.is_null() || !options.is_object() {
-        return Ok(Vec::new());
-    }
-    let value = js_sys::Reflect::get(options, &"classes".into())
-        .map_err(|_| BindingError::InvalidValue("cannot read `classes`".into()))?;
+    string_list(options, "classes")
+}
+
+/// The array of strings `key` of an options object; empty when absent.
+pub(crate) fn string_list(options: &JsValue, key: &str) -> Result<Vec<String>, BindingError> {
+    let value = option(options, key)?;
     if value.is_undefined() || value.is_null() {
         return Ok(Vec::new());
     }
     if !js_sys::Array::is_array(&value) {
-        return Err(BindingError::InvalidValue(
-            "`classes` must be an array of strings".into(),
-        ));
+        return Err(BindingError::InvalidValue(format!(
+            "`{key}` must be an array of strings"
+        )));
     }
     js_sys::Array::from(&value)
         .iter()
-        .map(|class| {
-            class
-                .as_string()
-                .ok_or_else(|| BindingError::InvalidValue("`classes` must hold strings".into()))
+        .map(|item| {
+            item.as_string()
+                .ok_or_else(|| BindingError::InvalidValue(format!("`{key}` must hold strings")))
         })
         .collect()
 }

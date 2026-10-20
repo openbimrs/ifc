@@ -186,6 +186,45 @@ public sealed class AuthorOp
     public static AuthorOp RemoveRepresentation(ulong representation) =>
         new("remove_representation", ("representation", representation));
 
+    /// <summary>Copy a product or type with what it solely owns (see <see cref="IfcModel.CopyProduct"/>); produces the copy.</summary>
+    public static AuthorOp CopyProduct(
+        ulong product,
+        (double X, double Y, double Z)? offset = null,
+        ulong? placement = null,
+        bool openings = true,
+        bool fillings = true,
+        bool container = true,
+        bool aggregate = true) =>
+        new(
+            "copy_product",
+            ("product", product),
+            ("offset", Triple(offset)),
+            ("placement", placement),
+            ("openings", Off(openings)),
+            ("fillings", Off(fillings)),
+            ("container", Off(container)),
+            ("aggregate", Off(aggregate)));
+
+    /// <summary>Deep-copy an entity and what it references: classes in <paramref name="copy"/> copied, in <paramref name="share"/> (and entities a <c>UNIQUE</c> clause binds) shared; other <c>IfcRoot</c>s shared unless <paramref name="copyRoots"/>, definitions (materials, units, contexts, the owner history) unless <paramref name="copyDefinitions"/>; any other resource copied. Produces the copy.</summary>
+    public static AuthorOp CopyEntity(
+        ulong entity,
+        IEnumerable<string>? copy = null,
+        IEnumerable<string>? share = null,
+        bool copyRoots = false,
+        bool copyDefinitions = false) =>
+        new(
+            "copy_entity",
+            ("entity", entity),
+            ("copy", Texts(copy)),
+            ("share", Texts(share)),
+            ("copy_roots", Flag(copyRoots)),
+            ("copy_definitions", Flag(copyDefinitions)));
+
+    private static Value? Off(bool flag) => flag ? null : new Value.Bool(false);
+
+    private static Value? Texts(IEnumerable<string>? texts) =>
+        texts is null ? null : new Value.List(texts.Select(text => (Value)new Value.Text(text)));
+
     private static Value? Pairs(IEnumerable<KeyValuePair<string, Value>>? attributes) =>
         attributes is null
             ? null

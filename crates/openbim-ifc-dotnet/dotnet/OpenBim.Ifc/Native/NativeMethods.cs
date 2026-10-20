@@ -286,6 +286,12 @@ internal static unsafe partial class NativeMethods
     internal static extern IfcStatus openbim_ifc_v0_1_model_remove_property(ulong model, ulong @object, byte* set, nuint set_len, byte* name, nuint name_len);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_model_copy_product(ulong model, ulong product, ulong placement, double* offset, uint flags, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_model_append(ulong target, ulong source, ulong* ids, nuint id_count, uint global_ids, uint flags, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_model_remove_representation(ulong model, ulong representation, uint flags, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]

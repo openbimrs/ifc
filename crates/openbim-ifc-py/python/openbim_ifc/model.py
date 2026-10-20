@@ -14,6 +14,7 @@ from .domains import (
     InverseReference,
     AuthorOp,
     AuthoringResult,
+    CopyReport,
     RemovalReport,
     Classification,
     Cost,
@@ -665,6 +666,92 @@ class IfcModel(ModelAccess):
         that is not an ``IfcShapeModel``.
         """
         return domains._from_wire(self._native.remove_representation(id, dry_run=dry_run))
+
+    def copy_product(
+        self,
+        id: int,
+        *,
+        offset: Optional[Tuple[float, float, float]] = None,
+        placement: Optional[int] = None,
+        openings: bool = True,
+        fillings: bool = True,
+        container: bool = True,
+        aggregate: bool = True,
+        dry_run: bool = False,
+    ) -> CopyReport:
+        """Copy product (or type object) ``id`` with everything it solely
+        owns, as one checked transaction (#479): what :meth:`remove_product`
+        would remove with it is copied, what it would keep is shared.
+
+        Copied, each with a new ``GlobalId``: its placement (relative to the
+        same parent; moved by ``offset``, in the parent's frame, or
+        replaced by ``placement``), its representation (items and profiles
+        copied, the context, styles and type geometry shared), its own
+        property and quantity sets, its material usage, its ports and, with
+        ``openings`` and ``fillings``, its openings and the doors and
+        windows filling them. Shared, the copy joining the relationship:
+        its type, shared property sets, material definitions,
+        classification and, with ``container`` and ``aggregate``, its
+        spatial container and its whole. The report maps every original to
+        its copy; with ``dry_run`` nothing changes.
+
+        Raises ``wrong-entity-type`` for neither an ``IfcProduct`` nor an
+        ``IfcTypeObject``, ``invalid-value`` for both ``offset`` and
+        ``placement``, and ``unsupported`` for an offset onto a placement
+        that is not a local placement with a Cartesian location, or a moved
+        copy whose openings or fillings are not placed relative to it.
+        """
+        return domains._from_wire(
+            self._native.copy_product(
+                id,
+                offset=tuple(offset) if offset is not None else None,
+                placement=placement,
+                openings=openings,
+                fillings=fillings,
+                container=container,
+                aggregate=aggregate,
+                dry_run=dry_run,
+            )
+        )
+
+    def append(
+        self,
+        source: "IfcModel",
+        ids: Iterable[int],
+        *,
+        global_ids: str = "keep",
+        reuse: Iterable[str] = ("units", "contexts", "owner_history", "materials", "styles"),
+        dry_run: bool = False,
+    ) -> CopyReport:
+        """Copy entities ``ids`` of ``source`` into this model with what
+        belongs to them, as one checked transaction (#479): what they
+        reference, their property sets, type, material and classification,
+        their openings, fillings and ports, and what attaches to their
+        geometry. Units, contexts, the owner history, materials and styles
+        equal to this model's are reused, for the kinds ``reuse`` names.
+        Relationships to objects not copied (a spatial container) are
+        skipped and reported; relate the copies afterwards.
+
+        ``global_ids``: ``keep`` (a ``GlobalId`` this model holds is
+        refused), ``merge`` (an ``IfcRoot`` this model holds by
+        ``GlobalId`` and type is reused, its relationships joined),
+        ``regenerate`` or ``regenerate-colliding``.
+
+        Raises ``unsupported`` when the models' length or plane angle units
+        differ (convert one first), ``unsupported-schema`` for an entity
+        this model's release cannot hold (a type or attribute it lacks, a
+        constant it does not know), ``invalid-value`` for a kept
+        ``GlobalId`` this model holds. With ``dry_run`` nothing changes.
+        """
+        return domains._from_wire(
+            self._native.append(
+                source._native,
+                list(ids),
+                global_ids=global_ids,
+                reuse=list(reuse),
+                dry_run=dry_run,
+            )
+        )
 
     def dangling_references(self) -> List[Tuple[int, int]]:
         """Every ``(from, to)`` pair where ``to`` does not exist."""

@@ -850,6 +850,56 @@ class AuthorOp:
         """Remove a shape representation with what only it uses."""
         return cls._of("remove_representation", representation=representation)
 
+    @classmethod
+    def copy_product(
+        cls,
+        product: int,
+        *,
+        offset: Optional[Tuple[float, float, float]] = None,
+        placement: Optional[int] = None,
+        openings: bool = True,
+        fillings: bool = True,
+        container: bool = True,
+        aggregate: bool = True,
+    ) -> "AuthorOp":
+        """Copy a product or type with what it solely owns (see
+        :meth:`IfcModel.copy_product`); produces the copy."""
+        return cls._of(
+            "copy_product",
+            product=product,
+            offset=list(offset) if offset is not None else None,
+            placement=placement,
+            openings=None if openings else False,
+            fillings=None if fillings else False,
+            container=None if container else False,
+            aggregate=None if aggregate else False,
+        )
+
+    @classmethod
+    def copy_entity(
+        cls,
+        entity: int,
+        *,
+        copy: Sequence[str] = (),
+        share: Sequence[str] = (),
+        copy_roots: bool = False,
+        copy_definitions: bool = False,
+    ) -> "AuthorOp":
+        """Deep-copy an entity and what it references: classes in
+        ``copy`` are copied, classes in ``share`` (and entities a ``UNIQUE``
+        clause binds) shared; other ``IfcRoot`` entities are shared unless
+        ``copy_roots``, definitions (materials, units, contexts, the owner
+        history) unless ``copy_definitions``; any other resource is
+        copied. Produces the copy."""
+        return cls._of(
+            "copy_entity",
+            entity=entity,
+            copy=list(copy) or None,
+            share=list(share) or None,
+            copy_roots=copy_roots or None,
+            copy_definitions=copy_definitions or None,
+        )
+
     def _to_wire(self) -> Dict[str, Any]:
         wire: Dict[str, Any] = {"op": self.op}
         for key, value in self.fields:
@@ -911,6 +961,38 @@ class RemovalReport:
     applied: bool
 
 
+@dataclass(frozen=True)
+class CopiedEntity:
+    """An original and its copy (or, in :attr:`CopyReport.reused`, the
+    target entity used for it)."""
+
+    original: int
+    copy: int
+    type_name: str
+
+
+@dataclass(frozen=True)
+class CopyReport:
+    """What :meth:`IfcModel.copy_product` or :meth:`IfcModel.append` did,
+    or, for a dry run (``applied`` false), would do.
+
+    ``copy`` is the product's copy (``None`` for an append); ``copied``
+    every original with its copy, in creation order; ``reused`` (append)
+    the source entities the target already holds; ``joined`` the existing
+    relationships and layers the copies joined; ``skipped`` the
+    relationships of an original the copies do not get; ``regenerated``
+    (append) the copies given a new ``GlobalId``.
+    """
+
+    copy: Optional[int]
+    copied: Tuple[CopiedEntity, ...]
+    reused: Tuple[CopiedEntity, ...]
+    joined: Tuple[int, ...]
+    skipped: Tuple[int, ...]
+    regenerated: Tuple[int, ...]
+    applied: bool
+
+
 _RECORDS = {
     cls.__name__: cls
     for cls in (
@@ -955,6 +1037,8 @@ _RECORDS = {
         RemovedEntity,
         KeptEntity,
         RemovalReport,
+        CopiedEntity,
+        CopyReport,
     )
 }
 

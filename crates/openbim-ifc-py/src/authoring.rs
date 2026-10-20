@@ -128,6 +128,16 @@ fn field_value(kind: FieldKind, value: &Bound<'_, PyAny>) -> Result<Tagged, Stri
                 .map(|flag| flag.is_true())
                 .map_err(|_| "must be a bool")?,
         ),
+        FieldKind::Texts => Tagged::List(
+            items(value)?
+                .iter()
+                .map(|item| {
+                    item.cast::<PyString>()
+                        .map(|text| Tagged::Text(text.to_string()))
+                        .map_err(|_| "must hold str".to_owned())
+                })
+                .collect::<Result<_, _>>()?,
+        ),
         FieldKind::Attributes => attributes(value).map_err(|error| error.to_string())?,
         _ => return Err("is of a kind this build does not read".into()),
     })

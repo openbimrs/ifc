@@ -227,7 +227,11 @@ export type AuthorOp =
   /** Copy a shape representation and its items, sharing its context, styles and mapped type geometry. */
   | { op: "copyRepresentation"; representation: bigint }
   /** Remove a shape representation with what only it uses. */
-  | { op: "removeRepresentation"; representation: bigint };
+  | { op: "removeRepresentation"; representation: bigint }
+  /** Copy a product or type with what it solely owns (see `IfcModel.copyProduct`); produces the copy. */
+  | ({ op: "copyProduct"; product: bigint } & Omit<CopyProductOptions, "dryRun">)
+  /** Deep-copy an entity and what it references: classes in `copy` copied, in `share` (and entities a UNIQUE clause binds) shared; other `IfcRoot`s shared unless `copyRoots`, definitions unless `copyDefinitions`. Produces the copy. */
+  | { op: "copyEntity"; entity: bigint; copy?: string[]; share?: string[]; copyRoots?: boolean; copyDefinitions?: boolean };
 
 /** What a committed `IfcModel.author` batch did. */
 export interface AuthoringResult {
@@ -289,6 +293,59 @@ export interface RemovalReport {
   detached: bigint[];
   /** Placements re-based onto a kept ancestor. */
   rebased: bigint[];
+  /** `false` for a dry run. */
+  applied: boolean;
+}
+
+/** Options of `IfcModel.copyProduct` and the `copyProduct` operation; the flags default to `true`, `dryRun` to `false`. */
+export interface CopyProductOptions {
+  /** Move the copy by this vector, in its parent placement's frame. */
+  offset?: [number, number, number];
+  /** Place the copy by this `IfcObjectPlacement` instead. */
+  placement?: bigint;
+  /** Copy the openings voiding the product. */
+  openings?: boolean;
+  /** Copy the doors and windows filling a copied opening. */
+  fillings?: boolean;
+  /** Contain the copy in the original's spatial structure element. */
+  container?: boolean;
+  /** Make the copy a part of the original's whole. */
+  aggregate?: boolean;
+  /** Report only; the model is unchanged. */
+  dryRun?: boolean;
+}
+
+/** Options of `IfcModel.append`. */
+export interface AppendOptions {
+  /** `keep` (the default), `merge`, `regenerate` or `regenerate-colliding`. */
+  globalIds?: "keep" | "merge" | "regenerate" | "regenerate-colliding";
+  /** The resources reused when this model holds an equal one; all when absent, none for `[]`. */
+  reuse?: ("units" | "contexts" | "ownerHistory" | "materials" | "styles")[];
+  /** Report only; the model is unchanged. */
+  dryRun?: boolean;
+}
+
+/** An original and its copy (or, in `CopyReport.reused`, the entity used for it). */
+export interface CopiedEntity {
+  original: bigint;
+  copy: bigint;
+  typeName: string;
+}
+
+/** What `IfcModel.copyProduct` or `IfcModel.append` did, or, for a dry run, would do. */
+export interface CopyReport {
+  /** The product's copy; `undefined` for an append. */
+  copy?: bigint;
+  /** Every original with its copy, in creation order. */
+  copied: CopiedEntity[];
+  /** Append: source entities this model already holds, with the one used. */
+  reused: CopiedEntity[];
+  /** Existing relationships and layers the copies joined. */
+  joined: bigint[];
+  /** Relationships of an original the copies do not get. */
+  skipped: bigint[];
+  /** Append: copies given a new `GlobalId`. */
+  regenerated: bigint[];
   /** `false` for a dry run. */
   applied: boolean;
 }

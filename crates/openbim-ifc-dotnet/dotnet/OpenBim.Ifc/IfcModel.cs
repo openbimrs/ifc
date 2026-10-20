@@ -718,6 +718,68 @@ public sealed unsafe class IfcModel : IDisposable
         return RecordDecoder.Decode<RemovalReport>(Tape(m, (n, nc, nr, s, sc, sr) => NativeMethods.openbim_ifc_v0_1_model_remove_representation(m, id, flags, n, nc, nr, s, sc, sr)).One());
     }
 
+    /// <summary>Copy product (or type object) <paramref name="id"/> with everything it solely owns, as one checked transaction (#479): what <see cref="RemoveProduct"/> would remove with it is copied -- its placement, representation, own property and quantity sets, material usage, ports and, by option, its openings and the doors and windows filling them -- and what it would keep is shared, the copy joining the relationship: its type, shared property sets, classification and, by option, its container and whole. With <paramref name="dryRun"/> nothing changes.</summary>
+    /// <param name="id">The <c>IfcProduct</c> or <c>IfcTypeObject</c>.</param>
+    /// <param name="offset">Move the copy by this vector, in its parent placement's frame.</param>
+    /// <param name="placement">Place the copy by this <c>IfcObjectPlacement</c> instead; not with <paramref name="offset"/>.</param>
+    /// <param name="openings">Copy the openings voiding the product.</param>
+    /// <param name="fillings">Copy the doors and windows filling a copied opening.</param>
+    /// <param name="container">Contain the copy in the original's spatial structure element.</param>
+    /// <param name="aggregate">Make the copy a part of the original's whole.</param>
+    /// <param name="dryRun">Report only.</param>
+    /// <returns>Every original with its copy, the relationships joined and skipped.</returns>
+    public CopyReport CopyProduct(
+        ulong id,
+        (double X, double Y, double Z)? offset = null,
+        ulong? placement = null,
+        bool openings = true,
+        bool fillings = true,
+        bool container = true,
+        bool aggregate = true,
+        bool dryRun = false)
+    {
+        uint flags = (openings ? 0u : 1u) | (fillings ? 0u : 2u) | (container ? 0u : 4u) | (aggregate ? 0u : 8u) | (dryRun ? 16u : 0u);
+        var vector = offset is { } o ? new[] { o.X, o.Y, o.Z } : null;
+        var at = placement ?? 0;
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return RecordDecoder.Decode<CopyReport>(Tape(m, (n, nc, nr, s, sc, sr) =>
+        {
+            fixed (double* v = vector)
+            {
+                return NativeMethods.openbim_ifc_v0_1_model_copy_product(m, id, at, v, flags, n, nc, nr, s, sc, sr);
+            }
+        }).One());
+    }
+
+    /// <summary>Copy entities <paramref name="ids"/> of <paramref name="source"/> into this model with what belongs to them, as one checked transaction (#479): what they reference, their property sets, type, material and classification, their openings, fillings and ports, and what attaches to their geometry. Resources equal to this model's are reused (<paramref name="reuse"/>); relationships to objects not copied (a spatial container) are skipped and reported. Refused with <c>unsupported</c> when the models' length or plane angle units differ, <c>unsupported-schema</c> for an entity this model's release cannot hold, <c>invalid-value</c> for a kept <c>GlobalId</c> this model holds.</summary>
+    /// <param name="source">The model to copy from; not this one.</param>
+    /// <param name="ids">The entities to copy.</param>
+    /// <param name="globalIds">Keep, merge or regenerate the copies' <c>GlobalId</c>s.</param>
+    /// <param name="reuse">The resources reused when this model holds an equal one.</param>
+    /// <param name="dryRun">Report only.</param>
+    /// <returns>Every source entity with its copy, the resources reused, the relationships skipped.</returns>
+    public CopyReport Append(IfcModel source, IEnumerable<ulong> ids, GlobalIdMode globalIds = GlobalIdMode.Keep, ReuseKinds reuse = ReuseKinds.All, bool dryRun = false)
+    {
+        if (source is null)
+        {
+            throw new ArgumentNullException(nameof(source));
+        }
+        var roots = (ids ?? throw new ArgumentNullException(nameof(ids))).ToArray();
+        uint flags = ((uint)~reuse & (uint)ReuseKinds.All) | (dryRun ? 32u : 0u);
+        using var lease = handle.Acquire();
+        using var from = source.handle.Acquire();
+        var m = lease.Model;
+        var other = from.Model;
+        return RecordDecoder.Decode<CopyReport>(Tape(m, (n, nc, nr, s, sc, sr) =>
+        {
+            fixed (ulong* r = roots)
+            {
+                return NativeMethods.openbim_ifc_v0_1_model_append(m, other, r, (nuint)roots.Length, (uint)globalIds, flags, n, nc, nr, s, sc, sr);
+            }
+        }).One());
+    }
+
     /// <summary>Write one value (<see cref="SetProperties"/> with one edit); returns the id of the entity holding it.</summary>
     public ulong SetProperty(ulong obj, string set, string name, Value value, string? setType = null)
     {

@@ -1070,6 +1070,56 @@ test("purge by class, then by default", () => {
   throwsCode(() => cascade("cascade_ifc4.ifc").purge({ classes: ["IfcNoSuchThing"] }), "unsupported-schema");
 });
 
+// --- Copies and appends (#479) -----------------------------------------------
+
+test("copyProduct copies what a product owns and joins what it shares", () => {
+  for (const name of CASCADES) {
+    const model = cascade(name);
+    const before = model.size;
+    const dry = model.copyProduct(20n, { dryRun: true });
+    assert.equal(dry.applied, false, name);
+    assert.equal(model.size, before, name);
+    const done = model.copyProduct(20n);
+    assert.equal(done.applied, true, name);
+    assert.equal(done.copied.length, dry.copied.length, name);
+    assert.equal(model.size, before + done.copied.length, name);
+    assert.deepEqual(done.copied.find((c) => c.original === 20n).copy, done.copy, name);
+    assert.ok(done.joined.includes(67n) && done.joined.includes(19n), name);
+    assert.deepEqual(model.danglingReferences(), [], name);
+    const bare = model.copyProduct(20n, { offset: [0, 5, 0], openings: false, container: false });
+    assert.ok(bare.skipped.includes(91n) && bare.skipped.includes(19n), name);
+    throwsCode(() => model.copyProduct(20n, { offset: [1, 0, 0], placement: 18n }), "invalid-value");
+    throwsCode(() => model.copyProduct(61n), "wrong-entity-type");
+    throwsCode(() => model.copyProduct(20n, { openings: "no" }), "invalid-value");
+  }
+});
+
+test("copy operations run in a batch", () => {
+  const model = cascade("cascade_ifc4.ifc");
+  const result = model.author([
+    { op: "copyProduct", product: 100n, fillings: false },
+    { op: "copyEntity", entity: 26n, share: ["IfcProfileDef"] },
+  ]);
+  const solid = result.ids[1];
+  assert.deepEqual(model.attributeByName(solid, "SweptArea"), { kind: "ref", id: 27n });
+});
+
+test("append merges, regenerates and refuses with stable codes", () => {
+  const source = cascade("cascade_ifc4.ifc");
+  const target = cascade("cascade_ifc4.ifc");
+  throwsCode(() => target.append(source, [66n]), "invalid-value");
+  const merged = target.append(source, [66n], { globalIds: "merge" });
+  assert.deepEqual(merged.copied, []);
+  assert.equal(merged.reused[0].copy, 66n);
+  const report = target.append(source, [20n], { globalIds: "regenerate" });
+  assert.ok(report.skipped.includes(19n));
+  assert.ok(report.regenerated.length > 0);
+  const bare = target.append(source, [111n], { globalIds: "regenerate", reuse: [] });
+  assert.ok(!bare.reused.some((r) => r.original === 11n));
+  throwsCode(() => target.append(source, [20n], { reuse: ["paint"] }), "invalid-value");
+  throwsCode(() => cascade("cascade_ifc2x3.ifc").append(source, [111n], { globalIds: "regenerate" }), "unsupported-schema");
+});
+
 // --- Selectors and values by path (#464) ------------------------------------
 
 const SELECTOR_RELEASES = ["selector_ifc2x3.ifc", "selector_ifc4.ifc", "selector_ifc4x3.ifc"];
