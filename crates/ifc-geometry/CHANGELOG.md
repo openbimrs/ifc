@@ -12,6 +12,16 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (`axiolid-mesh-compile` 0.3.29)
+
+Semver: patch. No code change.
+
+- Requires, behind `compile-reference-backend`, `axiolid-mesh-compile`
+  0.3.29, a kernel packaging fix: it brings `axiolid-reference` 0.3.9,
+  which requires the `axiolid-evaluate` ^0.3.17 it is built with (0.3.8
+  claimed ^0.3.12, so a resolver could pair it with an older
+  `axiolid-evaluate`).
+
 ### Added (#512)
 
 Semver: minor. Every item below is new; `compile_product_polylines`
