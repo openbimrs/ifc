@@ -8,6 +8,15 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#479, copy and append)
+
+- `IfcModel.copyProduct(id, options?)` and `IfcModel.append(source, ids,
+  options?)`, returning a `CopyReport`; the `copyProduct` and `copyEntity`
+  batch operations. TypeScript: `CopyProductOptions`, `AppendOptions`,
+  `CopyReport`, `CopiedEntity`.
+
+Semver: additive: minor.
+
 ## [0.12.1] - 2026-10-18
 
 ### Changed (#506, #509)

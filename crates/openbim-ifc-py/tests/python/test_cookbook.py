@@ -410,6 +410,36 @@ class Cookbook(unittest.TestCase):
         self.assertEqual(printed[1], [104, 105, 106, 107, 108])
         self.assertEqual(model.dangling_references(), [])
 
+    def test_copy_and_append(self) -> None:
+        model = openbim_ifc.open(CASCADE)
+        printed: List[Any] = []
+        print = printed.append  # noqa: A001
+        # docs:snippet cookbook-py-copy
+        # Wall A (#20) with what it alone owns -- placement, body, its own
+        # property set, material usage, openings with their door and window
+        # -- two metres along. Its type, shared property set,
+        # classification, storey and layer are shared: the copy joins them.
+        report = model.copy_product(20, offset=(0.0, 2.0, 0.0))
+        print(model.attribute_by_name(report.copy, "Name"))  # Text(value='Wall A')
+        print(len(report.copied))  # 55 originals, each with its copy
+        print(report.joined)  # (19, 62, 67, 79, 80, 120, 136)
+
+        # From another model: the wall type with its property set. Equal
+        # units, contexts, owner history, materials and styles are reused;
+        # this model holds the type's GlobalIds already, so new ones.
+        library = openbim_ifc.open(CASCADE)
+        appended = model.append(library, [66], global_ids="regenerate")
+        print([entity.type_name for entity in appended.copied])
+        # ['IFCPROPERTYSINGLEVALUE', 'IFCPROPERTYSET', 'IFCWALLTYPE']
+        print(appended.skipped)  # (67,): its occurrences stay in the library
+        # docs:end
+        self.assertEqual(printed[0], openbim_ifc.Text("Wall A"))
+        self.assertEqual(printed[1], 55)
+        self.assertEqual(printed[2], (19, 62, 67, 79, 80, 120, 136))
+        self.assertEqual(printed[3], ["IFCPROPERTYSINGLEVALUE", "IFCPROPERTYSET", "IFCWALLTYPE"])
+        self.assertEqual(printed[4], (67,))
+        self.assertEqual(model.validate().errors, 0)
+
     def test_create(self) -> None:
         # docs:snippet cookbook-py-create
         from openbim_ifc import AuthorOp, Header, Text, handle

@@ -12,6 +12,52 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#479, copy and append)
+
+- `AuthorOp::CopyProduct { product, options }` copies an `IfcProduct` or
+  `IfcTypeObject` with what `RemoveProduct` would remove with it, by the
+  #478 cascade's own reference count, and shares what it would keep. Copied,
+  with new `GlobalId`s: the product; its `ObjectPlacement` (relative to the
+  same parent; `CopyPlacement::Offset` moves it in the parent's frame,
+  `CopyPlacement::At` replaces it); its representation by
+  `CopyRepresentation`'s rules (a type's representation maps with their
+  origins); the property and quantity sets only it is defined by; its
+  material usage; its ports; and, by `CopyProductOptions::openings` and
+  `fillings` (both on), its openings and their fillings, placed relative to
+  the copied placements. Shared, the copy joining the original's
+  relationship: its type assignment, shared property sets, classification,
+  document and library references, groups, layers and, by `container` and
+  `aggregate` (both on), its spatial container and its whole.
+  Relationships that would bind another object (connections, space
+  boundaries, parts, a type's occurrences) are skipped and reported.
+  Entities a `UNIQUE` rule binds (`IfcPropertyEnumeration`,
+  `IfcApplication`) are always shared.
+- `AuthorOp::CopyEntity { entity, policy }`: a deep copy along attributes by
+  an explicit `CopyPolicy` (classes always copied, always shared; other
+  `IfcRoot`s and definitions shared unless asked).
+- `CopyReport` (copied, reused, joined, skipped, regenerated, each original
+  with its copy) in `AuthoringOutcome::copies` and `StagedAuthoring::copies`.
+- `apply_append` and `stage_append` copy entities of another model with
+  their closure: what they reference, their property sets, type, material,
+  classification, openings, fillings and ports, and what attaches to their
+  geometry; relationships to objects not copied are skipped. Equal units,
+  contexts, owner history, materials and styles are reused
+  (`ReuseOptions`); `GlobalIdMode` keeps, merges by identity (joining the
+  target's relationships) or regenerates `GlobalId`s. Attributes move by
+  name between releases.
+- `AuthoringFailure::UnsupportedCopy`, `IncompatibleRelease` (a type,
+  attribute or enumeration constant the target release lacks; never
+  dropped) and `UnitMismatch` (differing length or plane angle units; the
+  message points at unit conversion, #469).
+
+### Changed (#479)
+
+- The operation options moved from `authoring/op.rs` into their own module
+  under the 800-line cap; every public path is unchanged.
+
+Semver: additive (`AuthorOp`, `AuthoringFailure`, `AuthoringOutcome` and
+`StagedAuthoring` are `#[non_exhaustive]`): minor.
+
 ## [0.36.0] - 2026-10-18
 
 ### Changed (#506, #509)

@@ -354,3 +354,56 @@ fn a_missing_root_is_refused() {
     .expect_err("refused");
     assert_eq!(*error.failure, AuthoringFailure::MissingEntity(EntityId(9999)));
 }
+
+#[test]
+fn a_material_a_profile_and_a_template_come_with_their_closure() {
+    let schema = ifc::schema::ifc4();
+    let mut source = read("cascade_ifc4.ifc");
+    let template = [
+        AuthorOp::Create {
+            type_name: "IfcSimplePropertyTemplate".into(),
+            attributes: vec![
+                ("Name".into(), Value::Text("Reference".into())),
+                ("TemplateType".into(), Value::Enum("P_SINGLEVALUE".into())),
+                ("PrimaryMeasureType".into(), Value::Text("IfcIdentifier".into())),
+            ],
+        },
+        AuthorOp::Create {
+            type_name: "IfcPropertySetTemplate".into(),
+            attributes: vec![
+                ("Name".into(), Value::Text("Cascade_Template".into())),
+                (
+                    "TemplateType".into(),
+                    Value::Enum("PSET_OCCURRENCEDRIVEN".into()),
+                ),
+                ("ApplicableEntity".into(), Value::Text("IfcWall".into())),
+                (
+                    "HasPropertyTemplates".into(),
+                    Value::List(vec![Value::Ref(ifc::authoring_handle(0))]),
+                ),
+            ],
+        },
+    ];
+    let created = apply_authoring(&mut source, schema, &template, 1).expect("creates");
+    let (property, set) = (created.ids[0].unwrap(), created.ids[1].unwrap());
+    let mut target = read("cascade_ifc4.ifc");
+    let options = AppendOptions::new().reuse(ReuseOptions::none());
+    let outcome = apply_append(
+        &mut target,
+        schema,
+        &source,
+        schema,
+        &[EntityId(70), EntityId(170), set],
+        &options,
+        7,
+    )
+    .expect("appends");
+    assert_valid("assets", &target, schema);
+    let report = &outcome.report;
+    for original in [EntityId(70), EntityId(170), EntityId(171), EntityId(172), set, property] {
+        assert!(report.copy_of(original).is_some(), "{original}");
+    }
+    let copy = report.copy_of(set).unwrap();
+    assert_eq!(text(&target, copy, 0), text(&source, set, 0), "kept");
+    assert_eq!(count(&target, "IFCMATERIAL"), 2);
+}

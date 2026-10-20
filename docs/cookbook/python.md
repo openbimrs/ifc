@@ -497,6 +497,45 @@ shares its context, styles and the type geometry a mapped item maps, and
 copies everything else. The
 [binding page](/bindings/python#shape-representations) has the rules.
 
+## Copy a product and append from another model
+
+Wall A copied with its openings, door and window, then a wall type taken
+from another file, from `test/fixtures/synthetic-relations/cascade_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-py-copy -->
+
+```python
+# Wall A (#20) with what it alone owns -- placement, body, its own
+# property set, material usage, openings with their door and window
+# -- two metres along. Its type, shared property set,
+# classification, storey and layer are shared: the copy joins them.
+report = model.copy_product(20, offset=(0.0, 2.0, 0.0))
+print(model.attribute_by_name(report.copy, "Name"))  # Text(value='Wall A')
+print(len(report.copied))  # 55 originals, each with its copy
+print(report.joined)  # (19, 62, 67, 79, 80, 120, 136)
+
+# From another model: the wall type with its property set. Equal
+# units, contexts, owner history, materials and styles are reused;
+# this model holds the type's GlobalIds already, so new ones.
+library = openbim_ifc.open(CASCADE)
+appended = model.append(library, [66], global_ids="regenerate")
+print([entity.type_name for entity in appended.copied])
+# ['IFCPROPERTYSINGLEVALUE', 'IFCPROPERTYSET', 'IFCWALLTYPE']
+print(appended.skipped)  # (67,): its occurrences stay in the library
+```
+
+<!-- /SNIPPET -->
+
+A copy copies what `remove_product` would remove with the product and
+shares what it would keep. `openings=False`, `fillings=False`,
+`container=False` and `aggregate=False` leave those out; `placement=` puts
+the copy on a placement of your own. `append` keeps `GlobalId`s by default
+and refuses one the model holds; `global_ids="merge"` treats a `GlobalId`
+this model holds (on the same type) as the same object. It refuses models
+whose length or angle units differ, and entities the target release cannot
+hold. The [binding page](/bindings/python#copying-products-and-appending)
+lists what is copied, shared and skipped.
+
 ## Create a model
 
 <!-- SNIPPET:cookbook-py-create -->

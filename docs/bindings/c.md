@@ -898,6 +898,55 @@ dangling. It keeps working for the life of the `v0_1` ABI; use
 `openbim_ifc_v0_1_entity_remove_with_relationships` for one entity or
 `openbim_ifc_v0_1_model_remove_product` for a product.
 
+## Copying products and appending
+
+`openbim_ifc_v0_1_model_copy_product` copies a product, or a type object, with what
+it solely owns, as one checked transaction, and returns a `CopyReport`:
+copy (`REF`), copied and reused (`LIST`s of `CopiedEntity`: original, copy, type name), joined, skipped and regenerated (`LIST`s of `REF`), applied (`BOOL`). `OPENBIM_IFC_COPY_DRY_RUN` only reports, and a size query plans the copy without applying it.
+
+What the copy owns is what `openbim_ifc_v0_1_model_remove_product` would remove with the product, by the
+same reference count, and the copy copies it: the product (with a new
+`GlobalId`), its `ObjectPlacement` (relative to the same parent, moved by
+a non-null `offset` of three doubles in the parent's frame, or replaced by a non-zero `placement`), its
+representation (items and profiles copied; the context, styles and a
+type's representation maps shared), the property and quantity sets only it
+is defined by with their properties, its material usage (not the material
+definitions), its ports, and its openings and the doors and windows
+filling them, placed relative to the copied placements. A type object
+copies its own representation maps and property sets. What the removal
+would keep is shared: the copy joins the original's type assignment, the
+shared property sets, its classification, document and library
+references, groups and presentation layers, its spatial container and
+the whole it is a part of. `OPENBIM_IFC_COPY_NO_OPENINGS`, `_NO_FILLINGS`, `_NO_CONTAINER` and `_NO_AGGREGATE` leave openings, fillings, the container
+or the whole out. Relationships that would bind another object to the
+copy (a connection, a space boundary, the parts of a whole, a type's
+occurrences) are not carried and are listed in `skipped`. Entities a
+`UNIQUE` rule binds (an `IfcPropertyEnumeration`, an `IfcApplication`)
+are always shared.
+
+`openbim_ifc_v0_1_model_append(target, source, ids, id_count, global_ids, flags, ...)` copies entities of another model into this one with what belongs
+to them: what they reference (a product's placement chain, representation
+and owner history), their property sets, type, material and
+classification with their relationships, their openings, fillings and
+ports, and what attaches to their geometry (styled items, layers). A
+relationship to an object that is not copied (the source's spatial
+container) is skipped; relate the copies afterwards. Units, contexts, the
+owner history, materials and styles equal to one this model holds (same
+type, same values all the way down) are reused instead of copied
+(`OPENBIM_IFC_APPEND_NO_REUSE_UNITS`, `_CONTEXTS`, `_OWNER_HISTORY`, `_MATERIALS` and `_STYLES` turn a kind off). `GlobalId`s are kept (`OPENBIM_IFC_GLOBAL_IDS_KEEP`, refused when this model holds
+one), merged (`OPENBIM_IFC_GLOBAL_IDS_MERGE`: an `IfcRoot` this model holds by `GlobalId` and
+type is that entity, and its relationships are joined), or regenerated
+(`OPENBIM_IFC_GLOBAL_IDS_REGENERATE`, or `_REGENERATE_COLLIDING` for those this model holds). Between releases each attribute moves by name; a type,
+attribute or enumeration constant the target release lacks is refused
+with `unsupported-schema`, never dropped. Models whose length or plane
+angle units differ are refused with `unsupported`: convert one first. The
+[cookbook](/cookbook/c#copy-a-product-and-append-from-another-model) has a recipe.
+
+In a batch, the `copy_product` and `copy_entity` operations do the same (the copy is the operation's
+produced entity), and a low-level deep copy follows an entity's references
+by an explicit policy: classes always copied, classes always shared, and
+whether other `IfcRoot`s and definitions are copied (by default shared).
+
 ## API
 
 The [C API reference](/api/c) lists every type, constant, function and

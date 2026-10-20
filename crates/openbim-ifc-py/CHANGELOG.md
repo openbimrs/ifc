@@ -8,6 +8,16 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#479, copy and append)
+
+- `IfcModel.copy_product(id, *, offset, placement, openings, fillings,
+  container, aggregate, dry_run)` and `IfcModel.append(source, ids, *,
+  global_ids, reuse, dry_run)`, returning a `CopyReport` (with
+  `CopiedEntity` records); `AuthorOp.copy_product` and
+  `AuthorOp.copy_entity` for batches.
+
+Semver: additive: minor.
+
 ## [0.12.1] - 2026-10-18
 
 ### Changed (#506, #509)

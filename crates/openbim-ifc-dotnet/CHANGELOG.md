@@ -9,6 +9,16 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#479, copy and append)
+
+- `IfcModel.CopyProduct(id, offset, placement, openings, fillings,
+  container, aggregate, dryRun)` and `IfcModel.Append(source, ids,
+  globalIds, reuse, dryRun)`, returning a `CopyReport` (`CopiedEntity`
+  records); `GlobalIdMode`, `ReuseKinds`; `AuthorOp.CopyProduct` and
+  `AuthorOp.CopyEntity`.
+
+Semver: additive: minor.
+
 ## [0.9.1] - 2026-10-18
 
 ### Changed (#506, #509)
