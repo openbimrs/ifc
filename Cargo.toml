@@ -197,13 +197,13 @@ axiolid-contracts = { version = "0.3.1" }
 # with `axiolid-brep-boolean` 0.1.11). 0.3.29 is a packaging fix: it
 # requires `axiolid-reference` 0.3.9, which states the `axiolid-evaluate`
 # ^0.3.17 it needs (0.3.8 claimed ^0.3.12); no behaviour of ours changes.
-# 0.3.31 trims B-spline edge curves at their vertices by certified
+# 0.3.30 trims B-spline edge curves at their vertices by certified
 # projection and polyline edge curves exactly, refusing off-curve or
-# ambiguous vertices by name (axiolid/kernel#333; #525); samples an edge
-# before its faces, from the strictest face using it, so planar and curved
-# faces sharing a straight edge close (axiolid/kernel#336; #528); and
-# reports a faceted face without a surface whose corners are not exactly
-# coplanar with its slab width instead of 0.
+# ambiguous vertices by name (axiolid/kernel#333; #525), and samples an
+# edge before its faces, from the strictest face using it, so planar and
+# curved faces sharing a straight edge close (axiolid/kernel#336; #528).
+# 0.3.31 reports a faceted face without a surface whose corners are not
+# exactly coplanar with its slab width instead of 0.
 axiolid-mesh-compile = { version = "0.3.31" }
 axiolid-mesh-compile-contract = { version = "0.3.4" }
 # 0.3.5: batch booleans keep their memory budget (axiolid/kernel#259).

@@ -12,6 +12,18 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#539, tests)
+
+Semver: no release on its own. No code change.
+
+- The #469 corpus test `length_unit_corpus.rs` sums mesh volumes about
+  each body's first vertex rather than the world origin, where triple
+  products at georeferenced coordinates cancelled catastrophically. The
+  29 products it skipped as ill-conditioned (blamed on booleans decided
+  by the last bit) were that measuring artefact: the skip list is
+  removed, and all 181 meshed products are compared and agree after
+  converting to feet.
+
 ## [0.37.0] - 2026-10-20
 
 ### Added (#479, copy and append)
