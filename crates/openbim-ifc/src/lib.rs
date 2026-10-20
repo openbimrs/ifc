@@ -222,10 +222,13 @@ mod authoring;
 #[cfg(feature = "authoring")]
 pub use {
     authoring::{
-        apply_authoring, authoring_handle, fresh_seed, stage_authoring, AssignTypeOptions,
-        AuthorOp, AuthoringError, AuthoringFailure, AuthoringOutcome, KeepReason, KeptEntity,
+        apply_append, apply_authoring, authoring_handle, fresh_seed, stage_append,
+        stage_authoring, AppendOptions, AppendOutcome, AssignTypeOptions, AuthorOp,
+        AuthoringError, AuthoringFailure, AuthoringOutcome, CopiedEntity, CopyPlacement,
+        CopyPolicy, CopyProductOptions, CopyReport, GlobalIdMode, KeepReason, KeptEntity,
         LayerAxis, NamedValues, OwnerHistoryOp, PredefinedTypeMode, PurgeOptions, RelateOptions,
-        RemovalReport, RemoveProductOptions, RemovedEntity, StagedAuthoring, HANDLE_BASE,
+        RemovalReport, RemoveProductOptions, RemovedEntity, ReuseOptions, StagedAppend,
+        StagedAuthoring, HANDLE_BASE,
     },
     ifc_author as author,
     ifc_author::{EntityBuilder, EntityEditor},
