@@ -84,7 +84,16 @@ pub fn export(
                     error: Box::new(error),
                 })
         };
-        let key_value = read(&key_path)?;
+        // An entity that declares no `GlobalId` reads the key as a property
+        // set, which a build without `properties` refuses: it has no key.
+        let key_value = match index.value(entity, &key_path) {
+            Err(SelectorError::FeatureDisabled(_)) => SelectedValue::Null,
+            other => other.map_err(|error| ExportError::Value {
+                entity,
+                path: key_path.to_string(),
+                error: Box::new(error),
+            })?,
+        };
         let key_text = match key_value {
             SelectedValue::Text(text) if !text.is_empty() => text,
             SelectedValue::Integer(id) => id.to_string(),

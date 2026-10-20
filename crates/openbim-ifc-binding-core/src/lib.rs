@@ -70,6 +70,13 @@
 //! not parse is refused with `invalid-selector` and the byte span of the
 //! offending text ([`BindingError::span`]).
 //!
+//! Tables of values by path (#474, [`table`]): the entities a selector
+//! selects exported as CSV, TSV or XLSX ([`IfcModel::export_table`]), and
+//! a table applied back by `GlobalId` or id as one checked transaction
+//! ([`IfcModel::import_table`]), with every refusal by row and column and
+//! a dry run. XLSX needs feature `sheet-xlsx` (default; the browser
+//! package leaves it out and refuses with `feature-disabled`).
+//!
 //! `INVERSE` attributes read by name too ([`inverse`], #462):
 //! `attribute_by_name(wall, "IsDefinedBy")` follows the declared release's
 //! `FOR` clause through a reverse index built on first use and rebuilt
@@ -98,6 +105,7 @@ pub mod relations;
 pub mod selector;
 pub mod spatial;
 pub mod systems;
+pub mod table;
 pub mod unreachable;
 pub mod validation;
 pub mod value;
@@ -123,5 +131,6 @@ pub use options::{OnMalformed, ParseOptions};
 pub use record::{Field, Record, ToRecord};
 pub use relations::{name_based_guid, new_guid, DuplicateGlobalId};
 pub use selector::{canonical_selector, Selected, SELECTOR_GRAMMAR_VERSION};
+pub use table::{TableChange, TableImport, TableRefusal};
 pub use unreachable::UnreachableProduct;
 pub use validation::{ValidationFinding, ValidationReport, ValidationSummary};
