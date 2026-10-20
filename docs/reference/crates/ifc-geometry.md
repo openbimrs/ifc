@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.30.0 (2026-10-20) |
+| Latest release | 0.30.1 (2026-10-20) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -43,36 +43,41 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.30.0 (2026-10-20):
+Latest release, 0.30.1 (2026-10-20):
 
-### Changed (`axiolid-mesh-compile` 0.3.29)
+### Changed (#525, #528: `axiolid-mesh-compile` 0.3.31)
 
-Semver: patch. No code change.
+Semver: patch. No public item changes; an optional compile-feature floor
+and a dev floor rise.
 
 - Requires, behind `compile-reference-backend`, `axiolid-mesh-compile`
-  0.3.29, a kernel packaging fix: it brings `axiolid-reference` 0.3.9,
-  which requires the `axiolid-evaluate` ^0.3.17 it is built with (0.3.8
-  claimed ^0.3.12, so a resolver could pair it with an older
-  `axiolid-evaluate`).
-
-### Added (#512)
-
-Semver: minor. Every item below is new; `compile_product_polylines`
-and `compile_product_mesh_for` are unchanged.
-
-- `compile::compile_product_curves` / `compile_product_curves_with`: the
-  curves of a product's representation as `compile::ProductPolylines`,
-  `polylines` and `skipped`. Each `IfcTextLiteral`,
-  `IfcTextLiteralWithExtent` and `IfcAnnotationFillArea` among the
-  representation's own `Items` is not lowered but listed as a
-  `compile::SkippedItem` (the item and its `compile::NonCurveItem` kind,
-  `TextLiteral` or `AnnotationFillArea`), so a dimension (its lines as
-  `IfcPolyline`s, its value as text) gives its lines instead of being
-  refused. Nothing is drawn in a skipped item's place: a fill area's
-  boundaries are not returned. Every other item lowers as before and its
-  refusal still refuses the product; a text literal nested in a mapped
-  representation is lowered, so refused, not skipped.
-  `compile_product_polylines` keeps the strict rule and refuses such a
-  representation as a whole.
+  0.3.31 and `axiolid-construct` 0.3.20, and, for the tests,
+  `axiolid-measure` 0.3.11, whose `exact_properties` now sums about a
+  local point rather than the world origin (axiolid/kernel#343).
+- #525: advanced B-reps whose `IfcEdgeCurve` covers part of an
+  `IfcBSplineCurveWithKnots` or `IfcPolyline` compile: the kernel trims a
+  B-spline edge curve at its vertices by certified projection and a
+  polyline exactly (axiolid/kernel#333), where 0.3.29 refused both by
+  name. A vertex off its curve is refused by name ("not on its curve").
+- #528: an advanced B-rep whose planar and curved faces share a straight
+  edge, such as a D-shaped half cylinder, closes: every face takes the
+  same samples of a shared edge (axiolid/kernel#336). It compiled open.
+- A faceted B-rep face without a surface whose corners are not exactly
+  coplanar now reports its slab width as its bound, not `0`; `0` means
+  planar. No test of ours pinned that `0`.
+- Tests: the split-rim cylinder's seam as a quadratic B-spline, a linear
+  B-spline and polylines that run past both vertices (straight, with a
+  collinear corner between them, and turning at the vertices with tails
+  off the cylinder), along and against their curve, IFC4 and IFC4X3:
+  watertight at `pi r^2 h`, within the cylinder's extent, certified, the
+  wall's measured deviation within the bound and the request. Seams
+  trimmed to one straight span meet the 1 mm request (bound `9.0e-4` m);
+  the quadratic B-spline and the polyline with a corner between the
+  vertices are bounded piecewise and certified at `1.59e-3` m, above the
+  request, pinned as the kernel's answer. B-spline and polyline seams a
+  centimetre off their vertices are refused by name, replacing the
+  `TODO(#525)` refusal pin. A D-shaped half cylinder (IFC4, IFC4X3) is
+  watertight at `pi r^2 h / 2`, certified within the request (bound
+  `4.5e-4` m). All three tests fail against 0.3.29.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
