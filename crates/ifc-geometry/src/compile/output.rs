@@ -21,6 +21,22 @@
 //! path compiles it, so its mesh is unchanged. Nothing is tessellated,
 //! flattened or substituted here (ADR 0004).
 //!
+//! # Text and fill areas beside curves (#512)
+//!
+//! [`compile_product_curves_with`] reads the curves of a representation
+//! that also holds items with no curve to give: an `IfcTextLiteral` or
+//! `IfcTextLiteralWithExtent` (the value of a dimension) and an
+//! `IfcAnnotationFillArea`. Each such item of the representation's own
+//! `Items` is not lowered: it is listed, by id and [`NonCurveItem`] kind,
+//! in [`ProductPolylines::skipped`], and its reader is
+//! `ifc_style::StyleView` (`text_literal`, `text_literal_with_extent`,
+//! `annotation_fill_area`). Nothing is drawn in its place: a fill area's
+//! boundaries are not returned as polylines. Every other item lowers as
+//! before, and its refusal still refuses the product; a text literal nested
+//! in a mapped representation is refused, not skipped.
+//! [`compile_product_polylines_with`] keeps the strict rule and refuses
+//! such a representation as a whole.
+//!
 //! # Refused by name
 //!
 //! A backend that cannot compile a curve to a polyline refuses it, and
@@ -45,6 +61,7 @@ pub use axiolid_mesh_compile_contract::{ChordDeviation, MeshClosure, PolylineCom
 
 use super::{refused, CompiledMesh, Tolerance};
 use crate::error::{GeometryError, GeometryResult};
+use crate::lower::context::lower_product_representation_leaving_out;
 use crate::lower::session::NodeShape;
 use crate::lower::{
     lower_product_representation, LoweredGeometry, LoweringSession, RepresentationPurpose,
@@ -72,6 +89,113 @@ pub struct CompiledPolyline {
     /// distance from every point of the exact curve to the polyline, in
     /// metres. A polyline the file authored is its own curve: bound `0`.
     pub deviation: ChordDeviation,
+}
+
+/// A representation item with no curve to give, which the curves reader
+/// leaves to its own reader (#512).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum NonCurveItem {
+    /// An `IfcTextLiteral` or `IfcTextLiteralWithExtent`: text, read by
+    /// `ifc_style::StyleView::text_literal` and `text_literal_with_extent`.
+    TextLiteral,
+    /// An `IfcAnnotationFillArea`: an area, read by
+    /// `ifc_style::StyleView::annotation_fill_area`.
+    AnnotationFillArea,
+}
+
+impl NonCurveItem {
+    /// The kind of a representation item, by STEP type name (any case),
+    /// `None` for every item that is lowered.
+    #[must_use]
+    pub fn of(type_name: &str) -> Option<Self> {
+        if type_name.eq_ignore_ascii_case("IFCTEXTLITERAL")
+            || type_name.eq_ignore_ascii_case("IFCTEXTLITERALWITHEXTENT")
+        {
+            Some(Self::TextLiteral)
+        } else if type_name.eq_ignore_ascii_case("IFCANNOTATIONFILLAREA") {
+            Some(Self::AnnotationFillArea)
+        } else {
+            None
+        }
+    }
+}
+
+/// A representation item the curves reader did not lower.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub struct SkippedItem {
+    /// The item, one of the representation's own `Items`.
+    pub item: EntityId,
+    /// Why it has no polyline.
+    pub kind: NonCurveItem,
+}
+
+/// The curves of one product's representation, and the items with no
+/// curve to give that were left out.
+#[derive(Debug, Clone, PartialEq, Default)]
+#[non_exhaustive]
+pub struct ProductPolylines {
+    /// One polyline per curve, in authored order.
+    pub polylines: Vec<CompiledPolyline>,
+    /// The text literals and fill areas of the representation, in
+    /// authored order, not lowered and not drawn.
+    pub skipped: Vec<SkippedItem>,
+}
+
+/// The curves of one product's representation for `purpose`, leaving its
+/// text literals and fill areas to their readers, with [`default_backend`].
+///
+/// # Errors
+///
+/// As [`compile_product_curves_with`].
+#[cfg(feature = "compile-reference-backend")]
+pub fn compile_product_curves(
+    model: &Model,
+    product: EntityId,
+    purpose: RepresentationPurpose,
+    tolerance: Tolerance,
+) -> GeometryResult<Option<ProductPolylines>> {
+    compile_product_curves_with(&default_backend(), model, product, purpose, tolerance)
+}
+
+/// The curves of one product's representation for `purpose` as
+/// polylines, leaving its text literals and fill areas to their readers
+/// (#512), with a caller-supplied backend.
+///
+/// As [`compile_product_polylines_with`], except that each
+/// `IfcTextLiteral`, `IfcTextLiteralWithExtent` and
+/// `IfcAnnotationFillArea` among the representation's own `Items` is not
+/// lowered but listed in [`ProductPolylines::skipped`]: a dimension
+/// (polylines and its value as text) gives its polylines. `Ok(None)` when
+/// the product has no representation for `purpose`.
+///
+/// # Errors
+///
+/// Any lowering error of an item not skipped, and
+/// [`GeometryError::CompilationRefused`] for a curve the backend refuses.
+/// One refused curve refuses the product.
+pub fn compile_product_curves_with<B: PolylineCompiler>(
+    backend: &B,
+    model: &Model,
+    product: EntityId,
+    purpose: RepresentationPurpose,
+    tolerance: Tolerance,
+) -> GeometryResult<Option<ProductPolylines>> {
+    let Some((split, left_out)) = lower_split(model, product, purpose, true)? else {
+        return Ok(None);
+    };
+    let skipped = left_out
+        .into_iter()
+        .filter_map(|(item, type_name)| {
+            NonCurveItem::of(&type_name).map(|kind| SkippedItem { item, kind })
+        })
+        .collect();
+    let polylines = match split {
+        Some(split) => compile_split(backend, &split, product, tolerance)?,
+        None => Vec::new(),
+    };
+    Ok(Some(ProductPolylines { polylines, skipped }))
 }
 
 /// The curves of one product's representation for `purpose` as
@@ -110,9 +234,19 @@ pub fn compile_product_polylines_with<B: PolylineCompiler>(
     purpose: RepresentationPurpose,
     tolerance: Tolerance,
 ) -> GeometryResult<Option<Vec<CompiledPolyline>>> {
-    let Some(split) = lower_split(model, product, purpose)? else {
+    let Some((Some(split), _)) = lower_split(model, product, purpose, false)? else {
         return Ok(None);
     };
+    compile_split(backend, &split, product, tolerance).map(Some)
+}
+
+/// Each curve of `split` as a polyline, in order; one refusal refuses all.
+fn compile_split<B: PolylineCompiler>(
+    backend: &B,
+    split: &Split,
+    product: EntityId,
+    tolerance: Tolerance,
+) -> GeometryResult<Vec<CompiledPolyline>> {
     let lowered = &split.lowered;
     let options = ExecutionOptions::new(tolerance);
     split
@@ -129,8 +263,7 @@ pub fn compile_product_polylines_with<B: PolylineCompiler>(
                 })
                 .map_err(|error| refused(product, error, &lowered.provenance))
         })
-        .collect::<GeometryResult<Vec<_>>>()
-        .map(Some)
+        .collect()
 }
 
 /// The surfaces and solids of one product's representation for `purpose`
@@ -171,7 +304,7 @@ pub fn compile_product_mesh_for_with<B: MeshCompiler>(
     purpose: RepresentationPurpose,
     tolerance: Tolerance,
 ) -> GeometryResult<Option<CompiledMesh>> {
-    let Some(split) = lower_split(model, product, purpose)? else {
+    let Some((Some(split), _)) = lower_split(model, product, purpose, false)? else {
         return Ok(None);
     };
     let Some(root) = split.mesh else {
@@ -205,17 +338,49 @@ struct Split {
 /// inside the representation, `None` when nothing there places it.
 type Leaf = (NodeId, Option<Transform3>);
 
+/// Items the curves reader left out: id and STEP type name.
+type LeftOut = Vec<(EntityId, std::sync::Arc<str>)>;
+
 /// The product's representation for `purpose`, lowered and placed, and
 /// split into its curves and the rest.
+///
+/// With `leave_out_non_curves`, the representation's own text literals
+/// and fill areas ([`NonCurveItem`]) are not lowered but returned; the
+/// split is `None` when nothing else remains. Without it, nothing is left
+/// out, and a representation of no items is `Ok(None)`.
 fn lower_split(
     model: &Model,
     product: EntityId,
     purpose: RepresentationPurpose,
-) -> GeometryResult<Option<Split>> {
+    leave_out_non_curves: bool,
+) -> GeometryResult<Option<(Option<Split>, LeftOut)>> {
     let scale = units::resolve(model);
     let mut session = LoweringSession::new(model, &scale);
-    let Some(root) = lower_product_representation(&mut session, product, purpose)? else {
-        return Ok(None);
+    let (root, left_out) = if leave_out_non_curves {
+        let Some((root, left_out)) =
+            lower_product_representation_leaving_out(&mut session, product, purpose, |name| {
+                NonCurveItem::of(name).is_some()
+            })?
+        else {
+            return Ok(None);
+        };
+        let left_out = left_out
+            .into_iter()
+            .filter_map(|item| {
+                model
+                    .get(item)
+                    .map(|entity| (item, entity.type_name.clone()))
+            })
+            .collect();
+        (root, left_out)
+    } else {
+        let Some(root) = lower_product_representation(&mut session, product, purpose)? else {
+            return Ok(None);
+        };
+        (Some(root), Vec::new())
+    };
+    let Some(root) = root else {
+        return Ok(Some((None, left_out)));
     };
     let (mut curves, mut others) = (Vec::new(), Vec::new());
     walk(&session, root, None, product, 0, &mut curves, &mut others)?;
@@ -241,11 +406,14 @@ fn lower_split(
         (curves, mesh)
     };
     let lowered = session.finish(root)?;
-    Ok(Some(Split {
-        lowered,
-        curves,
-        mesh,
-    }))
+    Ok(Some((
+        Some(Split {
+            lowered,
+            curves,
+            mesh,
+        }),
+        left_out,
+    )))
 }
 
 /// Sort the leaves under `node`, placed by `outer`, into `curves` and

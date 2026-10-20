@@ -623,11 +623,16 @@ and a `ProductPolyline` per curve: its slice (`first_vertex`,
 `curve` it came from, and `chord_bound`, the reference backend's
 certified bound in metres on how far the exact curve lies from the
 polyline (`0.0` for a polyline the file authored), against
-`chord_requested`, one millimetre. A trimmed, composite, offset or
-intrinsic curve (an `IfcTrimmedCurve` axis, an `IfcCompositeCurve`
-footprint) is refused by name, code `unsupported` naming the curve, until
-the reference compiler polylines it
-([#506](https://github.com/openbimrs/ifc/issues/506)).
+`chord_requested`, one millimetre. Trimmed, composite, offset and
+intrinsic curves (an `IfcTrimmedCurve` axis, an `IfcCompositeCurve`
+footprint) compile ([#506](https://github.com/openbimrs/ifc/issues/506));
+a curve the reference compiler has no certified polyline for (an implicit
+curve, an offset of an offset) is refused `unsupported`, naming the
+product. A representation that also holds text or a fill area (a dimension
+and its value) gives its curves; each `IfcTextLiteral`,
+`IfcTextLiteralWithExtent` and `IfcAnnotationFillArea` of it is listed
+by entity id in `skipped`, not drawn and not a refusal
+([#512](https://github.com/openbimrs/ifc/issues/512)).
 
 `product_meshes(ids, representation=...)` meshes a representation other
 than the Body the same way, such as `"Surface"`: its surfaces and solids
@@ -934,7 +939,7 @@ class, record and function of the package with its docstring and types.
 | `model.product_placements(ids: Optional[Iterable[int]] = None) -> List[ProductPlacement]` | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or every product with a shape. A product that cannot be placed carries a typed `refusal`; the call raises only `unsupported-schema` or `feature-disabled`. |
 | `model.product_geometry(ids: Optional[Iterable[int]] = None, encoding: str = 'json') -> List[ProductGeometry]` | Each product's Body as Axiolid's neutral geometry graph, exact, for `ids` or every product with a shape, in Axiolid's versioned wire format: `{"format": "axiolid-geometry-graph", "version": "1.0", "graph": {"nodes": [...], "roots": [...]}}` (the lowest version the content needs, `"1.0"` to `"1.4"`), in world coordinates, metres. `encoding` `"json"` gives the payload as a `str`, `"cbor"` as `bytes`; any other raises `ValueError`. A product that cannot be lowered carries a typed `refusal`; the call raises only `unsupported-schema` or `feature-disabled`. |
 | `model.product_meshes(ids: Optional[Iterable[int]] = None, representation: str = 'Body') -> List[ProductMesh]` | Each product's Body as triangles from the reference backend, for `ids` or every product with a shape; a product that cannot be meshed carries a typed `refusal`. `representation` meshes another one instead (#458): `"Surface"`, or any name :meth:`product_curves` takes; its curves are left to that call, and `closure` says `"solid"` or `"surface"`. Only a Body mesh carries a colour. Needs a wheel built with the `mesh` feature; the published wheel raises `feature-disabled`. |
-| `model.product_curves(ids: Optional[Iterable[int]] = None, representation: str = 'Plan') -> List[ProductCurves]` | Each product's curves as polylines from the reference backend (#458), for `ids` or every product with a shape. `representation` is `"Plan"` (the best drawing curves: `Plan`, `Annotation`, `FootPrint`, then `Axis`, preferring a `PLAN_VIEW` context), or `"Axis"`, `"FootPrint"`, `"Annotation"`, `"Body"` or `"Surface"`; another name raises `invalid-value`. A product whose curves cannot be compiled carries a typed `refusal`: a curve the reference compiler has no certified polyline for (an implicit curve, an offset of an offset) is `unsupported`; trimmed, composite, offset and intrinsic curves compile (#506). Needs a wheel built with the `mesh` feature. |
+| `model.product_curves(ids: Optional[Iterable[int]] = None, representation: str = 'Plan') -> List[ProductCurves]` | Each product's curves as polylines from the reference backend (#458), for `ids` or every product with a shape. `representation` is `"Plan"` (the best drawing curves: `Plan`, `Annotation`, `FootPrint`, then `Axis`, preferring a `PLAN_VIEW` context), or `"Axis"`, `"FootPrint"`, `"Annotation"`, `"Body"` or `"Surface"`; another name raises `invalid-value`. A product whose curves cannot be compiled carries a typed `refusal`: a curve the reference compiler has no certified polyline for (an implicit curve, an offset of an offset) is `unsupported`; trimmed, composite, offset and intrinsic curves compile (#506). Text literals and annotation fill areas beside the curves (a dimension's value) are listed in `skipped`, not refused (#512). Needs a wheel built with the `mesh` feature. |
 | `model.systems() -> Systems` | Every system with its members and served structures, and the memberships the reader could not honour. |
 | `model.cost() -> Cost` | Every cost schedule and cost item; values as authored, typed. |
 | `model.georeferencing() -> List[MapConversion]` | Every coordinate operation resolved with the project length unit; empty when the model has none. IFC2X3 is read from its `ePSet_MapConversion` and `ePSet_ProjectedCRS` property sets. |

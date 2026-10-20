@@ -186,7 +186,9 @@ class ProductCurves:
     ``positions`` holds ``x, y, z`` per vertex (``array('f')``, metres,
     relative to ``transform``), every polyline's vertices in turn; each of
     ``polylines`` names its slice. No polylines and no refusal: a product
-    without the representation, or one with no curves.
+    without the representation, or one with no curves. ``skipped`` lists
+    the representation's text literals and annotation fill areas by entity
+    id: not drawn, and not a refusal (#512).
     """
 
     id: int
@@ -196,6 +198,7 @@ class ProductCurves:
     vertex_count: int
     polylines: Tuple[ProductPolyline, ...]
     refusal: Optional[GeometryRefusal]
+    skipped: Tuple[int, ...]
     positions: "array[float]"
 
 
@@ -277,6 +280,7 @@ def _curves(data: Dict[str, Any]) -> ProductCurves:
             for row in data["polylines"]
         ),
         refusal=_refusal(data["refusal"]),
+        skipped=tuple(data["skipped"]),
         positions=positions,
     )
 

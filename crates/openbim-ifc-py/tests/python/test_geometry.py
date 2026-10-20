@@ -316,6 +316,10 @@ class MeshTests(unittest.TestCase):
         self.assertEqual(wall.transform, model.product_placements([36])[0].transform)
         self.assertEqual((slab.polylines, slab.refusal), ((), None))
         self.assertEqual((text.polylines, text.refusal), ((), None))
+        self.assertEqual(wall.skipped, ())
+        # Its Body is a text literal alone: skipped by id, not refused (#512).
+        (body,) = model.product_curves([65], representation="Body")
+        self.assertEqual((body.polylines, body.refusal, body.skipped), ((), None, (62,)))
         # Plan, the default, picks the same Axis.
         self.assertEqual(model.product_curves([36]), [wall])
         with self.assertRaises(IfcError) as raised:

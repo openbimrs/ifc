@@ -13,10 +13,20 @@
 //! reason
 //! ([`GeometryError::CompilationRefused`](ifc_geometry::GeometryError::CompilationRefused)),
 //! such as an implicit curve or an offset of an offset.
+//!
+//! A representation that also holds text or a fill area -- a dimension is
+//! its lines plus its value as an `IfcTextLiteralWithExtent` -- gives its
+//! curves (#512). Each `IfcTextLiteral`, `IfcTextLiteralWithExtent` and
+//! `IfcAnnotationFillArea` among the representation's own items is not
+//! drawn and is listed in [`ProductCurves::skipped`], so a caller sees it
+//! was there and reads it with `ifc_style::StyleView`. A fill area's
+//! boundaries are not returned as polylines. Any other item that cannot
+//! be lowered still refuses the product.
 
 #![cfg(feature = "mesh")]
 
-use ifc_geometry::compile::{compile_product_polylines_with, default_backend, Tolerance};
+use ifc_geometry::compile::{compile_product_curves_with, default_backend, Tolerance};
+pub use ifc_geometry::compile::{NonCurveItem, SkippedItem};
 use ifc_geometry::{
     geometric_products, products_world_transforms, units, GeometryResult, RepresentationPurpose,
     Transform,
@@ -54,6 +64,9 @@ pub struct ProductCurves {
     /// The representation's curves in authored order; empty when it has
     /// none or the product has no representation for the purpose.
     pub polylines: Vec<ProductPolyline>,
+    /// The representation's text literals and annotation fill areas, in
+    /// authored order: not drawn, left to `ifc_style::StyleView` (#512).
+    pub skipped: Vec<SkippedItem>,
 }
 
 /// The curves of each product's representation for `purpose` as
@@ -67,7 +80,9 @@ pub struct ProductCurves {
 /// or one identifier: `Axis`, `FootPrint`, `Annotation`. Its surfaces and
 /// solids are not here: [`product_meshes_for`](super::product_meshes_for)
 /// meshes them. A product with no such representation has no polylines and
-/// no refusal. One refused curve refuses the product.
+/// no refusal. Its text literals and fill areas are listed in
+/// [`ProductCurves::skipped`], not drawn. One refused curve refuses the
+/// product.
 pub fn product_curves(
     model: &Model,
     products: Option<&[EntityId]>,
@@ -80,7 +95,7 @@ pub fn product_curves(
         .into_iter()
         .map(|(product, world)| {
             let curves = world.and_then(|world| {
-                let compiled = compile_product_polylines_with(
+                let compiled = compile_product_curves_with(
                     &backend,
                     model,
                     product,
@@ -88,14 +103,17 @@ pub fn product_curves(
                     Tolerance::MILLIMETRE,
                 )?
                 .unwrap_or_default();
-                if compiled.is_empty() {
+                let skipped = compiled.skipped;
+                if compiled.polylines.is_empty() {
                     return Ok(ProductCurves {
                         world,
                         polylines: Vec::new(),
+                        skipped,
                     });
                 }
                 let to_local = Inverse::checked(model, product, &world)?;
                 let polylines = compiled
+                    .polylines
                     .into_iter()
                     .map(|polyline| ProductPolyline {
                         curve: polyline.curve,
@@ -105,7 +123,11 @@ pub fn product_curves(
                         chord_requested: polyline.deviation.requested,
                     })
                     .collect();
-                Ok(ProductCurves { world, polylines })
+                Ok(ProductCurves {
+                    world,
+                    polylines,
+                    skipped,
+                })
             });
             (product, curves)
         })

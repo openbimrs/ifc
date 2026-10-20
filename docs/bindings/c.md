@@ -579,7 +579,7 @@ context), or one `RepresentationIdentifier`, `Axis`, `FootPrint`,
 `Annotation`, `Body` or `Surface`; another name is `INVALID_VALUE`.
 `openbim_ifc_v0_1_curves_records` returns a `ProductCurves` record per
 product (id, global id, type name, transform, vertex count, polylines,
-refusal), each polyline a `ProductPolyline` record (curve, first vertex,
+refusal, skipped), each polyline a `ProductPolyline` record (curve, first vertex,
 vertex count, closed, chord bound, chord requested: the certified bound
 in metres on how far the exact curve lies from the polyline, `0` for a
 polyline the file authored, and the one-millimetre budget);
@@ -590,7 +590,11 @@ offset and intrinsic curves compile
 ([#506](https://github.com/openbimrs/ifc/issues/506)); a curve the
 reference compiler has no certified polyline for (an implicit curve, an
 offset of an offset) is a record refused `unsupported`, naming the
-product.
+product. A representation that also holds text or a fill area (a dimension
+and its value) gives its curves; each `IfcTextLiteral`,
+`IfcTextLiteralWithExtent` and `IfcAnnotationFillArea` of it is listed
+by entity id in `skipped` (a `LIST` of `REF`s), not drawn and not a refusal
+([#512](https://github.com/openbimrs/ifc/issues/512)).
 `openbim_ifc_v0_1_model_product_meshes_for` meshes a named representation
 instead of the Body, such as `Surface`, its curves left out; every
 `ProductMesh` record now ends with its closure, `solid`, `surface` (an

@@ -306,6 +306,22 @@ mod mesh {
         assert!(model.product_curves(Some(&[36]), "Body").unwrap()[0]
             .polylines
             .is_empty());
+        // A Body of a text literal alone has no curves and is no refusal:
+        // the literal is skipped by id (#512).
+        let text = &model.product_curves(Some(&[65]), "Body").unwrap()[0];
+        assert_eq!(
+            (
+                text.polylines.len(),
+                text.refusal.as_ref(),
+                text.skipped.as_slice()
+            ),
+            (0, None, &[62][..])
+        );
+        assert_eq!(
+            text.to_record().get("skipped"),
+            Some(&Field::List(vec![Field::Id(62)]))
+        );
+        assert!(curves[0].skipped.is_empty());
 
         let record = curves[0].to_record();
         assert_eq!(record.get("vertex_count"), Some(&Field::Count(2)));

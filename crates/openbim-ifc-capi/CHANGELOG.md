@@ -8,6 +8,20 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#512)
+
+- `openbim_ifc_v0_1_model_product_curves` gives the curves of a representation that also holds text or a
+  fill area: a dimension `IfcAnnotation` (its lines as `IfcPolyline`s,
+  its value as an `IfcTextLiteralWithExtent`) was an `unsupported`
+  refusal and now returns its lines. `skipped` (a `LIST` of `REF`s), the record's new last
+  field, lists each `IfcTextLiteral`, `IfcTextLiteralWithExtent` and
+  `IfcAnnotationFillArea` of the representation by entity id: not drawn,
+  not a refusal.
+  No `v0_1` symbol changed; a tape reader that checks the record's arity
+  sees one more field.
+
+Semver: minor.
+
 ## [0.1.15] - 2026-10-18
 
 ### Changed (#506, #509)

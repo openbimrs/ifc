@@ -255,7 +255,9 @@ impl IfcModel {
     /// `invalid-value`. Trimmed, composite, offset and intrinsic curves
     /// compile (#506); a curve the reference compiler has no certified
     /// polyline for (an implicit curve, an offset of an offset) is an
-    /// `unsupported` refusal naming the product. Opt-in with the meshes:
+    /// `unsupported` refusal naming the product. Text literals and
+    /// annotation fill areas beside the curves (a dimension's value) are
+    /// listed in `skipped`, not refused (#512). Opt-in with the meshes:
     /// import `@openbim/ifc/mesh`.
     #[wasm_bindgen(js_name = productCurves, unchecked_return_type = "ProductCurves[]")]
     pub fn product_curves_js(

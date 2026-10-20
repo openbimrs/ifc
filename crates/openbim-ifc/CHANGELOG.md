@@ -12,6 +12,22 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#512)
+
+- `product_curves` reads a representation that also holds text or a fill
+  area. A dimension `IfcAnnotation` (its lines as `IfcPolyline`s, its
+  value as an `IfcTextLiteralWithExtent`) was refused as a whole; its
+  lines now come back as polylines, and each `IfcTextLiteral`,
+  `IfcTextLiteralWithExtent` and `IfcAnnotationFillArea` of the
+  representation is listed in the new `ProductCurves::skipped` (a
+  `SkippedItem`: the item and its `NonCurveItem` kind), not drawn and not
+  a refusal. Read those items with `ifc_style::StyleView`. Any other item
+  that cannot be lowered still refuses the product.
+- `SkippedItem` and `NonCurveItem` are re-exported from `ifc-geometry`.
+
+Semver: minor. `ProductCurves` is `#[non_exhaustive]` and gains a field;
+products that were refused now return their curves.
+
 ## [0.36.0] - 2026-10-18
 
 ### Changed (#506, #509)
