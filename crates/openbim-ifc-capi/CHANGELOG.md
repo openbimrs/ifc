@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.16] - 2026-10-20
+
 ### Added (#479, copy and append)
 
 - `openbim_ifc_v0_1_model_copy_product(model, product, placement, offset,

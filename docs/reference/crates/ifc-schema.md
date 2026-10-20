@@ -11,7 +11,7 @@ IFC schema as data: entity table, supertype chain, attribute names.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.2 (2026-10-04) |
+| Latest release | 0.3.3 (2026-10-20) |
 | Registries | [crates.io `ifc-schema`](https://crates.io/crates/ifc-schema) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties`, `schema-api` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_schema/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-schema) |
@@ -36,29 +36,25 @@ IFC schema as data: entity table, supertype chain, attribute names.
 
 ## Changes
 
-Latest release, 0.3.2 (2026-10-04):
+Latest release, 0.3.3 (2026-10-20):
 
-### Changed
+### Added (#467)
 
-- `Schema::is_a`, `supertypes` and `attributes` read a supertype chain and
-  a positional attribute layout precomputed per entity when the schema is
-  assembled, instead of walking the declarations on every call (#352).
-  `is_a` no longer allocates, and no case-folded lookup (`entity`,
-  `type_def`, `direct_subtypes`) allocates for a name of up to 128 bytes.
-  The answers are unchanged: the tables are built by the walks they
-  replace, and `tests/precomputed_lineage.rs` compares every entity of
-  every bundled release, under three spellings, against a frozen copy of
-  the old walks, and `is_a` for every ordered pair.
-- `accepts_type` answers two distinct declared entities with `is_a`
-  directly, without the select walk's allocations; the answer is the one
-  the walk gave.
+Semver: patch (0.x: a new public type only, nothing changed). `SchemaVersion` and its header-token
+mapping are unchanged.
 
-### Added
-
-- `Schema::attribute_count(name)` and `Schema::attribute_at(name, slot)`:
-  `attributes(name).len()` and `attributes(name).get(slot)` without
-  allocating (#352).
-
-Semver: additive, same answers: a patch release.
+- `UnpublishedRelease` (`Ifc4x3Tc1`, `Ifc4x3Add1`) names the IFC 4.3
+  releases whose identifiers files carry but whose normative EXPRESS
+  buildingSMART does not publish: `IFC4X3_TC1` (IFC 4.3.0.1) and
+  `IFC4X3_ADD1` (IFC 4.3.1.0), each with `identifier()`,
+  `version_number()`, `superseded_by()` (IFC4X3 ADD2, not a claim of
+  identity) and `from_header_token()`. The identifiers and numbers come
+  from the `SCHEMA_NAME` and documentation header of
+  buildingSMART/IFC4.x-development's generator; buildingSMART lists only
+  ADD2 (4.3.2.0) for IFC 4.3, so no tables can be fetched and checksummed
+  for TC1 or ADD1, and IfcOpenShell's own (non-normative) tables show TC1
+  lacks entities ADD2 has. `SchemaVersion::from_header_token` still
+  returns `None` for both: they are named for a precise refusal, never
+  read as ADD2 by assumption.
 
 Full history: [`crates/ifc-schema/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-schema/CHANGELOG.md)

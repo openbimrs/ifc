@@ -11,7 +11,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.12.1 (2026-10-18) |
+| Latest release | 0.13.0 (2026-10-20) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_wasm/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-wasm) |
@@ -69,18 +69,55 @@ suites here cover only the JS conversion itself.
 
 ## Changes
 
-Latest release, 0.12.1 (2026-10-18):
+Latest release, 0.13.0 (2026-10-20):
 
-### Changed (#506, #509)
+### Added (#479, copy and append)
 
-- `productCurves` returns polylines for trimmed, composite, offset and intrinsic
-  curves (an `IfcTrimmedCurve` axis, an `IfcCompositeCurve` footprint, an
-  IFC4X3 clothoid), which were `unsupported` refusals. A curve the
-  reference compiler has no certified polyline for (an implicit curve, an
-  offset of an offset) is still `unsupported`, its refusal now naming the
-  product rather than the curve. Advanced B-reps whose edges cover part of
-  their line, circle or ellipse mesh (#509). No API change.
+- `IfcModel.copyProduct(id, options?)` and `IfcModel.append(source, ids,
+  options?)`, returning a `CopyReport`; the `copyProduct` and `copyEntity`
+  batch operations. TypeScript: `CopyProductOptions`, `AppendOptions`,
+  `CopyReport`, `CopiedEntity`.
 
-Semver: patch.
+Semver: additive: minor.
+
+### Added (#469, unit conversion)
+
+- `IfcModel.convertUnit(value, from, to)` between units named as text (SI
+  with prefix, IFC4 Table 673 names with exact factors), and
+  `IfcModel.formatLength(value, unit, { style?, places?, displayUnit?,
+  suppressZeroInches? })` (decimal, feet-inches, inches with fractions).
+- `model.convertUnitValue(value, from, to)` between two unit entities of the
+  model.
+- `model.convertLengthUnit(target, { areaAndVolume?, removeReplacedUnits?,
+  dryRun? })`: rescales every length, area and volume value to a new
+  project length unit as one checked transaction, returning a
+  `LengthUnitReport` (`ConvertedValues`, `KeptValues`; `LengthUnitOptions`,
+  `LengthFormatOptions` in the declarations). Refusals use the existing
+  codes.
+
+### Added (#474, tables)
+
+- `model.exportTable(query, columns, { format, key, null })` returns the
+  selected entities as a CSV or TSV `Uint8Array`, one column per value
+  path; `model.importTable(bytes, { format, key, null, dryRun })` applies
+  a table back by key as one checked transaction and returns a
+  `TableImport` (`applied`, `changes`, `refusals`); TypeScript types
+  `TableOptions`, `TableImportOptions`, `TableChange`, `TableRefusal`,
+  `TableImport`. XLSX throws `feature-disabled` in the npm package; the
+  crate's opt-in feature `sheet-xlsx` carries it.
+
+Semver: additive, a minor release while 0.x.
+
+### Changed (#512)
+
+- `productCurves` gives the curves of a representation that also holds text or a
+  fill area: a dimension `IfcAnnotation` (its lines as `IfcPolyline`s,
+  its value as an `IfcTextLiteralWithExtent`) was an `unsupported`
+  refusal and now returns its lines. `ProductCurves.skipped` (`bigint[]`), the record's new last
+  field, lists each `IfcTextLiteral`, `IfcTextLiteralWithExtent` and
+  `IfcAnnotationFillArea` of the representation by entity id: not drawn,
+  not a refusal.
+
+Semver: minor.
 
 Full history: [`crates/openbim-ifc-wasm/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-wasm/CHANGELOG.md)

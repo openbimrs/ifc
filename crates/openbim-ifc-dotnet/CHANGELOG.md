@@ -9,6 +9,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-20
+
 ### Added (#479, copy and append)
 
 - `IfcModel.CopyProduct(id, offset, placement, openings, fillings,

@@ -11,7 +11,7 @@ Presentation: styles, colours, textures, layers, annotation.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.5.0 (2026-10-13) |
+| Latest release | 0.5.1 (2026-10-20) |
 | Registries | [crates.io `ifc-style`](https://crates.io/crates/ifc-style) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `style` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_style/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-style) |
@@ -34,31 +34,19 @@ IFC4, and IFC4X3 layout drift is explicit rather than guessed.
 
 ## Changes
 
-Latest release, 0.5.0 (2026-10-13):
+Latest release, 0.5.1 (2026-10-20):
 
-### Added (#449)
+### Fixed (#514)
 
-- `StyleIndex`: every `IfcStyledItem`, `IfcPresentationLayerAssignment`
-  and `IfcMaterialDefinitionRepresentation` of a model indexed once, with
-  `item_colour(item)` (the item's own `IfcStyledItem`, then its styled
-  presentation layers) and `material_colour(material)` (the item-less
-  `IfcStyledItem`s of the material's `IfcStyledRepresentation`s). Both
-  return a `SurfaceColour`: RGB, transparency (`None` when unstated),
-  the `IfcSurfaceStyle` and a `ColourSource` (`StyledItem`,
-  `PresentationLayer`, `Material`). The precedence, item over layer
-  over material, is documented and cited (IFC4 ADD2 TC1
-  `IfcPresentationLayerWithStyle`, `IfcStyledItem`,
-  `IfcMaterialDefinitionRepresentation`). It is applied per colour: a
-  level that states no surface colour does not hide the next. IFC2X3
-  reads its `IfcPresentationStyleAssignment` wrappers, and its
-  transparency from `IfcSurfaceStyleRendering`.
-- `StyleError::AmbiguousSurfaceColour`: one level stating two different
-  surface colours (two surface styles in one styled item, two styled
-  layers, a material whose styled representations disagree).
+Semver: patch. No public item changes.
 
-`resolve_item_style` is unchanged.
-
-Semver: additive (`StyleError` is `#[non_exhaustive]`), a minor release
-while 0.x.
+- `FillAreaStyle::fill_styles` accepts a solid colour fill. It listed the
+  `IfcColour` select itself as a member of `IfcFillStyleSelect`, and a
+  select name never matches an instance's entity type, so every
+  `IfcColourRgb` (and `IfcDraughtingPreDefinedColour`) fill was refused
+  with `StyleError::ReferenceType`. It now lists `IfcColour`'s own members,
+  `IfcColourSpecification` and `IfcPreDefinedColour`, as every bundled
+  release declares them; the colour then reads through
+  `StyleView::colour_rgb`. A non-colour member is still refused.
 
 Full history: [`crates/ifc-style/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-style/CHANGELOG.md)

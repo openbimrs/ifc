@@ -12,9 +12,11 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-10-20
+
 ### Added (#467)
 
-Semver: minor. A new public type; `SchemaVersion` and its header-token
+Semver: patch (0.x: a new public type only, nothing changed). `SchemaVersion` and its header-token
 mapping are unchanged.
 
 - `UnpublishedRelease` (`Ifc4x3Tc1`, `Ifc4x3Add1`) names the IFC 4.3
