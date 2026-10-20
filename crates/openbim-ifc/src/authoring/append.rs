@@ -432,7 +432,10 @@ impl Planner<'_, '_> {
         entity: Entity,
     ) -> Result<(EntityId, bool), F> {
         let type_name = entity.type_name.to_string();
-        let (from, into) = (source.schema.name().to_owned(), self.schema.name().to_owned());
+        let (from, into) = (
+            source.schema.name().to_owned(),
+            self.schema.name().to_owned(),
+        );
         let incompatible = move |detail: String| F::IncompatibleRelease {
             entity: original,
             type_name: type_name.clone(),
@@ -440,7 +443,10 @@ impl Planner<'_, '_> {
             target: into.clone(),
             detail,
         };
-        let cross = !source.schema.name().eq_ignore_ascii_case(self.schema.name());
+        let cross = !source
+            .schema
+            .name()
+            .eq_ignore_ascii_case(self.schema.name());
         let mut entity = if cross {
             release::migrate(source.schema, self.schema, &entity).map_err(&incompatible)?
         } else {
@@ -497,7 +503,11 @@ fn pulled_ends(source: &Source<'_>, relationship: &Entity, id: EntityId) -> Opti
     let t = &relationship.type_name;
     let kinds = &source.kinds;
     let is = |class: &str| source.schema.is_a(t, class);
-    let related = || kinds.references(relationship, "RelatedObjects").contains(&id);
+    let related = || {
+        kinds
+            .references(relationship, "RelatedObjects")
+            .contains(&id)
+    };
     let single = |name: &str| kinds.reference(relationship, name) == Some(id);
     if is("IfcRelDefinesByProperties") && related() {
         return Some(kinds.references(relationship, "RelatingPropertyDefinition"));

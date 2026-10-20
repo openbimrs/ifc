@@ -179,7 +179,10 @@ fn a_wall_copies_what_it_owns_and_joins_what_it_shares() {
             assert!(!copied(&report, shared), "{name}: #{shared} copied");
         }
         for joined in [62, 67, 79, 19, 80] {
-            assert!(report.joined.contains(&EntityId(joined)), "{name}: #{joined}");
+            assert!(
+                report.joined.contains(&EntityId(joined)),
+                "{name}: #{joined}"
+            );
         }
         assert!(references(schema, &model, EntityId(62), "RelatedObjects").contains(&wall));
         assert!(references(schema, &model, EntityId(67), "RelatedObjects").contains(&wall));
@@ -213,11 +216,21 @@ fn a_wall_copies_what_it_owns_and_joins_what_it_shares() {
         }
         let door = copy_of(&report, 100);
         assert_eq!(
-            reference(schema, &model, copy_of(&report, 109), "RelatedBuildingElement"),
+            reference(
+                schema,
+                &model,
+                copy_of(&report, 109),
+                "RelatedBuildingElement"
+            ),
             Some(door)
         );
         assert_eq!(
-            reference(schema, &model, copy_of(&report, 109), "RelatingOpeningElement"),
+            reference(
+                schema,
+                &model,
+                copy_of(&report, 109),
+                "RelatingOpeningElement"
+            ),
             Some(copy_of(&report, 81))
         );
         // The door joins its type, and its mapped item still maps the
@@ -254,7 +267,11 @@ fn a_door_alone_shares_its_type_geometry_and_leaves_its_opening() {
             reference(schema, &model, item, "MappingTarget"),
             Some(EntityId(107))
         );
-        assert_eq!(report.skipped, [EntityId(109)], "{name}: the filled opening");
+        assert_eq!(
+            report.skipped,
+            [EntityId(109)],
+            "{name}: the filled opening"
+        );
         assert!(report.joined.contains(&EntityId(120)), "{name}");
         // The door was relative to the opening's placement: so is the copy.
         let placement = reference(schema, &model, door, "ObjectPlacement").unwrap();
@@ -320,8 +337,7 @@ fn repeated_copies_stay_valid_and_distinct() {
 #[test]
 fn an_offset_moves_the_copy_and_what_hangs_on_it() {
     each_release(|name, mut model, schema| {
-        let options =
-            CopyProductOptions::new().placement(CopyPlacement::Offset([0.0, 10.0, 0.5]));
+        let options = CopyProductOptions::new().placement(CopyPlacement::Offset([0.0, 10.0, 0.5]));
         let (wall, report) = apply_copy(&mut model, schema, copy(20, options));
         assert_valid(name, &model, schema);
         let placement = reference(schema, &model, wall, "ObjectPlacement").unwrap();
@@ -357,9 +373,15 @@ fn a_given_placement_carries_the_openings() {
         let outcome = apply_authoring(&mut model, schema, &ops, 479).expect("applies");
         assert_valid(name, &model, schema);
         let (given, wall) = (outcome.ids[0].unwrap(), outcome.ids[1].unwrap());
-        assert_eq!(reference(schema, &model, wall, "ObjectPlacement"), Some(given));
+        assert_eq!(
+            reference(schema, &model, wall, "ObjectPlacement"),
+            Some(given)
+        );
         let report = outcome.copies[1].as_ref().unwrap();
-        assert!(!copied(report, 21), "{name}: the given placement is no copy");
+        assert!(
+            !copied(report, 21),
+            "{name}: the given placement is no copy"
+        );
         let opening = copy_of(report, 92);
         let opening_placement = reference(schema, &model, opening, "ObjectPlacement").unwrap();
         assert_eq!(
@@ -404,13 +426,21 @@ fn a_dry_run_reports_without_writing() {
     let mut model = read("cascade_ifc4.ifc");
     let schema = ifc::schema::ifc4();
     let before = model.revision();
-    let staged = stage_authoring(&model, schema, &[copy(20, CopyProductOptions::new())], 1)
-        .expect("plans");
+    let staged =
+        stage_authoring(&model, schema, &[copy(20, CopyProductOptions::new())], 1).expect("plans");
     assert!(staged.copies[0].as_ref().unwrap().copied.len() > 30);
     assert_eq!(model.revision(), before);
-    let outcome = apply_authoring(&mut model, schema, &[copy(20, CopyProductOptions::new())], 1)
-        .expect("applies");
-    assert_eq!(staged.copies, outcome.copies, "the same seed plans the same copy");
+    let outcome = apply_authoring(
+        &mut model,
+        schema,
+        &[copy(20, CopyProductOptions::new())],
+        1,
+    )
+    .expect("applies");
+    assert_eq!(
+        staged.copies, outcome.copies,
+        "the same seed plans the same copy"
+    );
 }
 
 #[test]
@@ -442,7 +472,10 @@ fn moving_a_copy_refuses_what_it_would_leave_behind() {
 fn neither_a_product_nor_a_type_is_refused() {
     each_release(|name, mut model, schema| {
         let failure = refusal(&mut model, schema, copy(61, CopyProductOptions::new()));
-        assert!(matches!(failure, AuthoringFailure::NotA { .. }), "{name}: {failure:?}");
+        assert!(
+            matches!(failure, AuthoringFailure::NotA { .. }),
+            "{name}: {failure:?}"
+        );
         let failure = refusal(&mut model, schema, copy(9999, CopyProductOptions::new()));
         assert_eq!(failure, AuthoringFailure::MissingEntity(EntityId(9999)));
     });
@@ -524,7 +557,10 @@ fn an_entity_a_unique_clause_binds_is_shared() {
                 attributes: vec![
                     ("Name".into(), Value::Text("Finish".into())),
                     ("EnumerationValues".into(), Value::List(vec![label("Matt")])),
-                    ("EnumerationReference".into(), Value::Ref(authoring_handle(0))),
+                    (
+                        "EnumerationReference".into(),
+                        Value::Ref(authoring_handle(0)),
+                    ),
                 ],
             },
             AuthorOp::Create {

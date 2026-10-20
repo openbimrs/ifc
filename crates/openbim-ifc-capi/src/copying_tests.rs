@@ -118,7 +118,10 @@ fn a_copy_crosses_as_a_record_and_a_size_query_applies_nothing() {
         let applied = copy_product(model, 20, 0, Some([0.0, 2.0, 0.0]), 0).unwrap();
         let copied = list_len(&fields(&applied)[1]);
         assert_eq!(count(model), before + copied, "{name}");
-        assert!(matches!(fields(&applied)[0], Tagged::Ref(_)), "{name}: the copy");
+        assert!(
+            matches!(fields(&applied)[0], Tagged::Ref(_)),
+            "{name}: the copy"
+        );
         assert_eq!(fields(&applied)[6], Tagged::Bool(true));
 
         let bare = copy_product(

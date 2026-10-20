@@ -733,9 +733,12 @@ impl NativeModel {
         options.global_ids = global_ids;
         let kinds = ["units", "contexts", "owner_history", "materials", "styles"];
         if let Some(unknown) = reuse.iter().find(|kind| !kinds.contains(&kind.as_str())) {
-            return Err(py_err(openbim_ifc_binding_core::BindingError::InvalidValue(
-                format!("reuse kind `{unknown}` is not one of {}", kinds.join(", ")),
-            )));
+            return Err(py_err(
+                openbim_ifc_binding_core::BindingError::InvalidValue(format!(
+                    "reuse kind `{unknown}` is not one of {}",
+                    kinds.join(", ")
+                )),
+            ));
         }
         let reused = |kind: &str| reuse.iter().any(|k| k == kind);
         options.reuse_units = reused("units");

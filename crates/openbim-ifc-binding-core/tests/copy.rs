@@ -63,7 +63,9 @@ mod enabled {
             dry.dry_run = true;
             let planned = model.copy_product(20, dry).expect("plans");
             assert!(!planned.applied);
-            assert!(model.attribute_by_name(planned.copy.unwrap(), "Name").is_err());
+            assert!(model
+                .attribute_by_name(planned.copy.unwrap(), "Name")
+                .is_err());
             let report = model
                 .copy_product(20, CopyProductOptions::new())
                 .expect("copies");

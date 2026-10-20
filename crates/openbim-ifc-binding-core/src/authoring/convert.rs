@@ -2,9 +2,8 @@
 //! refusals into the shared codes.
 
 use ifc::{
-    AssignTypeOptions, AuthorOp, AuthoringError, AuthoringFailure as F, CopyPlacement,
-    CopyPolicy, CopyProductOptions, EntityId, LayerAxis, OwnerHistoryOp, PredefinedTypeMode,
-    RelateOptions,
+    AssignTypeOptions, AuthorOp, AuthoringError, AuthoringFailure as F, CopyPlacement, CopyPolicy,
+    CopyProductOptions, EntityId, LayerAxis, OwnerHistoryOp, PredefinedTypeMode, RelateOptions,
 };
 
 use super::ops::{invalid, Arg, Fields};
@@ -93,8 +92,8 @@ pub(super) fn op(mut fields: Fields) -> Result<AuthorOp, BindingError> {
                 Some(Arg::Texts(texts)) => texts,
                 _ => Vec::new(),
             };
-            let entity = id(&mut fields, "entity")
-                .ok_or_else(|| invalid("`copy_entity` needs `entity`"))?;
+            let entity =
+                id(&mut fields, "entity").ok_or_else(|| invalid("`copy_entity` needs `entity`"))?;
             AuthorOp::CopyEntity {
                 entity,
                 policy: CopyPolicy::new()
@@ -111,8 +110,7 @@ pub(super) fn op(mut fields: Fields) -> Result<AuthorOp, BindingError> {
 /// `copy_product` (#479): its flags default to on, so only an explicit
 /// `false` turns one off.
 fn copy_product(fields: &mut Fields) -> Result<AuthorOp, BindingError> {
-    let product =
-        id(fields, "product").ok_or_else(|| invalid("`copy_product` needs `product`"))?;
+    let product = id(fields, "product").ok_or_else(|| invalid("`copy_product` needs `product`"))?;
     let offset = match fields.take("offset") {
         Some(Arg::Reals(offset)) => Some(offset),
         _ => None,

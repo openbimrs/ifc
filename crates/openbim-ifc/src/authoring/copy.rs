@@ -150,9 +150,7 @@ impl Planner<'_, '_> {
             .ok_or(F::MissingEntity(object))?;
         let t = entity.type_name.clone();
         let product = self.schema.is_a(&t, "IfcProduct");
-        let placement_slot = product
-            .then(|| kinds.slot(&t, "ObjectPlacement"))
-            .flatten();
+        let placement_slot = product.then(|| kinds.slot(&t, "ObjectPlacement")).flatten();
         let shape_slot = product.then(|| kinds.slot(&t, "Representation")).flatten();
         let maps_slot = self
             .schema
@@ -550,9 +548,7 @@ impl Planner<'_, '_> {
         match slots.as_slice() {
             [] => {}
             [slot] if matches!(entity.attributes[*slot], Value::List(_)) => {
-                let containment = self
-                    .schema
-                    .is_a(&t, "IfcRelContainedInSpatialStructure");
+                let containment = self.schema.is_a(&t, "IfcRelContainedInSpatialStructure");
                 let decomposition = (self.schema.is_a(&t, "IfcRelAggregates")
                     || self.schema.is_a(&t, "IfcRelNests"))
                     && kinds.slot(&t, "RelatedObjects") == Some(*slot);
@@ -588,10 +584,7 @@ impl Planner<'_, '_> {
                     if !state.owned.contains(&end) || state.copies.contains_key(&end) {
                         continue;
                     }
-                    let kind = self
-                        .view
-                        .get(end)
-                        .map(|found| kinds.of(&found.type_name));
+                    let kind = self.view.get(end).map(|found| kinds.of(&found.type_name));
                     match kind {
                         Some(Kind::Opening) if !state.options.openings => {
                             state.skipped.insert(relationship);
@@ -627,7 +620,9 @@ impl Planner<'_, '_> {
                         .iter()
                         .any(|item| references_any(item, &|id| state.copyable(id))) =>
                 {
-                    items.retain(|item| matches!(item, Value::Ref(id) if state.copies.contains_key(id)));
+                    items.retain(
+                        |item| matches!(item, Value::Ref(id) if state.copies.contains_key(id)),
+                    );
                     remap(value, &state.copies);
                 }
                 other => remap(other, &state.copies),

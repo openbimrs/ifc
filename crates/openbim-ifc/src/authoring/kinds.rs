@@ -295,7 +295,13 @@ pub(super) fn unique_keys(schema: &Schema, type_name: &str) -> Vec<(String, Vec<
             let names = rule
                 .attributes
                 .iter()
-                .map(|name| name.rsplit(['.', '\\']).next().unwrap_or(name).trim().to_owned())
+                .map(|name| {
+                    name.rsplit(['.', '\\'])
+                        .next()
+                        .unwrap_or(name)
+                        .trim()
+                        .to_owned()
+                })
                 .collect();
             keys.push((declaring.name.clone(), names));
         }

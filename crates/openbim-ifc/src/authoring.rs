@@ -106,9 +106,7 @@ pub use options::{
     LayerAxis, OwnerHistoryOp, PredefinedTypeMode, PurgeOptions, RelateOptions,
     RemoveProductOptions, ReuseOptions,
 };
-pub use report::{
-    CopiedEntity, CopyReport, KeepReason, KeptEntity, RemovalReport, RemovedEntity,
-};
+pub use report::{CopiedEntity, CopyReport, KeepReason, KeptEntity, RemovalReport, RemovedEntity};
 pub use seed::fresh_seed;
 
 use overlay::Overlay;

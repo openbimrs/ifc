@@ -53,7 +53,12 @@ const STYLES: &[&str] = &[
 
 impl Planner<'_, '_> {
     /// Whether `type_name` is a resource the options reuse.
-    pub(super) fn reusable(&self, source: &Source<'_>, options: &AppendOptions, type_name: &str) -> bool {
+    pub(super) fn reusable(
+        &self,
+        source: &Source<'_>,
+        options: &AppendOptions,
+        type_name: &str,
+    ) -> bool {
         let any = |classes: &[&str]| classes.iter().any(|c| source.schema.is_a(type_name, c));
         let reuse = options.reuse;
         (reuse.units && any(UNITS))
@@ -97,7 +102,9 @@ impl Planner<'_, '_> {
             names
                 .iter()
                 .map(|name| {
-                    let slot = layout.iter().position(|a| a.name.eq_ignore_ascii_case(name))?;
+                    let slot = layout
+                        .iter()
+                        .position(|a| a.name.eq_ignore_ascii_case(name))?;
                     entity
                         .attributes
                         .get(slot)
@@ -160,8 +167,7 @@ impl Planner<'_, '_> {
             (Some(a), Some(b)) => {
                 a.type_name.eq_ignore_ascii_case(&b.type_name)
                     && a.attributes.len() == b.attributes.len()
-                    && a
-                        .attributes
+                    && a.attributes
                         .iter()
                         .zip(&b.attributes)
                         .all(|(x, y)| self.equal_values(source, reused, memo, x, y))

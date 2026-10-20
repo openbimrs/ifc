@@ -576,7 +576,7 @@ impl GlobalIdMode {
             Self::Merge,
         ]
         .into_iter()
-            .find(|mode| mode.as_str() == name)
+        .find(|mode| mode.as_str() == name)
     }
 }
 

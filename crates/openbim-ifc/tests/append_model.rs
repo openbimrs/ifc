@@ -77,8 +77,16 @@ fn a_removed_wall_merges_back_with_what_belongs_to_it() {
     let mut target = without_wall_a(schema);
     let units = count(&target, "IFCSIUNIT");
     let merge = AppendOptions::new().global_ids(GlobalIdMode::Merge);
-    let outcome = apply_append(&mut target, schema, &source, schema, &ids(&[20]), &merge, 479)
-        .expect("appends");
+    let outcome = apply_append(
+        &mut target,
+        schema,
+        &source,
+        schema,
+        &ids(&[20]),
+        &merge,
+        479,
+    )
+    .expect("appends");
     assert_valid("appended", &target, schema);
     let report = &outcome.report;
     let wall = report.copy_of(EntityId(20)).expect("the wall");
@@ -88,7 +96,10 @@ fn a_removed_wall_merges_back_with_what_belongs_to_it() {
     // usage, classification, openings, body and style.
     for original in [64, 65, 73, 74, 79, 81, 91, 92, 96, 109, 134, 24, 25, 26, 33] {
         assert!(
-            report.copied.iter().any(|c| c.original == EntityId(original)),
+            report
+                .copied
+                .iter()
+                .any(|c| c.original == EntityId(original)),
             "#{original} was not copied"
         );
     }
@@ -97,7 +108,10 @@ fn a_removed_wall_merges_back_with_what_belongs_to_it() {
     // the type, the door and window that filled the openings.
     for original in [5, 11, 72, 34, 61, 66, 100, 130] {
         assert!(
-            report.reused.iter().any(|r| r.original == EntityId(original)),
+            report
+                .reused
+                .iter()
+                .any(|r| r.original == EntityId(original)),
             "#{original} was not reused: {:#?}",
             report.reused
         );
@@ -120,8 +134,16 @@ fn a_kept_wall_lands_beside_the_target_without_its_container() {
     let source = read("cascade_ifc4.ifc");
     let mut target = read("cascade_ifc4.ifc");
     let regenerate = AppendOptions::new().global_ids(GlobalIdMode::Regenerate);
-    let outcome = apply_append(&mut target, schema, &source, schema, &ids(&[20]), &regenerate, 9)
-        .expect("appends");
+    let outcome = apply_append(
+        &mut target,
+        schema,
+        &source,
+        schema,
+        &ids(&[20]),
+        &regenerate,
+        9,
+    )
+    .expect("appends");
     assert_valid("beside", &target, schema);
     let report = &outcome.report;
     // The type, shared property set and fillings are copies now, related
@@ -136,7 +158,11 @@ fn a_kept_wall_lands_beside_the_target_without_its_container() {
         typed,
         Value::List(vec![Value::Ref(report.copy_of(EntityId(20)).unwrap())])
     );
-    assert!(report.skipped.contains(&EntityId(19)), "{:?}", report.skipped);
+    assert!(
+        report.skipped.contains(&EntityId(19)),
+        "{:?}",
+        report.skipped
+    );
     assert_eq!(count(&target, "IFCOWNERHISTORY"), 1, "reused by value");
 }
 
@@ -163,8 +189,16 @@ fn global_ids_are_kept_refused_or_regenerated() {
     assert_eq!(target.revision(), before);
 
     let colliding = AppendOptions::new().global_ids(GlobalIdMode::RegenerateColliding);
-    let outcome = apply_append(&mut target, schema, &source, schema, &ids(&[66]), &colliding, 1)
-        .expect("appends");
+    let outcome = apply_append(
+        &mut target,
+        schema,
+        &source,
+        schema,
+        &ids(&[66]),
+        &colliding,
+        1,
+    )
+    .expect("appends");
     assert_valid("regenerated", &target, schema);
     let wall_type = outcome.report.copy_of(EntityId(66)).unwrap();
     let pset = outcome.report.copy_of(EntityId(68)).unwrap();
@@ -175,14 +209,14 @@ fn global_ids_are_kept_refused_or_regenerated() {
     assert!(outcome.report.skipped.contains(&EntityId(67)));
 
     let merge = AppendOptions::new().global_ids(GlobalIdMode::Merge);
-    let outcome = apply_append(&mut target, schema, &source, schema, &ids(&[66]), &merge, 1)
-        .expect("merges");
+    let outcome =
+        apply_append(&mut target, schema, &source, schema, &ids(&[66]), &merge, 1).expect("merges");
     assert!(outcome.report.copied.is_empty(), "{:#?}", outcome.report);
     assert_eq!(outcome.report.copy_of(EntityId(66)), Some(EntityId(66)));
 
     let all = AppendOptions::new().global_ids(GlobalIdMode::Regenerate);
-    let outcome = apply_append(&mut target, schema, &source, schema, &ids(&[111]), &all, 2)
-        .expect("appends");
+    let outcome =
+        apply_append(&mut target, schema, &source, schema, &ids(&[111]), &all, 2).expect("appends");
     assert_eq!(outcome.report.regenerated.len(), 1, "the door type alone");
     assert_valid("door type", &target, schema);
 }
@@ -193,17 +227,40 @@ fn a_type_comes_with_its_representation_maps() {
     let source = read("cascade_ifc4.ifc");
     let mut target = read("cascade_ifc4.ifc");
     let regenerate = AppendOptions::new().global_ids(GlobalIdMode::Regenerate);
-    let staged = stage_append(&target, schema, &source, schema, &ids(&[111]), &regenerate, 3)
-        .expect("plans");
+    let staged = stage_append(
+        &target,
+        schema,
+        &source,
+        schema,
+        &ids(&[111]),
+        &regenerate,
+        3,
+    )
+    .expect("plans");
     let before = target.revision();
     assert_eq!(target.revision(), before);
-    let outcome = apply_append(&mut target, schema, &source, schema, &ids(&[111]), &regenerate, 3)
-        .expect("appends");
+    let outcome = apply_append(
+        &mut target,
+        schema,
+        &source,
+        schema,
+        &ids(&[111]),
+        &regenerate,
+        3,
+    )
+    .expect("appends");
     assert_eq!(staged.report, outcome.report);
     for original in [111, 112, 113, 114, 115, 116] {
-        assert!(outcome.report.copy_of(EntityId(original)).is_some(), "#{original}");
+        assert!(
+            outcome.report.copy_of(EntityId(original)).is_some(),
+            "#{original}"
+        );
     }
-    assert!(outcome.report.reused.iter().any(|r| r.original == EntityId(11)));
+    assert!(outcome
+        .report
+        .reused
+        .iter()
+        .any(|r| r.original == EntityId(11)));
     assert_valid("type", &target, schema);
 }
 
@@ -215,8 +272,16 @@ fn nothing_is_reused_when_asked() {
     let options = AppendOptions::new()
         .global_ids(GlobalIdMode::Merge)
         .reuse(ReuseOptions::none());
-    let outcome = apply_append(&mut target, schema, &source, schema, &ids(&[20]), &options, 4)
-        .expect("appends");
+    let outcome = apply_append(
+        &mut target,
+        schema,
+        &source,
+        schema,
+        &ids(&[20]),
+        &options,
+        4,
+    )
+    .expect("appends");
     // Only what is the same object by identity is reused, no resource.
     for resource in [5, 6, 11, 34, 72] {
         assert!(outcome.report.copy_of(EntityId(resource)) != Some(EntityId(resource)));
@@ -272,8 +337,16 @@ fn a_release_that_lacks_an_entity_or_attribute_is_refused() {
     let before = target.revision();
     let regenerate = AppendOptions::new().global_ids(GlobalIdMode::Regenerate);
     // IFC2X3 has no IfcDoorType.
-    let error = apply_append(&mut target, ifc2x3, &source, ifc4, &ids(&[111]), &regenerate, 1)
-        .expect_err("refused");
+    let error = apply_append(
+        &mut target,
+        ifc2x3,
+        &source,
+        ifc4,
+        &ids(&[111]),
+        &regenerate,
+        1,
+    )
+    .expect_err("refused");
     assert!(
         matches!(
             &*error.failure,
@@ -283,8 +356,16 @@ fn a_release_that_lacks_an_entity_or_attribute_is_refused() {
         "{error}"
     );
     // IFC2X3's IfcWall has no PredefinedType, and the IFC4 wall sets it.
-    let error = apply_append(&mut target, ifc2x3, &source, ifc4, &ids(&[20]), &regenerate, 1)
-        .expect_err("refused");
+    let error = apply_append(
+        &mut target,
+        ifc2x3,
+        &source,
+        ifc4,
+        &ids(&[20]),
+        &regenerate,
+        1,
+    )
+    .expect_err("refused");
     assert!(
         matches!(
             &*error.failure,
@@ -301,8 +382,16 @@ fn ifc4_entities_move_into_ifc4x3_by_name() {
     let (ifc4, ifc4x3) = (ifc::schema::ifc4(), ifc::schema::ifc4x3());
     let mut target = read("cascade_ifc4x3.ifc");
     let regenerate = AppendOptions::new().global_ids(GlobalIdMode::Regenerate);
-    let outcome = apply_append(&mut target, ifc4x3, &source, ifc4, &ids(&[20, 150]), &regenerate, 5)
-        .expect("appends");
+    let outcome = apply_append(
+        &mut target,
+        ifc4x3,
+        &source,
+        ifc4,
+        &ids(&[20, 150]),
+        &regenerate,
+        5,
+    )
+    .expect("appends");
     assert_valid("IFC4 into IFC4X3", &target, ifc4x3);
     let wall = outcome.report.copy_of(EntityId(20)).unwrap();
     assert_eq!(&*target.get(wall).unwrap().type_name, "IFCWALL");
@@ -310,7 +399,11 @@ fn ifc4_entities_move_into_ifc4x3_by_name() {
     // still names its parent.
     let placement = outcome.report.copy_of(EntityId(21)).unwrap();
     let slots = ifc::attribute_slots(ifc4x3, "IfcLocalPlacement").unwrap();
-    let rel_to = slots.iter().find(|s| s.name == "PlacementRelTo").unwrap().index;
+    let rel_to = slots
+        .iter()
+        .find(|s| s.name == "PlacementRelTo")
+        .unwrap()
+        .index;
     assert_eq!(
         target.get(placement).unwrap().attributes[rel_to],
         Value::Ref(outcome.report.copy_of(EntityId(18)).unwrap())
@@ -328,8 +421,16 @@ fn an_enumeration_constant_the_target_lacks_is_refused() {
     apply_authoring(&mut source, ifc4x3, &[retaining], 1).expect("edits");
     let mut target = read("cascade_ifc4.ifc");
     let regenerate = AppendOptions::new().global_ids(GlobalIdMode::Regenerate);
-    let error = apply_append(&mut target, ifc4, &source, ifc4x3, &ids(&[66]), &regenerate, 6)
-        .expect_err("refused");
+    let error = apply_append(
+        &mut target,
+        ifc4,
+        &source,
+        ifc4x3,
+        &ids(&[66]),
+        &regenerate,
+        6,
+    )
+    .expect_err("refused");
     assert!(
         matches!(&*error.failure, AuthoringFailure::IncompatibleRelease { entity, detail, .. }
             if *entity == EntityId(66) && detail.contains("RETAININGWALL")),
@@ -352,7 +453,10 @@ fn a_missing_root_is_refused() {
         1,
     )
     .expect_err("refused");
-    assert_eq!(*error.failure, AuthoringFailure::MissingEntity(EntityId(9999)));
+    assert_eq!(
+        *error.failure,
+        AuthoringFailure::MissingEntity(EntityId(9999))
+    );
 }
 
 #[test]
@@ -365,7 +469,10 @@ fn a_material_a_profile_and_a_template_come_with_their_closure() {
             attributes: vec![
                 ("Name".into(), Value::Text("Reference".into())),
                 ("TemplateType".into(), Value::Enum("P_SINGLEVALUE".into())),
-                ("PrimaryMeasureType".into(), Value::Text("IfcIdentifier".into())),
+                (
+                    "PrimaryMeasureType".into(),
+                    Value::Text("IfcIdentifier".into()),
+                ),
             ],
         },
         AuthorOp::Create {
@@ -400,7 +507,14 @@ fn a_material_a_profile_and_a_template_come_with_their_closure() {
     .expect("appends");
     assert_valid("assets", &target, schema);
     let report = &outcome.report;
-    for original in [EntityId(70), EntityId(170), EntityId(171), EntityId(172), set, property] {
+    for original in [
+        EntityId(70),
+        EntityId(170),
+        EntityId(171),
+        EntityId(172),
+        set,
+        property,
+    ] {
         assert!(report.copy_of(original).is_some(), "{original}");
     }
     let copy = report.copy_of(set).unwrap();
