@@ -413,3 +413,25 @@ fn an_unsupported_construct_is_named_once() {
     assert_eq!(found[0].severity, Severity::Unsupported);
     assert!(found[0].message.contains("FORMAT"), "{}", found[0].message);
 }
+
+/// Rules paired with another release's tables are not run: one unsupported
+/// finding says so, and the hand-written rules still run.
+#[test]
+fn rules_of_another_release_are_refused_by_the_run() {
+    if !spec_available() {
+        return;
+    }
+    let model = step(SchemaVersion::Ifc4x3, GEOMETRY);
+    let report = validate_with_options(
+        &model,
+        schema(SchemaVersion::Ifc4x3),
+        &ValidateOptions::new().express(rules(SchemaVersion::Ifc4)),
+    );
+    let found = under(&report, "where.express.release");
+    assert_eq!(found.len(), 1, "{:#?}", report.findings());
+    assert_eq!(found[0].severity, Severity::Unsupported);
+    assert!(report
+        .findings()
+        .iter()
+        .all(|f| !matches!(f.detail, Some(FindingDetail::Rule(_)))));
+}

@@ -30,12 +30,23 @@ use super::tables::Tables;
 /// [`ExpressRules::parse`] refuses `IFC4.exp` paired with IFC4X3 tables,
 /// and a modified file whose slots would be read wrong.
 ///
-/// Cheap to clone: the parsed schema is shared.
-#[derive(Debug, Clone)]
+/// Cheap to clone: the parsed schema is shared. `Send` and `Sync`, so one
+/// parse serves every thread.
+#[derive(Clone)]
 pub struct ExpressRules {
     pub(crate) tables: Arc<Tables>,
     pub(crate) limits: EvalLimits,
     ids: Arc<BTreeSet<String>>,
+}
+
+impl std::fmt::Debug for ExpressRules {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ExpressRules")
+            .field("schema", &self.schema_name())
+            .field("rules", &self.ids.len())
+            .field("limits", &self.limits)
+            .finish()
+    }
 }
 
 impl ExpressRules {
@@ -129,5 +140,16 @@ impl ExpressRules {
     #[must_use]
     pub fn coverage(&self) -> Coverage {
         coverage::measure(&self.tables)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ExpressRules;
+
+    #[test]
+    fn rules_can_be_shared_between_threads() {
+        fn shared<T: Send + Sync>() {}
+        shared::<ExpressRules>();
     }
 }

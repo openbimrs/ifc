@@ -66,7 +66,7 @@ mod tables;
 mod value;
 
 pub use coverage::{Coverage, RuleCount};
-pub use error::{ExpressError, SourcePos};
+pub use error::ExpressError;
 pub use options::{BudgetExceeded, EvalLimits};
 pub use rules::ExpressRules;
 

@@ -4,9 +4,9 @@ use std::fmt;
 
 /// A line in the EXPRESS source, for messages.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SourcePos {
+pub(crate) struct SourcePos {
     /// One-based line number.
-    pub line: u32,
+    pub(crate) line: u32,
 }
 
 /// The EXPRESS source could not be turned into evaluable rules.
