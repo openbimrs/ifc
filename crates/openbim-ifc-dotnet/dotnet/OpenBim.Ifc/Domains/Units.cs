@@ -1,6 +1,8 @@
 // Unit conversion and a model's length unit (#469), mirroring the shared
 // binding core.
 
+using OpenBim.Ifc.Native;
+
 namespace OpenBim.Ifc;
 
 /// <summary>What <see cref="IfcModel.ConvertLengthUnit"/> did, or, for a dry run, would do.</summary>
