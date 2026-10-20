@@ -563,3 +563,40 @@ fn text_edits_write_every_selected_entity_in_one_transaction() {
         assert_eq!(bytes(&model), before, "{name}");
     });
 }
+
+#[test]
+fn documented_example() {
+    let (name, version) = FIXTURES[1];
+    let schema = ifc::schema::for_version(version).unwrap();
+    let mut model = read(name);
+    // docs:snippet tables-rust
+    use ifc::selector::{select, Selector, SelectorIndex, ValuePath};
+    use ifc::sheet::{export, plan_import, KeyColumn, Sheet, SheetFormat, SheetOptions};
+
+    let options = SheetOptions::default().with_key(KeyColumn::Id);
+    let columns = ["Name", "type.Name", "Pset_WallCommon.FireRating"]
+        .map(|path| ValuePath::parse(path).unwrap());
+    let walls = select(&model, schema, &Selector::parse("IfcWall").unwrap()).unwrap();
+    let index = SelectorIndex::new(&model, schema);
+    let sheet = export(&index, &walls, &columns, &options).unwrap();
+    // Or Tsv, or Xlsx with the `sheet-xlsx` feature.
+    let csv = String::from_utf8(sheet.write(SheetFormat::Csv).unwrap()).unwrap();
+    assert!(csv.starts_with("id,Name,type.Name,Pset_WallCommon.FireRating\r\n17,Wall A,WT-200,F90"));
+
+    // Edit a cell, read the table back and plan: every change, or every
+    // refusal by row and column.
+    let edited = Sheet::read(
+        csv.replace("17,Wall A,", "17,Wall A1,").as_bytes(),
+        SheetFormat::Csv,
+    );
+    let plan = plan_import(&index, &edited.unwrap(), &options).expect("no refusal");
+    for cell in &plan.changes {
+        let (before, after) = (&cell.change.before, &cell.change.after);
+        println!("row {} {}: {before:?} -> {after:?}", cell.row, cell.path);
+    }
+    drop(index);
+    // One transaction: all of it, or nothing.
+    plan.commit(&mut model).unwrap();
+    // docs:end
+    assert_eq!(value(&model, schema, 17, "Name"), text("Wall A1"));
+}

@@ -134,6 +134,9 @@ and `.github/workflows/nix.yml` builds the flake.
 | `tree FILE` | Project, site, building, storey and space, with their elements | `human`, `json` |
 | `lint FILE...` | Products with geometry that no model viewer will draw | `human`, `json`, `sarif` |
 | `select FILE QUERY` | The entities a [selector](/guide/selectors) selects, with values read by path | `table`, `json`, `csv` |
+| `edit FILE QUERY --set PATH VALUE...` | Values set by path on the selected entities, as one checked transaction, into a new file | `human`, `json` |
+| `export-table FILE QUERY --column PATH...` | The selected entities as a [table](/guide/tables), one column per value path | `csv`, `tsv`, `xlsx` |
+| `import-table FILE TABLE` | A table's edited cells written back by key, as one checked transaction, into a new file | `human`, `json` |
 
 `openbim-ifc <command> --help` lists every option. Each command reads STEP or
 ifcXML, chosen by content first and extension second, and an ifcZIP archive
@@ -246,6 +249,64 @@ with the byte span it refuses, never answered with an empty list. JSON
 gives the query in its canonical form and the grammar version beside the
 entities. Quote the selector in the shell: it holds spaces, `!` and `$`.
 
+### edit
+
+```bash
+openbim-ifc edit model.ifc 'IfcWall, type=WT-200' --set Pset_WallCommon.FireRating F120 --dry-run
+openbim-ifc edit model.ifc 'IfcWall, type=WT-200' --set type.Name WT-250 --set Description '$' -o edited.ifc
+openbim-ifc edit model.ifc IfcSlab --set Pset_Custom.Note 'IFCLABEL(checked)' --in-place
+```
+
+Writes every `--set PATH VALUE` on every entity the selector selects, as
+one transaction checked against the release the header declares: an
+attribute (`Name`, `type.Name`, `materials.Category`) by its declared type,
+a property (`Pset_WallCommon.FireRating`) through the checked property edit
+in the type it already states, a `Pset_` or `Qto_` set against the PSD/QTO
+catalog. The value is text read as that type: `TRUE`, `2.5`, an enumeration
+item in any case, `#12` for a reference, `$` for `NULL` (`--null` names
+another text). Where nothing says which type to write, the value names it:
+`IFCLABEL(F90)` for a property no object states yet, or a SELECT attribute.
+
+`--dry-run` lists the changes, one line per value: the entity, the path,
+the entity a path such as `type.Name` reaches, and the value before and
+after; nothing is written. Otherwise the edited model goes to `--output`
+(STEP, ifcXML or ifcZIP by its extension, an existing file replaced only
+with `--force`) or, with `--in-place`, over the input in its own format.
+The input is never changed without `--in-place`. A value an entity already
+holds is left alone. Any refusal (text that is no value of the type, a
+path that names no value to write such as `class` or `count`, a property
+edit the catalog refuses) is printed with its entity, path and kind, every
+one of them, and the run writes nothing and exits 3. A selector or path
+that does not parse is refused as `invalid-selector` with its span (exit
+2).
+
+### export-table, import-table
+
+```bash
+openbim-ifc export-table model.ifc IfcWall -c Name -c type.Name -c Pset_WallCommon.FireRating -o walls.xlsx
+openbim-ifc export-table model.ifc 'IfcDoor + IfcWindow' -c Name -c storey.Name --key id --to tsv
+openbim-ifc import-table model.ifc walls.xlsx --dry-run
+openbim-ifc import-table model.ifc walls.xlsx -o edited.ifc
+```
+
+`export-table` writes the selected entities as a [table](/guide/tables):
+the key column first (`GlobalId`, or `id` with `--key id`), then one column
+per `--column` path (`class` and `Name` by default), each headed by the
+path. The format is the output's extension (`.csv`, `.tsv`, `.xlsx`) or
+`--to`; standard output is CSV unless `--to` says otherwise. Every XLSX cell
+is text, so a `GlobalId` or a real survives a spreadsheet application.
+
+`import-table` reads a table back: rows are matched by their key, every
+other cell is written by its header's path as one checked transaction, and
+a cell that reads what the model holds changes nothing, so an exported table
+imported unchanged writes an identical model. `--dry-run`, `--output`,
+`--in-place` and `--force` are those of `edit`. Every refusal is reported
+by row and column (`row 3, column D: invalid-text: ...`): a header that is
+no path (with its span), a missing, empty, unknown, ambiguous or repeated
+key, a row of another width, a cell that does not read as its target's
+type, two rows giving one type different names. Any refusal writes nothing
+and exits 3.
+
 ## Exit codes
 
 | Code | Meaning |
@@ -253,6 +314,7 @@ entities. Quote the selector in the shell: it holds spaces, `!` and `$`.
 | 0 | Success; for `validate` and `lint`, nothing that fails the run |
 | 1 | `validate` or `lint` found something that fails the run |
 | 2 | A usage error, an unreadable or unparseable file, or a refusal |
+| 3 | `edit` or `import-table` refused a planned change; nothing was written |
 
 A refusal prints its kind on stderr, `openbim-ifc: <kind>: <detail>`, and
 is never turned into an empty or guessed answer:
@@ -270,6 +332,19 @@ is never turned into an empty or guessed answer:
 | `invalid-model` | The file is malformed or ambiguous where an exact answer is needed |
 | `budget-exceeded` | A traversal hit its bound before it could answer, or an ifcZIP entry would inflate past its budget |
 | `write` | The output format refused the model |
+| `invalid-selector` | A selector, value path or column does not parse, or names a class or attribute the release does not declare; the detail names the byte span |
+
+`edit` and `import-table` report each refused change on stderr as
+`openbim-ifc: refused: <where>: <kind>: <detail>`, where `<where>` is the
+entity and `--set` path or the table's row and column, and exit 3. The kinds
+are `invalid-text` (no value of the target's type), `type-mismatch` (a
+value the declared type refuses, `$` for a required attribute),
+`not-settable` (a computed key, a pattern, a list), `conflicting-write`,
+`property-edit`, `untyped-value` and, for a table, `invalid-header`,
+`duplicate-column`, `no-key-column`, `ragged-row`, `empty-key`,
+`unknown-key`, `ambiguous-key` and `duplicate-key`. `--format json` writes
+the changes and the refusals (with `row`, `column`, `entity`, `path`,
+`kind`, `detail` and `span`) as one document on standard output.
 
 `validate` and `lint` take several files; one that cannot be checked is
 reported (in JSON as `error`, in SARIF as a tool execution notification),

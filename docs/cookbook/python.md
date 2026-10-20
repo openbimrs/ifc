@@ -361,6 +361,39 @@ parse, or names a class or attribute the release does not declare, raises
 `IfcError` with `code` `invalid-selector` and `span`, the byte range it
 refuses.
 
+## Export a table and import it back
+
+The walls of `test/fixtures/synthetic-relations/selector_ifc4.ifc` as a
+[table](/guide/tables), one column per value path, keyed by `id`; one cell
+edited, the import planned as a dry run, then applied as one checked
+transaction:
+
+<!-- SNIPPET:cookbook-py-tables -->
+
+```python
+columns = ["Name", "type.Name", "Pset_WallCommon.FireRating"]
+csv = model.export_table("IfcWall", columns, key="id")  # bytes; or format="xlsx"
+print(csv.decode().splitlines()[1])  # '17,Wall A,WT-200,F90'
+
+# Edit the table (here, as text), then plan the import: a dry run.
+edited = csv.decode().replace("17,Wall A,WT-200,F90", "17,Wall A,WT-200,F120")
+plan = model.import_table(edited, dry_run=True)
+for change in plan.changes:
+    print((change.row, change.path, change.before, change.after))
+# (2, 'Pset_WallCommon.FireRating', 'F90', 'F120')
+
+result = model.import_table(edited)  # one checked transaction
+print(result.applied)  # True
+# A refused cell refuses the whole table, by row and column.
+refused = model.import_table("id,Qto_WallBaseQuantities.Length\n17,long\n")
+print([(r.row, r.column, r.code) for r in refused.refusals])  # [(2, 2, 'type-mismatch')]
+```
+
+<!-- /SNIPPET -->
+
+`export_table` returns bytes (`format="xlsx"` for a workbook); `import_table` takes bytes or a `str` and reports every change and refusal without raising. A cell whose text is what its path reads changes nothing;
+any refused cell refuses the whole table.
+
 ## Remove a product and purge
 
 A door with what it alone owns, a wall whose openings place their fillings,

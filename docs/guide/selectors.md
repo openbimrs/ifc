@@ -150,6 +150,14 @@ Each host passes plain values as it does for attributes written by name:
 a host string becomes a label or the enumeration item it names, a host
 integer an `INTEGER` or a `REAL` as declared.
 
+Many writes from text, such as the `--set` values of `openbim-ifc edit` or
+the cells of a [table](/guide/tables), are planned as one transaction by
+`SelectorIndex::plan_text_edits`: each text is read as a value of its
+target's declared or stated type, a value already held is left alone, two
+writes giving one target different values are refused, and every refusal
+is reported with the write it belongs to; nothing is written unless
+everything can be.
+
 ## In Rust
 
 <!-- SNIPPET:selector-rust -->
