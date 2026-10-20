@@ -348,6 +348,8 @@ export interface CopyReport {
   regenerated: bigint[];
   /** `false` for a dry run. */
   applied: boolean;
+}
+
 /** Options of `IfcModel.exportTable`. */
 export interface TableOptions {
   /** `"csv"` (default), `"tsv"` or `"xlsx"` (`feature-disabled` in the npm package). */
