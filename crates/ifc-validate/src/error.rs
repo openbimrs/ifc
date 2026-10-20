@@ -21,6 +21,16 @@ pub enum ValidateError {
     /// unbundled schema is a known gap in this build. Reporting both as
     /// "unknown" would hide which one a user is hitting.
     UnbundledSchema(String),
+    /// A release known by name whose normative EXPRESS schema is not
+    /// published (`IFC4X3_TC1`, `IFC4X3_ADD1`; #467), so no build has its
+    /// tables. Carries the token as written.
+    ///
+    /// Not [`Self::UnknownSchema`]: the token is a real IFC release, and it
+    /// is not read with a neighbouring release's tables by assumption. A
+    /// caller that accepts that risk passes the tables it chooses to
+    /// [`crate::validate`] itself; the report then carries the
+    /// `header.schema.unpublished` warning.
+    UnpublishedSchema(String),
     /// The file declares no schema at all.
     NoSchemaDeclared,
 }
@@ -34,6 +44,10 @@ impl fmt::Display for ValidateError {
             Self::UnbundledSchema(token) => {
                 write!(f, "no schema tables bundled for {token:?}")
             }
+            Self::UnpublishedSchema(token) => write!(
+                f,
+                "{token:?} is a release buildingSMART publishes no EXPRESS schema for"
+            ),
             Self::NoSchemaDeclared => f.write_str("the file declares no schema"),
         }
     }

@@ -12,6 +12,25 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#467)
+
+Semver: minor. A new public type; `SchemaVersion` and its header-token
+mapping are unchanged.
+
+- `UnpublishedRelease` (`Ifc4x3Tc1`, `Ifc4x3Add1`) names the IFC 4.3
+  releases whose identifiers files carry but whose normative EXPRESS
+  buildingSMART does not publish: `IFC4X3_TC1` (IFC 4.3.0.1) and
+  `IFC4X3_ADD1` (IFC 4.3.1.0), each with `identifier()`,
+  `version_number()`, `superseded_by()` (IFC4X3 ADD2, not a claim of
+  identity) and `from_header_token()`. The identifiers and numbers come
+  from the `SCHEMA_NAME` and documentation header of
+  buildingSMART/IFC4.x-development's generator; buildingSMART lists only
+  ADD2 (4.3.2.0) for IFC 4.3, so no tables can be fetched and checksummed
+  for TC1 or ADD1, and IfcOpenShell's own (non-normative) tables show TC1
+  lacks entities ADD2 has. `SchemaVersion::from_header_token` still
+  returns `None` for both: they are named for a precise refusal, never
+  read as ADD2 by assumption.
+
 ## [0.3.2] - 2026-10-04
 
 ### Changed
