@@ -142,7 +142,7 @@ fn distance_expression(distance: Value) -> Report {
             ("BasisCurve", Value::Ref(EntityId(1))),
         ],
     ));
-    ifc_validate::validate(&model, schema)
+    super::fixtures::check(&model, schema)
 }
 
 pub const CASES: &[Case] = &[

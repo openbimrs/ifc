@@ -29,8 +29,13 @@ ifc-schema = { workspace = true, features = ["default", "express"] }
 # Test-only: the corpus is STEP on disk. Production validation takes a Model.
 ifc-step.workspace = true
 
+# The EXPRESS evaluator against the fetched normative schemas.
+[[test]]
+name = "express_rules"
+required-features = ["express"]
+
 [features]
-default = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
+default = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3", "express"]
 # One feature per bundled IFC release, forwarded to `ifc-schema` (#306).
 # Each links that release's schema table; `validate_declared` refuses a
 # file declaring a release left out with `ValidateError::UnbundledSchema`. The default keeps all
@@ -42,6 +47,11 @@ ifc4 = ["ifc-schema/ifc4"]
 ifc4x1 = ["ifc-schema/ifc4x1"]
 ifc4x2 = ["ifc-schema/ifc4x2"]
 ifc4x3 = ["ifc-schema/ifc4x3"]
+# The EXPRESS rule evaluator (`express::ExpressRules`, #461): reads a
+# release's `.exp` text at run time and evaluates its WHERE rules, type
+# rules, global rules and functions. Pure Rust, no dependency; a build that
+# never evaluates rule text (browser WASM) can leave it out.
+express = []
 
 [lints]
 workspace = true

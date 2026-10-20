@@ -25,4 +25,5 @@ mod registry;
 
 pub use budget::Budget;
 pub use engine::evaluate;
+pub(crate) use engine::evaluate_except;
 pub use registry::{implemented, lookup, unsupported, RuleEntry, Support, RULES};
