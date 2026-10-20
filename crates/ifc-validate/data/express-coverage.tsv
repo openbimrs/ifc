@@ -1,0 +1,6 @@
+release	entity_rules	entity_rules_evaluable	type_rules	type_rules_evaluable	global_rules	global_rules_evaluable	functions	functions_evaluable	derived	derived_evaluable	not_evaluable
+IFC2X3_TC1	339	339	24	24	2	2	38	38	55	55	-
+IFC4_ADD2_TC1	652	652	25	25	2	2	47	47	62	62	-
+IFC4X1_FINAL	658	658	25	25	2	2	47	47	62	62	-
+IFC4X2_FINAL	672	672	25	25	2	2	47	47	62	62	-
+IFC4X3_ADD2	752	752	25	25	2	2	48	48	60	60	-

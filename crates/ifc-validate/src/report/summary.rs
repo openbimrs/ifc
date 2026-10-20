@@ -18,6 +18,8 @@ pub struct Summary {
     pub evaluation_errors: usize,
     /// How many suspicious-but-legal findings.
     pub warnings: usize,
+    /// How many EXPRESS rule results were UNKNOWN or `?`.
+    pub indeterminate: usize,
     /// How many rules went unevaluated.
     pub unsupported: usize,
 }
@@ -44,8 +46,12 @@ impl fmt::Display for Summary {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             formatter,
-            "{} errors, {} evaluation errors, {} warnings, {} unsupported",
-            self.errors, self.evaluation_errors, self.warnings, self.unsupported
+            "{} errors, {} evaluation errors, {} warnings, {} indeterminate, {} unsupported",
+            self.errors,
+            self.evaluation_errors,
+            self.warnings,
+            self.indeterminate,
+            self.unsupported
         )
     }
 }
@@ -133,6 +139,7 @@ impl Report {
                 Severity::Error => summary.errors += 1,
                 Severity::EvaluationError => summary.evaluation_errors += 1,
                 Severity::Warning => summary.warnings += 1,
+                Severity::Indeterminate => summary.indeterminate += 1,
                 Severity::Unsupported => summary.unsupported += 1,
             }
         }

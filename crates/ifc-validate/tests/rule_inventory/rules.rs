@@ -2,10 +2,10 @@
 
 use ifc_model::{EntityId, Model, Value};
 use ifc_schema::Schema;
-use ifc_validate::{validate, Report};
+use ifc_validate::Report;
 
 use super::cases::Case;
-use super::fixtures::{entity, ifc4, relation, text, wall, GUID_A, GUID_B};
+use super::fixtures::{check, entity, ifc4, relation, text, wall, GUID_A, GUID_B};
 
 /// `count` projects with distinct GlobalIds.
 fn projects(count: usize) -> Report {
@@ -39,7 +39,7 @@ fn defines_by_properties(schema: &Schema, related_type: &str) -> Report {
         "IFCRELDEFINESBYPROPERTIES",
         &[("RelatedObjects", Value::List(vec![Value::Ref(EntityId(1))]))],
     ));
-    validate(&model, schema)
+    check(&model, schema)
 }
 
 /// A classification reference with the given identity fields set.
@@ -63,7 +63,7 @@ fn sequence(schema: &Schema, related: u64) -> Report {
             ("RelatedProcess", Value::Ref(EntityId(related))),
         ],
     ));
-    validate(&model, schema)
+    check(&model, schema)
 }
 
 /// A material layer of `layer_type` whose `Priority` is `priority`.
@@ -151,7 +151,7 @@ fn object_sets(schema: &Schema, sets: &[(&str, &str)], relations: &[&[u64]]) -> 
             ],
         ));
     }
-    validate(&model, schema)
+    check(&model, schema)
 }
 
 /// Two property sets named `first` and `second` on a wall, one relation
@@ -190,7 +190,7 @@ fn type_sets(first: &str, second: &str) -> Report {
             ),
         ],
     ));
-    validate(&model, schema)
+    check(&model, schema)
 }
 
 /// A wall type `#1` assigned to an object of `object_type` `#2` by an
@@ -210,7 +210,32 @@ fn typed_object(schema: &Schema, object_type: &str) -> Report {
             ("RelatedObjects", Value::List(vec![Value::Ref(EntityId(2))])),
         ],
     ));
-    validate(&model, schema)
+    check(&model, schema)
+}
+
+/// Names only `Pset_WallCommon`, for every release.
+struct WallCommonOnly;
+
+impl ifc_validate::PropertySetCatalog for WallCommonOnly {
+    fn defines(&self, _: ifc_schema::SchemaVersion, name: &str) -> Option<bool> {
+        Some(name == "Pset_WallCommon")
+    }
+}
+
+/// An IFC4 property set named `name`, checked against [`WallCommonOnly`].
+fn property_set(name: &str) -> Report {
+    let schema = ifc_schema::ifc4();
+    let mut model = Model::new();
+    model.push(entity(
+        schema,
+        "IFCPROPERTYSET",
+        &[("GlobalId", text(GUID_A)), ("Name", text(name))],
+    ));
+    ifc_validate::validate_with_options(
+        &model,
+        schema,
+        &ifc_validate::ValidateOptions::new().catalog(&WallCommonOnly),
+    )
 }
 
 pub const CASES: &[Case] = &[
@@ -405,6 +430,18 @@ pub const CASES: &[Case] = &[
         form: "IFC4X3: a type product assigned to a task",
         fails: || typed_object(ifc_schema::ifc4x3(), "IFCTASK"),
         passes: || typed_object(ifc_schema::ifc4x3(), "IFCWALL"),
+    },
+    Case {
+        rule: "property.reserved_set_name",
+        form: "a Pset_ name the catalog does not define (#511)",
+        fails: || property_set("Pset_FRS_BASt"),
+        passes: || property_set("Pset_WallCommon"),
+    },
+    Case {
+        rule: "property.reserved_set_name",
+        form: "a Qto_ name in any case",
+        fails: || property_set("QTO_Custom"),
+        passes: || property_set("Custom_Qto"),
     },
     Case {
         rule: "IfcTypeProduct.WR41",

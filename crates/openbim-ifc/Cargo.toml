@@ -53,6 +53,7 @@ js-random = "Random `GlobalId`s (`new_guid`) on `wasm32-unknown-unknown` from th
 sheet = "Tables of values by path (`ifc::sheet`, #474): export selected entities by attribute, property, quantity and relation paths as CSV or TSV, and import a table back by `GlobalId` or id as one checked transaction, with a planned diff and typed refusals by row and column."
 sheet-xlsx = "`sheet` with XLSX workbooks too, through the pure-Rust `rust_xlsxwriter` (write) and `calamine` (read) crates."
 selector = "The selector query language (`ifc::selector`, grammar 1.0): filter elements by class, `GlobalId`, attribute, property, type, material, classification, location and group, with typed parse errors carrying byte spans; read and write values by path (`type.Name`, `Pset_WallCommon.FireRating`) through a checked transaction. Property facets need `properties` too."
+validate-express = "Validation (`validate`) with the EXPRESS rule evaluator (`ifc::validate::express`): every WHERE rule, type rule and global rule of a release, evaluated from the `.exp` text the caller supplies (#461)."
 properties = "Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry; together with `spatial`, element properties by spatial container."
 
 [lib]
@@ -196,6 +197,9 @@ style = ["dep:ifc-style"]
 # with `schema` or a release feature, or `validate_declared` refuses every
 # file with `UnbundledSchema`.
 validate = ["dep:ifc-validate"]
+# The EXPRESS rule evaluator (#461): pure Rust, no dependency, but a body of
+# code a browser build that never reads rule text need not carry.
+validate-express = ["validate", "ifc-validate?/express"]
 # Authoring resolves slots from the schema tables, so it implies `schema`.
 author = ["authoring", "schema"]
 # The checked authoring batch (#330, `apply_authoring`) and `ifc-author`,
@@ -268,7 +272,7 @@ domains = [
     "author",
     "spatial",
 ]
-full = ["codecs", "zip", "schema", "domains", "selector", "sheet-xlsx", "property-catalog", "material-templates", "geometry", "geometry-wire", "mesh", "georef", "alignment", "js-random"]
+full = ["codecs", "zip", "schema", "domains", "selector", "sheet-xlsx", "property-catalog", "material-templates", "geometry", "geometry-wire", "mesh", "georef", "alignment", "js-random", "validate-express"]
 
 [dev-dependencies]
 # `Schema::from_express` for the documented authoring example; production

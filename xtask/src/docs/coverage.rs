@@ -9,7 +9,10 @@
 //!   `crates/ifc-geometry/data/`, which `crates/ifc-geometry/tests/declaration_manifest.rs`
 //!   asserts against the schema;
 //! - `ifc-style`'s `APPEARANCE_DECLARATIONS` and `ifc-validate`'s `RULES`,
-//!   read as Rust.
+//!   read as Rust;
+//! - `ifc-validate`'s EXPRESS coverage counts, which
+//!   `crates/ifc-validate/tests/express_rules/schemas.rs` asserts against
+//!   the normative schemas.
 
 use std::collections::BTreeMap;
 
@@ -25,6 +28,7 @@ const DISPOSITIONS: &str = "crates/ifc-geometry/data/ifc4-representation-item-di
 const WHERE_RULES: &str = "crates/ifc-geometry/data/ifc4-where-rules.tsv";
 const APPEARANCE: &str = "crates/ifc-style/src/coverage.rs";
 const VALIDATION: &str = "crates/ifc-validate/src/where_rule/registry.rs";
+const EXPRESS: &str = "crates/ifc-validate/data/express-coverage.tsv";
 
 pub(super) fn generate(workspace: &Workspace) -> Result<Output, String> {
     let regions = [
@@ -33,6 +37,7 @@ pub(super) fn generate(workspace: &Workspace) -> Result<Output, String> {
         ("DISPOSITIONS", dispositions(workspace)?),
         ("PRESENTATION", presentation(workspace)?),
         ("VALIDATION", validation(workspace)?),
+        ("EXPRESS", express(workspace)?),
     ];
     Output::derive(workspace, PAGE, |current| {
         let mut page = current.to_owned();
@@ -280,6 +285,58 @@ fn validation(workspace: &Workspace) -> Result<String, String> {
          unsupported rather than silently passed (`{VALIDATION}`). A rule binds its \
          declaring entity and every subtype, and runs only under the releases whose \
          EXPRESS declares it under that id.\n\n{}",
+        out.join("\n")
+    ))
+}
+
+/// The EXPRESS evaluator's coverage per release.
+fn express(workspace: &Workspace) -> Result<String, String> {
+    let rows = tsv(workspace, EXPRESS)?;
+    if rows.is_empty() {
+        return Err(format!("{EXPRESS}: no release"));
+    }
+    let mut out = vec![
+        "| Release | Entity WHERE rules | Type WHERE rules | Global rules | Functions | Derived attributes | Not evaluable |"
+            .to_owned(),
+        "| --- | ---: | ---: | ---: | ---: | ---: | --- |".to_owned(),
+    ];
+    for row in &rows {
+        let cell = |key: &str| -> Result<String, String> {
+            let total = row
+                .get(key)
+                .ok_or_else(|| format!("{EXPRESS}: no `{key}` column"))?;
+            let evaluable = row
+                .get(&format!("{key}_evaluable"))
+                .ok_or_else(|| format!("{EXPRESS}: no `{key}_evaluable` column"))?;
+            Ok(format!("{evaluable} / {total}"))
+        };
+        let release = row
+            .get("release")
+            .ok_or_else(|| format!("{EXPRESS}: no `release` column"))?;
+        let missing = match row.get("not_evaluable").map(String::as_str) {
+            None | Some("" | "-") => "none".to_owned(),
+            Some(names) => names
+                .split(',')
+                .map(|name| format!("`{name}`"))
+                .collect::<Vec<_>>()
+                .join(", "),
+        };
+        out.push(format!(
+            "| {release} | {} | {} | {} | {} | {} | {missing} |",
+            cell("entity_rules")?,
+            cell("type_rules")?,
+            cell("global_rules")?,
+            cell("functions")?,
+            cell("derived")?,
+        ));
+    }
+    Ok(format!(
+        "Declarations the evaluator can run, of those each release declares (`{EXPRESS}`, \
+         asserted against the normative schemas by \
+         `crates/ifc-validate/tests/express_rules/schemas.rs`). A declaration \
+         is evaluable when neither it nor a function it calls needs a construct the \
+         evaluator refuses; at run time a rule may still stop at a budget or at data it \
+         cannot read, which is reported per instance.\n\n{}",
         out.join("\n")
     ))
 }

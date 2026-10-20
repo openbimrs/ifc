@@ -106,8 +106,9 @@ fn string_literals(source: &str) -> Vec<String> {
 
 /// Whether a literal has the shape of a finding rule id.
 ///
-/// Two families: dotted category ids (`structure.reference.dangling`) and
-/// schema rule ids (`IfcMaterialLayer.NormalizedPriority`).
+/// Two families: dotted category ids (`structure.reference.dangling`,
+/// `property.reserved_set_name`) and schema rule ids
+/// (`IfcMaterialLayer.NormalizedPriority`).
 fn looks_like_rule_id(literal: &str) -> bool {
     let word = |part: &str| {
         !part.is_empty() && part.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
@@ -116,7 +117,7 @@ fn looks_like_rule_id(literal: &str) -> bool {
     if parts.len() < 2 || !parts.iter().all(|part| word(part)) {
         return false;
     }
-    let category = ["header", "structure", "type", "global"].contains(&parts[0]);
+    let category = ["header", "structure", "type", "global", "property"].contains(&parts[0]);
     let schema_rule = parts.len() == 2 && parts[0].starts_with("Ifc");
     category || schema_rule
 }

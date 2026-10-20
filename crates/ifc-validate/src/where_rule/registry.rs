@@ -79,12 +79,24 @@ const NEEDS_INVERSES: &str =
 const NEEDS_GEOMETRY: &str = "requires geometric evaluation, which validation does not perform";
 
 /// Every release the registry is verified against (`tests/registry_scope.rs`).
-/// IFC4X1 and IFC4X2 are bundled but not yet scoped: no rule applies to them.
+/// IFC4X1 and IFC4X2 are bundled but not yet scoped: no WHERE rule applies
+/// to them natively (their EXPRESS rules run through `crate::express`).
 const ALL: &[SchemaVersion] = &[
     SchemaVersion::Ifc2x3,
     SchemaVersion::Ifc4,
     SchemaVersion::Ifc4x3,
 ];
+/// Every bundled release: for the file-wide `IfcRoot.UR1` check, which
+/// needs no WHERE-rule label and holds in every release alike.
+const EVERY_RELEASE: &[SchemaVersion] = &[
+    SchemaVersion::Ifc2x3,
+    SchemaVersion::Ifc4,
+    SchemaVersion::Ifc4x1,
+    SchemaVersion::Ifc4x2,
+    SchemaVersion::Ifc4x3,
+];
+/// The id of the `IfcRoot.UR1` check: a UNIQUE clause, not a WHERE rule.
+pub(crate) const UNIQUE_GLOBAL_ID: &str = "global.UniqueGlobalId";
 /// IFC2X3 alone: IFC4 renamed most of its `WRnn` labels.
 const IFC2X3: &[SchemaVersion] = &[SchemaVersion::Ifc2x3];
 /// IFC4 and IFC4X3, which share their rule labels.
@@ -109,9 +121,9 @@ pub const RULES: &[RuleEntry] = &[
     // registered here under its global id rather than as `IfcRoot.UR1`: the
     // check is file-wide, and two entries for one check would double-report.
     RuleEntry {
-        id: "global.UniqueGlobalId",
+        id: UNIQUE_GLOBAL_ID,
         entity: None,
-        releases: ALL,
+        releases: EVERY_RELEASE,
         support: Support::Implemented,
     },
     RuleEntry {
