@@ -435,6 +435,37 @@ takes a plain value or an `IfcValue`. A selector that does not parse
 throws `IfcError` with `code` `invalid-selector` and `span`, the byte range
 it refuses in the UTF-8 query.
 
+## Export a table and import it back
+
+The walls of `test/fixtures/synthetic-relations/selector_ifc4.ifc` as a
+[table](/guide/tables), one column per value path, keyed by `id`; one cell
+edited, the import planned as a dry run, then applied as one checked
+transaction:
+
+<!-- SNIPPET:cookbook-js-tables -->
+
+```js
+const csv = model.exportTable("IfcWall", ["Name", "type.Name"], { key: "id" }); // a Uint8Array
+const text = new TextDecoder().decode(csv);
+log(text.split("\r\n")[1]); // "17,Wall A,WT-200"
+
+// Edit the table, then plan the import: a dry run lists every change.
+const edited = new TextEncoder().encode(text.replace("17,Wall A,", "17,Wall A1,"));
+for (const change of model.importTable(edited, { dryRun: true }).changes) {
+  log(change.row, change.path, change.before, change.after); // 2 "Name" "Wall A" "Wall A1"
+}
+log(model.importTable(edited).applied); // true: one checked transaction
+
+// A refused cell refuses the whole table, by row and column.
+const bad = new TextEncoder().encode("id,Name\n99,Ghost\n");
+log(model.importTable(bad).refusals.map((r) => [r.row, r.column, r.code])); // [[2, 1, "unknown-key"]]
+```
+
+<!-- /SNIPPET -->
+
+`exportTable` returns a `Uint8Array`; `importTable` reports every change and refusal without throwing. The npm package writes CSV and TSV; XLSX needs a build with `sheet-xlsx`. A cell whose text is what its path reads changes nothing;
+any refused cell refuses the whole table.
+
 ## Remove a product and purge
 
 A door with what it alone owns, a wall whose openings place their fillings,

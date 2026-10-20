@@ -224,14 +224,14 @@ fn raw(ids: Vec<EntityId>) -> Vec<u64> {
     ids.into_iter().map(|EntityId(id)| id).collect()
 }
 
-fn parse_error(error: ParseError) -> BindingError {
+pub(crate) fn parse_error(error: ParseError) -> BindingError {
     BindingError::InvalidSelector {
         detail: error.kind.to_string(),
         span: (error.span.start, error.span.end),
     }
 }
 
-fn selector_error(error: SelectorError) -> BindingError {
+pub(crate) fn selector_error(error: SelectorError) -> BindingError {
     let detail = error.to_string();
     match error {
         SelectorError::UnknownClass { span, .. } | SelectorError::UnknownAttribute { span, .. } => {
@@ -244,11 +244,13 @@ fn selector_error(error: SelectorError) -> BindingError {
         SelectorError::MissingReference { .. } => BindingError::MissingReference(detail),
         SelectorError::FeatureDisabled(feature) => BindingError::FeatureDisabled(feature),
         SelectorError::UnsupportedValue { .. } => BindingError::Unsupported(detail),
-        SelectorError::NotSettable { .. } => BindingError::InvalidValue(detail),
-        SelectorError::Attribute(error) => refused(error),
-        SelectorError::TypeMismatch { .. } | SelectorError::UntypedValue { .. } => {
-            BindingError::TypeMismatch(detail)
+        SelectorError::NotSettable { .. } | SelectorError::ConflictingWrite { .. } => {
+            BindingError::InvalidValue(detail)
         }
+        SelectorError::Attribute(error) => refused(error),
+        SelectorError::TypeMismatch { .. }
+        | SelectorError::UntypedValue { .. }
+        | SelectorError::InvalidText { .. } => BindingError::TypeMismatch(detail),
         #[cfg(feature = "properties")]
         SelectorError::Property { error, .. } => crate::properties::read::property_error(error),
         #[cfg(feature = "properties-write")]

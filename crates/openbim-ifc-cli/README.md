@@ -1,7 +1,8 @@
 # openbim-ifc-cli
 
-The `openbim-ifc` command: validate, convert, inspect and query IFC files
-(STEP, ifcXML and ifcZIP) from a shell or a CI job, with exit codes and JSON or SARIF output
+The `openbim-ifc` command: validate, convert, inspect, query and edit IFC
+files (STEP, ifcXML and ifcZIP), and exchange their values as CSV, TSV or
+XLSX tables, from a shell or a CI job, with exit codes and JSON or SARIF output
 for scripts and code scanning. Pure Rust, one static binary, over the
 [`openbim-ifc`](https://crates.io/crates/openbim-ifc) facade.
 
@@ -27,6 +28,10 @@ openbim-ifc psets model.ifc '2O2Fr$t4X7Zf8NOew3FLOH' --format csv
 openbim-ifc tree model.ifc --elements
 openbim-ifc lint model.ifc
 openbim-ifc select model.ifc 'IfcWall, Pset_WallCommon.IsExternal=TRUE' --value type.Name
+openbim-ifc edit model.ifc 'IfcWall, type=WT-200' --set Pset_WallCommon.FireRating F120 -o edited.ifc
+openbim-ifc export-table model.ifc IfcWall -c Name -c type.Name -o walls.xlsx
+openbim-ifc import-table model.ifc walls.xlsx --dry-run
+openbim-ifc relations model.ifc '#17'
 ```
 
 | Command | Answers | Formats |
@@ -38,9 +43,16 @@ openbim-ifc select model.ifc 'IfcWall, Pset_WallCommon.IsExternal=TRUE' --value 
 | `tree` | Project, site, building, storey, space and their elements | human, json |
 | `lint` | Products with geometry that no model viewer will draw | human, json, sarif |
 | `select` | The entities a selector selects, with values read by path | table, json, csv |
+| `edit` | Values set by path on selected entities, one checked transaction | human, json |
+| `export-table` | Selected entities as a table, one column per value path | csv, tsv, xlsx |
+| `import-table` | A table's edited cells written back by key, one checked transaction | human, json |
+| `relations` | What one entity is related to, and every relationship naming it | human, json |
+| `materials` | Material definitions with layers, profiles or constituents | human, json |
+| `cost`, `schedule` | Cost schedules and work schedules as trees | human, json |
 
 Exit codes: 0 success, 1 findings (`validate`, `lint`), 2 a usage error, an
-unreadable file or a refusal. A refusal names its kind on stderr
+unreadable file or a refusal, 3 a refused edit (`edit`, `import-table`;
+nothing written). A refusal names its kind on stderr
 (`unsupported-schema`, `missing-entity`, ...) and never becomes an empty or
 guessed answer.
 

@@ -8,6 +8,18 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#474, tables)
+
+- `model.export_table(query, columns, *, format="csv", key=None,
+  null="")` returns the selected entities as CSV, TSV or XLSX bytes, one
+  column per value path; `model.import_table(data, *, format="csv",
+  key=None, null="", dry_run=False)` applies a table back by key as one
+  checked transaction and returns a `TableImport` (`applied`, `changes` of
+  `TableChange`, `refusals` of `TableRefusal`). Refusals are data, not
+  exceptions.
+
+Semver: additive, a minor release while 0.x.
+
 ### Changed (#512)
 
 - `product_curves` gives the curves of a representation that also holds text or a

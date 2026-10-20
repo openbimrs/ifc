@@ -9,6 +9,16 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#474, tables)
+
+- `IfcModel.ExportTable(query, columns, format, key, null)` returns the
+  selected entities as CSV, TSV or XLSX bytes; `IfcModel.ImportTable(data,
+  format, key, null, dryRun)` applies a table back by key as one checked
+  transaction and returns a `TableImport` record (`Applied`,
+  `TableChange`s, `TableRefusal`s). Needs the C library with ABI 0.1.18.
+
+Semver: additive, a minor release while 0.x.
+
 ### Changed (#512)
 
 - `ProductCurves` gives the curves of a representation that also holds text or a

@@ -406,6 +406,33 @@ public class CookbookTests
     }
 
     [Fact]
+    public void ExportATableAndImportItBack()
+    {
+        using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.SelectorIfc4));
+        var printed = new List<string>();
+        void Print(string line) => printed.Add(line);
+        // docs:snippet cookbook-dotnet-tables
+        byte[] csv = model.ExportTable("IfcWall", new[] { "Name", "type.Name" }, key: "id"); // or "xlsx"
+        string text = System.Text.Encoding.UTF8.GetString(csv);
+        Print(text.Split(new[] { "\r\n" }, StringSplitOptions.None)[1]); // 17,Wall A,WT-200
+
+        // Edit the table, then plan the import: a dry run lists every change.
+        var edited = System.Text.Encoding.UTF8.GetBytes(text.Replace("17,Wall A,", "17,Wall A1,"));
+        foreach (var change in model.ImportTable(edited, dryRun: true).Changes)
+        {
+            Print($"row {change.Row} {change.Path}: {change.Before} -> {change.After}"); // row 2 Name: Wall A -> Wall A1
+        }
+        Print(model.ImportTable(edited).Applied.ToString()); // True: one checked transaction
+
+        // A refused cell refuses the whole table, by row and column.
+        var refused = model.ImportTable(System.Text.Encoding.UTF8.GetBytes("id,Name\n99,Ghost\n"));
+        Print(string.Join(", ", refused.Refusals.Select(r => $"{r.Row}:{r.Column} {r.Code}"))); // 2:1 unknown-key
+        // docs:end
+        Assert.Equal(new[] { "17,Wall A,WT-200", "row 2 Name: Wall A -> Wall A1", "True", "2:1 unknown-key" }, printed);
+        Assert.Equal(new Value.Text("Wall A1"), model.GetValue(17, "Name"));
+    }
+
+    [Fact]
     public void GlobalIdsTypesAndOpenings()
     {
         using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.RelationsIfc4));

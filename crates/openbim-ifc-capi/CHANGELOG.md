@@ -8,6 +8,24 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#474, tables)
+
+- `openbim_ifc_v0_1_model_export_table(model, query, query_len, columns,
+  column_lengths, column_count, format, key, null, null_len, buffer,
+  capacity, out_required)` writes the selected entities as a table
+  (`OPENBIM_IFC_TABLE_CSV`, `_TSV`, `_XLSX`; key
+  `OPENBIM_IFC_TABLE_KEY_AUTO`, `_GLOBAL_ID`, `_ID`) into a byte buffer.
+- `openbim_ifc_v0_1_model_import_table(model, data, data_len, format, key,
+  null, null_len, flags, ...)` applies a table back by key as one checked
+  transaction and answers with a `TableImport` tape (applied, changes,
+  refusals); `OPENBIM_IFC_TABLE_DRY_RUN` plans only, and a size query or
+  a short buffer writes nothing.
+- ABI version 0.1.18 (on top of main's 0.1.17); every export above is
+  new, no `v0_1` symbol changed. Header regenerated.
+
+Semver: additive, released on the 0.1 line: the `v0_1` ABI only gains
+symbols, and CMake's `find_package(openbim_ifc 0.1)` does not accept 0.2.
+
 ### Changed (#512)
 
 - `openbim_ifc_v0_1_model_product_curves` gives the curves of a representation that also holds text or a

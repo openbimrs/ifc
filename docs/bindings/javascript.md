@@ -444,6 +444,22 @@ A selector that does not parse throws `invalid-selector` with `span`. The
 [cookbook](/cookbook/javascript#select-entities-and-read-values-by-path)
 has a recipe.
 
+## Tables
+
+`model.exportTable(query, columns, { format, key, null })` returns the
+entities a selector selects as a [table](/guide/tables), a `Uint8Array` of
+CSV (the default) or TSV: the key column first (`GlobalId`, or `id` with
+`key: "id"`), then one column per value path. `model.importTable(bytes, {
+format, key, null, dryRun })` applies a table back by its key as one
+checked transaction and returns a `TableImport`: `applied`, every
+`TableChange` and every `TableRefusal` by row and column, with `code` and,
+for a header that does not parse, `span`. Refusals are data, not
+exceptions: any refusal means nothing was written, as does `dryRun`. The
+npm package leaves XLSX out (`feature-disabled`); a build of the crate with
+`sheet-xlsx` carries it. The
+[cookbook](/cookbook/javascript#export-a-table-and-import-it-back) has a
+recipe.
+
 ## Geometry
 
 Geometry crosses at three levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)):
