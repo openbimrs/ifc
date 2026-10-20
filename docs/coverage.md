@@ -239,7 +239,7 @@ never means "the rules we did not implement passed".
 | Rule | Constrains | Releases | Evaluated | Why not |
 | --- | --- | --- | --- | --- |
 | `global.IfcSingleProjectInstance` | (global) | IFC2X3, IFC4, IFC4X3 | yes |  |
-| `global.UniqueGlobalId` | (global) | IFC2X3, IFC4, IFC4X3 | yes |  |
+| `global.UniqueGlobalId` | (global) | IFC2X3, IFC4, IFC4X1, IFC4X2, IFC4X3 | yes |  |
 | `IfcRelDefinesByProperties.NoRelatedTypeObject` | `IfcRelDefinesByProperties` and subtypes | IFC4, IFC4X3 | yes |  |
 | `IfcExternalReference.WR1` | `IfcExternalReference` and subtypes | IFC2X3, IFC4, IFC4X3 | yes |  |
 | `IfcRelSequence.WR1` | `IfcRelSequence` and subtypes | IFC2X3 | yes |  |
@@ -266,3 +266,53 @@ never means "the rules we did not implement passed".
 | `IfcZone.WR1` | `IfcZone` and subtypes | IFC2X3, IFC4, IFC4X3 | no | requires an EXPRESS expression evaluator |
 
 <!-- COVERAGE:VALIDATION:END -->
+
+### EXPRESS rules
+
+Given the release's own `.exp` text, `ifc_validate::express::ExpressRules`
+evaluates every entity WHERE rule (inherited ones included), every type
+WHERE rule and every global rule of the release, with the FUNCTIONs they
+call, and the hand-written rules above with the same id are not run. The
+schemas are CC BY-ND 4.0, so the rule text is supplied at run time and never
+bundled.
+
+<!-- COVERAGE:EXPRESS:BEGIN -->
+
+Declarations the evaluator can run, of those each release declares (`crates/ifc-validate/data/express-coverage.tsv`, asserted against the normative schemas by `crates/ifc-validate/tests/express_rules/schemas.rs`). A declaration is evaluable when neither it nor a function it calls needs a construct the evaluator refuses; at run time a rule may still stop at a budget or at data it cannot read, which is reported per instance.
+
+| Release | Entity WHERE rules | Type WHERE rules | Global rules | Functions | Derived attributes | Not evaluable |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| IFC2X3_TC1 | 339 / 339 | 24 / 24 | 2 / 2 | 38 / 38 | 55 / 55 | none |
+| IFC4_ADD2_TC1 | 652 / 652 | 25 / 25 | 2 / 2 | 47 / 47 | 62 / 62 | none |
+| IFC4X1_FINAL | 658 / 658 | 25 / 25 | 2 / 2 | 47 / 47 | 62 / 62 | none |
+| IFC4X2_FINAL | 672 / 672 | 25 / 25 | 2 / 2 | 47 / 47 | 62 / 62 | none |
+| IFC4X3_ADD2 | 752 / 752 | 25 / 25 | 2 / 2 | 48 / 48 | 60 / 60 | none |
+
+<!-- COVERAGE:EXPRESS:END -->
+
+Compared with IfcOpenShell 0.8.5's `express_rules` mode instance by
+instance, on this repository's fixtures, IfcOpenShell's own 138 rule
+fixtures and 37 validation fixtures, and the 48 IFC4 ADD2 TC1 annex E
+examples, the two agree on 202 violations and on every INVERSE cardinality
+finding of the fixtures. The differences:
+
+- `'CENTER'` as an `IfcBoxAlignment` is a violation here: EXPRESS compares
+  strings exactly and the rule lists lower-case values. IfcOpenShell
+  compares case-blind and names the file a pass.
+- Rule strings naming a type in mixed case (`'IFC4X3_ADD2.IfcMappedItem'`,
+  in IFC4X1, IFC4X2 and IFC4X3 ADD2) are read upper-cased here, as
+  IfcOpenShell reads them; read exactly, `TYPEOF` could never match them.
+- Where IfcOpenShell's generated rule code fails on the data (nested
+  lists: `IfcPositiveInteger.WR1` on three annex E tessellations,
+  `IfcRationalBSplineSurfaceWithKnots.WeightValuesGreaterZero`), it
+  reports a violation; the rule holds here.
+- IfcOpenShell's generated rule code reads the literal `'by layer'` as
+  `'bylayer'`, so `IfcCurveStyle.WR11` fails on its own fixture named a
+  pass; it holds here.
+- A rule this evaluator cannot decide on the data, such as a measure
+  written as a string, is an evaluation error here and a violation there.
+- An UNKNOWN or `?` result passes silently in IfcOpenShell and is reported
+  as indeterminate here.
+- `TYPEOF` here includes the SELECT types a value belongs to, so
+  `'IFC4.IFCCOLOUR' IN TYPEOF(x)` holds for an `IfcColourRgb`; IfcOpenShell
+  lists entity and defined types only.

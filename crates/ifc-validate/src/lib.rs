@@ -28,21 +28,24 @@
 //!
 //! # What this crate deliberately does not do
 //!
-//! It does not evaluate arbitrary EXPRESS `WHERE` expressions -- there is no
-//! expression evaluator here. Rules that need one are registered as
-//! unsupported and reported, so a clean report never silently means
-//! "unchecked". See [`where_rule::RULES`].
+//! It does not bundle the schemas' rule text: the IFC schemas are CC BY-ND
+//! 4.0, and the bundled tables keep only rule labels. [`validate`] runs a
+//! hand-written subset of the WHERE rules ([`where_rule::RULES`]) and
+//! reports the rest it knows of as unsupported. Given the release's own
+//! `.exp` text, the [`express`] evaluator (feature `express`, on by
+//! default) evaluates every WHERE rule, type rule and global rule of the
+//! release through [`validate_with_options`], so a clean report never
+//! silently means "unchecked".
 //!
 //! It checks the aggregate bounds, nesting and element uniqueness of
 //! explicit attributes, and every `UNIQUE` clause of the declared release
 //! ([`structure`]). A bound written as an expression, and the bounds of an
 //! aggregate reached through a defined type, are not evaluated.
 //!
-//! It does not derive `INVERSE` relationship semantics: the schema tables
-//! record every INVERSE clause, but no cardinality over them is checked. A
-//! selected rule whose IFC2X3 form depends on an inverse is therefore
-//! reported unsupported, even when a later schema revision exposes
-//! equivalent direct attributes.
+//! The hand-written rules do not derive `INVERSE` relationships, so one
+//! whose IFC2X3 form depends on an inverse is reported unsupported; the
+//! [`express`] evaluator resolves INVERSE attributes through the reverse
+//! index.
 //!
 //! # Module map
 //!
@@ -52,18 +55,30 @@
 //! | [`structure`] | References, required slots, cardinality, bounds, UNIQUE clauses |
 //! | [`type_check`] | Values against their declared EXPRESS types |
 //! | [`where_rule`] | Native rules, and honest reporting of the rest |
+//! | [`express`] | Every EXPRESS rule, evaluated from the release's text |
+//! | [`property_set`] | `Pset_`/`Qto_` names the catalog lacks |
+//! | [`options`] | What a run is given: budget, rules, catalog |
 //! | [`report`] | Findings, paths, severities, summaries |
 //! | [`error`] | Why validation could not run |
 
 pub mod error;
+#[cfg(feature = "express")]
+pub mod express;
 pub mod header;
+pub mod options;
+pub mod property_set;
 pub mod report;
 pub mod structure;
 pub mod type_check;
 pub mod where_rule;
 
 pub use error::ValidateError;
-pub use report::{Finding, Path, Report, Severity, Summary};
+pub use options::{validate_with_options, ValidateOptions};
+pub use property_set::PropertySetCatalog;
+pub use report::{
+    BudgetExceeded, Finding, FindingDetail, NotEvaluated, Path, Report, ReservedSetName,
+    RuleDetail, RuleOutcome, RuleScope, Severity, Summary,
+};
 pub use where_rule::Budget;
 
 use ifc_model::Model;
@@ -85,12 +100,7 @@ pub fn validate(model: &Model, schema: &Schema) -> Report {
 /// report truncated: `12 errors` from a truncated report means "at least 12".
 #[must_use]
 pub fn validate_with(model: &Model, schema: &Schema, budget: Budget) -> Report {
-    let mut report = Report::with_max_findings(budget.max_findings);
-    header::check(model, &mut report);
-    structure::check(model, schema, budget, &mut report);
-    type_check::check(model, schema, budget, &mut report);
-    where_rule::evaluate(model, schema, budget, &mut report);
-    report
+    validate_with_options(model, schema, &ValidateOptions::new().budget(budget))
 }
 
 /// Validate against the schema the file itself declares.

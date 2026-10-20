@@ -12,6 +12,63 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#461)
+
+- `express`: an EXPRESS rule evaluator (feature `express`, default).
+  `ExpressRules::parse` reads a release's `.exp` text, which the caller
+  supplies (the schemas are CC BY-ND 4.0; nothing of their rule text is
+  bundled or generated), checks it against the bundled tables (same
+  schema, same slots for every entity) and resolves every name.
+  `validate_with_options` with `ValidateOptions::express` then evaluates
+  every entity WHERE rule (inherited ones on every subtype), every type
+  WHERE rule (wherever a value of the type appears: directly, in an
+  aggregate, through a defined type or wrapped in a SELECT) and every
+  global rule, with the FUNCTIONs they call, derived attributes and INVERSE
+  attributes, under ISO 10303-11 three-valued logic. Every declaration of
+  IFC2X3 TC1, IFC4 ADD2 TC1, IFC4X1, IFC4X2 and IFC4X3 ADD2 is evaluable
+  (`ExpressRules::coverage`; `data/express-coverage.tsv`): 339, 652, 658,
+  672 and 752 entity rules. A rule evaluating FALSE is an error under its
+  `Entity.Label` id (`Type.Label`, `global.Rule`); UNKNOWN or `?` is the
+  new `Severity::Indeterminate`; a construct the evaluator lacks is
+  reported once as unsupported, by name; data a rule cannot read is an
+  evaluation error. `EvalLimits` bounds steps per rule, nesting and the
+  whole run; each limit is a typed `BudgetExceeded`. Supplied rules replace
+  the hand-written ones with the same id; on the corpus and on every
+  hand-written rule's adversarial pair the two agree. On this repository's
+  fixtures, IfcOpenShell's rule and validation fixtures and the IFC4 annex E
+  examples, verdicts match IfcOpenShell's `express_rules` but for the
+  differences `docs/coverage.md` lists.
+- `structure::inverse_cardinality` (`structure.inverse.cardinality`): every
+  INVERSE clause's bounds, a single inverse meaning exactly one referrer.
+  Off by default (`ValidateOptions::inverse_cardinality`), on with EXPRESS
+  rules; it matches IfcOpenShell's findings on the corpus.
+- `ValidateOptions` and `validate_with_options`: budget, EXPRESS rules,
+  INVERSE cardinality and a property-set catalog in one run.
+- `Finding::detail` (`FindingDetail`): an EXPRESS result's release, scope
+  (`RuleScope`), label and `RuleOutcome`, or a `ReservedSetName`.
+  `Finding::indeterminate`, `Finding::with_detail`, `Summary::indeterminate`.
+
+### Added (#511)
+
+- `property.reserved_set_name`: an `IfcPropertySet` or `IfcElementQuantity`
+  whose name starts with `Pset_` or `Qto_` (any case) but which the
+  release's PSD/QTO catalog does not define is a warning (bSI PSE001). The
+  catalog is supplied through the `PropertySetCatalog` trait
+  (`ValidateOptions::catalog`); this crate links none. Without one, such
+  names are reported once as unsupported.
+
+### Changed
+
+- `Summary` prints its indeterminate count: `0 errors, 0 evaluation
+  errors, 0 warnings, 0 indeterminate, 2 unsupported`.
+- `validate` reports a file using `Pset_`/`Qto_` names with one unsupported
+  `property.reserved_set_name` finding when no catalog is supplied.
+- `global.UniqueGlobalId` runs under IFC4X1 and IFC4X2 too.
+
+Semver: minor (0.7.0). `Severity`, `Finding` and `Summary` are
+`#[non_exhaustive]`, so their new variant and fields break no caller; the
+new findings and the summary text change what a report holds.
+
 ### Changed (#467)
 
 Semver: minor. `ValidateError` is `#[non_exhaustive]` and gains a variant;
@@ -24,7 +81,8 @@ a new finding id.
   validated as IFC4X3 ADD2 by assumption.
 - The header check reports such a token as the warning
   `header.schema.unpublished`, naming the release (IFC 4.3.0.1 or
-  4.3.1.0), instead of `header.schema.unknown`. A caller that chooses to
+  4.3.1.0) and carrying `FindingDetail::UnpublishedSchema(release)`,
+  instead of `header.schema.unknown`. A caller that chooses to
   validate such a file as ADD2 passes those tables to `validate` itself;
   the report then carries this warning, so it never reads as a check
   against the declared release.

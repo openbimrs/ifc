@@ -165,6 +165,32 @@ fn applications(first: &str, second: &str) -> Report {
     ifc4(&model)
 }
 
+/// An IFC4 opening referenced by `voids` voiding relationships, with
+/// INVERSE cardinality checked: `VoidsElements` is a single inverse.
+fn opening(voids: usize) -> Report {
+    let schema = ifc_schema::ifc4();
+    let mut model = Model::new();
+    model.insert(
+        EntityId(1),
+        entity(schema, "IFCOPENINGELEMENT", &[("GlobalId", text(GUID_A))]),
+    );
+    for _ in 0..voids {
+        model.push(entity(
+            schema,
+            "IFCRELVOIDSELEMENT",
+            &[
+                ("GlobalId", text(GUID_B)),
+                ("RelatedOpeningElement", Value::Ref(EntityId(1))),
+            ],
+        ));
+    }
+    ifc_validate::validate_with_options(
+        &model,
+        schema,
+        &ifc_validate::ValidateOptions::new().inverse_cardinality(true),
+    )
+}
+
 pub const CASES: &[Case] = &[
     Case {
         rule: "structure.reference.dangling",
@@ -259,6 +285,18 @@ pub const CASES: &[Case] = &[
         form: "a repeated point in LIST OF UNIQUE",
         fails: || poly_loop(&[1, 2, 1]),
         passes: || poly_loop(&[1, 2, 3]),
+    },
+    Case {
+        rule: "structure.inverse.cardinality",
+        form: "an opening voiding nothing (a single INVERSE)",
+        fails: || opening(0),
+        passes: || opening(1),
+    },
+    Case {
+        rule: "structure.inverse.cardinality",
+        form: "an opening voiding two elements (a single INVERSE)",
+        fails: || opening(2),
+        passes: || opening(1),
     },
     Case {
         rule: "structure.unique.violation",

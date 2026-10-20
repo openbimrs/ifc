@@ -40,9 +40,22 @@ pub fn declared(token: &str) -> Model {
     model
 }
 
+thread_local! {
+    /// How a case is validated: [`ifc_validate::validate`] here. The
+    /// EXPRESS cross-check (`tests/express_rules/inventory.rs`) runs every
+    /// case again with the release's EXPRESS rules swapped in.
+    pub static VALIDATOR: std::cell::Cell<fn(&Model, &Schema) -> Report> =
+        std::cell::Cell::new(ifc_validate::validate);
+}
+
+/// Validates `model` against `schema` the way this run validates.
+pub fn check(model: &Model, schema: &Schema) -> Report {
+    VALIDATOR.with(std::cell::Cell::get)(model, schema)
+}
+
 /// Validates against the bundled IFC4 tables.
 pub fn ifc4(model: &Model) -> Report {
-    ifc_validate::validate(model, ifc_schema::ifc4())
+    check(model, ifc_schema::ifc4())
 }
 
 /// A typed wrapper, as `IFCLABEL('x')` is written.

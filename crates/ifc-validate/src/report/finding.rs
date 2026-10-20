@@ -12,7 +12,12 @@
 //! cannot read, names a target the file does not contain, or is missing from
 //! the schema tables the rule was written against.
 //!
-//! The last two variants are the important ones. A validator that silently
+//! [`Severity::Indeterminate`] means an EXPRESS rule evaluated to UNKNOWN
+//! or `?` for an instance: the data could not decide it. ISO 10303-11 does
+//! not count that as a violation, so it leaves conformance alone, but it
+//! is reported rather than read as a pass.
+//!
+//! `Unsupported` and `EvaluationError` are the important ones. A validator that silently
 //! skips what it cannot evaluate reports a clean file and is worse than
 //! useless, because a clean report is exactly what a user acts on. Counting
 //! the unchecked rules is what makes "no errors" mean something.
@@ -24,6 +29,7 @@
 
 use std::fmt;
 
+use super::detail::FindingDetail;
 use super::path::Path;
 
 /// How serious a finding is.
@@ -41,6 +47,9 @@ pub enum Severity {
     EvaluationError,
     /// Legal, but very likely a mistake.
     Warning,
+    /// An EXPRESS rule evaluated to UNKNOWN or `?` for an instance: neither
+    /// satisfied nor violated. Not a verdict against the file.
+    Indeterminate,
     /// A rule this validator does not implement. Not a verdict on the file.
     Unsupported,
 }
@@ -51,6 +60,7 @@ impl fmt::Display for Severity {
             Self::Error => "error",
             Self::EvaluationError => "evaluation-error",
             Self::Warning => "warning",
+            Self::Indeterminate => "indeterminate",
             Self::Unsupported => "unsupported",
         };
         formatter.write_str(text)
@@ -71,6 +81,9 @@ pub struct Finding {
     pub path: Path,
     /// What is wrong, in one sentence, without restating the rule id.
     pub message: String,
+    /// Typed detail, when the check provides it: an EXPRESS rule's scope,
+    /// label and outcome, or a reserved set name.
+    pub detail: Option<FindingDetail>,
 }
 
 impl Finding {
@@ -82,6 +95,7 @@ impl Finding {
             rule: rule.into(),
             path,
             message: message.into(),
+            detail: None,
         }
     }
 
@@ -93,6 +107,7 @@ impl Finding {
             rule: rule.into(),
             path,
             message: message.into(),
+            detail: None,
         }
     }
 
@@ -111,6 +126,7 @@ impl Finding {
             rule: rule.into(),
             path,
             message: message.into(),
+            detail: None,
         }
     }
 
@@ -122,7 +138,30 @@ impl Finding {
             rule: rule.into(),
             path,
             message: message.into(),
+            detail: None,
         }
+    }
+}
+
+impl Finding {
+    /// A rule this validator evaluated that could decide nothing for the
+    /// instance: UNKNOWN or `?`.
+    #[must_use]
+    pub fn indeterminate(rule: impl Into<String>, path: Path, message: impl Into<String>) -> Self {
+        Self {
+            severity: Severity::Indeterminate,
+            rule: rule.into(),
+            path,
+            message: message.into(),
+            detail: None,
+        }
+    }
+
+    /// The same finding, carrying typed detail.
+    #[must_use]
+    pub fn with_detail(mut self, detail: FindingDetail) -> Self {
+        self.detail = Some(detail);
+        self
     }
 }
 
@@ -146,6 +185,7 @@ mod tests {
     fn errors_sort_before_warnings_before_unsupported() {
         let mut severities = [
             Severity::Unsupported,
+            Severity::Indeterminate,
             Severity::Warning,
             Severity::EvaluationError,
             Severity::Error,
@@ -157,6 +197,7 @@ mod tests {
                 Severity::Error,
                 Severity::EvaluationError,
                 Severity::Warning,
+                Severity::Indeterminate,
                 Severity::Unsupported
             ]
         );
@@ -170,6 +211,7 @@ mod tests {
             Severity::Error,
             Severity::EvaluationError,
             Severity::Warning,
+            Severity::Indeterminate,
             Severity::Unsupported,
         ]
         .iter()

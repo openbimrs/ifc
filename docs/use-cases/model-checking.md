@@ -43,7 +43,7 @@ let model = StepCodec.read_bytes(bytes)?;
 // A file that declares none, or an unknown token, is refused.
 let report = validate_declared(&model)?;
 
-println!("{}", report.summary()); // "0 errors, 0 evaluation errors, 0 warnings, 2 unsupported"
+println!("{}", report.summary()); // "0 errors, 0 evaluation errors, 0 warnings, 0 indeterminate, 2 unsupported"
 for finding in report.sorted() {
     if finding.severity == Severity::Error {
         println!("{} at {}: {}", finding.rule, finding.path, finding.message);
