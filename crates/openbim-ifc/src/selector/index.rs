@@ -186,7 +186,7 @@ impl<'m> SelectorIndex<'m> {
         self.model.get(id).ok_or(SelectorError::MissingEntity(id))
     }
 
-    pub(super) fn guids(&self) -> &GlobalIdIndex {
+    pub(crate) fn guids(&self) -> &GlobalIdIndex {
         self.guids
             .get_or_init(|| GlobalIdIndex::build(self.model, self.schema))
     }

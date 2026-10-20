@@ -33,6 +33,10 @@ pub fn compiled_features() -> Vec<&'static str> {
     features.push("properties");
     #[cfg(feature = "selector")]
     features.push("selector");
+    #[cfg(feature = "sheet")]
+    features.push("sheet");
+    #[cfg(feature = "sheet-xlsx")]
+    features.push("sheet-xlsx");
     #[cfg(feature = "property-catalog")]
     features.push("property-catalog");
     #[cfg(feature = "property-catalog-runtime")]

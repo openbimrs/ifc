@@ -22,6 +22,7 @@ mod geometry_types;
 mod inverse;
 mod removal;
 mod selector;
+mod table;
 mod types;
 
 /// An IFC model: entities keyed by their `#id`, in file order.

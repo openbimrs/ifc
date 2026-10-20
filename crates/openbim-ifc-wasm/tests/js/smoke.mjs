@@ -1208,3 +1208,57 @@ test("shape representations: assemble, assign, copy, unassign and remove", () =>
     assert.deepEqual(model.danglingReferences(), [], name);
   }
 });
+
+const SELECTORS = ["selector_ifc2x3.ifc", "selector_ifc4.ifc", "selector_ifc4x3.ifc"];
+
+test("exportTable and importTable round-trip, plan, apply and refuse as data", () => {
+  for (const name of SELECTORS) {
+    const model = openFixture(path.join("synthetic-relations", name));
+    const before = model.write();
+    const csv = model.exportTable("IfcWall", ["Name", "type.Name"], { key: "id" });
+    assert.ok(csv instanceof Uint8Array, name);
+    const text = new TextDecoder().decode(csv);
+    assert.ok(text.startsWith("id,Name,type.Name\r\n17,Wall A,WT-200\r\n"), text);
+    const same = model.importTable(csv);
+    assert.deepEqual(same, { applied: false, changes: [], refusals: [] }, name);
+    assert.deepEqual(model.write(), before, name);
+
+    const edited = new TextEncoder().encode(text.replace("17,Wall A,WT-200", "17,Wall A,WT-250"));
+    const dry = model.importTable(edited, { dryRun: true });
+    assert.deepEqual(
+      dry.changes,
+      [
+        {
+          row: 2,
+          column: 3,
+          key: "17",
+          path: "type.Name",
+          entity: 17n,
+          targetEntity: 16n,
+          target: "Name",
+          before: "WT-200",
+          after: "WT-250",
+        },
+      ],
+      name,
+    );
+    assert.deepEqual(model.write(), before, name);
+    assert.equal(model.importTable(edited).applied, true, name);
+    assert.deepEqual(model.select("IfcWallType, Name=WT-250"), [16n], name);
+
+    const refused = model.importTable(new TextEncoder().encode("id,Name,Name.\n17,X,\n99,Y,\n"));
+    assert.equal(refused.applied, false, name);
+    assert.deepEqual(
+      refused.refusals.map((refusal) => [refusal.row, refusal.column, refusal.code]),
+      [
+        [1, 3, "invalid-header"],
+        [3, 1, "unknown-key"],
+      ],
+      name,
+    );
+    assert.deepEqual(refused.refusals[0].span, [5, 5], name);
+    throwsCode(() => model.exportTable("IfcWall", [], { format: "ods" }), "invalid-value");
+    // The npm package leaves the XLSX reader and writer out.
+    throwsCode(() => model.exportTable("IfcWall", [], { format: "xlsx" }), "feature-disabled");
+  }
+});

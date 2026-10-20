@@ -638,6 +638,43 @@ impl NativeModel {
         self.inner.remove_with_relationships(id).map_err(py_err)
     }
 
+    /// The entities a selector selects as table bytes (#474).
+    #[pyo3(signature = (query, columns, format = "csv", key = None, null = ""))]
+    fn export_table<'py>(
+        &self,
+        py: Python<'py>,
+        query: &str,
+        columns: Vec<String>,
+        format: &str,
+        key: Option<&str>,
+        null: &str,
+    ) -> PyResult<Bound<'py, PyBytes>> {
+        let table = self
+            .inner
+            .export_table(query, &columns, format, key, null)
+            .map_err(py_err)?;
+        Ok(PyBytes::new(py, &table))
+    }
+
+    /// Apply table bytes by key as one transaction; the `TableImport`
+    /// record dict.
+    #[pyo3(signature = (data, format = "csv", key = None, null = "", dry_run = false))]
+    fn import_table<'py>(
+        &mut self,
+        py: Python<'py>,
+        data: &[u8],
+        format: &str,
+        key: Option<&str>,
+        null: &str,
+        dry_run: bool,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let report = self
+            .inner
+            .import_table(data, format, key, null, dry_run)
+            .map_err(py_err)?;
+        records::record_to_py(py, &report.to_record())
+    }
+
     /// Remove a product with what it solely owns; the report.
     #[pyo3(signature = (id, rebase_placements = false, untype_occurrences = false, dry_run = false))]
     fn remove_product<'py>(

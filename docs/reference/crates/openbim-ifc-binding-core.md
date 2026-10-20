@@ -52,6 +52,7 @@ view of `openbim-ifc`; if a binding needs more, the facade grows first.
 | `properties-write` | yes | `properties` |
 | `property-catalog` | yes | `properties-write`, `openbim-ifc/property-catalog` |
 | `property-catalog-runtime` |  | `properties-write`, `openbim-ifc/property-catalog-runtime` |
+| `sheet-xlsx` | yes | `openbim-ifc/sheet-xlsx` |
 | `spatial` | yes | `openbim-ifc/spatial` |
 | `systems` | yes | `openbim-ifc/systems` |
 | `unreachable` | yes | `openbim-ifc/spatial`, `openbim-ifc/geometry-select` |

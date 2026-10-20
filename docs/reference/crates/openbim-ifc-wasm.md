@@ -56,6 +56,7 @@ suites here cover only the JS conversion itself.
 | `properties-write` | yes | `openbim-ifc-binding-core/properties-write` |
 | `property-catalog` |  | `openbim-ifc-binding-core/property-catalog` |
 | `property-catalog-runtime` | yes | `openbim-ifc-binding-core/property-catalog-runtime` |
+| `sheet-xlsx` |  | `openbim-ifc-binding-core/sheet-xlsx` |
 | `spatial` | yes | `openbim-ifc-binding-core/spatial` |
 | `systems` | yes | `openbim-ifc-binding-core/systems` |
 | `unreachable` | yes | `openbim-ifc-binding-core/unreachable` |

@@ -27,6 +27,36 @@ everything released before per-crate changelogs began.
 
 Semver: minor.
 
+### Added (#472, #474, values by path as text and tables)
+
+- `ifc::selector::value_text` writes a `SelectedValue` as the text of one
+  cell (`TRUE`, the shortest decimal of a real, `#12`, a null text), and
+  `SelectorIndex::plan_text_edits` plans many `TextEdit`s (entity, path,
+  text) as one transaction: each text read as a value of its target's
+  declared type (attributes) or stated type (properties), `IFCLABEL(F90)`
+  naming one where nothing states it; a value already held left alone;
+  every refusal collected as an `EditRefusal` naming its edit. An
+  `EditPlan` lists each `PlannedChange` (target, before, after) and
+  commits as one transaction, refused if the model changed since.
+  `apply_text_edits` plans and commits.
+- `SelectorError::InvalidText` and `SelectorError::ConflictingWrite`
+  (the enum is `#[non_exhaustive]`).
+- `ifc::sheet` (feature `sheet`, implies `selector`): `export` writes
+  entities by value paths as a `Sheet` keyed by `GlobalId` or `id`
+  (`KeyColumn`, `SheetOptions` with a null text); `plan_import` reads a
+  sheet back by key into an `ImportPlan` of `CellChange`s, or every
+  `SheetRefusal` by row and column (header spans, missing, empty,
+  unknown, ambiguous and repeated keys, ragged rows, per-cell write
+  refusals); `import` commits it as one transaction. An unchanged sheet
+  plans no change and commits nothing. `Sheet::read` and `Sheet::write`
+  take CSV (RFC 4180) and TSV with escapes; XLSX with feature
+  `sheet-xlsx`, through `rust_xlsxwriter` 0.100 and `calamine` 0.37 (pure
+  Rust, on the `zip` 9 and `quick-xml` 0.42 already in the tree, no
+  default features), every cell written as text. `full` includes
+  `sheet-xlsx`.
+
+Semver: minor (additive).
+
 ## [0.36.0] - 2026-10-18
 
 ### Changed (#506, #509)

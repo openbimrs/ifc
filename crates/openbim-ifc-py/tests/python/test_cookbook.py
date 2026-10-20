@@ -334,6 +334,34 @@ class Cookbook(unittest.TestCase):
         self.assertEqual(printed[5], ("invalid-selector", (9, 15)))
         self.assertEqual(model.get_value(18, "type.Name"), "WT-300")
 
+    def test_tables(self) -> None:
+        model = openbim_ifc.open(SELECTOR)
+        printed: List[Any] = []
+        print = printed.append  # noqa: A001
+        # docs:snippet cookbook-py-tables
+        columns = ["Name", "type.Name", "Pset_WallCommon.FireRating"]
+        csv = model.export_table("IfcWall", columns, key="id")  # bytes; or format="xlsx"
+        print(csv.decode().splitlines()[1])  # '17,Wall A,WT-200,F90'
+
+        # Edit the table (here, as text), then plan the import: a dry run.
+        edited = csv.decode().replace("17,Wall A,WT-200,F90", "17,Wall A,WT-200,F120")
+        plan = model.import_table(edited, dry_run=True)
+        for change in plan.changes:
+            print((change.row, change.path, change.before, change.after))
+        # (2, 'Pset_WallCommon.FireRating', 'F90', 'F120')
+
+        result = model.import_table(edited)  # one checked transaction
+        print(result.applied)  # True
+        # A refused cell refuses the whole table, by row and column.
+        refused = model.import_table("id,Qto_WallBaseQuantities.Length\n17,long\n")
+        print([(r.row, r.column, r.code) for r in refused.refusals])  # [(2, 2, 'type-mismatch')]
+        # docs:end
+        self.assertEqual(printed[0], "17,Wall A,WT-200,F90")
+        self.assertEqual(printed[1], (2, "Pset_WallCommon.FireRating", "F90", "F120"))
+        self.assertEqual(printed[2], True)
+        self.assertEqual(printed[3], [(2, 2, "type-mismatch")])
+        self.assertEqual(model.get_value(17, "Pset_WallCommon.FireRating"), "F120")
+
     def test_assign_type_with_propagation(self) -> None:
         model = openbim_ifc.open(CASCADE)
         printed: List[Any] = []
