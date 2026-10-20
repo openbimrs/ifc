@@ -180,3 +180,29 @@ pub fn attribute_pairs(value: &Bound<'_, PyAny>) -> Result<Vec<(String, Tagged)>
         })
         .collect())
 }
+
+/// `IfcModel.append`'s options (#479): the `GlobalId` mode, the resource
+/// kinds reused by name, and whether only to plan.
+pub fn append_options(
+    global_ids: String,
+    reuse: &[String],
+    dry_run: bool,
+) -> Result<openbim_ifc_binding_core::AppendOptions, BindingError> {
+    let kinds = ["units", "contexts", "owner_history", "materials", "styles"];
+    if let Some(unknown) = reuse.iter().find(|kind| !kinds.contains(&kind.as_str())) {
+        return Err(BindingError::InvalidValue(format!(
+            "reuse kind `{unknown}` is not one of {}",
+            kinds.join(", ")
+        )));
+    }
+    let reused = |kind: &str| reuse.iter().any(|k| k == kind);
+    let mut options = openbim_ifc_binding_core::AppendOptions::new();
+    options.global_ids = global_ids;
+    options.reuse_units = reused("units");
+    options.reuse_contexts = reused("contexts");
+    options.reuse_owner_history = reused("owner_history");
+    options.reuse_materials = reused("materials");
+    options.reuse_styles = reused("styles");
+    options.dry_run = dry_run;
+    Ok(options)
+}

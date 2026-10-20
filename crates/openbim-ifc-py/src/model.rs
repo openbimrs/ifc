@@ -2,7 +2,7 @@
 
 use openbim_ifc_binding_core::record::to_records;
 use openbim_ifc_binding_core::{
-    AppendOptions, CopyProductOptions, GeometryEncoding, IfcModel, ParseOptions, PurgeOptions,
+    CopyProductOptions, GeometryEncoding, IfcModel, ParseOptions, PurgeOptions,
     RemoveProductOptions, ToRecord,
 };
 use pyo3::exceptions::PyValueError;
@@ -766,24 +766,7 @@ impl NativeModel {
         reuse: Vec<String>,
         dry_run: bool,
     ) -> PyResult<Bound<'py, PyDict>> {
-        let mut options = AppendOptions::new();
-        options.global_ids = global_ids;
-        let kinds = ["units", "contexts", "owner_history", "materials", "styles"];
-        if let Some(unknown) = reuse.iter().find(|kind| !kinds.contains(&kind.as_str())) {
-            return Err(py_err(
-                openbim_ifc_binding_core::BindingError::InvalidValue(format!(
-                    "reuse kind `{unknown}` is not one of {}",
-                    kinds.join(", ")
-                )),
-            ));
-        }
-        let reused = |kind: &str| reuse.iter().any(|k| k == kind);
-        options.reuse_units = reused("units");
-        options.reuse_contexts = reused("contexts");
-        options.reuse_owner_history = reused("owner_history");
-        options.reuse_materials = reused("materials");
-        options.reuse_styles = reused("styles");
-        options.dry_run = dry_run;
+        let options = authoring::append_options(global_ids, &reuse, dry_run).map_err(py_err)?;
         let report = self
             .inner
             .append(&source.inner, &ids, &options)
