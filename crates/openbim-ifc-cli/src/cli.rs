@@ -12,7 +12,8 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 /// Validate, convert, inspect and query IFC files (STEP, ifcXML and ifcZIP).
 ///
 /// Exit codes: 0 success, 1 findings (validate, lint), 2 usage error,
-/// unreadable input or a refusal.
+/// unreadable input or a refusal, 3 an edit refused (edit, import-table;
+/// nothing written).
 #[derive(Debug, Parser)]
 #[command(
     name = "openbim-ifc",
@@ -20,7 +21,8 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
     about,
     long_about = None,
     after_help = "Exit codes: 0 success, 1 findings (validate, lint), 2 usage error, \
-                  unreadable input or a refusal.\nGuide: https://openbimrs.github.io/ifc/guide/cli"
+                  unreadable input or a refusal, 3 an edit refused (edit, import-table; \
+                  nothing written).\nGuide: https://openbimrs.github.io/ifc/guide/cli"
 )]
 pub(crate) struct Cli {
     #[command(subcommand)]
@@ -44,6 +46,15 @@ pub(crate) enum Command {
     Lint(LintArgs),
     /// List the entities a selector selects, with values read by path.
     Select(SelectArgs),
+    /// Set values by path on the entities a selector selects, as one
+    /// checked transaction, into a new file (exit 3 on a refusal).
+    Edit(EditArgs),
+    /// Write the entities a selector selects as a table: one column per
+    /// value path, keyed by GlobalId or id (CSV, TSV or XLSX).
+    ExportTable(ExportTableArgs),
+    /// Write a table's edited cells back by key, as one checked
+    /// transaction, into a new file (exit 3 on a refusal).
+    ImportTable(ImportTableArgs),
 }
 
 /// How the input's ifcXML layout is chosen.
@@ -248,6 +259,126 @@ pub(crate) struct SelectArgs {
     /// Output format.
     #[arg(long, value_enum, default_value_t = TableFormat::Table)]
     pub(crate) format: TableFormat,
+    #[command(flatten)]
+    pub(crate) input: InputArgs,
+}
+
+/// Where an edited model is written.
+#[derive(Debug, Clone, Args)]
+pub(crate) struct OutputArgs {
+    /// The file to write (`.ifc`, `.ifcxml` or `.ifczip`); the input is
+    /// never changed unless `--in-place` asks for it.
+    #[arg(short, long, value_name = "FILE", conflicts_with = "in_place")]
+    pub(crate) output: Option<PathBuf>,
+    /// Replace the input file itself, in its own format.
+    #[arg(long)]
+    pub(crate) in_place: bool,
+    /// Plan and report the changes; write nothing.
+    #[arg(long)]
+    pub(crate) dry_run: bool,
+    /// Replace the output file if it exists.
+    #[arg(long)]
+    pub(crate) force: bool,
+}
+
+/// `edit`.
+#[derive(Debug, Args)]
+pub(crate) struct EditArgs {
+    /// The file to read.
+    pub(crate) file: PathBuf,
+    /// The selector choosing the entities to edit, e.g. `IfcWall,
+    /// type=WT-200` (grammar 1.0).
+    pub(crate) query: String,
+    /// A value path and the value to write there, e.g. `--set Name "Wall
+    /// A"` or `--set Pset_WallCommon.FireRating F90`; repeat for several.
+    /// The value is read as the target's type; `IFCLABEL(F90)` names one.
+    #[arg(long = "set", num_args = 2, value_names = ["PATH", "VALUE"], required = true)]
+    pub(crate) set: Vec<String>,
+    /// The value text that writes `$` (NULL).
+    #[arg(long, value_name = "TEXT", default_value = "$")]
+    pub(crate) null: String,
+    /// Report format.
+    #[arg(long, value_enum, default_value_t = TextFormat::Human)]
+    pub(crate) format: TextFormat,
+    #[command(flatten)]
+    pub(crate) output: OutputArgs,
+    #[command(flatten)]
+    pub(crate) input: InputArgs,
+}
+
+/// Table file formats.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum SheetFormatArg {
+    /// RFC 4180 CSV, UTF-8.
+    Csv,
+    /// Tab-separated values, UTF-8, with `\t`, `\n` and `\\` escapes.
+    Tsv,
+    /// An Office Open XML workbook; every cell is text.
+    Xlsx,
+}
+
+/// The column rows are matched by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum KeyArg {
+    /// `GlobalId`, stable across tools.
+    GlobalId,
+    /// `id`, the entity's `#id` in this file.
+    Id,
+}
+
+/// `export-table`.
+#[derive(Debug, Args)]
+pub(crate) struct ExportTableArgs {
+    /// The file to read.
+    pub(crate) file: PathBuf,
+    /// The selector choosing the rows, e.g. `IfcWall + IfcSlab`.
+    pub(crate) query: String,
+    /// A value path per column, e.g. `Name`, `type.Name`,
+    /// `Pset_WallCommon.FireRating`, `container.Name`; repeat for several
+    /// [default: class, Name].
+    #[arg(long = "column", short = 'c', value_name = "PATH")]
+    pub(crate) columns: Vec<String>,
+    /// The table to write, or `-` for standard output.
+    #[arg(short, long, value_name = "FILE", default_value = "-")]
+    pub(crate) output: PathBuf,
+    /// The table format; by default from the output extension (`.csv`,
+    /// `.tsv`, `.xlsx`), else CSV.
+    #[arg(long, value_enum)]
+    pub(crate) to: Option<SheetFormatArg>,
+    /// The key column, first in the table.
+    #[arg(long, value_enum, default_value_t = KeyArg::GlobalId)]
+    pub(crate) key: KeyArg,
+    /// The cell text of `$` (NULL).
+    #[arg(long, value_name = "TEXT", default_value = "")]
+    pub(crate) null: String,
+    /// Replace the output file if it exists.
+    #[arg(long)]
+    pub(crate) force: bool,
+    #[command(flatten)]
+    pub(crate) input: InputArgs,
+}
+
+/// `import-table`.
+#[derive(Debug, Args)]
+pub(crate) struct ImportTableArgs {
+    /// The model to read.
+    pub(crate) file: PathBuf,
+    /// The table to apply (CSV, TSV or XLSX).
+    pub(crate) table: PathBuf,
+    /// The table format; by default from its extension.
+    #[arg(long, value_enum)]
+    pub(crate) from: Option<SheetFormatArg>,
+    /// The key column [default: GlobalId when the table has one, else id].
+    #[arg(long, value_enum)]
+    pub(crate) key: Option<KeyArg>,
+    /// The cell text of `$` (NULL).
+    #[arg(long, value_name = "TEXT", default_value = "")]
+    pub(crate) null: String,
+    /// Report format.
+    #[arg(long, value_enum, default_value_t = TextFormat::Human)]
+    pub(crate) format: TextFormat,
+    #[command(flatten)]
+    pub(crate) output: OutputArgs,
     #[command(flatten)]
     pub(crate) input: InputArgs,
 }

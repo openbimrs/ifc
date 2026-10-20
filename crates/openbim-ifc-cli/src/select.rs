@@ -233,7 +233,7 @@ fn csv(paths: &[String], rows: &[Row]) -> String {
     text
 }
 
-fn selector_error(query: &str, error: SelectorError) -> CliError {
+pub(crate) fn selector_error(query: &str, error: SelectorError) -> CliError {
     let detail = error.to_string();
     match error {
         SelectorError::UnknownClass { .. } | SelectorError::UnknownAttribute { .. } => {

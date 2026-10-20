@@ -140,28 +140,30 @@ impl fmt::Display for SheetRefusal {
             (None, Some(column)) => write!(f, "column {}: ", column_name(column))?,
             (None, None) => {}
         }
-        match &self.reason {
-            SheetRefusalReason::Empty => f.write_str("the sheet has no header row"),
-            SheetRefusalReason::Header(error) => write!(f, "header: {error}"),
-            SheetRefusalReason::DuplicateColumn { first } => {
+        write!(f, "{}", self.reason)
+    }
+}
+
+impl fmt::Display for SheetRefusalReason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Empty => f.write_str("the sheet has no header row"),
+            Self::Header(error) => write!(f, "header: {error}"),
+            Self::DuplicateColumn { first } => {
                 write!(f, "the same path as column {}", column_name(*first))
             }
-            SheetRefusalReason::NoKeyColumn(Some(key)) => {
+            Self::NoKeyColumn(Some(key)) => {
                 write!(f, "no {} column to match rows by", key.header())
             }
-            SheetRefusalReason::NoKeyColumn(None) => {
-                f.write_str("no GlobalId or id column to match rows by")
-            }
-            SheetRefusalReason::RaggedRow { cells, columns } => {
+            Self::NoKeyColumn(None) => f.write_str("no GlobalId or id column to match rows by"),
+            Self::RaggedRow { cells, columns } => {
                 write!(f, "{cells} cells under {columns} columns")
             }
-            SheetRefusalReason::EmptyKey => f.write_str("the key is empty"),
-            SheetRefusalReason::UnknownKey(key) => write!(f, "no entity has the key {key:?}"),
-            SheetRefusalReason::DuplicateKey { first } => {
-                write!(f, "the same key as row {first}")
-            }
-            SheetRefusalReason::AmbiguousKey(duplicate) => write!(f, "{duplicate}"),
-            SheetRefusalReason::Value(error) => write!(f, "{error}"),
+            Self::EmptyKey => f.write_str("the key is empty"),
+            Self::UnknownKey(key) => write!(f, "no entity has the key {key:?}"),
+            Self::DuplicateKey { first } => write!(f, "the same key as row {first}"),
+            Self::AmbiguousKey(duplicate) => write!(f, "{duplicate}"),
+            Self::Value(error) => write!(f, "{error}"),
         }
     }
 }

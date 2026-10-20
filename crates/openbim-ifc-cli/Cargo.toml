@@ -8,7 +8,7 @@ authors = ["point-grey"]
 repository = "https://github.com/openbimrs/ifc"
 homepage = "https://openbimrs.github.io/ifc/guide/cli"
 readme = "README.md"
-description = "The openbim-ifc command: validate, convert, inspect and query IFC files (STEP, ifcXML and ifcZIP) from a shell or CI."
+description = "The openbim-ifc command: validate, convert, inspect, query and edit IFC files (STEP, ifcXML and ifcZIP), and exchange their values as CSV, TSV or XLSX tables, from a shell or CI."
 keywords = ["ifc", "bim", "openbim", "cli", "validation"]
 categories = ["command-line-utilities", "parser-implementations"]
 # The binary is the product: `cargo install openbim-ifc-cli` installs it,
@@ -47,7 +47,10 @@ path = "src/main.rs"
 # The facade only, never an `ifc-*` crate (package_architecture.rs pins
 # this). Every bundled release, both codecs, and the domains the commands
 # read; `geometry-select` is representation selection for `lint`, with no
-# geometry kernel and no execution provider.
+# geometry kernel and no execution provider. `sheet-xlsx` is the tables of
+# `export-table` and `import-table` (#474), XLSX included; `property-catalog`
+# checks the `Pset_` and `Qto_` writes of `edit` and `import-table` against
+# the PSD/QTO catalog, which refuses them without it.
 openbim-ifc = { workspace = true, features = [
     "step",
     "ifcxml",
@@ -56,8 +59,10 @@ openbim-ifc = { workspace = true, features = [
     "validate",
     "spatial",
     "properties",
+    "property-catalog",
     "geometry-select",
     "selector",
+    "sheet-xlsx",
 ] }
 clap = { version = "4.5", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "suggestions"] }
 

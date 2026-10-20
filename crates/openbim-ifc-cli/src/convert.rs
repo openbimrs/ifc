@@ -11,14 +11,11 @@
 //! entry is named after the output file (`out.ifczip` holds `out.ifc`).
 
 use std::io::Write;
-use std::path::Path;
-use std::sync::Arc;
-
-use ifc::{Codec, Model, SchemaVersion, StepCodec, XmlCodec};
 
 use crate::cli::{ConvertArgs, InnerFormat, ModelFormat, OutputLayout};
 use crate::error::{CliError, CliResult, Outcome};
 use crate::input;
+use crate::output::{encode, entry_name, format_of};
 
 /// Run `convert`.
 pub(crate) fn run(args: &ConvertArgs, out: &mut impl Write) -> CliResult<Outcome> {
@@ -57,16 +54,8 @@ pub(crate) fn run(args: &ConvertArgs, out: &mut impl Write) -> CliResult<Outcome
 
     let loaded = input::read(&args.input, args.input_options.input_layout)?;
     let layout = args.layout.unwrap_or(OutputLayout::Native);
-    let mut bytes = match document {
-        ModelFormat::Ifcxml => xml_writer(&loaded.model, layout)?.write_bytes(&loaded.model),
-        _ => StepCodec.write_bytes(&loaded.model),
-    }
-    .map_err(|error| CliError::Write(error.to_string()))?;
     let entry = (format == ModelFormat::Ifczip).then(|| entry_name(&args.output, document));
-    if let Some(entry) = &entry {
-        bytes = ifc::ifczip::pack(entry, &bytes)
-            .map_err(|error| CliError::Write(format!("ifcZIP: {error}")))?;
-    }
+    let bytes = encode(&loaded.model, document, layout, entry.as_deref())?;
 
     let written = if to_stdout {
         out.write_all(&bytes)
@@ -99,69 +88,4 @@ pub(crate) fn run(args: &ConvertArgs, out: &mut impl Write) -> CliResult<Outcome
         loaded.path
     );
     Ok(Outcome::Clean)
-}
-
-/// The ifcZIP entry for `document`, named after the output file:
-/// `out.ifczip` holds `out.ifc` or `out.ifcXML`, standard output `model.*`.
-fn entry_name(output: &Path, document: ModelFormat) -> String {
-    let stem = output
-        .file_stem()
-        .and_then(|stem| stem.to_str())
-        .filter(|stem| !stem.is_empty() && *stem != "-")
-        .unwrap_or("model");
-    match document {
-        ModelFormat::Ifcxml => format!("{stem}.ifcXML"),
-        _ => format!("{stem}.ifc"),
-    }
-}
-
-/// The output format an extension implies.
-fn format_of(path: &Path) -> CliResult<ModelFormat> {
-    let extension = path
-        .extension()
-        .and_then(|extension| extension.to_str())
-        .unwrap_or_default()
-        .to_ascii_lowercase();
-    if StepCodec.extensions().contains(&extension.as_str()) || extension == "step" {
-        Ok(ModelFormat::Step)
-    } else if XmlCodec::default()
-        .extensions()
-        .contains(&extension.as_str())
-    {
-        Ok(ModelFormat::Ifcxml)
-    } else if extension == "ifczip" {
-        Ok(ModelFormat::Ifczip)
-    } else {
-        Err(CliError::Usage(format!(
-            "cannot tell the output format from {}; name it with --to step, ifcxml or ifczip",
-            path.display()
-        )))
-    }
-}
-
-/// The ifcXML codec that writes `model` in `layout`.
-fn xml_writer(model: &Model, layout: OutputLayout) -> CliResult<XmlCodec> {
-    match layout {
-        OutputLayout::Native => {
-            // Schema-named attributes when this build bundles the declared
-            // release; marked positional names, equally lossless, otherwise.
-            Ok(input::declared_schema(model)
-                .ok()
-                .map_or_else(XmlCodec::default, |schema| {
-                    XmlCodec::with_schema(Arc::new(schema.clone()))
-                }))
-        }
-        OutputLayout::Xsd => {
-            let schema = input::declared_schema(model)?;
-            let token = model.header().schema_token().unwrap_or_default();
-            let profile = SchemaVersion::from_header_token(token)
-                .and_then(input::xsd_profile_for)
-                .ok_or_else(|| {
-                    CliError::Unsupported(format!(
-                        "the XSD layout exists for IFC4 and IFC4X3_ADD2; this file declares {token}"
-                    ))
-                })?;
-            Ok(XmlCodec::xsd(Arc::new(schema.clone()), profile))
-        }
-    }
 }
