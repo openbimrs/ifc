@@ -20,6 +20,7 @@
 //! | reals | `LIST` of three `REAL`s (or `INTEGER`s) |
 //! | integer | `INTEGER` |
 //! | bool | `BOOL` |
+//! | texts | `LIST` of `TEXT` |
 //! | attributes | `LIST` of `LIST(TEXT name, value)` |
 
 use crate::value::Tagged;
@@ -41,6 +42,8 @@ pub enum FieldKind {
     Integer,
     /// A flag (#480).
     Bool,
+    /// A list of strings: entity class names (#479).
+    Texts,
     /// Attribute values by name.
     Attributes,
 }
@@ -235,6 +238,30 @@ pub const OPS: &[OpSpec] = &[
         fields: &[REPRESENTATION],
     },
     OpSpec {
+        name: "copy_product",
+        camel: "copyProduct",
+        fields: &[
+            required("product", "product", K::Id),
+            field("offset", "offset", K::Reals),
+            field("placement", "placement", K::Id),
+            field("openings", "openings", K::Bool),
+            field("fillings", "fillings", K::Bool),
+            field("container", "container", K::Bool),
+            field("aggregate", "aggregate", K::Bool),
+        ],
+    },
+    OpSpec {
+        name: "copy_entity",
+        camel: "copyEntity",
+        fields: &[
+            required("entity", "entity", K::Id),
+            field("copy", "copy", K::Texts),
+            field("share", "share", K::Texts),
+            field("copy_roots", "copyRoots", K::Bool),
+            field("copy_definitions", "copyDefinitions", K::Bool),
+        ],
+    },
+    OpSpec {
         name: "owner_history",
         camel: "ownerHistory",
         fields: &[
@@ -269,6 +296,7 @@ pub(crate) enum Arg {
     Reals([f64; 3]),
     Integer(i64),
     Bool(bool),
+    Texts(Vec<String>),
     Attributes(Vec<(String, Tagged)>),
 }
 
@@ -384,6 +412,18 @@ fn arg(kind: FieldKind, value: &Tagged) -> Result<Arg, String> {
         K::Bool => match value {
             Tagged::Bool(b) => Arg::Bool(*b),
             _ => return Err("must be a BOOL".into()),
+        },
+        K::Texts => match value {
+            Tagged::List(items) => Arg::Texts(
+                items
+                    .iter()
+                    .map(|item| match item {
+                        Tagged::Text(text) => Ok(text.clone()),
+                        _ => Err("must be a LIST of TEXT".to_owned()),
+                    })
+                    .collect::<Result<_, _>>()?,
+            ),
+            _ => return Err("must be a LIST of TEXT".into()),
         },
         K::Attributes => {
             let Tagged::List(items) = value else {

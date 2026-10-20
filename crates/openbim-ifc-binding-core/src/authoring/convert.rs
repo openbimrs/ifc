@@ -2,8 +2,8 @@
 //! refusals into the shared codes.
 
 use ifc::{
-    AssignTypeOptions, AuthorOp, AuthoringError, AuthoringFailure as F, EntityId, LayerAxis,
-    OwnerHistoryOp, PredefinedTypeMode, RelateOptions,
+    AssignTypeOptions, AuthorOp, AuthoringError, AuthoringFailure as F, CopyPlacement, CopyPolicy,
+    CopyProductOptions, EntityId, LayerAxis, OwnerHistoryOp, PredefinedTypeMode, RelateOptions,
 };
 
 use super::ops::{invalid, Arg, Fields};
@@ -86,7 +86,54 @@ pub(super) fn op(mut fields: Fields) -> Result<AuthorOp, BindingError> {
                 representation_type,
             }
         }
+        "copy_product" => copy_product(&mut fields)?,
+        "copy_entity" => {
+            let texts = |fields: &mut Fields, key: &str| match fields.take(key) {
+                Some(Arg::Texts(texts)) => texts,
+                _ => Vec::new(),
+            };
+            let entity =
+                id(&mut fields, "entity").ok_or_else(|| invalid("`copy_entity` needs `entity`"))?;
+            AuthorOp::CopyEntity {
+                entity,
+                policy: CopyPolicy::new()
+                    .copy(texts(&mut fields, "copy"))
+                    .share(texts(&mut fields, "share"))
+                    .copy_roots(flag(&mut fields, "copy_roots"))
+                    .copy_definitions(flag(&mut fields, "copy_definitions")),
+            }
+        }
         _ => structural(name, fields)?,
+    })
+}
+
+/// `copy_product` (#479): its flags default to on, so only an explicit
+/// `false` turns one off.
+fn copy_product(fields: &mut Fields) -> Result<AuthorOp, BindingError> {
+    let product = id(fields, "product").ok_or_else(|| invalid("`copy_product` needs `product`"))?;
+    let offset = match fields.take("offset") {
+        Some(Arg::Reals(offset)) => Some(offset),
+        _ => None,
+    };
+    let placement = match (offset, id(fields, "placement")) {
+        (Some(_), Some(_)) => {
+            return Err(invalid(
+                "`copy_product` takes `offset` or `placement`, not both",
+            ))
+        }
+        (Some(offset), None) => CopyPlacement::Offset(offset),
+        (None, Some(placement)) => CopyPlacement::At(placement),
+        (None, None) => CopyPlacement::Same,
+    };
+    let on = |fields: &mut Fields, key: &str| !matches!(fields.take(key), Some(Arg::Bool(false)));
+    Ok(AuthorOp::CopyProduct {
+        product,
+        options: CopyProductOptions::new()
+            .placement(placement)
+            .openings(on(fields, "openings"))
+            .fillings(on(fields, "fillings"))
+            .container(on(fields, "container"))
+            .aggregate(on(fields, "aggregate")),
     })
 }
 
@@ -244,7 +291,9 @@ pub(super) fn error(error: AuthoringError) -> BindingError {
     use ifc::author::AuthorError as A;
     let detail = error.to_string();
     match *error.failure {
-        F::UnknownEntity { .. } => BindingError::UnsupportedSchema(detail),
+        F::UnknownEntity { .. } | F::IncompatibleRelease { .. } => {
+            BindingError::UnsupportedSchema(detail)
+        }
         F::AbstractEntity { .. } | F::NotA { .. } | F::WrongReferenceType { .. } => {
             BindingError::WrongEntityType(detail)
         }
@@ -263,6 +312,8 @@ pub(super) fn error(error: AuthoringError) -> BindingError {
         | F::PlacementHasDependents { .. }
         | F::TypeHasOccurrences { .. } => BindingError::StillReferenced(detail),
         F::UnsupportedRebase { .. }
+        | F::UnsupportedCopy { .. }
+        | F::UnitMismatch { .. }
         | F::UnsupportedRepresentationMap { .. }
         | F::MaterialUsageUndetermined { .. }
         | F::UndecidableRepresentationType { .. } => BindingError::Unsupported(detail),

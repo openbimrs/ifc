@@ -128,6 +128,16 @@ fn field_value(kind: FieldKind, value: &Bound<'_, PyAny>) -> Result<Tagged, Stri
                 .map(|flag| flag.is_true())
                 .map_err(|_| "must be a bool")?,
         ),
+        FieldKind::Texts => Tagged::List(
+            items(value)?
+                .iter()
+                .map(|item| {
+                    item.cast::<PyString>()
+                        .map(|text| Tagged::Text(text.to_string()))
+                        .map_err(|_| "must hold str".to_owned())
+                })
+                .collect::<Result<_, _>>()?,
+        ),
         FieldKind::Attributes => attributes(value).map_err(|error| error.to_string())?,
         _ => return Err("is of a kind this build does not read".into()),
     })
@@ -169,4 +179,73 @@ pub fn attribute_pairs(value: &Bound<'_, PyAny>) -> Result<Vec<(String, Tagged)>
             _ => None,
         })
         .collect())
+}
+
+/// Keyword option `key`, when given and not `None`.
+fn keyword<'py, T>(options: Option<&Bound<'py, PyDict>>, key: &str) -> pyo3::PyResult<Option<T>>
+where
+    T: for<'a> pyo3::FromPyObject<'a, 'py>,
+    for<'a> <T as pyo3::FromPyObject<'a, 'py>>::Error: Into<pyo3::PyErr>,
+{
+    match options
+        .map(|options| options.get_item(key))
+        .transpose()?
+        .flatten()
+    {
+        Some(value) if !value.is_none() => value.extract::<T>().map(Some).map_err(Into::into),
+        _ => Ok(None),
+    }
+}
+
+/// `IfcModel.copy_product`'s keyword options (#479): `offset`,
+/// `placement`, `skip` (the parts not to copy or join: `openings`,
+/// `fillings`, `container`, `aggregate`) and `dry_run`.
+pub fn copy_options(
+    options: Option<&Bound<'_, PyDict>>,
+) -> pyo3::PyResult<openbim_ifc_binding_core::CopyProductOptions> {
+    let skip: Vec<String> = keyword(options, "skip")?.unwrap_or_default();
+    let parts = ["openings", "fillings", "container", "aggregate"];
+    if let Some(unknown) = skip.iter().find(|part| !parts.contains(&part.as_str())) {
+        return Err(crate::error::py_err(invalid(format!(
+            "skip part `{unknown}` is not one of {}",
+            parts.join(", ")
+        ))));
+    }
+    let kept = |part: &str| !skip.iter().any(|p| p == part);
+    let mut parsed = openbim_ifc_binding_core::CopyProductOptions::new();
+    parsed.offset = keyword(options, "offset")?;
+    parsed.placement = keyword(options, "placement")?;
+    parsed.openings = kept("openings");
+    parsed.fillings = kept("fillings");
+    parsed.container = kept("container");
+    parsed.aggregate = kept("aggregate");
+    parsed.dry_run = keyword(options, "dry_run")?.unwrap_or(false);
+    Ok(parsed)
+}
+
+/// `IfcModel.append`'s keyword options (#479): `global_ids`, `reuse` (the
+/// resource kinds reused by name) and `dry_run`.
+pub fn append_options(
+    options: Option<&Bound<'_, PyDict>>,
+) -> pyo3::PyResult<openbim_ifc_binding_core::AppendOptions> {
+    let reuse: Vec<String> = keyword(options, "reuse")?.unwrap_or_default();
+    let kinds = ["units", "contexts", "owner_history", "materials", "styles"];
+    if let Some(unknown) = reuse.iter().find(|kind| !kinds.contains(&kind.as_str())) {
+        return Err(crate::error::py_err(invalid(format!(
+            "reuse kind `{unknown}` is not one of {}",
+            kinds.join(", ")
+        ))));
+    }
+    let reused = |kind: &str| reuse.iter().any(|k| k == kind);
+    let mut parsed = openbim_ifc_binding_core::AppendOptions::new();
+    if let Some(mode) = keyword(options, "global_ids")? {
+        parsed.global_ids = mode;
+    }
+    parsed.reuse_units = reused("units");
+    parsed.reuse_contexts = reused("contexts");
+    parsed.reuse_owner_history = reused("owner_history");
+    parsed.reuse_materials = reused("materials");
+    parsed.reuse_styles = reused("styles");
+    parsed.dry_run = keyword(options, "dry_run")?.unwrap_or(false);
+    Ok(parsed)
 }

@@ -8,6 +8,21 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#479, copy and append)
+
+- `IfcModel::copy_product(id, CopyProductOptions)` and
+  `IfcModel::append(&source, ids, &AppendOptions)`, each returning a
+  `CopyReport` record (copy, copied, reused, joined, skipped, regenerated,
+  applied); `dry_run` only plans.
+- The `copy_product` and `copy_entity` batch operations, and the `texts`
+  field kind (`FieldKind::Texts`, a `LIST` of `TEXT`) for `copy_entity`'s
+  class lists. `copy_product`'s flags default to on: only an explicit
+  `false` turns one off.
+- Refusals: `unsupported` for an unsupported copy or differing units,
+  `unsupported-schema` for an entity the target release cannot hold.
+
+Semver: additive (`FieldKind` is `#[non_exhaustive]`): minor.
+
 ### Changed (#511)
 
 - `validate` reports a property or quantity set named with the reserved

@@ -946,6 +946,77 @@ styles and the type geometry a mapped item maps, and copies everything
 else. The [binding page](/bindings/c#shape-representations) has the
 rules.
 
+## Copy a product and append from another model
+
+Wall A copied with its openings, door and window, then a wall type taken
+from another file, from `test/fixtures/synthetic-relations/cascade_ifc4.ifc`:
+
+<!-- SNIPPET:cookbook-c-copy -->
+
+```c
+/* Wall A (#20) with what it alone owns -- placement, body, its own
+ * property set, material usage, openings with their door and window --
+ * two metres along; its type, shared property set, classification,
+ * storey and layer are shared, the copy joining them. A size query
+ * plans and never applies a copy. */
+const double offset[3] = {0.0, 2.0, 0.0};
+uint32_t flags = 0; /* | OPENBIM_IFC_COPY_NO_OPENINGS, _NO_FILLINGS, _DRY_RUN, ... */
+size_t nodes = 0, strings = 0;
+openbim_ifc_v0_1_model_copy_product(model, 20, 0, offset, flags, NULL, 0, &nodes, NULL, 0,
+                                    &strings);
+Tape report = tape_alloc(nodes, strings);
+if (openbim_ifc_v0_1_model_copy_product(model, 20, 0, offset, flags, report.nodes, nodes, &nodes,
+                                        report.strings, strings, &strings) !=
+    OPENBIM_IFC_STATUS_OK) {
+  print_error(model);
+  tape_free(&report);
+  return 1;
+}
+/* CopyReport: copy, copied, reused, joined, skipped, regenerated, applied */
+tape_print(&report, tape_field(&report, 0, 0));
+printf(" copies %u entities, joins ", report.nodes[tape_field(&report, 0, 1)].child_count);
+tape_print(&report, tape_field(&report, 0, 3));
+printf("\n");
+tape_free(&report);
+
+/* From another model: the wall type with its property set. Equal units,
+ * contexts, owner history, materials and styles are reused; this model
+ * holds the type's GlobalIds already, so new ones. */
+const uint64_t ids[] = {66};
+openbim_ifc_v0_1_model_append(model, library, ids, 1, OPENBIM_IFC_GLOBAL_IDS_REGENERATE, 0, NULL,
+                              0, &nodes, NULL, 0, &strings);
+report = tape_alloc(nodes, strings);
+if (openbim_ifc_v0_1_model_append(model, library, ids, 1, OPENBIM_IFC_GLOBAL_IDS_REGENERATE, 0,
+                                  report.nodes, nodes, &nodes, report.strings, strings,
+                                  &strings) != OPENBIM_IFC_STATUS_OK) {
+  print_error(model); /* e.g. UNSUPPORTED: the models' length units differ */
+  tape_free(&report);
+  return 1;
+}
+size_t copied = tape_field(&report, 0, 1);
+printf("appends %u entities, skips ", report.nodes[copied].child_count);
+tape_print(&report, tape_field(&report, 0, 4));
+printf("\n");
+tape_free(&report);
+/* #190 copies 55 entities, joins (#19, #62, #67, #79, #80, #120, #136)
+ * appends 3 entities, skips (#67) */
+```
+
+<!-- /SNIPPET -->
+
+`openbim_ifc_v0_1_model_copy_product` copies what
+`openbim_ifc_v0_1_model_remove_product` would remove with the product and
+shares what it would keep; `OPENBIM_IFC_COPY_NO_OPENINGS`, `_NO_FILLINGS`,
+`_NO_CONTAINER` and `_NO_AGGREGATE` leave those out, and a non-zero
+`placement` puts the copy on a placement of your own.
+`openbim_ifc_v0_1_model_append` keeps `GlobalId`s with
+`OPENBIM_IFC_GLOBAL_IDS_KEEP` and refuses one the model holds;
+`OPENBIM_IFC_GLOBAL_IDS_MERGE` treats a `GlobalId` the model holds (on the
+same type) as the same object. It refuses models whose length or angle
+units differ (`UNSUPPORTED`), and entities the target release cannot hold
+(`UNSUPPORTED_SCHEMA`). The
+[binding page](/bindings/c#copying-products-and-appending) lists what is copied, shared and skipped.
+
 ## Create a model
 
 Values passed in are tapes too; this builder writes them:

@@ -922,6 +922,56 @@ owner history with its actors stay unless asked (`include_roots`,
 with a `DeprecationWarning`. Use `remove_with_relationships(id)` for one
 entity or `remove_product(id)` for a product.
 
+## Copying products and appending
+
+`model.copy_product(id)` copies a product, or a type object, with what
+it solely owns, as one checked transaction, and returns a `CopyReport`:
+`copy`, `copied` (each `CopiedEntity` with `original`, `copy` and `type_name`), `reused`, `joined`, `skipped`, `regenerated` and `applied`. With `dry_run=True` it only reports.
+
+What the copy owns is what `remove_product` would remove with the product, by the
+same reference count, and the copy copies it: the product (with a new
+`GlobalId`), its `ObjectPlacement` (relative to the same parent, moved by
+`offset=(x, y, z)` in the parent's frame, or replaced by `placement=`), its
+representation (items and profiles copied; the context, styles and a
+type's representation maps shared), the property and quantity sets only it
+is defined by with their properties, its material usage (not the material
+definitions), its ports, and its openings and the doors and windows
+filling them, placed relative to the copied placements. A type object
+copies its own representation maps and property sets. What the removal
+would keep is shared: the copy joins the original's type assignment, the
+shared property sets, its classification, document and library
+references, groups and presentation layers, its spatial container and
+the whole it is a part of. `openings=False`, `fillings=False`, `container=False` and `aggregate=False` leave openings, fillings, the container
+or the whole out. Relationships that would bind another object to the
+copy (a connection, a space boundary, the parts of a whole, a type's
+occurrences) are not carried and are listed in `skipped`. Entities a
+`UNIQUE` rule binds (an `IfcPropertyEnumeration`, an `IfcApplication`)
+are always shared.
+
+`model.append(source, ids)` copies entities of another model into this one with what belongs
+to them: what they reference (a product's placement chain, representation
+and owner history), their property sets, type, material and
+classification with their relationships, their openings, fillings and
+ports, and what attaches to their geometry (styled items, layers). A
+relationship to an object that is not copied (the source's spatial
+container) is skipped; relate the copies afterwards. Units, contexts, the
+owner history, materials and styles equal to one this model holds (same
+type, same values all the way down) are reused instead of copied
+(`reuse=` names the kinds: `units`, `contexts`, `owner_history`, `materials`, `styles`). `GlobalId`s are kept (`global_ids="keep"`, the default, refused when this model holds
+one), merged (`"merge"`: an `IfcRoot` this model holds by `GlobalId` and
+type is that entity, and its relationships are joined), or regenerated
+(`"regenerate"`, or `"regenerate-colliding"` for those this model holds). Between releases each attribute moves by name; a type,
+attribute or enumeration constant the target release lacks is refused
+with `unsupported-schema`, never dropped. Models whose length or plane
+angle units differ are refused with `unsupported`: convert one with
+`convert_length_unit` first. The
+[cookbook](/cookbook/python#copy-a-product-and-append-from-another-model) has a recipe.
+
+In a batch, `AuthorOp.copy_product` and `AuthorOp.copy_entity` do the same (the copy is the operation's
+produced entity), and a low-level deep copy follows an entity's references
+by an explicit policy: classes always copied, classes always shared, and
+whether other `IfcRoot`s and definitions are copied (by default shared).
+
 ## Units and a model's length unit
 
 `openbim_ifc.convert_unit(value, from_unit, to_unit)` converts between
@@ -1034,6 +1084,8 @@ class, record and function of the package with its docstring and types.
 | `model.remove_product(id: int, *, rebase_placements: bool = False, untype_occurrences: bool = False, dry_run: bool = False) -> RemovalReport` | Remove product (or type object) `id` with everything it solely owns -- its placement, representation, own property and quantity sets, material usage, openings and ports, and the relationships left without an end -- as one checked transaction. Shared data stays: a property set another object uses, a type's representation maps, a style used elsewhere. The report says what went and what stayed, and why; with `dry_run` nothing changes. |
 | `model.purge(classes: Sequence[str] = (), *, include_roots: bool = False, include_owner_history: bool = False, dry_run: bool = False) -> RemovalReport` | Remove unreferenced entities as one checked transaction; with `dry_run`, only report. |
 | `model.remove_representation(id: int, *, dry_run: bool = False) -> RemovalReport` | Remove shape representation `id` with what only it uses, as one checked transaction: it is taken off its product definition shape (which goes when left empty), representation map or shape aspects, then removed with its items down to what nothing else uses. Shared items, profiles, points and styles stay, and the report says why; with `dry_run` nothing changes. |
+| `model.copy_product(id: int, *, offset: Optional[Tuple[float, float, float]] = None, placement: Optional[int] = None, openings: bool = True, fillings: bool = True, container: bool = True, aggregate: bool = True, dry_run: bool = False) -> CopyReport` | Copy product (or type object) `id` with everything it solely owns, as one checked transaction (#479): what :meth:`remove_product` would remove with it is copied, what it would keep is shared. |
+| `model.append(source: IfcModel, ids: Iterable[int], *, global_ids: str = 'keep', reuse: Iterable[str] = ('units', 'contexts', 'owner_history', 'materials', 'styles'), dry_run: bool = False) -> CopyReport` | Copy entities `ids` of `source` into this model with what belongs to them, as one checked transaction (#479): what they reference, their property sets, type, material and classification, their openings, fillings and ports, and what attaches to their geometry. Units, contexts, the owner history, materials and styles equal to this model's are reused, for the kinds `reuse` names. Relationships to objects not copied (a spatial container) are skipped and reported; relate the copies afterwards. |
 | `model.convert_unit_value(value: float, from_unit: int, to_unit: int) -> float` | Convert `value` from unit entity `from_unit` to unit entity `to_unit` of this model (an `IfcSIUnit`, `IfcConversionBasedUnit` or `IfcDerivedUnit`), exactly: prefixes convert by a power of ten, conversion-based units through their factor, derived units by their exponents. |
 | `model.convert_length_unit(target: str, *, area_and_volume: bool = True, remove_replaced_units: bool = True, dry_run: bool = False) -> domains.LengthUnitReport` | Convert the model's length unit to `target` (an SI `METRE` with any prefix, such as `"MILLIMETRE"`, or `"inch"`, `"foot"`, `"yard"`, `"mile"`, `"US survey foot"`), rescaling every length, area and volume value -- geometry, placements, quantities and property values -- as one checked transaction. |
 | `model.dangling_references() -> List[Tuple[int, int]]` | Every `(from, to)` pair where `to` does not exist. |

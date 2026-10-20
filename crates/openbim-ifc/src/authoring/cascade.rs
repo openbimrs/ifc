@@ -147,6 +147,17 @@ impl Planner<'_, '_> {
         self.apply_cascade(&kinds, cascade).map(drop)
     }
 
+    /// Everything removing `root` would remove with it, before its
+    /// placement is decided: what it solely owns, by the cascade's count
+    /// (#479 copies exactly this).
+    pub(super) fn owned_by(&self, root: EntityId) -> BTreeSet<EntityId> {
+        let kinds = Kinds::new(self.schema);
+        let mut cascade = Cascade::default();
+        cascade.add(root);
+        self.drain(&kinds, &mut cascade);
+        cascade.removed
+    }
+
     /// The objects `type_object` types, through `IfcRelDefinesByType`.
     fn occurrences(&self, kinds: &Kinds<'_>, type_object: EntityId) -> Vec<EntityId> {
         let mut found = BTreeSet::new();

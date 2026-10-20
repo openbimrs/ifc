@@ -121,6 +121,12 @@ fn field_value(kind: FieldKind, value: &JsValue) -> Result<Tagged, String> {
             Tagged::Integer(big_i64(value, "an integer").map_err(|error| error.to_string())?)
         }
         FieldKind::Bool => Tagged::Bool(value.as_bool().ok_or("must be a boolean")?),
+        FieldKind::Texts => Tagged::List(
+            array(value)?
+                .iter()
+                .map(|v| v.as_string().map(Tagged::Text).ok_or("must hold strings"))
+                .collect::<Result<_, _>>()?,
+        ),
         FieldKind::Attributes => attributes(value).map_err(|error| error.to_string())?,
         _ => return Err("is of a kind this build does not read".to_owned()),
     })

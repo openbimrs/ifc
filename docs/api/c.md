@@ -91,8 +91,23 @@ when the C surface does, the crate version on every release.
 
 | Constant | Value | Meaning |
 | --- | ---: | --- |
+| `OPENBIM_IFC_APPEND_DRY_RUN` | 32 | `openbim_ifc_v0_1_model_append` flag: report only. |
+| `OPENBIM_IFC_APPEND_NO_REUSE_CONTEXTS` | 2 | `openbim_ifc_v0_1_model_append` flag: copy contexts equal to the target's. |
+| `OPENBIM_IFC_APPEND_NO_REUSE_MATERIALS` | 8 | `openbim_ifc_v0_1_model_append` flag: copy materials equal to the target's. |
+| `OPENBIM_IFC_APPEND_NO_REUSE_OWNER_HISTORY` | 4 | `openbim_ifc_v0_1_model_append` flag: copy an owner history equal to the target's. |
+| `OPENBIM_IFC_APPEND_NO_REUSE_STYLES` | 16 | `openbim_ifc_v0_1_model_append` flag: copy styles equal to the target's. |
+| `OPENBIM_IFC_APPEND_NO_REUSE_UNITS` | 1 | `openbim_ifc_v0_1_model_append` flag: copy units equal to the target's. |
+| `OPENBIM_IFC_COPY_DRY_RUN` | 16 | `openbim_ifc_v0_1_model_copy_product` flag: report only. |
+| `OPENBIM_IFC_COPY_NO_AGGREGATE` | 8 | `openbim_ifc_v0_1_model_copy_product` flag: do not make the copy a part of the original's whole. |
+| `OPENBIM_IFC_COPY_NO_CONTAINER` | 4 | `openbim_ifc_v0_1_model_copy_product` flag: do not contain the copy in the original's container. |
+| `OPENBIM_IFC_COPY_NO_FILLINGS` | 2 | `openbim_ifc_v0_1_model_copy_product` flag: do not copy the fillings of the copied openings. |
+| `OPENBIM_IFC_COPY_NO_OPENINGS` | 1 | `openbim_ifc_v0_1_model_copy_product` flag: do not copy the openings. |
 | `OPENBIM_IFC_GEOMETRY_CBOR` | 1 | `encoding` for `openbim_ifc_v0_1_model_product_geometry`: CBOR bytes (RFC 8949). |
 | `OPENBIM_IFC_GEOMETRY_JSON` | 0 | `encoding` for `openbim_ifc_v0_1_model_product_geometry`: JSON text (RFC 8259), UTF-8, not NUL-terminated. |
+| `OPENBIM_IFC_GLOBAL_IDS_KEEP` | 0 | `openbim_ifc_v0_1_model_append` `GlobalId` mode: keep, refusing one the target holds. |
+| `OPENBIM_IFC_GLOBAL_IDS_MERGE` | 3 | `openbim_ifc_v0_1_model_append` `GlobalId` mode: an `IfcRoot` the target holds by `GlobalId` and type is reused, its relationships joined. |
+| `OPENBIM_IFC_GLOBAL_IDS_REGENERATE` | 1 | `openbim_ifc_v0_1_model_append` `GlobalId` mode: regenerate every one. |
+| `OPENBIM_IFC_GLOBAL_IDS_REGENERATE_COLLIDING` | 2 | `openbim_ifc_v0_1_model_append` `GlobalId` mode: regenerate the ones the target holds. |
 | `OPENBIM_IFC_HANDLE_BASE` | 4611686018427387904 | The first id of the handle range (2^62): `OPENBIM_IFC_HANDLE_BASE + i` names the entity operation `i` of a batch produced. |
 | `OPENBIM_IFC_KIND_BINARY` | 7 | Binary digits in the string range. |
 | `OPENBIM_IFC_KIND_BOOL` | 2 | `.T.`/`.F.`; `int_value` is 1 or 0. |
@@ -714,6 +729,37 @@ shared geometry code, and never refuses the mesh.
 `out_count` valid for one write; otherwise as for
 `openbim_ifc_v0_1_entity_attribute`.
 
+### `openbim_ifc_v0_1_model_append`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_append(OpenbimIfcModel target, OpenbimIfcModel source, const uint64_t *ids, size_t id_count, uint32_t global_ids, uint32_t flags, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+Copy the `id_count` entities `ids` of model `source` into model
+`target` with what belongs to them, as one checked transaction: what
+they reference, their property sets, type, material and classification,
+their openings, fillings and ports, and what attaches to their geometry.
+Units, contexts, the owner history, materials and styles equal to the
+target's are reused unless a flag says otherwise. Relationships to
+objects not copied (a spatial container) are skipped and reported.
+`global_ids`: `OPENBIM_IFC_GLOBAL_IDS_KEEP`, `_REGENERATE`,
+`_REGENERATE_COLLIDING` or `_MERGE`. `flags`:
+`OPENBIM_IFC_APPEND_NO_REUSE_UNITS`, `_CONTEXTS`, `_OWNER_HISTORY`,
+`_MATERIALS`, `_STYLES`, `OPENBIM_IFC_APPEND_DRY_RUN`. The answer is a
+`CopyReport` tape (see the module docs); a size query or a short buffer
+plans the append and answers `BufferTooSmall` without applying it.
+
+`InvalidHandle`; `InvalidArgument` for `target` and `source` the same
+model, an unknown mode or flag; `MissingEntity` for an id `source`
+lacks; `Unsupported` when the models' length or plane angle units
+differ; `UnsupportedSchema` for an entity the target's release cannot
+hold; `InvalidValue` for a kept `GlobalId` the target holds;
+`FeatureDisabled`.
+
+**Safety.**
+`ids` null (with `id_count` 0) or valid for `id_count` reads; the
+buffers as for `openbim_ifc_v0_1_entity_attribute`.
+
 ### `openbim_ifc_v0_1_model_author`
 
 ```c
@@ -832,6 +878,37 @@ unit; `InvalidModel` for a unit that does not resolve;
 
 **Safety.**
 `out_value` valid for one write.
+
+### `openbim_ifc_v0_1_model_copy_product`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_copy_product(OpenbimIfcModel model, uint64_t product, uint64_t placement, const double *offset, uint32_t flags, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+Copy product (or type object) `product` with everything it solely owns,
+as one checked transaction: its placement, representation, own property
+and quantity sets, material usage, ports and, unless a flag says
+otherwise, its openings and the doors and windows filling them; joining
+its type, shared property sets, classification and, unless a flag says
+otherwise, its container and whole. `placement` non-zero places the
+copy by that `IfcObjectPlacement`; `offset` non-null (three doubles)
+moves it in its parent placement's frame; not both. `flags`:
+`OPENBIM_IFC_COPY_NO_OPENINGS`, `OPENBIM_IFC_COPY_NO_FILLINGS`,
+`OPENBIM_IFC_COPY_NO_CONTAINER`, `OPENBIM_IFC_COPY_NO_AGGREGATE`,
+`OPENBIM_IFC_COPY_DRY_RUN`. The answer is a `CopyReport` tape (see the
+module docs); a size query or a short buffer plans the copy and answers
+`BufferTooSmall` without applying it.
+
+`MissingEntity`; `WrongEntityType` for neither an `IfcProduct` nor an
+`IfcTypeObject`; `Unsupported` for an offset onto a placement that is
+not a local placement with a Cartesian location, or a moved copy whose
+openings are not placed relative to it; `InvalidValue` for both a
+placement and an offset, or a non-finite offset; `InvalidArgument` for
+an unknown flag; `FeatureDisabled`.
+
+**Safety.**
+`offset` null or valid for three reads; the buffers as for
+`openbim_ifc_v0_1_entity_attribute`.
 
 ### `openbim_ifc_v0_1_model_cost`
 

@@ -260,6 +260,45 @@ pub enum AuthoringFailure {
         /// The product or type.
         to: EntityId,
     },
+    /// A copy cannot be made as asked (#479): an offset onto a placement
+    /// that is not an `IfcLocalPlacement` with a Cartesian `Location`, a
+    /// moved copy whose openings, fillings or ports are not placed relative
+    /// to it, or references that form a cycle.
+    UnsupportedCopy {
+        /// The entity that cannot be copied so.
+        entity: EntityId,
+        /// Why.
+        detail: String,
+    },
+    /// An entity cannot be appended into the target model's release
+    /// (#479): the target release does not declare its type, lacks an
+    /// attribute it sets, or does not admit one of its values. Nothing is
+    /// dropped silently; migrate the source model first.
+    IncompatibleRelease {
+        /// The entity, in the source model.
+        entity: EntityId,
+        /// Its type.
+        type_name: String,
+        /// The source model's release.
+        source: String,
+        /// The target model's release.
+        target: String,
+        /// What the target lacks.
+        detail: String,
+    },
+    /// The source and target models measure in different units (#479):
+    /// appended coordinates and values would change meaning. Convert one
+    /// model's length unit first (`convert_length_unit`, feature `properties`, #469);
+    /// the append never converts on its own.
+    UnitMismatch {
+        /// The `IfcUnitEnum` constant, e.g. `LENGTHUNIT`.
+        unit_type: String,
+        /// The source model's unit, e.g. `MILLI METRE`; `none` when it
+        /// declares none.
+        source: String,
+        /// The target model's unit.
+        target: String,
+    },
 }
 
 impl AuthoringError {
@@ -421,6 +460,29 @@ impl fmt::Display for AuthoringFailure {
             Self::NotAssigned { representation, to } => {
                 write!(f, "representation {representation} is not assigned to {to}")
             }
+            Self::UnsupportedCopy { entity, detail } => {
+                write!(f, "cannot copy {entity}: {detail}")
+            }
+            Self::IncompatibleRelease {
+                entity,
+                type_name,
+                source,
+                target,
+                detail,
+            } => write!(
+                f,
+                "{entity} ({type_name}) cannot go from {source} into {target}: {detail}; \
+                 migrate the source model first"
+            ),
+            Self::UnitMismatch {
+                unit_type,
+                source,
+                target,
+            } => write!(
+                f,
+                "the source model's {unit_type} is {source}, the target's {target}; \
+                 convert one model's length unit first (`convert_length_unit`, #469)"
+            ),
         }
     }
 }

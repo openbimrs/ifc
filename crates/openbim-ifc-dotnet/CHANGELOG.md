@@ -9,6 +9,16 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#479, copy and append)
+
+- `IfcModel.CopyProduct(id, offset, placement, openings, fillings,
+  container, aggregate, dryRun)` and `IfcModel.Append(source, ids,
+  globalIds, reuse, dryRun)`, returning a `CopyReport` (`CopiedEntity`
+  records); `GlobalIdMode`, `ReuseKinds`; `AuthorOp.CopyProduct` and
+  `AuthorOp.CopyEntity`. Needs the C library with ABI 0.1.21.
+
+Semver: additive: minor.
+
 ### Added (#469)
 
 - `Units.Convert(value, from, to)` converts between units named as text

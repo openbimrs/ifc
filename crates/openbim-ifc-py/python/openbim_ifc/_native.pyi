@@ -130,6 +130,22 @@ class NativeModel:
         dry_run: bool = ...,
     ) -> Dict[str, Any]: ...
     def remove_representation(self, id: int, dry_run: bool = ...) -> Dict[str, Any]: ...
+    def copy_product(
+        self,
+        id: int,
+        offset: Optional[Tuple[float, float, float]] = ...,
+        placement: Optional[int] = ...,
+        skip: List[str] = ...,
+        dry_run: bool = ...,
+    ) -> Dict[str, Any]: ...
+    def append(
+        self,
+        source: "NativeModel",
+        ids: List[int],
+        global_ids: str = ...,
+        reuse: List[str] = ...,
+        dry_run: bool = ...,
+    ) -> Dict[str, Any]: ...
     def convert_unit_value(self, value: float, from_: int, to: int) -> float: ...
     def convert_length_unit(
         self,

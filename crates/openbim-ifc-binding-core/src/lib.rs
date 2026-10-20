@@ -118,8 +118,8 @@ mod xml;
 
 pub use attribute::AttributeInfo;
 pub use authoring::{
-    AuthorOp, AuthoringResult, KeptEntity, PurgeOptions, RemovalReport, RemoveProductOptions,
-    RemovedEntity,
+    AppendOptions, AuthorOp, AuthoringResult, CopiedEntity, CopyProductOptions, CopyReport,
+    KeptEntity, PurgeOptions, RemovalReport, RemoveProductOptions, RemovedEntity,
 };
 pub use coerce::Plain;
 pub use error::BindingError;

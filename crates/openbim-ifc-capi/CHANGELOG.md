@@ -8,6 +8,22 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#479, copy and append)
+
+- `openbim_ifc_v0_1_model_copy_product(model, product, placement, offset,
+  flags, ...)` and `openbim_ifc_v0_1_model_append(target, source, ids,
+  id_count, global_ids, flags, ...)`, each answering a `CopyReport` tape
+  (copy, copied and reused `CopiedEntity` lists, joined, skipped,
+  regenerated, applied); a size query plans without applying. Flags
+  `OPENBIM_IFC_COPY_*`, `OPENBIM_IFC_APPEND_*`, modes
+  `OPENBIM_IFC_GLOBAL_IDS_*`. The batch tape takes `COPY_PRODUCT` and
+  `COPY_ENTITY`. The header is regenerated.
+- ABI version 0.1.21 (on top of #532's 0.1.20); every export above is new,
+  no `v0_1` symbol changed.
+
+Semver: additive, released on the 0.1 line: the `v0_1` ABI only gains
+symbols, and the C package keeps 0.1.x.
+
 ### Added (#469)
 
 - Unit conversion, ABI version 0.1.18. `openbim_ifc_v0_1_convert_unit`

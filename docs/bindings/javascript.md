@@ -914,6 +914,56 @@ and the owner history with its actors stay unless asked (`includeRoots`,
 leaves references dangling. Use `removeWithRelationships(id)` for one
 entity or `removeProduct(id)` for a product.
 
+## Copying products and appending
+
+`model.copyProduct(id)` copies a product, or a type object, with what
+it solely owns, as one checked transaction, and returns a `CopyReport`:
+`copy`, `copied` (each `CopiedEntity` with `original`, `copy` and `typeName`), `reused`, `joined`, `skipped`, `regenerated` and `applied`. With `{ dryRun: true }` it only reports.
+
+What the copy owns is what `removeProduct` would remove with the product, by the
+same reference count, and the copy copies it: the product (with a new
+`GlobalId`), its `ObjectPlacement` (relative to the same parent, moved by
+`offset: [x, y, z]` in the parent's frame, or replaced by `placement`), its
+representation (items and profiles copied; the context, styles and a
+type's representation maps shared), the property and quantity sets only it
+is defined by with their properties, its material usage (not the material
+definitions), its ports, and its openings and the doors and windows
+filling them, placed relative to the copied placements. A type object
+copies its own representation maps and property sets. What the removal
+would keep is shared: the copy joins the original's type assignment, the
+shared property sets, its classification, document and library
+references, groups and presentation layers, its spatial container and
+the whole it is a part of. `openings: false`, `fillings: false`, `container: false` and `aggregate: false` leave openings, fillings, the container
+or the whole out. Relationships that would bind another object to the
+copy (a connection, a space boundary, the parts of a whole, a type's
+occurrences) are not carried and are listed in `skipped`. Entities a
+`UNIQUE` rule binds (an `IfcPropertyEnumeration`, an `IfcApplication`)
+are always shared.
+
+`model.append(source, ids)` copies entities of another model into this one with what belongs
+to them: what they reference (a product's placement chain, representation
+and owner history), their property sets, type, material and
+classification with their relationships, their openings, fillings and
+ports, and what attaches to their geometry (styled items, layers). A
+relationship to an object that is not copied (the source's spatial
+container) is skipped; relate the copies afterwards. Units, contexts, the
+owner history, materials and styles equal to one this model holds (same
+type, same values all the way down) are reused instead of copied
+(`reuse` names the kinds: `units`, `contexts`, `ownerHistory`, `materials`, `styles`). `GlobalId`s are kept (`globalIds: "keep"`, the default, refused when this model holds
+one), merged (`"merge"`: an `IfcRoot` this model holds by `GlobalId` and
+type is that entity, and its relationships are joined), or regenerated
+(`"regenerate"`, or `"regenerate-colliding"` for those this model holds). Between releases each attribute moves by name; a type,
+attribute or enumeration constant the target release lacks is refused
+with `unsupported-schema`, never dropped. Models whose length or plane
+angle units differ are refused with `unsupported`: convert one with
+`convertLengthUnit` first. The
+[cookbook](/cookbook/javascript#copy-a-product-and-append-from-another-model) has a recipe.
+
+In a batch, the `copyProduct` and `copyEntity` operations do the same (the copy is the operation's
+produced entity), and a low-level deep copy follows an entity's references
+by an explicit policy: classes always copied, classes always shared, and
+whether other `IfcRoot`s and definitions are copied (by default shared).
+
 ## Units and a model's length unit
 
 `IfcModel.convertUnit(value, from, to)` converts between units named as

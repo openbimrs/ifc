@@ -42,6 +42,14 @@ use super::{AuthoringFailure as F, RemoveProductOptions};
 
 const SHAPE: &str = "IFCSHAPEREPRESENTATION";
 
+/// A copied representation: the copy, every original copied with its
+/// copy, and the presentation layers that gained a copy.
+pub(super) struct CopiedRepresentation {
+    pub(super) copy: EntityId,
+    pub(super) copies: BTreeMap<EntityId, EntityId>,
+    pub(super) layers: Vec<EntityId>,
+}
+
 /// The one use `IfcShapeModel.WR11` allows a representation.
 #[derive(Debug, Clone, Copy)]
 enum Usage {
@@ -323,6 +331,16 @@ impl Planner<'_, '_> {
 
     /// `AuthorOp::CopyRepresentation`.
     pub(super) fn copy_representation(&mut self, representation: EntityId) -> Result<EntityId, F> {
+        self.copy_representation_mapped(representation)
+            .map(|copied| copied.copy)
+    }
+
+    /// A copy of `representation` by the rules of `CopyRepresentation`,
+    /// with every original it copied and the layers that gained a copy.
+    pub(super) fn copy_representation_mapped(
+        &mut self,
+        representation: EntityId,
+    ) -> Result<CopiedRepresentation, F> {
         let kinds = Kinds::new(self.schema);
         self.shape_model(representation)?;
         let order = self.copy_order(representation)?;
@@ -355,57 +373,31 @@ impl Planner<'_, '_> {
                 }
             }
         }
+        let joined: Vec<EntityId> = layers.keys().copied().collect();
         for (layer, added) in layers {
             let mut members = self.list(&kinds, layer, "AssignedItems");
             members.extend(added);
             self.edit(layer, vec![("AssignedItems".to_owned(), refs(&members))])?;
         }
-        Ok(copies[&representation])
+        Ok(CopiedRepresentation {
+            copy: copies[&representation],
+            copies,
+            layers: joined,
+        })
     }
 
     /// What a copy of `representation` copies, each before what uses it.
-    fn copy_order(&self, representation: EntityId) -> Result<Vec<EntityId>, F> {
-        let mut order = Vec::new();
-        let mut done = BTreeSet::new();
-        let mut path = BTreeSet::new();
-        // Depth first, iteratively: (entity, whether its references are
-        // queued already).
-        let mut stack = vec![(representation, false)];
-        while let Some((id, expanded)) = stack.pop() {
-            if expanded {
-                path.remove(&id);
-                if done.insert(id) {
-                    order.push(id);
-                }
-                continue;
-            }
-            if done.contains(&id) {
-                continue;
-            }
-            if !path.insert(id) {
-                return Err(F::InvalidRepresentationItem {
-                    item: id,
-                    detail: "its references form a cycle".to_owned(),
-                });
-            }
-            stack.push((id, true));
-            let entity = self.view.get(id).ok_or(F::MissingEntity(id))?;
-            let mut targets = Vec::new();
-            for value in &entity.attributes {
-                value.for_each_ref(&mut |target| targets.push(target));
-            }
-            for target in targets.into_iter().rev() {
-                if !done.contains(&target) && self.copied(target) {
-                    stack.push((target, false));
-                }
-            }
-        }
-        Ok(order)
+    pub(super) fn copy_order(&self, representation: EntityId) -> Result<Vec<EntityId>, F> {
+        self.subgraph_order(representation, &|id| self.copied(id))
+            .map_err(|item| F::InvalidRepresentationItem {
+                item,
+                detail: "its references form a cycle".to_owned(),
+            })
     }
 
     /// Whether a copy copies `id` when it reaches it: representation items
     /// and profile definitions; everything else is shared.
-    fn copied(&self, id: EntityId) -> bool {
+    pub(super) fn copied(&self, id: EntityId) -> bool {
         self.view.get(id).is_some_and(|entity| {
             let t = &entity.type_name;
             self.schema.is_a(t, "IfcRepresentationItem") || self.schema.is_a(t, "IfcProfileDef")
@@ -414,7 +406,7 @@ impl Planner<'_, '_> {
 
     /// A new entity like `original`, its references to copied entities
     /// replaced by their copies.
-    fn copy_of(
+    pub(super) fn copy_of(
         &mut self,
         original: EntityId,
         copies: &BTreeMap<EntityId, EntityId>,
@@ -520,7 +512,7 @@ impl Planner<'_, '_> {
     }
 
     /// The ids `entity` lists in attribute `name`.
-    fn list(&self, kinds: &Kinds<'_>, entity: EntityId, name: &str) -> Vec<EntityId> {
+    pub(super) fn list(&self, kinds: &Kinds<'_>, entity: EntityId, name: &str) -> Vec<EntityId> {
         self.view
             .get(entity)
             .map(|entity| kinds.references(entity, name))
@@ -548,7 +540,7 @@ impl Planner<'_, '_> {
     }
 
     /// Write a whole record, checked as an edit checks one.
-    fn insert(&mut self, entity: Entity) -> Result<EntityId, F> {
+    pub(super) fn insert(&mut self, entity: Entity) -> Result<EntityId, F> {
         recheck(self.schema, &entity)?;
         relations(self.schema, &self.view, &entity, None)?;
         let id = self.view.allocate();
@@ -557,12 +549,12 @@ impl Planner<'_, '_> {
     }
 }
 
-fn refs(ids: &[EntityId]) -> Value {
+pub(super) fn refs(ids: &[EntityId]) -> Value {
     Value::List(ids.iter().copied().map(Value::Ref).collect())
 }
 
 /// `value` with every reference `copies` maps replaced, at any depth.
-fn remap(value: &mut Value, copies: &BTreeMap<EntityId, EntityId>) {
+pub(super) fn remap(value: &mut Value, copies: &BTreeMap<EntityId, EntityId>) {
     match value {
         Value::Ref(id) => {
             if let Some(copy) = copies.get(id) {

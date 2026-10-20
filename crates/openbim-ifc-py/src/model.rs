@@ -728,6 +728,35 @@ impl NativeModel {
         records::record_to_py(py, &report.to_record())
     }
 
+    /// Copy a product with what it solely owns; the report (#479). Keyword
+    /// options as `authoring::copy_options` reads them.
+    #[pyo3(signature = (id, **options))]
+    fn copy_product<'py>(
+        &mut self,
+        py: Python<'py>,
+        id: u64,
+        options: Option<&Bound<'py, PyDict>>,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let options = authoring::copy_options(options)?;
+        let report = self.inner.copy_product(id, options).map_err(py_err)?;
+        records::record_to_py(py, &report.to_record())
+    }
+
+    /// Copy entities of `source` into this model; the report (#479).
+    /// Keyword options as `authoring::append_options` reads them.
+    #[pyo3(signature = (source, ids, **options))]
+    fn append<'py>(
+        &mut self,
+        py: Python<'py>,
+        source: PyRef<'_, NativeModel>,
+        ids: Vec<u64>,
+        options: Option<&Bound<'py, PyDict>>,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let options = authoring::append_options(options)?;
+        let report = self.inner.append(&source.inner, &ids, &options);
+        records::record_to_py(py, &report.map_err(py_err)?.to_record())
+    }
+
     /// Convert `value` between two unit entities of the model (#469).
     fn convert_unit_value(&self, value: f64, from: u64, to: u64) -> PyResult<f64> {
         self.inner

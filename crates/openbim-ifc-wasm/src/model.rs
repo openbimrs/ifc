@@ -17,6 +17,7 @@ use crate::geometry;
 use crate::records;
 use crate::value::{self, from_js, to_js};
 
+mod copying;
 mod domain_types;
 mod geometry_types;
 mod inverse;

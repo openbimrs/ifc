@@ -39,6 +39,7 @@ mod attributes;
 mod authoring;
 mod buffer;
 mod checks;
+mod copying;
 mod curves;
 mod domains;
 mod edits;
@@ -64,6 +65,7 @@ mod xml;
 pub use attributes::*;
 pub use authoring::*;
 pub use checks::*;
+pub use copying::*;
 pub use curves::*;
 pub use domains::*;
 pub use edits::*;
@@ -93,6 +95,8 @@ pub use xml::*;
 mod authoring_tests;
 #[cfg(test)]
 mod capability_tests;
+#[cfg(test)]
+mod copying_tests;
 #[cfg(test)]
 mod domain_tests;
 #[cfg(test)]

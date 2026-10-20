@@ -105,6 +105,7 @@ struct Traits {
     kind: Kind,
     annotates: bool,
     root: bool,
+    unique: bool,
 }
 
 /// Entity kinds by type name, against one release.
@@ -131,6 +132,14 @@ impl<'s> Kinds<'s> {
         self.lookup(type_name).root
     }
 
+    /// Whether a `UNIQUE` clause other than `IfcRoot`'s `GlobalId` binds
+    /// `type_name`: its instances have an identity of their own (an
+    /// `IfcApplication`, an `IfcPropertyEnumeration`), so a copy shares
+    /// them (#479).
+    pub(super) fn unique(&self, type_name: &Arc<str>) -> bool {
+        self.lookup(type_name).unique
+    }
+
     /// Whether the purge keeps an entity of `type_name` while something it
     /// references is kept.
     pub(super) fn annotates(&self, type_name: &Arc<str>) -> bool {
@@ -145,6 +154,7 @@ impl<'s> Kinds<'s> {
             kind: self.classify(type_name),
             annotates: self.classify_annotator(type_name),
             root: self.is_a(type_name, "IfcRoot"),
+            unique: !unique_keys(self.schema, type_name).is_empty(),
         };
         self.cache.borrow_mut().insert(type_name.clone(), found);
         found
@@ -267,4 +277,34 @@ pub(super) fn detach(entity: &mut Entity, gone: &impl Fn(EntityId) -> bool) -> b
         }
     }
     emptied
+}
+
+/// The `UNIQUE` clauses binding `type_name`, its own and its supertypes',
+/// each as the declaring entity and its attribute names; `IfcRoot`'s
+/// `GlobalId` aside.
+pub(super) fn unique_keys(schema: &Schema, type_name: &str) -> Vec<(String, Vec<String>)> {
+    let mut keys = Vec::new();
+    for declaring in schema.entities() {
+        if declaring.unique_rules.is_empty()
+            || declaring.name.eq_ignore_ascii_case("IfcRoot")
+            || !schema.is_a(type_name, &declaring.name)
+        {
+            continue;
+        }
+        for rule in &declaring.unique_rules {
+            let names = rule
+                .attributes
+                .iter()
+                .map(|name| {
+                    name.rsplit(['.', '\\'])
+                        .next()
+                        .unwrap_or(name)
+                        .trim()
+                        .to_owned()
+                })
+                .collect();
+            keys.push((declaring.name.clone(), names));
+        }
+    }
+    keys
 }

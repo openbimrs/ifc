@@ -8,7 +8,7 @@ use ifc_schema::Schema;
 
 use super::check::{build, recheck, relations};
 use super::overlay::Overlay;
-use super::report::RemovalReport;
+use super::report::{CopyReport, RemovalReport};
 use super::{AssignTypeOptions, AuthorOp, AuthoringFailure as F, NamedValues};
 use crate::name_guid::name_based_guid;
 
@@ -23,6 +23,10 @@ pub(super) struct Planner<'m, 's> {
     pub(super) reports: Vec<Option<RemovalReport>>,
     /// The report of the operation running now.
     report: Option<RemovalReport>,
+    /// Per operation run so far, the report of a copy (#479).
+    pub(super) copies: Vec<Option<CopyReport>>,
+    /// The copy report of the operation running now.
+    copy_report: Option<CopyReport>,
     /// `GlobalId`s of the base model, read on first need.
     base_global_ids: Option<HashMap<Arc<str>, EntityId>>,
     /// `GlobalId`s the batch wrote.
@@ -41,6 +45,8 @@ impl<'m, 's> Planner<'m, 's> {
             ids: Vec::new(),
             reports: Vec::new(),
             report: None,
+            copies: Vec::new(),
+            copy_report: None,
             base_global_ids: None,
             batch_global_ids: HashMap::new(),
         }
@@ -52,6 +58,8 @@ impl<'m, 's> Planner<'m, 's> {
         let produced = self.run_op(op)?;
         let report = self.report.take();
         self.reports.push(report);
+        let copied = self.copy_report.take();
+        self.copies.push(copied);
         Ok(produced)
     }
 
@@ -163,6 +171,16 @@ impl<'m, 's> Planner<'m, 's> {
             AuthorOp::RemoveRepresentation { representation } => {
                 self.report = Some(self.remove_representation(representation)?);
                 None
+            }
+            AuthorOp::CopyProduct { product, options } => {
+                let (copy, report) = self.copy_product(product, options)?;
+                self.copy_report = Some(report);
+                Some(copy)
+            }
+            AuthorOp::CopyEntity { entity, policy } => {
+                let (copy, report) = self.copy_entity(entity, &policy)?;
+                self.copy_report = Some(report);
+                Some(copy)
             }
         })
     }
@@ -350,7 +368,7 @@ impl<'m, 's> Planner<'m, 's> {
     /// A fresh `GlobalId` for entity `id`: name-based over the batch seed,
     /// so a seed drawn per batch keeps it unique, and a given seed
     /// reproduces the file.
-    fn global_id(&self, id: EntityId) -> String {
+    pub(super) fn global_id(&self, id: EntityId) -> String {
         name_based_guid(&[
             "openbim-ifc/authoring",
             &format!("{:032x}", self.seed),
@@ -360,7 +378,7 @@ impl<'m, 's> Planner<'m, 's> {
     }
 
     /// Record the `GlobalId` of `entity`, refusing one another entity holds.
-    fn claim_global_id(&mut self, id: EntityId, entity: &Entity) -> Result<(), F> {
+    pub(super) fn claim_global_id(&mut self, id: EntityId, entity: &Entity) -> Result<(), F> {
         let Some(Value::Text(global_id)) = entity.attributes.first() else {
             return Ok(());
         };
@@ -378,6 +396,16 @@ impl<'m, 's> Planner<'m, 's> {
         }
         self.batch_global_ids.insert(global_id.clone(), id);
         Ok(())
+    }
+
+    /// The entity that holds `global_id` as the batch so far leaves the
+    /// model, if any.
+    pub(super) fn global_id_holder(&mut self, global_id: &str) -> Option<EntityId> {
+        self.batch_global_ids
+            .get(global_id)
+            .copied()
+            .or_else(|| self.base_global_ids().get(global_id).copied())
+            .filter(|holder| self.view.get(*holder).is_some())
     }
 
     fn base_global_ids(&mut self) -> &HashMap<Arc<str>, EntityId> {

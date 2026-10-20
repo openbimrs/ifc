@@ -682,6 +682,56 @@ recipe.
 `RemoveWithRelationships(id)` for one entity or `RemoveProduct(id)` for a
 product.
 
+## Copying products and appending
+
+`model.CopyProduct(id)` copies a product, or a type object, with what
+it solely owns, as one checked transaction, and returns a `CopyReport`:
+`Copy`, `Copied` (each `CopiedEntity` with `Original`, `Copy` and `TypeName`), `Reused`, `Joined`, `Skipped`, `Regenerated` and `Applied`. With `dryRun: true` it only reports.
+
+What the copy owns is what `RemoveProduct` would remove with the product, by the
+same reference count, and the copy copies it: the product (with a new
+`GlobalId`), its `ObjectPlacement` (relative to the same parent, moved by
+`offset: (x, y, z)` in the parent's frame, or replaced by `placement:`), its
+representation (items and profiles copied; the context, styles and a
+type's representation maps shared), the property and quantity sets only it
+is defined by with their properties, its material usage (not the material
+definitions), its ports, and its openings and the doors and windows
+filling them, placed relative to the copied placements. A type object
+copies its own representation maps and property sets. What the removal
+would keep is shared: the copy joins the original's type assignment, the
+shared property sets, its classification, document and library
+references, groups and presentation layers, its spatial container and
+the whole it is a part of. `openings: false`, `fillings: false`, `container: false` and `aggregate: false` leave openings, fillings, the container
+or the whole out. Relationships that would bind another object to the
+copy (a connection, a space boundary, the parts of a whole, a type's
+occurrences) are not carried and are listed in `skipped`. Entities a
+`UNIQUE` rule binds (an `IfcPropertyEnumeration`, an `IfcApplication`)
+are always shared.
+
+`model.Append(source, ids)` copies entities of another model into this one with what belongs
+to them: what they reference (a product's placement chain, representation
+and owner history), their property sets, type, material and
+classification with their relationships, their openings, fillings and
+ports, and what attaches to their geometry (styled items, layers). A
+relationship to an object that is not copied (the source's spatial
+container) is skipped; relate the copies afterwards. Units, contexts, the
+owner history, materials and styles equal to one this model holds (same
+type, same values all the way down) are reused instead of copied
+(`ReuseKinds` flags: `Units`, `Contexts`, `OwnerHistory`, `Materials`, `Styles`). `GlobalId`s are kept (`GlobalIdMode.Keep`, the default, refused when this model holds
+one), merged (`GlobalIdMode.Merge`: an `IfcRoot` this model holds by `GlobalId` and
+type is that entity, and its relationships are joined), or regenerated
+(`GlobalIdMode.Regenerate`, or `RegenerateColliding` for those this model holds). Between releases each attribute moves by name; a type,
+attribute or enumeration constant the target release lacks is refused
+with `unsupported-schema`, never dropped. Models whose length or plane
+angle units differ are refused with `unsupported`: convert one with
+`ConvertLengthUnit` first. The
+[cookbook](/cookbook/dotnet#copy-a-product-and-append-from-another-model) has a recipe.
+
+In a batch, `AuthorOp.CopyProduct` and `AuthorOp.CopyEntity` do the same (the copy is the operation's
+produced entity), and a low-level deep copy follows an entity's references
+by an explicit policy: classes always copied, classes always shared, and
+whether other `IfcRoot`s and definitions are copied (by default shared).
+
 ## Units and the model's length unit
 
 A unit is named as text: an SI unit with its prefix written before it
@@ -770,6 +820,8 @@ and `MeshedProduct` included, from its XML documentation comments.
 | `LengthUnitReport ConvertLengthUnit(string target, bool areaAndVolume = true, bool removeReplacedUnits = true, bool dryRun = false)` | Convert the model's length unit to `target` (#469): an SI `METRE` with any prefix (`MILLIMETRE`, `MILLI METRE`) or `inch`, `foot`, `yard`, `mile`, `US survey foot`. Every length, area and volume value the release declares as one is rescaled, as one checked transaction; values with a unit of their own keep it. With `dryRun` nothing changes. |
 | `double ConvertUnitValue(double value, ulong from, ulong to)` | Convert `value` from unit entity `from` to unit entity `to` of this model (an `IfcSIUnit`, `IfcConversionBasedUnit` or `IfcDerivedUnit`). |
 | `RemovalReport RemoveRepresentation(ulong id, bool dryRun = false)` | Remove shape representation `id` with what only it uses (#481), as one checked transaction: taken off its product definition shape (which goes when left empty), representation map or shape aspects, then removed with its items down to what nothing else uses. Shared items, profiles, points and styles stay. With `dryRun` nothing changes. |
+| `CopyReport CopyProduct(` | Copy product (or type object) `id` with everything it solely owns, as one checked transaction (#479): what `RemoveProduct` would remove with it is copied -- its placement, representation, own property and quantity sets, material usage, ports and, by option, its openings and the doors and windows filling them -- and what it would keep is shared, the copy joining the relationship: its type, shared property sets, classification and, by option, its container and whole. With `dryRun` nothing changes. |
+| `CopyReport Append(IfcModel source, IEnumerable<ulong> ids, GlobalIdMode globalIds = GlobalIdMode.Keep, ReuseKinds reuse = ReuseKinds.All, bool dryRun = false)` | Copy entities `ids` of `source` into this model with what belongs to them, as one checked transaction (#479): what they reference, their property sets, type, material and classification, their openings, fillings and ports, and what attaches to their geometry. Resources equal to this model's are reused (`reuse`); relationships to objects not copied (a spatial container) are skipped and reported. Refused with `unsupported` when the models' length or plane angle units differ, `unsupported-schema` for an entity this model's release cannot hold, `invalid-value` for a kept `GlobalId` this model holds. |
 | `ulong SetProperty(ulong obj, string set, string name, Value value, string? setType = null)` | Write one value (`SetProperties` with one edit); returns the id of the entity holding it. |
 | `void RemoveProperty(ulong obj, string set, string name)` | Remove one property from `obj`'s own set (`SetProperties` with one edit). |
 | `SpatialTree SpatialTree()` | The spatial containment tree: every container with its parent, sub-containers and contained elements. |

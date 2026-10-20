@@ -85,3 +85,51 @@ impl KeepReason {
         }
     }
 }
+
+/// What [`AuthorOp::CopyProduct`](super::AuthorOp::CopyProduct),
+/// [`AuthorOp::CopyEntity`](super::AuthorOp::CopyEntity) or
+/// [`apply_append`](super::apply_append) did (#479).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct CopyReport {
+    /// Every entity copied, in the order the copies were made: the
+    /// original (in the source model, for an append) and its copy.
+    pub copied: Vec<CopiedEntity>,
+    /// Append only: source entities not copied because the target holds
+    /// an equal one (a unit, context, owner history, material or style),
+    /// with the target entity used instead.
+    pub reused: Vec<CopiedEntity>,
+    /// Existing relationships and presentation layers the copies joined:
+    /// the type assignment, a shared property set, the container.
+    pub joined: Vec<EntityId>,
+    /// Relationships of a copied original the copies do not get, because
+    /// they would bind an object that is not copied (in the source model,
+    /// for an append).
+    pub skipped: Vec<EntityId>,
+    /// Append only: copies whose `GlobalId` was regenerated.
+    pub regenerated: Vec<EntityId>,
+}
+
+impl CopyReport {
+    /// The copy of `original`, if it was copied or reused.
+    #[must_use]
+    pub fn copy_of(&self, original: EntityId) -> Option<EntityId> {
+        self.copied
+            .iter()
+            .chain(&self.reused)
+            .find(|entity| entity.original == original)
+            .map(|entity| entity.copy)
+    }
+}
+
+/// One original and its copy.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct CopiedEntity {
+    /// The original's id.
+    pub original: EntityId,
+    /// The copy's id.
+    pub copy: EntityId,
+    /// Its type, as the file writes it (`IFCWALL`).
+    pub type_name: String,
+}

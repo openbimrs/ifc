@@ -367,6 +367,37 @@ test("remove a product with what it owns, then purge", () => {
   assert.deepEqual(model.danglingReferences(), []);
 });
 
+test("copy a product, then append from another model", () => {
+  const model = IfcModel.parse(readFileSync(CASCADE));
+  const printed = [];
+  const log = (...values) => printed.push(values);
+  // docs:snippet cookbook-js-copy
+  // Wall A (#20) with what it alone owns -- placement, body, its own
+  // property set, material usage, openings with their door and window --
+  // two metres along. Its type, shared property set, classification,
+  // storey and layer are shared: the copy joins them.
+  const report = model.copyProduct(20n, { offset: [0, 2, 0] });
+  log(model.attributeByName(report.copy, "Name")); // { kind: "text", value: "Wall A" }
+  log(report.copied.length); // 55 originals, each with its copy
+  log(report.joined); // [19n, 62n, 67n, 79n, 80n, 120n, 136n]
+
+  // From another model: the wall type with its property set. Equal units,
+  // contexts, owner history, materials and styles are reused; this model
+  // holds the type's GlobalIds already, so new ones.
+  const library = IfcModel.parse(readFileSync(CASCADE));
+  const appended = model.append(library, [66n], { globalIds: "regenerate" });
+  log(appended.copied.map((entity) => entity.typeName));
+  // ["IFCPROPERTYSINGLEVALUE", "IFCPROPERTYSET", "IFCWALLTYPE"]
+  log(appended.skipped); // [67n]: its occurrences stay in the library
+  // docs:end
+  assert.deepEqual(printed[0], [{ kind: "text", value: "Wall A" }]);
+  assert.deepEqual(printed[1], [55]);
+  assert.deepEqual(printed[2], [[19n, 62n, 67n, 79n, 80n, 120n, 136n]]);
+  assert.deepEqual(printed[3], [["IFCPROPERTYSINGLEVALUE", "IFCPROPERTYSET", "IFCWALLTYPE"]]);
+  assert.deepEqual(printed[4], [[67n]]);
+  assert.deepEqual(model.danglingReferences(), []);
+});
+
 test("assign a type with propagation, and move an element", () => {
   const model = IfcModel.parse(readFileSync(CASCADE));
   const printed = [];

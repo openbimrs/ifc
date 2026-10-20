@@ -762,6 +762,64 @@ static int recipe_remove_product(OpenbimIfcModel model) {
   return 0;
 }
 
+static int recipe_copy(OpenbimIfcModel model, OpenbimIfcModel library) {
+  out_len = 0;
+  out[0] = 0;
+  // docs:snippet cookbook-c-copy
+  /* Wall A (#20) with what it alone owns -- placement, body, its own
+   * property set, material usage, openings with their door and window --
+   * two metres along; its type, shared property set, classification,
+   * storey and layer are shared, the copy joining them. A size query
+   * plans and never applies a copy. */
+  const double offset[3] = {0.0, 2.0, 0.0};
+  uint32_t flags = 0; /* | OPENBIM_IFC_COPY_NO_OPENINGS, _NO_FILLINGS, _DRY_RUN, ... */
+  size_t nodes = 0, strings = 0;
+  openbim_ifc_v0_1_model_copy_product(model, 20, 0, offset, flags, NULL, 0, &nodes, NULL, 0,
+                                      &strings);
+  Tape report = tape_alloc(nodes, strings);
+  if (openbim_ifc_v0_1_model_copy_product(model, 20, 0, offset, flags, report.nodes, nodes, &nodes,
+                                          report.strings, strings, &strings) !=
+      OPENBIM_IFC_STATUS_OK) {
+    print_error(model);
+    tape_free(&report);
+    return 1;
+  }
+  /* CopyReport: copy, copied, reused, joined, skipped, regenerated, applied */
+  tape_print(&report, tape_field(&report, 0, 0));
+  printf(" copies %u entities, joins ", report.nodes[tape_field(&report, 0, 1)].child_count);
+  tape_print(&report, tape_field(&report, 0, 3));
+  printf("\n");
+  tape_free(&report);
+
+  /* From another model: the wall type with its property set. Equal units,
+   * contexts, owner history, materials and styles are reused; this model
+   * holds the type's GlobalIds already, so new ones. */
+  const uint64_t ids[] = {66};
+  openbim_ifc_v0_1_model_append(model, library, ids, 1, OPENBIM_IFC_GLOBAL_IDS_REGENERATE, 0, NULL,
+                                0, &nodes, NULL, 0, &strings);
+  report = tape_alloc(nodes, strings);
+  if (openbim_ifc_v0_1_model_append(model, library, ids, 1, OPENBIM_IFC_GLOBAL_IDS_REGENERATE, 0,
+                                    report.nodes, nodes, &nodes, report.strings, strings,
+                                    &strings) != OPENBIM_IFC_STATUS_OK) {
+    print_error(model); /* e.g. UNSUPPORTED: the models' length units differ */
+    tape_free(&report);
+    return 1;
+  }
+  size_t copied = tape_field(&report, 0, 1);
+  printf("appends %u entities, skips ", report.nodes[copied].child_count);
+  tape_print(&report, tape_field(&report, 0, 4));
+  printf("\n");
+  tape_free(&report);
+  /* #190 copies 55 entities, joins (#19, #62, #67, #79, #80, #120, #136)
+   * appends 3 entities, skips (#67) */
+  // docs:end
+  CHECK(strcmp(out,
+               "#190 copies 55 entities, joins (#19, #62, #67, #79, #80, #120, #136)\n"
+               "appends 3 entities, skips (#67)\n") == 0,
+        out);
+  return 0;
+}
+
 static int recipe_selectors(OpenbimIfcModel model) {
   out_len = 0;
   out[0] = 0;
@@ -1085,6 +1143,14 @@ int main(int argc, char **argv) {
   OK(openbim_ifc_v0_1_model_open((const uint8_t *)cascade_path, strlen(cascade_path), &model,
                                  NULL, 0));
   if (recipe_representation(model) != 0) return 1;
+  OK(openbim_ifc_v0_1_model_destroy(model));
+  OK(openbim_ifc_v0_1_model_open((const uint8_t *)cascade_path, strlen(cascade_path), &model,
+                                 NULL, 0));
+  OpenbimIfcModel library = 0;
+  OK(openbim_ifc_v0_1_model_open((const uint8_t *)cascade_path, strlen(cascade_path), &library,
+                                 NULL, 0));
+  if (recipe_copy(model, library) != 0) return 1;
+  OK(openbim_ifc_v0_1_model_destroy(library));
   OK(openbim_ifc_v0_1_model_destroy(model));
 
   snprintf(selector_path, sizeof selector_path, "%s/synthetic-relations/selector_ifc4.ifc",

@@ -11,7 +11,10 @@
 //! placement and an owner history; and the shape representation operations
 //! (#481) -- assemble one from items in a context, its type checked
 //! against them or inferred, assign it to a product or (as a
-//! representation map) a type, unassign, copy and remove it.
+//! representation map) a type, unassign, copy and remove it; and the copy
+//! operations (#479) -- a product with what it solely owns, and an entity
+//! by an explicit share/copy policy ([`IfcModel::copy_product`],
+//! [`IfcModel::append`] from another model).
 //!
 //! An operation names an entity an earlier one produced by its handle,
 //! [`HANDLE_BASE`] plus the operation's position ([`handle`]), anywhere an id
@@ -43,9 +46,11 @@
 //! feature. The message names the refused operation's
 //! position.
 
+mod copying;
 mod ops;
 mod removal;
 
+pub use copying::{AppendOptions, CopiedEntity, CopyProductOptions, CopyReport};
 pub use ops::{op_spec, FieldKind, FieldSpec, OpSpec, OPS};
 pub use removal::{KeptEntity, PurgeOptions, RemovalReport, RemoveProductOptions, RemovedEntity};
 

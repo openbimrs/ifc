@@ -496,6 +496,38 @@ public class CookbookTests
     }
 
     [Fact]
+    public void CopyAProductAndAppendFromAnotherModel()
+    {
+        using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.CascadeIfc4));
+        using var library = IfcModel.Parse(Fixtures.Bytes(Fixtures.CascadeIfc4));
+        var printed = new List<string>();
+        void Print(string line) => printed.Add(line);
+        // docs:snippet cookbook-dotnet-copy
+        // Wall A (#20) with what it alone owns -- placement, body, its own
+        // property set, material usage, openings with their door and window
+        // -- two metres along. Its type, shared property set,
+        // classification, storey and layer are shared: the copy joins them.
+        CopyReport report = model.CopyProduct(20, offset: (0, 2, 0));
+        Print($"#{report.Copy} copies {report.Copied.Count}, joins {string.Join(", ", report.Joined)}");
+        // #190 copies 55, joins 19, 62, 67, 79, 80, 120, 136
+
+        // From another model: the wall type with its property set. Equal
+        // units, contexts, owner history, materials and styles are reused;
+        // this model holds the type's GlobalIds already, so new ones.
+        CopyReport appended = model.Append(library, new ulong[] { 66 }, GlobalIdMode.Regenerate);
+        Print(string.Join(", ", appended.Copied.Select(entity => entity.TypeName)));
+        // IFCPROPERTYSINGLEVALUE, IFCPROPERTYSET, IFCWALLTYPE
+        // docs:end
+        Assert.Equal(new[]
+        {
+            "#190 copies 55, joins 19, 62, 67, 79, 80, 120, 136",
+            "IFCPROPERTYSINGLEVALUE, IFCPROPERTYSET, IFCWALLTYPE",
+        }, printed);
+        Assert.Equal(new[] { 67UL }, appended.Skipped);
+        Assert.Empty(model.DanglingReferences());
+    }
+
+    [Fact]
     public void ConvertUnitsAndTheLengthUnit()
     {
         using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.CascadeIfc4));
