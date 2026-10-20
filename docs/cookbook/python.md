@@ -361,37 +361,38 @@ parse, or names a class or attribute the release does not declare, raises
 `IfcError` with `code` `invalid-selector` and `span`, the byte range it
 refuses.
 
-## Convert units and a model's length unit
+## Export a table and import it back
 
-Between units named as text, as feet and inches, then the whole of
-`test/fixtures/synthetic-bindings/binding_geometry.ifc` from millimetres to
-metres:
+The walls of `test/fixtures/synthetic-relations/selector_ifc4.ifc` as a
+[table](/guide/tables), one column per value path, keyed by `id`; one cell
+edited, the import planned as a dry run, then applied as one checked
+transaction:
 
-<!-- SNIPPET:cookbook-py-convert-units -->
+<!-- SNIPPET:cookbook-py-tables -->
 
 ```python
-# Between units named as text: exact factors, checked dimensions.
-print(openbim_ifc.convert_unit(1.0, "foot", "MILLIMETRE"))  # 304.8
-print(openbim_ifc.format_length(444.5, "MILLIMETRE", style="feet-inches"))
-# 1' - 5 1/2"
+columns = ["Name", "type.Name", "Pset_WallCommon.FireRating"]
+csv = model.export_table("IfcWall", columns, key="id")  # bytes; or format="xlsx"
+print(csv.decode().splitlines()[1])  # '17,Wall A,WT-200,F90'
 
-# The whole model to metres: geometry, quantities and properties,
-# as one checked transaction. A dry run only reports.
-report = model.convert_length_unit("METRE", dry_run=True)
-print((report.from_unit, report.to, report.length_factor))
-# ('MILLI METRE', 'METRE', 0.001)
-report = model.convert_length_unit("METRE")
-print(report.applied)  # True
-for kept in report.kept:  # values left as they are, and why
-    print((kept.entity_type, kept.attribute, kept.reason))
+# Edit the table (here, as text), then plan the import: a dry run.
+edited = csv.decode().replace("17,Wall A,WT-200,F90", "17,Wall A,WT-200,F120")
+plan = model.import_table(edited, dry_run=True)
+for change in plan.changes:
+    print((change.row, change.path, change.before, change.after))
+# (2, 'Pset_WallCommon.FireRating', 'F90', 'F120')
+
+result = model.import_table(edited)  # one checked transaction
+print(result.applied)  # True
+# A refused cell refuses the whole table, by row and column.
+refused = model.import_table("id,Qto_WallBaseQuantities.Length\n17,long\n")
+print([(r.row, r.column, r.code) for r in refused.refusals])  # [(2, 2, 'type-mismatch')]
 ```
 
 <!-- /SNIPPET -->
 
-Every length, area and volume value is rescaled: geometry, placements,
-quantities and property values. Values with a unit of their own keep it and
-appear in `kept` with the reason. A model holding a value the conversion
-cannot carry is refused whole, with `unsupported`, and left unchanged.
+`export_table` returns bytes (`format="xlsx"` for a workbook); `import_table` takes bytes or a `str` and reports every change and refusal without raising. A cell whose text is what its path reads changes nothing;
+any refused cell refuses the whole table.
 
 ## Remove a product and purge
 
@@ -567,3 +568,35 @@ data = model.write()
 Every operation is checked against the release the header declares, and a
 batch is one transaction. The [binding page](/bindings/python#creating-entities)
 lists every operation.
+
+## Convert units and a model's length unit
+
+Between units named as text, as feet and inches, then the whole of
+`test/fixtures/synthetic-bindings/binding_geometry.ifc` from millimetres to
+metres:
+
+<!-- SNIPPET:cookbook-py-convert-units -->
+
+```python
+# Between units named as text: exact factors, checked dimensions.
+print(openbim_ifc.convert_unit(1.0, "foot", "MILLIMETRE"))  # 304.8
+print(openbim_ifc.format_length(444.5, "MILLIMETRE", style="feet-inches"))
+# 1' - 5 1/2"
+
+# The whole model to metres: geometry, quantities and properties,
+# as one checked transaction. A dry run only reports.
+report = model.convert_length_unit("METRE", dry_run=True)
+print((report.from_unit, report.to, report.length_factor))
+# ('MILLI METRE', 'METRE', 0.001)
+report = model.convert_length_unit("METRE")
+print(report.applied)  # True
+for kept in report.kept:  # values left as they are, and why
+    print((kept.entity_type, kept.attribute, kept.reason))
+```
+
+<!-- /SNIPPET -->
+
+Every length, area and volume value is rescaled: geometry, placements,
+quantities and property values. Values with a unit of their own keep it and
+appear in `kept` with the reason. A model holding a value the conversion
+cannot carry is refused whole, with `unsupported`, and left unchanged.

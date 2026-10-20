@@ -493,6 +493,22 @@ the byte range it refuses. These exports make the ABI version 0.1.14; no
 [cookbook](/cookbook/c#select-entities-and-read-values-by-path) has a
 recipe.
 
+## Tables
+
+`openbim_ifc_v0_1_model_export_table` writes the entities a selector
+selects as a [table](/guide/tables) into a byte buffer, in
+`OPENBIM_IFC_TABLE_CSV`, `_TSV` or `_XLSX`, keyed by
+`OPENBIM_IFC_TABLE_KEY_GLOBAL_ID` (or `_AUTO`) or `_ID`, one column per
+value path of a `columns` array. `openbim_ifc_v0_1_model_import_table`
+applies a table back by its key as one checked transaction and answers with
+a `TableImport` record tape: applied (`BOOL`), changes (`LIST` of
+`TableChange`: row, column, key, path, entity, target entity, target,
+before, after) and refusals (`LIST` of `TableRefusal`: row, column, code,
+message, span). Any refusal means nothing was written, as does
+`OPENBIM_IFC_TABLE_DRY_RUN`; a size query or a short buffer plans the
+import and writes nothing. The
+[cookbook](/cookbook/c#export-a-table-and-import-it-back) has a recipe.
+
 ## Geometry
 
 Geometry crosses at three levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)):
@@ -938,7 +954,7 @@ model unchanged; the plan lists the ids the commit creates, so the applied
 report has the planned size. Values the conversion cannot carry (a parameter on a
 curve whose parameter space IFC leaves undefined, a p-curve off a plane,
 polynomial coefficients) refuse the whole call with `UNSUPPORTED`, each
-named in the last error message. These exports make the ABI version 0.1.18.
+named in the last error message. These exports make the ABI version 0.1.19.
 The [cookbook](/cookbook/c#convert-units-and-the-model-s-length-unit) has a
 recipe.
 

@@ -18,6 +18,21 @@ a release here does not imply a release of any other crate in the family.
 
 Semver: minor (internal crate, not published).
 
+### Added (#474, tables)
+
+- `IfcModel::export_table(query, columns, format, key, null)` returns the
+  selected entities as CSV, TSV or XLSX bytes; `IfcModel::import_table(data,
+  format, key, null, dry_run)` applies a table by key as one checked
+  transaction and returns a `TableImport` record (`applied`,
+  `TableChange`s, `TableRefusal`s with a code and span). Refusals of the
+  table are data; nothing is written when there is any.
+- Feature `sheet-xlsx` (default) for XLSX; without it XLSX refuses with
+  `feature-disabled`. CSV and TSV are in every build.
+- `InvalidText` maps to `type-mismatch`, `ConflictingWrite` to
+  `invalid-value`.
+
+Semver: additive (unpublished crate).
+
 ### Changed (#506, #509)
 
 - `product_curves` polylines trimmed, composite, offset and intrinsic

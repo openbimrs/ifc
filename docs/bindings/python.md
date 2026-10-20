@@ -512,6 +512,22 @@ that does not parse raises `IfcError` with `code` `invalid-selector` and
 [cookbook](/cookbook/python#select-entities-and-read-values-by-path) has a
 recipe.
 
+## Tables
+
+`model.export_table(query, columns, format="csv", key=None, null="")`
+returns the entities a selector selects as a [table](/guide/tables), bytes
+in `csv`, `tsv` or `xlsx`: the key column first (`GlobalId`, or `id` with
+`key="id"`), then one column per value path. `model.import_table(data,
+format="csv", key=None, null="", dry_run=False)` applies a table (bytes,
+or a `str` of CSV or TSV) back by its key as one checked transaction and
+returns a `TableImport`: `applied`, every `TableChange` (row, column, key,
+path, entity, target entity and attribute or property, value before and
+after) and every `TableRefusal` (row, column, `code`, `message`, `span`).
+Refusals are data, not exceptions: any refusal means nothing was written,
+as does `dry_run`. An unchanged table changes nothing. The
+[cookbook](/cookbook/python#export-a-table-and-import-it-back) has a
+recipe.
+
 ## Geometry
 
 Geometry crosses at three levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)):
@@ -985,6 +1001,8 @@ class, record and function of the package with its docstring and types.
 | `model.select(query: str, base: Optional[Iterable[Union[int, Entity]]] = None) -> List[Entity]` | :meth:`select_ids` as :class:`Entity` views. |
 | `model.get_value(entity: Union[int, Entity], path: str) -> SelectedValue` | The value `path` reads from `entity` (#464): `"Name"`, `"type.Name"`, `"Pset_WallCommon.FireRating"`, `"materials.Name"`, `"storey.Name"`, `"occurrences.count"`. |
 | `model.set_value(entity: Union[int, Entity], path: str, value: Assignable) -> None` | Write `value` at `path` of `entity` (#464), as one checked transaction: an attribute (`"Name"`, `"type.Name"`) coerced as :meth:`set_attribute_by_name_plain` coerces it, or a property (`"Pset_WallCommon.FireRating"`) from a typed value, or a plain one when the property already states its type. A refused write changes nothing; a path naming no single value raises `invalid-value`. |
+| `model.export_table(query: str, columns: Sequence[str], *, format: str = 'csv', key: Optional[str] = None, null: str = '') -> bytes` | The entities selector `query` selects as a table (#474): `format` `"csv"`, `"tsv"` or `"xlsx"`, the key column first (`"GlobalId"`, or `"id"` with `key="id"`), then one column per value path of `columns` (`"Name"`, `"type.Name"`, `"Pset_WallCommon.FireRating"`), each cell the value the path reads as text and `NULL` as `null`. |
+| `model.import_table(data: Union[bytes, str], *, format: str = 'csv', key: Optional[str] = None, null: str = '', dry_run: bool = False) -> TableImport` | Apply a table (`bytes`, or `str` for CSV and TSV) back to the model by its key column (#474), as one checked transaction: every other cell is written by its header's value path, typed by the attribute's declared type or the property's stated one, and a cell that reads what the model holds changes nothing, so an exported table imported unchanged is a no-op. |
 | `model.id_by_guid(global_id: str) -> Optional[int]` | The id of the entity whose `GlobalId` is `global_id`, or `None`. The first lookup indexes every `GlobalId` once; later ones reuse it until the model changes. Raises `invalid-value` for text that is not a `GlobalId` and `invalid-model` when several entities carry it. :meth:`by_guid` returns the :class:`Entity`. |
 | `model.duplicate_global_ids() -> List[DuplicateGlobalId]` | Every `GlobalId` several entities carry, with its holders; empty for a conformant file. |
 | `model.type_object(id: int) -> Optional[int]` | The type object of occurrence `id` (`IfcRelDefinesByType`), or `None`. Raises `wrong-entity-type` for a non-`IfcObject` and `invalid-model` when the file states two types. |

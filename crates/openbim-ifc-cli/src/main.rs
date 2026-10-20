@@ -11,6 +11,7 @@
 //! | 0 | Success; for `validate` and `lint`, no findings that fail the run |
 //! | 1 | `validate` or `lint` reported findings that fail the run |
 //! | 2 | Usage error, unreadable file, parse error, or a typed refusal |
+//! | 3 | `edit` or `import-table` refused a planned change; nothing written |
 //!
 //! A refusal (an undeclared or unbundled schema, a missing entity, an
 //! entity that carries no property sets, a model a layout cannot carry) is
@@ -26,19 +27,31 @@
 //! | `input` | Reading STEP or ifcXML, the declared release, entity lookup |
 //! | `json` | A small JSON writer for the machine-readable outputs |
 //! | `sarif` | SARIF 2.1.0 for `validate` and `lint` |
-//! | `validate`, `convert`, `info`, `psets`, `tree`, `lint`, `select`, `convert_units` | One command each |
+//! | `output` | Writing a model: the format a path implies, edits beside or over the input |
+//! | `report` | The changes and refusals of `edit` and `import-table` |
+//! | `validate`, `convert`, `info`, `psets`, `tree`, `lint`, `select`, `edit`, `convert_units` | One command each |
+//! | `relations`, `materials`, `cost`, `schedule` | One read-only view each |
+//! | `table` | `export-table` and `import-table` |
 
 mod cli;
 mod convert;
 mod convert_units;
+mod cost;
+mod edit;
 mod error;
 mod info;
 mod input;
 mod json;
 mod lint;
+mod materials;
+mod output;
 mod psets;
+mod relations;
+mod report;
 mod sarif;
+mod schedule;
 mod select;
+mod table;
 mod tree;
 mod validate;
 
@@ -60,6 +73,13 @@ fn main() -> ExitCode {
         cli::Command::Lint(args) => lint::run(&args, &mut out),
         cli::Command::Select(args) => select::run(&args, &mut out),
         cli::Command::ConvertUnits(args) => convert_units::run(&args, &mut out),
+        cli::Command::Edit(args) => edit::run(&args, &mut out),
+        cli::Command::ExportTable(args) => table::run_export(&args, &mut out),
+        cli::Command::ImportTable(args) => table::run_import(&args, &mut out),
+        cli::Command::Relations(args) => relations::run(&args, &mut out),
+        cli::Command::Materials(args) => materials::run(&args, &mut out),
+        cli::Command::Cost(args) => cost::run(&args, &mut out),
+        cli::Command::Schedule(args) => schedule::run(&args, &mut out),
     };
     let _ = out.flush();
     match result {

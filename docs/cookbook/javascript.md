@@ -435,35 +435,36 @@ takes a plain value or an `IfcValue`. A selector that does not parse
 throws `IfcError` with `code` `invalid-selector` and `span`, the byte range
 it refuses in the UTF-8 query.
 
-## Convert units and a model's length unit
+## Export a table and import it back
 
-Between units named as text, as feet and inches, then the whole of
-`test/fixtures/synthetic-bindings/binding_geometry.ifc` from millimetres to
-metres:
+The walls of `test/fixtures/synthetic-relations/selector_ifc4.ifc` as a
+[table](/guide/tables), one column per value path, keyed by `id`; one cell
+edited, the import planned as a dry run, then applied as one checked
+transaction:
 
-<!-- SNIPPET:cookbook-js-convert-units -->
+<!-- SNIPPET:cookbook-js-tables -->
 
 ```js
-// Between units named as text: exact factors, checked dimensions.
-log(IfcModel.convertUnit(1, "foot", "MILLIMETRE")); // 304.8
-log(IfcModel.formatLength(444.5, "MILLIMETRE", { style: "feet-inches" }));
-// 1' - 5 1/2"
+const csv = model.exportTable("IfcWall", ["Name", "type.Name"], { key: "id" }); // a Uint8Array
+const text = new TextDecoder().decode(csv);
+log(text.split("\r\n")[1]); // "17,Wall A,WT-200"
 
-// The whole model to metres: geometry, quantities and properties, as one
-// checked transaction. A dry run only reports.
-const dry = model.convertLengthUnit("METRE", { dryRun: true });
-log(dry.from, dry.to, dry.lengthFactor); // "MILLI METRE" "METRE" 0.001
-const report = model.convertLengthUnit("METRE");
-log(report.applied); // true
-for (const kept of report.kept) log(kept.entityType, kept.attribute, kept.reason);
+// Edit the table, then plan the import: a dry run lists every change.
+const edited = new TextEncoder().encode(text.replace("17,Wall A,", "17,Wall A1,"));
+for (const change of model.importTable(edited, { dryRun: true }).changes) {
+  log(change.row, change.path, change.before, change.after); // 2 "Name" "Wall A" "Wall A1"
+}
+log(model.importTable(edited).applied); // true: one checked transaction
+
+// A refused cell refuses the whole table, by row and column.
+const bad = new TextEncoder().encode("id,Name\n99,Ghost\n");
+log(model.importTable(bad).refusals.map((r) => [r.row, r.column, r.code])); // [[2, 1, "unknown-key"]]
 ```
 
 <!-- /SNIPPET -->
 
-Every length, area and volume value is rescaled: geometry, placements,
-quantities and property values. Values with a unit of their own keep it and
-appear in `kept` with the reason. A model holding a value the conversion
-cannot carry is refused whole, with `unsupported`, and left unchanged.
+`exportTable` returns a `Uint8Array`; `importTable` reports every change and refusal without throwing. The npm package writes CSV and TSV; XLSX needs a build with `sheet-xlsx`. A cell whose text is what its path reads changes nothing;
+any refused cell refuses the whole table.
 
 ## Remove a product and purge
 
@@ -634,3 +635,33 @@ const bytes = model.write();
 Every operation is checked against the release the header declares, and a
 batch is one transaction. The [binding page](/bindings/javascript#creating-entities)
 lists every operation.
+
+## Convert units and a model's length unit
+
+Between units named as text, as feet and inches, then the whole of
+`test/fixtures/synthetic-bindings/binding_geometry.ifc` from millimetres to
+metres:
+
+<!-- SNIPPET:cookbook-js-convert-units -->
+
+```js
+// Between units named as text: exact factors, checked dimensions.
+log(IfcModel.convertUnit(1, "foot", "MILLIMETRE")); // 304.8
+log(IfcModel.formatLength(444.5, "MILLIMETRE", { style: "feet-inches" }));
+// 1' - 5 1/2"
+
+// The whole model to metres: geometry, quantities and properties, as one
+// checked transaction. A dry run only reports.
+const dry = model.convertLengthUnit("METRE", { dryRun: true });
+log(dry.from, dry.to, dry.lengthFactor); // "MILLI METRE" "METRE" 0.001
+const report = model.convertLengthUnit("METRE");
+log(report.applied); // true
+for (const kept of report.kept) log(kept.entityType, kept.attribute, kept.reason);
+```
+
+<!-- /SNIPPET -->
+
+Every length, area and volume value is rescaled: geometry, placements,
+quantities and property values. Values with a unit of their own keep it and
+appear in `kept` with the reason. A model holding a value the conversion
+cannot carry is refused whole, with `unsupported`, and left unchanged.

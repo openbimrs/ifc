@@ -56,6 +56,7 @@ mod relations;
 mod removal;
 mod selector;
 mod status;
+mod table;
 pub mod tape;
 mod units;
 mod xml;
@@ -79,6 +80,7 @@ pub use relations::*;
 pub use removal::*;
 pub use selector::*;
 pub use status::{OpenbimIfcStatus, OpenbimIfcVersion};
+pub use table::*;
 pub use tape::OpenbimIfcValueNode;
 pub use units::*;
 pub use xml::*;
@@ -107,6 +109,8 @@ mod relations_tests;
 mod removal_tests;
 #[cfg(test)]
 mod selector_tests;
+#[cfg(test)]
+mod table_tests;
 #[cfg(test)]
 mod units_tests;
 

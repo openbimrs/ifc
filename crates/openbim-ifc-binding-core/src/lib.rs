@@ -74,6 +74,12 @@
 //! [`IfcModel::convert_unit_value`], [`format_length`], #469), and
 //! [`IfcModel::convert_length_unit`] rescales a whole model to a new
 //! project length unit as one checked transaction ([`units`]).
+//! Tables of values by path (#474, [`table`]): the entities a selector
+//! selects exported as CSV, TSV or XLSX ([`IfcModel::export_table`]), and
+//! a table applied back by `GlobalId` or id as one checked transaction
+//! ([`IfcModel::import_table`]), with every refusal by row and column and
+//! a dry run. XLSX needs feature `sheet-xlsx` (default; the browser
+//! package leaves it out and refuses with `feature-disabled`).
 //!
 //! `INVERSE` attributes read by name too ([`inverse`], #462):
 //! `attribute_by_name(wall, "IsDefinedBy")` follows the declared release's
@@ -103,6 +109,7 @@ pub mod relations;
 pub mod selector;
 pub mod spatial;
 pub mod systems;
+pub mod table;
 pub mod units;
 pub mod unreachable;
 pub mod validation;
@@ -129,6 +136,7 @@ pub use options::{OnMalformed, ParseOptions};
 pub use record::{Field, Record, ToRecord};
 pub use relations::{name_based_guid, new_guid, DuplicateGlobalId};
 pub use selector::{canonical_selector, Selected, SELECTOR_GRAMMAR_VERSION};
+pub use table::{TableChange, TableImport, TableRefusal};
 pub use units::{
     convert_unit, format_length, ConvertedValues, KeptValues, LengthUnitOptions, LengthUnitReport,
 };
