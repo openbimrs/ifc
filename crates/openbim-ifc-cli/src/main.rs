@@ -30,20 +30,25 @@
 //! | `output` | Writing a model: the format a path implies, edits beside or over the input |
 //! | `report` | The changes and refusals of `edit` and `import-table` |
 //! | `validate`, `convert`, `info`, `psets`, `tree`, `lint`, `select`, `edit` | One command each |
+//! | `relations`, `materials`, `cost`, `schedule` | One read-only view each |
 //! | `table` | `export-table` and `import-table` |
 
 mod cli;
 mod convert;
+mod cost;
 mod edit;
 mod error;
 mod info;
 mod input;
 mod json;
 mod lint;
+mod materials;
 mod output;
 mod psets;
+mod relations;
 mod report;
 mod sarif;
+mod schedule;
 mod select;
 mod table;
 mod tree;
@@ -69,6 +74,10 @@ fn main() -> ExitCode {
         cli::Command::Edit(args) => edit::run(&args, &mut out),
         cli::Command::ExportTable(args) => table::run_export(&args, &mut out),
         cli::Command::ImportTable(args) => table::run_import(&args, &mut out),
+        cli::Command::Relations(args) => relations::run(&args, &mut out),
+        cli::Command::Materials(args) => materials::run(&args, &mut out),
+        cli::Command::Cost(args) => cost::run(&args, &mut out),
+        cli::Command::Schedule(args) => schedule::run(&args, &mut out),
     };
     let _ = out.flush();
     match result {

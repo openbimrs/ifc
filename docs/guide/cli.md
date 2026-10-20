@@ -137,6 +137,10 @@ and `.github/workflows/nix.yml` builds the flake.
 | `edit FILE QUERY --set PATH VALUE...` | Values set by path on the selected entities, as one checked transaction, into a new file | `human`, `json` |
 | `export-table FILE QUERY --column PATH...` | The selected entities as a [table](/guide/tables), one column per value path | `csv`, `tsv`, `xlsx` |
 | `import-table FILE TABLE` | A table's edited cells written back by key, as one checked transaction, into a new file | `human`, `json` |
+| `relations FILE ENTITY` | What one entity is related to, by kind, and every relationship naming it | `human`, `json` |
+| `materials FILE [QUERY]` | The material definition of each selected entity, with its layers, profiles or constituents | `human`, `json` |
+| `cost FILE` | Every cost schedule as a tree of cost items, with values and totals | `human`, `json` |
+| `schedule FILE` | Every work schedule and work plan as a tree of tasks, with scheduled times | `human`, `json` |
 
 `openbim-ifc <command> --help` lists every option. Each command reads STEP or
 ifcXML, chosen by content first and extension second, and an ifcZIP archive
@@ -306,6 +310,42 @@ no path (with its span), a missing, empty, unknown, ambiguous or repeated
 key, a row of another width, a cell that does not read as its target's
 type, two rows giving one type different names. Any refusal writes nothing
 and exits 3.
+
+### relations, materials, cost, schedule
+
+```bash
+openbim-ifc relations model.ifc '#17'
+openbim-ifc relations model.ifc '0TG0wWfbZOvmJHW7AuHJ$k' --traverse-up
+openbim-ifc materials model.ifc 'IfcWall, type=WT-200' --format json
+openbim-ifc cost model.ifc --depth 1
+openbim-ifc schedule model.ifc
+```
+
+`relations` lists what one entity is related to, by kind: its container,
+its parent when that is not its container, its type or its occurrences, its
+material definition and materials, classification references, groups and
+systems, openings, fillings and the element an opening voids. Under them
+every relationship that references the entity is listed with the attribute
+it names it in, so nothing the kinds leave out is hidden. `--traverse-up`
+lists the chain of parents up to the project instead. A relationship the
+schema allows once and the file states twice is refused as
+`invalid-model`.
+
+`materials` shows the material definition of each entity a selector selects
+(`IfcElement + IfcElementType` by default), its own or its type's, a usage
+read as the set it uses, with each layer's name, material and thickness,
+each profile's material and profile, each constituent's material and
+fraction. Entities without a material are left out.
+
+`cost` shows every cost schedule with the cost items assigned to it as a
+tree of nested items, each with its own values (category, name, applied
+value, or the operator of a value composed of others) and two totals: its
+direct total, its own values, and, when it nests items, the rolled-up total
+of theirs. IFC does not say whether a parent's value summarises its
+children, so neither is called the total. `schedule` shows every work
+schedule and work plan with its tasks as a tree of sub-tasks, each with its
+scheduled start, finish and duration and whether it is a milestone. Both
+take `--depth N` to expand N levels and count the rest.
 
 ## Exit codes
 

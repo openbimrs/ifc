@@ -55,6 +55,19 @@ pub(crate) enum Command {
     /// Write a table's edited cells back by key, as one checked
     /// transaction, into a new file (exit 3 on a refusal).
     ImportTable(ImportTableArgs),
+    /// Show what one entity is related to: container, parent, type,
+    /// openings, materials, classifications, groups, and every
+    /// relationship naming it.
+    Relations(RelationsArgs),
+    /// Show the material definition of each selected entity, with its
+    /// layers, profiles or constituents.
+    Materials(MaterialsArgs),
+    /// Show every cost schedule with its tree of cost items, values and
+    /// rolled-up totals.
+    Cost(CostArgs),
+    /// Show every work schedule and work plan with its tree of tasks and
+    /// their scheduled times.
+    Schedule(CostArgs),
 }
 
 /// How the input's ifcXML layout is chosen.
@@ -379,6 +392,53 @@ pub(crate) struct ImportTableArgs {
     pub(crate) format: TextFormat,
     #[command(flatten)]
     pub(crate) output: OutputArgs,
+    #[command(flatten)]
+    pub(crate) input: InputArgs,
+}
+
+/// `relations`.
+#[derive(Debug, Args)]
+pub(crate) struct RelationsArgs {
+    /// The file to read.
+    pub(crate) file: PathBuf,
+    /// The entity: `#12`, `12`, or its 22-character `GlobalId`.
+    pub(crate) entity: String,
+    /// List the chain of parents up to the project instead.
+    #[arg(long)]
+    pub(crate) traverse_up: bool,
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = TextFormat::Human)]
+    pub(crate) format: TextFormat,
+    #[command(flatten)]
+    pub(crate) input: InputArgs,
+}
+
+/// `materials`.
+#[derive(Debug, Args)]
+pub(crate) struct MaterialsArgs {
+    /// The file to read.
+    pub(crate) file: PathBuf,
+    /// The selector choosing the entities.
+    #[arg(default_value = "IfcElement + IfcElementType")]
+    pub(crate) query: String,
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = TextFormat::Human)]
+    pub(crate) format: TextFormat,
+    #[command(flatten)]
+    pub(crate) input: InputArgs,
+}
+
+/// `cost` and `schedule`.
+#[derive(Debug, Args)]
+pub(crate) struct CostArgs {
+    /// The file to read.
+    pub(crate) file: PathBuf,
+    /// Expand at most this many levels of nested items or sub-tasks.
+    #[arg(long, value_name = "N")]
+    pub(crate) depth: Option<usize>,
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = TextFormat::Human)]
+    pub(crate) format: TextFormat,
     #[command(flatten)]
     pub(crate) input: InputArgs,
 }

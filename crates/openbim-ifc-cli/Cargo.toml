@@ -50,7 +50,8 @@ path = "src/main.rs"
 # geometry kernel and no execution provider. `sheet-xlsx` is the tables of
 # `export-table` and `import-table` (#474), XLSX included; `property-catalog`
 # checks the `Pset_` and `Qto_` writes of `edit` and `import-table` against
-# the PSD/QTO catalog, which refuses them without it.
+# the PSD/QTO catalog, which refuses them without it. `cost` and `schedule`
+# are the views of the commands of those names (#472).
 openbim-ifc = { workspace = true, features = [
     "step",
     "ifcxml",
@@ -60,6 +61,8 @@ openbim-ifc = { workspace = true, features = [
     "spatial",
     "properties",
     "property-catalog",
+    "cost",
+    "schedule",
     "geometry-select",
     "selector",
     "sheet-xlsx",

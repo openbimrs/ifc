@@ -30,6 +30,16 @@ documents) is this crate's public interface.
   kind (`invalid-text`, `type-mismatch`, `not-settable`,
   `conflicting-write`, `property-edit`, `invalid-header` with its span,
   `unknown-key`, `ragged-row`, ...), and nothing is written.
+- `relations FILE ENTITY [--traverse-up]` lists what one entity is related
+  to by kind (container, parent, type or occurrences, material and
+  materials, classification, groups, openings, fillings, voided element)
+  and every relationship naming it; `--traverse-up` the chain of parents.
+- `materials FILE [QUERY]` shows each selected entity's material
+  definition with its layers, profiles, constituents or list members.
+- `cost FILE [--depth N]` shows every cost schedule as a tree of cost items
+  with their values, direct total and rolled-up total; `schedule FILE
+  [--depth N]` every work schedule and work plan as a tree of tasks with
+  their scheduled times. All four write `--format human` or `json`.
 - The command now checks `Pset_` and `Qto_` writes against the embedded
   PSD/QTO catalog (facade feature `property-catalog`), which grows the
   binary.
