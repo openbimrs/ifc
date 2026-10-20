@@ -2,7 +2,7 @@
 //! counterpart of IfcOpenShell's `ifccsv`.
 //!
 //! [`export`] writes entities as rows of a [`Sheet`], one column per
-//! [`ValuePath`](crate::selector::ValuePath) (`Name`, `type.Name`,
+//! [`ValuePath`] (`Name`, `type.Name`,
 //! `Pset_WallCommon.FireRating`, `Qto_WallBaseQuantities.Length`,
 //! `container.Name`), each header the path's canonical text, keyed by the
 //! entity's `GlobalId` or `id` in the first column. [`plan_import`] reads
