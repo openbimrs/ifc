@@ -90,7 +90,7 @@ changes; the [capability matrix](/capabilities) says what each implements.
 
 | Crate | Status | Depends on | Description |
 | --- | --- | --- | --- |
-| [`openbim-ifc-cli`](/reference/crates/openbim-ifc-cli) | <span class="status-partial">Partial</span> | [`openbim-ifc`](/reference/crates/openbim-ifc) | The openbim-ifc command: validate, convert, inspect and query IFC files (STEP, ifcXML and ifcZIP) from a shell or CI. |
+| [`openbim-ifc-cli`](/reference/crates/openbim-ifc-cli) | <span class="status-partial">Partial</span> | [`openbim-ifc`](/reference/crates/openbim-ifc) | The openbim-ifc command: validate, convert, inspect, query and edit IFC files (STEP, ifcXML and ifcZIP), and exchange their values as CSV, TSV or XLSX tables, from a shell or CI. |
 
 <!-- CRATES:MAP:END -->
 

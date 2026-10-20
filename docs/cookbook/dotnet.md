@@ -376,6 +376,38 @@ returns a `Value`: several values as a `Value.List`, a property set as a
 parse throws `IfcException` with `Code` `invalid-selector` and `Span`, the
 byte range it refuses in the UTF-8 query.
 
+## Export a table and import it back
+
+The walls of `test/fixtures/synthetic-relations/selector_ifc4.ifc` as a
+[table](/guide/tables), one column per value path, keyed by `id`; one cell
+edited, the import planned as a dry run, then applied as one checked
+transaction:
+
+<!-- SNIPPET:cookbook-dotnet-tables -->
+
+```csharp
+byte[] csv = model.ExportTable("IfcWall", new[] { "Name", "type.Name" }, key: "id"); // or "xlsx"
+string text = System.Text.Encoding.UTF8.GetString(csv);
+Print(text.Split(new[] { "\r\n" }, StringSplitOptions.None)[1]); // 17,Wall A,WT-200
+
+// Edit the table, then plan the import: a dry run lists every change.
+var edited = System.Text.Encoding.UTF8.GetBytes(text.Replace("17,Wall A,", "17,Wall A1,"));
+foreach (var change in model.ImportTable(edited, dryRun: true).Changes)
+{
+    Print($"row {change.Row} {change.Path}: {change.Before} -> {change.After}"); // row 2 Name: Wall A -> Wall A1
+}
+Print(model.ImportTable(edited).Applied.ToString()); // True: one checked transaction
+
+// A refused cell refuses the whole table, by row and column.
+var refused = model.ImportTable(System.Text.Encoding.UTF8.GetBytes("id,Name\n99,Ghost\n"));
+Print(string.Join(", ", refused.Refusals.Select(r => $"{r.Row}:{r.Column} {r.Code}"))); // 2:1 unknown-key
+```
+
+<!-- /SNIPPET -->
+
+`ExportTable` returns the bytes (`"xlsx"` for a workbook); `ImportTable` reports every change and refusal without throwing. A cell whose text is what its path reads changes nothing;
+any refused cell refuses the whole table.
+
 ## Remove a product and purge
 
 A door with what it alone owns, a wall whose openings place their fillings,

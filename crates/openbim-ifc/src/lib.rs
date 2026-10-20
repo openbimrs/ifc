@@ -372,6 +372,12 @@ mod io;
 // `#![cfg]`.
 pub mod selector;
 
+// Tables of values by path (#474): selected entities exported by value
+// paths as CSV, TSV or XLSX, and a table imported back through the
+// selector's checked set-by-path API as one transaction. The module gates
+// itself on `sheet` with an inner `#![cfg]`.
+pub mod sheet;
+
 // ifcZIP (#450): a STEP or ifcXML model in a ZIP archive, `IfcZipCodec`
 // and its typed refusals. It wraps both codecs, siblings that never depend
 // on each other, so it lives in this orchestration layer. The signature

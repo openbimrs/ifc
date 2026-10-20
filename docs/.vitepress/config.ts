@@ -141,6 +141,7 @@ export default defineConfig({
             { text: 'Getting started', link: '/guide/getting-started' },
             { text: 'Command line', link: '/guide/cli' },
             { text: 'Selectors', link: '/guide/selectors' },
+            { text: 'Tables', link: '/guide/tables' },
             { text: 'Construction resources', link: '/guide/resources' },
             { text: 'Approvals and constraints', link: '/guide/approvals-constraints' },
             { text: 'Contributing', link: '/guide/contributing' },

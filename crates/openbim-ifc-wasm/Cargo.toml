@@ -109,6 +109,10 @@ graph = ["openbim-ifc-binding-core/graph"]
 mesh = ["openbim-ifc-binding-core/mesh"]
 # Implies `properties`: the project length unit scales every operation.
 georef = ["openbim-ifc-binding-core/georef"]
+# XLSX tables (#474) for `exportTable` and `importTable`: opt-in, since the
+# workbook writer and reader add to the module; without it XLSX throws
+# `feature-disabled` while CSV and TSV work.
+sheet-xlsx = ["openbim-ifc-binding-core/sheet-xlsx"]
 
 [lints]
 workspace = true

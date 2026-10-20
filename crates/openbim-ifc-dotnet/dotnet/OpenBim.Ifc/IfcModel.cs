@@ -668,6 +668,99 @@ public sealed unsafe class IfcModel : IDisposable
         return RecordDecoder.Decode<RemovalReport>(Tape(m, (n, nc, nr, s, sc, sr) => NativeMethods.openbim_ifc_v0_1_model_remove_product(m, id, flags, n, nc, nr, s, sc, sr)).One());
     }
 
+    /// <summary>The entities selector <paramref name="query"/> selects as a table (#474): the key column first (<c>GlobalId</c>, or <c>id</c> with <paramref name="key"/>), then one column per value path of <paramref name="columns"/> (<c>Name</c>, <c>type.Name</c>, <c>Pset_WallCommon.FireRating</c>), each cell the value the path reads as text. Refuses with <c>invalid-selector</c> a query or path that does not parse, <c>invalid-value</c> an unknown format or key, and <c>wrong-entity-type</c> an entity without a <c>GlobalId</c> in a table keyed by it.</summary>
+    /// <param name="query">The selector choosing the rows.</param>
+    /// <param name="columns">One value path per column.</param>
+    /// <param name="format"><c>csv</c>, <c>tsv</c> or <c>xlsx</c>.</param>
+    /// <param name="key"><c>GlobalId</c> (default) or <c>id</c>.</param>
+    /// <param name="null">The cell text of <c>NULL</c>.</param>
+    /// <returns>The table's bytes.</returns>
+    public byte[] ExportTable(string query, IEnumerable<string> columns, string format = "csv", string? key = null, string @null = "")
+    {
+        if (query is null)
+        {
+            throw new ArgumentNullException(nameof(query));
+        }
+        var formatCode = TableFormat(format);
+        var keyCode = TableKey(key);
+        var text = Calls.Encode(query);
+        var nullText = Calls.Encode(@null ?? "");
+        var encoded = (columns ?? throw new ArgumentNullException(nameof(columns))).Select(Calls.Encode).ToArray();
+        var joined = new byte[encoded.Sum(part => part.Length) + 1];
+        var lengths = new nuint[encoded.Length + 1];
+        var offsets = new int[encoded.Length];
+        for (int i = 0, at = 0; i < encoded.Length; at += encoded[i].Length, i++)
+        {
+            Buffer.BlockCopy(encoded[i], 0, joined, at, encoded[i].Length);
+            offsets[i] = at;
+            lengths[i] = (nuint)encoded[i].Length;
+        }
+        var pointers = new IntPtr[encoded.Length + 1];
+        var count = (nuint)encoded.Length;
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return Bytes(m, (buffer, capacity, required) =>
+        {
+            fixed (byte* q = text)
+            fixed (byte* n = nullText)
+            fixed (byte* start = joined)
+            fixed (nuint* sizes = lengths)
+            fixed (IntPtr* table = pointers)
+            {
+                for (var i = 0; i < offsets.Length; i++)
+                {
+                    pointers[i] = (IntPtr)(start + offsets[i]);
+                }
+                return NativeMethods.openbim_ifc_v0_1_model_export_table(m, q, (nuint)text.Length, (byte**)table, sizes, count, formatCode, keyCode, n, (nuint)nullText.Length, buffer, capacity, required);
+            }
+        });
+    }
+
+    /// <summary>Apply a table back to the model by its key column (#474), as one checked transaction: every other cell is written by its header's value path, typed by the attribute's declared type or the property's stated one; a cell that reads what the model holds changes nothing, so an exported table imported unchanged is a no-op. Any refusal means nothing was written, as does <paramref name="dryRun"/>.</summary>
+    /// <param name="data">The table's bytes.</param>
+    /// <param name="format"><c>csv</c>, <c>tsv</c> or <c>xlsx</c>.</param>
+    /// <param name="key"><c>GlobalId</c> or <c>id</c>; by default <c>GlobalId</c> when the table has one, else <c>id</c>.</param>
+    /// <param name="null">The cell text of <c>NULL</c>.</param>
+    /// <param name="dryRun">Plan and report only.</param>
+    /// <returns>Every change and every refusal, by row and column.</returns>
+    public TableImport ImportTable(byte[] data, string format = "csv", string? key = null, string @null = "", bool dryRun = false)
+    {
+        if (data is null)
+        {
+            throw new ArgumentNullException(nameof(data));
+        }
+        var formatCode = TableFormat(format);
+        var keyCode = TableKey(key);
+        var nullText = Calls.Encode(@null ?? "");
+        uint flags = dryRun ? 1u : 0u;
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return RecordDecoder.Decode<TableImport>(Tape(m, (n, nc, nr, s, sc, sr) =>
+        {
+            fixed (byte* bytes = data)
+            fixed (byte* nullBytes = nullText)
+            {
+                return NativeMethods.openbim_ifc_v0_1_model_import_table(m, bytes, (nuint)data.Length, formatCode, keyCode, nullBytes, (nuint)nullText.Length, flags, n, nc, nr, s, sc, sr);
+            }
+        }).One());
+    }
+
+    private static uint TableFormat(string format) => (format ?? "").ToLowerInvariant() switch
+    {
+        "csv" => 0u,
+        "tsv" => 1u,
+        "xlsx" => 2u,
+        _ => throw new IfcException("invalid-value", IfcStatus.InvalidValue, "\"" + format + "\" is no table format (csv, tsv, xlsx)"),
+    };
+
+    private static uint TableKey(string? key) => key?.ToLowerInvariant() switch
+    {
+        null => 0u,
+        "globalid" or "guid" => 1u,
+        "id" => 2u,
+        _ => throw new IfcException("invalid-value", IfcStatus.InvalidValue, "\"" + key + "\" is no key column (GlobalId, id)"),
+    };
+
     /// <summary>Remove unreferenced entities as one checked transaction. Without <paramref name="classes"/>, every resource entity no <c>IfcRoot</c> reaches (nor annotates something reached); with them, the entities of those classes (subtypes included) nothing references, an <c>IfcRoot</c> only with <paramref name="includeRoots"/>. The owner history stays unless <paramref name="includeOwnerHistory"/>.</summary>
     /// <param name="classes">The entity types to purge, any case; null or empty for the default purge.</param>
     /// <param name="includeRoots">Also purge unreferenced <c>IfcRoot</c>s of <paramref name="classes"/>.</param>

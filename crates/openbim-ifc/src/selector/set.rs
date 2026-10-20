@@ -201,7 +201,7 @@ impl SelectorIndex<'_> {
     }
 
     /// The slot `value` may be written to, after every check.
-    fn checked_slot(
+    pub(super) fn checked_slot(
         &self,
         entity: EntityId,
         name: &str,

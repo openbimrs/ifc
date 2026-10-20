@@ -28,7 +28,9 @@ group = "binding"
 # bundled tables (#112).
 # `selector` (#464) in every build: the selector language and values by
 # path, with its small pattern engine (`regex-lite`, no Unicode tables).
-openbim-ifc = { workspace = true, default-features = false, features = ["step", "schema-api", "selector"] }
+# `sheet` (#474) in every build too: tables of values by path as CSV and
+# TSV, pure facade code over the selector.
+openbim-ifc = { workspace = true, default-features = false, features = ["step", "schema-api", "selector", "sheet"] }
 
 [dev-dependencies]
 # Reading the geometry wire envelope's `format` and `version` (#367).
@@ -52,7 +54,7 @@ default = [
     "ifcxml", "zip", "validate", "unreachable",
     "properties", "properties-write", "property-catalog",
     "spatial", "classification", "material", "systems", "cost", "georef",
-    "author", "placements",
+    "author", "placements", "sheet-xlsx",
 ]
 ifc2x3 = ["openbim-ifc/ifc2x3"]
 ifc4 = ["openbim-ifc/ifc4"]
@@ -131,6 +133,11 @@ mesh = ["placements", "openbim-ifc/mesh"]
 # nothing; a WebAssembly build without it refuses `new_guid` with
 # `unsupported`. The JavaScript binding turns it on.
 js-random = ["openbim-ifc/js-random"]
+# XLSX tables (#474): `export_table` and `import_table` read and write
+# workbooks through the pure-Rust `rust_xlsxwriter` and `calamine` crates.
+# Native hosts carry it; the browser package leaves it out, and XLSX there
+# refuses with `feature-disabled` while CSV and TSV work.
+sheet-xlsx = ["openbim-ifc/sheet-xlsx"]
 # Map conversions and projected CRSs. The project length unit that scales
 # them is resolved by the property domain, so this implies `properties`.
 georef = ["properties", "openbim-ifc/georef"]
