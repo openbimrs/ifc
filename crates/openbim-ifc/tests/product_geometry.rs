@@ -251,6 +251,68 @@ ENDSEC;\nEND-ISO-10303-21;\n";
     }
 }
 
+/// A dimension `IfcAnnotation` (IFC4X3, `PredefinedType = DIMENSION`)
+/// whose `Annotation2D` holds its dimension line, an extension line and
+/// its value as an `IfcTextLiteralWithExtent`, beside an annotation fill
+/// area: the two lines come back as polylines, the text and the fill area
+/// as skipped items, not as a refusal (#512).
+#[cfg(feature = "mesh")]
+#[test]
+fn a_dimension_annotation_gives_its_lines_and_skips_its_text() {
+    use ifc::{NonCurveItem, RepresentationPurpose};
+
+    let text = "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n\
+FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('IFC4X3_ADD2'));\nENDSEC;\nDATA;
+#1=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Plan',2,1.E-05,#2,$);
+#2=IFCAXIS2PLACEMENT3D(#3,$,$);
+#3=IFCCARTESIANPOINT((0.,0.,0.));
+#4=IFCLOCALPLACEMENT($,#5);
+#5=IFCAXIS2PLACEMENT3D(#6,$,$);
+#6=IFCCARTESIANPOINT((10.,0.,0.));
+#10=IFCANNOTATION('0000000000000000000010',$,'Dimension',$,$,#4,#11,.DIMENSION.);
+#11=IFCPRODUCTDEFINITIONSHAPE($,$,(#12));
+#12=IFCSHAPEREPRESENTATION(#1,'Annotation','Annotation2D',(#13,#14,#15,#18));
+#13=IFCPOLYLINE((#20,#21));
+#14=IFCPOLYLINE((#20,#22));
+#15=IFCTEXTLITERALWITHEXTENT('2.00',#16,.LEFT.,#17,'bottom-middle');
+#16=IFCAXIS2PLACEMENT2D(#23,$);
+#17=IFCPLANAREXTENT(0.5,0.1);
+#18=IFCANNOTATIONFILLAREA(#19,$);
+#19=IFCPOLYLINE((#20,#21,#22,#20));
+#20=IFCCARTESIANPOINT((0.,0.));
+#21=IFCCARTESIANPOINT((2.,0.));
+#22=IFCCARTESIANPOINT((0.,-0.5));
+#23=IFCCARTESIANPOINT((1.,0.1));
+ENDSEC;\nEND-ISO-10303-21;\n";
+    let model = StepCodec.read_bytes(text.as_bytes()).expect("parses");
+
+    let curves = ifc::product_curves(
+        &model,
+        Some(&[EntityId(10)]),
+        RepresentationPurpose::Annotation,
+    );
+    let dimension = curves[0].1.as_ref().expect("the lines compile");
+    let lines: Vec<_> = dimension.polylines.iter().map(|p| p.curve).collect();
+    assert_eq!(lines, [Some(EntityId(13)), Some(EntityId(14))]);
+    let end = &dimension.polylines[0].positions[3..6];
+    assert_eq!(end, [2.0, 0.0, 0.0]);
+    let skipped: Vec<_> = dimension
+        .skipped
+        .iter()
+        .map(|skipped| (skipped.item, skipped.kind))
+        .collect();
+    assert_eq!(
+        skipped,
+        [
+            (EntityId(15), NonCurveItem::TextLiteral),
+            (EntityId(18), NonCurveItem::AnnotationFillArea),
+        ]
+    );
+    // Plan, the default drawing purpose, reads the same representation.
+    let plan = ifc::product_curves(&model, Some(&[EntityId(10)]), RepresentationPurpose::Plan);
+    assert_eq!(plan[0].1.as_ref(), Ok(dimension));
+}
+
 #[cfg(feature = "geometry-wire")]
 #[test]
 fn graphs_round_trip_through_the_wire_format_and_are_refused_per_product() {

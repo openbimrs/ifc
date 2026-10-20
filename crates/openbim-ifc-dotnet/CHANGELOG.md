@@ -45,6 +45,20 @@ Semver: minor.
 
 Semver: additive, a minor release while 0.x.
 
+### Changed (#512)
+
+- `ProductCurves` gives the curves of a representation that also holds text or a
+  fill area: a dimension `IfcAnnotation` (its lines as `IfcPolyline`s,
+  its value as an `IfcTextLiteralWithExtent`) was an `unsupported`
+  refusal and now returns its lines. `ProductCurves.Skipped` (`EquatableList<ulong>`), the record's new last
+  field, lists each `IfcTextLiteral`, `IfcTextLiteralWithExtent` and
+  `IfcAnnotationFillArea` of the representation by entity id: not drawn,
+  not a refusal.
+  The positional `ProductCurves` record gains that parameter. Needs the C
+  library with ABI 0.1.20.
+
+Semver: minor.
+
 ## [0.9.1] - 2026-10-18
 
 ### Changed (#506, #509)

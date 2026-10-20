@@ -127,6 +127,7 @@ public class GeometryTests
             Assert.Equal(new[] { "#17: 2 vertices, bound 0" }, printed);
             var wall = Assert.Single(model.ProductCurves(null, "Axis"));
             Assert.Null(wall.Curves.Refusal);
+            Assert.Empty(wall.Curves.Skipped);
             var axis = Assert.Single(wall.Curves.Polylines);
             Assert.Equal(new ProductPolyline(19, 0, 2, false, 0.0, 0.001), axis);
             Assert.Equal(wall.Curves.VertexCount * 3, (long)wall.Positions.Length);

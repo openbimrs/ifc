@@ -52,10 +52,11 @@ mod output;
 mod window;
 
 #[cfg(feature = "compile-reference-backend")]
-pub use output::{compile_product_mesh_for, compile_product_polylines};
+pub use output::{compile_product_curves, compile_product_mesh_for, compile_product_polylines};
 pub use output::{
-    compile_product_mesh_for_with, compile_product_polylines_with, ChordDeviation,
-    CompiledPolyline, MeshClosure, Point3, PolylineCompiler,
+    compile_product_curves_with, compile_product_mesh_for_with, compile_product_polylines_with,
+    ChordDeviation, CompiledPolyline, MeshClosure, NonCurveItem, Point3, PolylineCompiler,
+    ProductPolylines, SkippedItem,
 };
 pub use window::SeamWindowRefusal;
 

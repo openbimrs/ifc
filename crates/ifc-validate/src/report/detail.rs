@@ -15,6 +15,10 @@ pub enum FindingDetail {
     /// A property or quantity set whose name uses a prefix buildingSMART
     /// reserves, but which the release's catalog does not define.
     ReservedSetName(ReservedSetName),
+    /// The file declares a release known by name whose normative EXPRESS
+    /// is not published (`header.schema.unpublished`, #467): the report
+    /// was not made against that release's own tables.
+    UnpublishedSchema(ifc_schema::UnpublishedRelease),
 }
 
 /// One EXPRESS rule result.

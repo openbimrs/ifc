@@ -127,6 +127,7 @@ public sealed record ProductPolyline(
 /// <param name="VertexCount">Vertices of every polyline together: a third of the positions.</param>
 /// <param name="Polylines">The curves in authored order. Empty with no refusal: a product without the representation, or with no curves.</param>
 /// <param name="Refusal">Why there are no polylines: a curve the reference compiler has no certified polyline for (an implicit curve, an offset of an offset) is <c>unsupported</c>, naming the product; trimmed, composite, offset and intrinsic curves compile (#506).</param>
+/// <param name="Skipped">The representation's text literals and annotation fill areas, by entity id in authored order: not drawn, and not a refusal (#512).</param>
 public sealed record ProductCurves(
     ulong Id,
     string? GlobalId,
@@ -134,4 +135,5 @@ public sealed record ProductCurves(
     EquatableList<double>? Transform,
     long VertexCount,
     EquatableList<ProductPolyline> Polylines,
-    GeometryRefusal? Refusal);
+    GeometryRefusal? Refusal,
+    EquatableList<ulong> Skipped);

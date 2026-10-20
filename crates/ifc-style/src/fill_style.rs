@@ -23,12 +23,21 @@ impl<'m, 's> FillAreaStyle<'m, 's> {
 
     /// The `FillStyles` select: one or more colour, external, hatching, or
     /// tiling definitions making up this fill.
+    ///
+    /// `IfcFillStyleSelect` nests the `IfcColour` select, so a solid fill
+    /// is accepted through that select's own members
+    /// (`IfcColourSpecification`, e.g. `IfcColourRgb`, and
+    /// `IfcPreDefinedColour`) in every supported release; read it with
+    /// [`crate::StyleView::colour_rgb`].
     pub fn fill_styles(&self) -> StyleResult<Vec<EntityId>> {
         self.record.required_refs_select(
             "FillStyles",
             "IfcFillStyleSelect",
             &[
-                "IfcColour",
+                // `IfcColour` is itself a select: list its members, since a
+                // select name never matches an instance's entity type.
+                "IfcColourSpecification",
+                "IfcPreDefinedColour",
                 "IfcExternallyDefinedHatchStyle",
                 "IfcFillAreaStyleHatching",
                 "IfcFillAreaStyleTiles",

@@ -108,7 +108,11 @@ pub fn validate_with(model: &Model, schema: &Schema, budget: Budget) -> Report {
 /// # Errors
 ///
 /// Returns [`ValidateError`] when the file declares no schema, or declares
-/// one this build has no tables for. Validating an IFC2X3 file against IFC4
+/// one this build has no tables for. A release known by name but published
+/// without an EXPRESS schema (`IFC4X3_TC1`, `IFC4X3_ADD1`) is
+/// [`ValidateError::UnpublishedSchema`], never validated as IFC4X3 ADD2 by
+/// assumption; a caller choosing to do so passes those tables to
+/// [`validate`]. Validating an IFC2X3 file against IFC4
 /// tables would produce confident nonsense, so it is refused rather than
 /// approximated. Which releases have tables is the build's choice: the
 /// release features (`ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2`, `ifc4x3`, all on
@@ -120,8 +124,13 @@ pub fn validate_declared(model: &Model) -> Result<Report, ValidateError> {
         .header()
         .schema_token()
         .ok_or(ValidateError::NoSchemaDeclared)?;
-    let version = SchemaVersion::from_header_token(token)
-        .ok_or_else(|| ValidateError::UnknownSchema(token.to_string()))?;
+    let version = SchemaVersion::from_header_token(token).ok_or_else(|| {
+        if ifc_schema::UnpublishedRelease::from_header_token(token).is_some() {
+            ValidateError::UnpublishedSchema(token.to_string())
+        } else {
+            ValidateError::UnknownSchema(token.to_string())
+        }
+    })?;
     // `for_version` refuses a recognised schema this build does not bundle
     // with `NotBundled`. Both cases are refusals, but they are different
     // facts: one is "no idea what that token is", the other is "known schema,

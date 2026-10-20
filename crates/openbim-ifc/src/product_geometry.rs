@@ -31,7 +31,7 @@ mod mesh;
 #[cfg(feature = "colour")]
 pub use colour::{product_colours, ColourError, ColourResolver, ColourSource, SurfaceColour};
 #[cfg(feature = "mesh")]
-pub use curves::{product_curves, ProductCurves, ProductPolyline};
+pub use curves::{product_curves, NonCurveItem, ProductCurves, ProductPolyline, SkippedItem};
 #[cfg(feature = "geometry-wire")]
 pub use graph::{product_graphs, ProductGraph};
 #[cfg(feature = "mesh")]

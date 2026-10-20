@@ -60,6 +60,18 @@ Semver: minor (internal crate, not published).
 
 Semver: additive (unpublished crate).
 
+### Changed (#512)
+
+- `product_curves` gives the curves of a representation that also holds
+  text or a fill area (a dimension and its value), which was an
+  `unsupported` refusal. `ProductCurves::skipped`, the record's last
+  field, lists each `IfcTextLiteral`, `IfcTextLiteralWithExtent` and
+  `IfcAnnotationFillArea` of the representation by entity id: not drawn,
+  not a refusal.
+
+Semver: additive (internal crate, not published); a minor change of every
+binding, whose `ProductCurves` record gains a trailing field.
+
 ### Changed (#506, #509)
 
 - `product_curves` polylines trimmed, composite, offset and intrinsic

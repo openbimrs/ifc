@@ -69,6 +69,24 @@ Semver: minor (0.7.0). `Severity`, `Finding` and `Summary` are
 `#[non_exhaustive]`, so their new variant and fields break no caller; the
 new findings and the summary text change what a report holds.
 
+### Changed (#467)
+
+Semver: minor. `ValidateError` is `#[non_exhaustive]` and gains a variant;
+a new finding id.
+
+- `validate_declared` refuses a file declaring `IFC4X3_TC1` or
+  `IFC4X3_ADD1` with the new `ValidateError::UnpublishedSchema(token)`
+  instead of `UnknownSchema`: a real IFC release, but one buildingSMART
+  publishes no EXPRESS schema for, so no tables exist and it is not
+  validated as IFC4X3 ADD2 by assumption.
+- The header check reports such a token as the warning
+  `header.schema.unpublished`, naming the release (IFC 4.3.0.1 or
+  4.3.1.0) and carrying `FindingDetail::UnpublishedSchema(release)`,
+  instead of `header.schema.unknown`. A caller that chooses to
+  validate such a file as ADD2 passes those tables to `validate` itself;
+  the report then carries this warning, so it never reads as a check
+  against the declared release.
+
 ## [0.6.0] - 2026-10-03
 
 ### Changed (breaking)

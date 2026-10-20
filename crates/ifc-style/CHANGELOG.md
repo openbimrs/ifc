@@ -12,6 +12,19 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#514)
+
+Semver: patch. No public item changes.
+
+- `FillAreaStyle::fill_styles` accepts a solid colour fill. It listed the
+  `IfcColour` select itself as a member of `IfcFillStyleSelect`, and a
+  select name never matches an instance's entity type, so every
+  `IfcColourRgb` (and `IfcDraughtingPreDefinedColour`) fill was refused
+  with `StyleError::ReferenceType`. It now lists `IfcColour`'s own members,
+  `IfcColourSpecification` and `IfcPreDefinedColour`, as every bundled
+  release declares them; the colour then reads through
+  `StyleView::colour_rgb`. A non-colour member is still refused.
+
 ## [0.5.0] - 2026-10-13
 
 ### Added (#449)

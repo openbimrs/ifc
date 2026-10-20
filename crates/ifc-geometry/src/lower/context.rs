@@ -97,6 +97,66 @@ pub(crate) fn lower_product_representation_in(
     for item in items {
         roots.push(lower_representation_item(session, item, frame)?);
     }
+    collect_roots(session, product, roots)
+}
+
+/// Select and lower a product representation, leaving out each item whose
+/// STEP type name `leave_out` accepts.
+///
+/// `Ok(None)` when the product has no representation for `purpose`;
+/// otherwise the root of the items lowered (`None` when every item was
+/// left out) and the items left out, in authored order. Only the
+/// representation's own items are tested: an item nested in a mapped
+/// representation or a set is lowered, or refused, as usual. Every item
+/// not left out lowers as [`lower_product_representation`] lowers it, and
+/// its refusal still refuses the product. The curves reader is its only
+/// caller (#512).
+#[cfg(feature = "compile")]
+pub(crate) fn lower_product_representation_leaving_out(
+    session: &mut LoweringSession<'_>,
+    product: EntityId,
+    purpose: RepresentationPurpose,
+    leave_out: impl Fn(&str) -> bool,
+) -> GeometryResult<Option<(Option<NodeId>, Vec<EntityId>)>> {
+    let Some(frame) = representation_frame_resolved(
+        session.model(),
+        session.units(),
+        product,
+        purpose,
+        session.linear_resolution(),
+    )?
+    else {
+        return Ok(None);
+    };
+    let Some(representation) = select_product_representation(session.model(), product, purpose)?
+    else {
+        return Ok(None);
+    };
+    let entity = session
+        .model()
+        .get(representation)
+        .ok_or(GeometryError::MissingEntity {
+            referrer: product,
+            missing: representation,
+        })?;
+    let items = Representation::new(representation, entity).items()?;
+    let (mut roots, mut left_out) = (Vec::with_capacity(items.len()), Vec::new());
+    for item in items {
+        // A dangling item is lowered, so it is refused as usual.
+        match session.model().get(item) {
+            Some(entity) if leave_out(&entity.type_name) => left_out.push(item),
+            _ => roots.push(lower_representation_item(session, item, frame)?),
+        }
+    }
+    Ok(Some((collect_roots(session, product, roots)?, left_out)))
+}
+
+/// One root for the lowered items: none, the only one, or a collection.
+fn collect_roots(
+    session: &mut LoweringSession<'_>,
+    product: EntityId,
+    roots: Vec<NodeId>,
+) -> GeometryResult<Option<NodeId>> {
     match roots.len() {
         0 => Ok(None),
         1 => Ok(Some(roots[0])),

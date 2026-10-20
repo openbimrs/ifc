@@ -192,8 +192,10 @@ axiolid-contracts = { version = "0.3.1" }
 # intrinsic curves (axiolid/kernel#317; #506), certifies runs of sections
 # whose frames are read by quadrature (axiolid/kernel#316), and cuts curved
 # walls with abutting openings at a finer tolerance (axiolid/kernel#332,
-# with `axiolid-brep-boolean` 0.1.11).
-axiolid-mesh-compile = { version = "0.3.28" }
+# with `axiolid-brep-boolean` 0.1.11). 0.3.29 is a packaging fix: it
+# requires `axiolid-reference` 0.3.9, which states the `axiolid-evaluate`
+# ^0.3.17 it needs (0.3.8 claimed ^0.3.12); no behaviour of ours changes.
+axiolid-mesh-compile = { version = "0.3.29" }
 axiolid-mesh-compile-contract = { version = "0.3.4" }
 # 0.3.5: batch booleans keep their memory budget (axiolid/kernel#259).
 # 0.3.6: a boolean whose result outgrows its operands keeps its memory
