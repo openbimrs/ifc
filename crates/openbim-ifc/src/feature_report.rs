@@ -69,6 +69,8 @@ pub fn compiled_features() -> Vec<&'static str> {
     features.push("style");
     #[cfg(feature = "validate")]
     features.push("validate");
+    #[cfg(feature = "validate-express")]
+    features.push("validate-express");
     #[cfg(feature = "author")]
     features.push("author");
     #[cfg(feature = "authoring")]

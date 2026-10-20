@@ -53,7 +53,7 @@ fn declared_schema_validation_reports_a_clean_but_partial_verdict() -> TestResul
     // A file that declares none, or an unknown token, is refused.
     let report = validate_declared(&model)?;
 
-    println!("{}", report.summary()); // "0 errors, 0 evaluation errors, 0 warnings, 2 unsupported"
+    println!("{}", report.summary()); // "0 errors, 0 evaluation errors, 0 warnings, 0 indeterminate, 2 unsupported"
     for finding in report.sorted() {
         if finding.severity == Severity::Error {
             println!("{} at {}: {}", finding.rule, finding.path, finding.message);
@@ -67,7 +67,7 @@ fn declared_schema_validation_reports_a_clean_but_partial_verdict() -> TestResul
     // The comment in the snippet quotes this exact line.
     assert_eq!(
         summary.to_string(),
-        "0 errors, 0 evaluation errors, 0 warnings, 2 unsupported"
+        "0 errors, 0 evaluation errors, 0 warnings, 0 indeterminate, 2 unsupported"
     );
     Ok(())
 }
