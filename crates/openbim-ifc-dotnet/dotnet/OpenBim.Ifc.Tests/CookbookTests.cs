@@ -7,6 +7,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using Xunit;
@@ -524,6 +525,31 @@ public class CookbookTests
         }, printed);
         Assert.Equal(new[] { 67UL }, appended.Skipped);
         Assert.Empty(model.DanglingReferences());
+    }
+
+    [Fact]
+    public void ConvertUnitsAndTheLengthUnit()
+    {
+        using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.CascadeIfc4));
+        var printed = new List<string>();
+        void Print(string line) => printed.Add(line);
+        // docs:snippet cookbook-dotnet-length-unit
+        // One value between named units, and a length in feet and inches.
+        double feet = Units.Convert(3000.0, "MILLIMETRE", "foot");
+        string text = Units.FormatLength(3000.0, "MILLIMETRE", LengthStyle.FeetInches, 16, suppressZeroInches: true);
+        Print($"3000 mm = {feet.ToString("F4", CultureInfo.InvariantCulture)} ft = {text}"); // 3000 mm = 9.8425 ft = 9' - 10 1/8"
+
+        // The whole model in millimetres: every length, and areas and volumes
+        // with it, as one checked transaction. dryRun: true only reports.
+        LengthUnitReport report = model.ConvertLengthUnit("MILLIMETRE");
+        Print($"{report.From} to {report.To}: lengths x{report.LengthFactor}"); // METRE to MILLI METRE: lengths x1000
+        foreach (var kept in report.Kept)
+        {
+            Print($"{kept.EntityType}.{kept.Attribute} kept: {kept.Reason}");
+        }
+        // docs:end
+        Assert.Equal("3000 mm = 9.8425 ft = 9' - 10 1/8\"", printed[0]);
+        Assert.Equal("METRE to MILLI METRE: lengths x1000", printed[1]);
     }
 
     [Fact]

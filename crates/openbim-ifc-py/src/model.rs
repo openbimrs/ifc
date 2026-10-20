@@ -2,7 +2,7 @@
 
 use openbim_ifc_binding_core::record::to_records;
 use openbim_ifc_binding_core::{
-    CopyProductOptions, GeometryEncoding, IfcModel, ParseOptions, PurgeOptions,
+    GeometryEncoding, IfcModel, LengthUnitOptions, ParseOptions, PurgeOptions,
     RemoveProductOptions, ToRecord,
 };
 use pyo3::exceptions::PyValueError;
@@ -728,48 +728,59 @@ impl NativeModel {
         records::record_to_py(py, &report.to_record())
     }
 
-    /// Copy a product with what it solely owns; the report (#479).
-    #[pyo3(signature = (id, offset = None, placement = None, openings = true, fillings = true, container = true, aggregate = true, dry_run = false))]
-    #[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
+    /// Copy a product with what it solely owns; the report (#479). Keyword
+    /// options as `authoring::copy_options` reads them.
+    #[pyo3(signature = (id, **options))]
     fn copy_product<'py>(
         &mut self,
         py: Python<'py>,
         id: u64,
-        offset: Option<[f64; 3]>,
-        placement: Option<u64>,
-        openings: bool,
-        fillings: bool,
-        container: bool,
-        aggregate: bool,
-        dry_run: bool,
+        options: Option<&Bound<'py, PyDict>>,
     ) -> PyResult<Bound<'py, PyDict>> {
-        let mut options = CopyProductOptions::new();
-        options.offset = offset;
-        options.placement = placement;
-        options.openings = openings;
-        options.fillings = fillings;
-        options.container = container;
-        options.aggregate = aggregate;
-        options.dry_run = dry_run;
+        let options = authoring::copy_options(options)?;
         let report = self.inner.copy_product(id, options).map_err(py_err)?;
         records::record_to_py(py, &report.to_record())
     }
 
     /// Copy entities of `source` into this model; the report (#479).
-    #[pyo3(signature = (source, ids, global_ids = "keep".to_owned(), reuse = Vec::new(), dry_run = false))]
+    /// Keyword options as `authoring::append_options` reads them.
+    #[pyo3(signature = (source, ids, **options))]
     fn append<'py>(
         &mut self,
         py: Python<'py>,
         source: PyRef<'_, NativeModel>,
         ids: Vec<u64>,
-        global_ids: String,
-        reuse: Vec<String>,
+        options: Option<&Bound<'py, PyDict>>,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let options = authoring::append_options(options)?;
+        let report = self.inner.append(&source.inner, &ids, &options);
+        records::record_to_py(py, &report.map_err(py_err)?.to_record())
+    }
+
+    /// Convert `value` between two unit entities of the model (#469).
+    fn convert_unit_value(&self, value: f64, from: u64, to: u64) -> PyResult<f64> {
+        self.inner
+            .convert_unit_value(value, from, to)
+            .map_err(py_err)
+    }
+
+    /// Convert the model's length unit (#469); the report.
+    #[pyo3(signature = (target, area_and_volume = true, remove_replaced_units = true, dry_run = false))]
+    fn convert_length_unit<'py>(
+        &mut self,
+        py: Python<'py>,
+        target: &str,
+        area_and_volume: bool,
+        remove_replaced_units: bool,
         dry_run: bool,
     ) -> PyResult<Bound<'py, PyDict>> {
-        let options = authoring::append_options(global_ids, &reuse, dry_run).map_err(py_err)?;
+        let mut options = LengthUnitOptions::new();
+        options.area_and_volume = area_and_volume;
+        options.remove_replaced_units = remove_replaced_units;
+        options.dry_run = dry_run;
         let report = self
             .inner
-            .append(&source.inner, &ids, &options)
+            .convert_length_unit(target, options)
             .map_err(py_err)?;
         records::record_to_py(py, &report.to_record())
     }

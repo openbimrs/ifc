@@ -958,13 +958,51 @@ type is that entity, and its relationships are joined), or regenerated
 (`"regenerate"`, or `"regenerate-colliding"` for those this model holds). Between releases each attribute moves by name; a type,
 attribute or enumeration constant the target release lacks is refused
 with `unsupported-schema`, never dropped. Models whose length or plane
-angle units differ are refused with `unsupported`: convert one first. The
+angle units differ are refused with `unsupported`: convert one with
+`convert_length_unit` first. The
 [cookbook](/cookbook/python#copy-a-product-and-append-from-another-model) has a recipe.
 
 In a batch, `AuthorOp.copy_product` and `AuthorOp.copy_entity` do the same (the copy is the operation's
 produced entity), and a low-level deep copy follows an entity's references
 by an explicit policy: classes always copied, classes always shared, and
 whether other `IfcRoot`s and definitions are copied (by default shared).
+
+## Units and a model's length unit
+
+`openbim_ifc.convert_unit(value, from_unit, to_unit)` converts between
+units named as text: an SI unit with its prefix written before it
+(`"METRE"`, `"MILLIMETRE"`, `"MILLI METRE"`, `"SQUARE_MILLIMETRE"`,
+`"KILOGRAM"`; `METER` spellings too) or a named unit of IFC4 Table 673
+with its exact legal factor (`"inch"`, `"foot"`, `"yard"`, `"mile"`,
+`"square foot"`, `"gallon US"`, `"pound"`, `"degree"` ...). Prefixed units
+convert by an exact power of ten. Units of different dimensions raise
+`type-mismatch`; a unit with an offset (degree Fahrenheit, an
+`IfcConversionBasedUnitWithOffset`) raises `unsupported` until #110 settles
+where IFC applies the offset. `model.convert_unit_value(value, from_unit,
+to_unit)` does the same between two unit entities of the model; a monetary
+or context-dependent unit raises `unsupported`.
+
+`openbim_ifc.format_length(value, unit, style=...)` writes a length as
+text: `"decimal"` in `display_unit` with `places` digits, `"feet-inches"`
+(`5' - 6 1/2"`, rounded to `1/places` of an inch) or `"inches"`.
+
+`model.convert_length_unit(target)` assigns a new project length unit (an
+SI `METRE` with any prefix, or `"inch"`, `"foot"`, `"yard"`, `"mile"`,
+`"US survey foot"`) and rescales every length-dimensioned value as one
+checked transaction: points, placements, profile dimensions, depths,
+radii, quantities and property values typed by length, area and volume
+measures, which the release's measure types identify. Values with a unit of
+their own keep it, and curve parameters that are angles, knots or vector
+multiples stay. With `area_and_volume=True` (the default) the area and
+volume units become the square and cube of the new length unit;
+`dry_run=True` only reports. The `LengthUnitReport` lists the rescaled
+attributes (`converted`), the length-like values left as they are with the
+reason (`kept`), the factors and the units written and removed. A value
+the conversion cannot carry (a p-curve off a plane, a polynomial curve, a
+parameter on a curve whose parameter space IFC leaves undefined) refuses
+the whole conversion with `unsupported`, naming each; the model is then
+unchanged. The [cookbook](/cookbook/python#convert-units-and-a-model-s-length-unit)
+has a recipe.
 
 ## API
 
@@ -1043,6 +1081,8 @@ class, record and function of the package with its docstring and types.
 | `model.remove_representation(id: int, *, dry_run: bool = False) -> RemovalReport` | Remove shape representation `id` with what only it uses, as one checked transaction: it is taken off its product definition shape (which goes when left empty), representation map or shape aspects, then removed with its items down to what nothing else uses. Shared items, profiles, points and styles stay, and the report says why; with `dry_run` nothing changes. |
 | `model.copy_product(id: int, *, offset: Optional[Tuple[float, float, float]] = None, placement: Optional[int] = None, openings: bool = True, fillings: bool = True, container: bool = True, aggregate: bool = True, dry_run: bool = False) -> CopyReport` | Copy product (or type object) `id` with everything it solely owns, as one checked transaction (#479): what :meth:`remove_product` would remove with it is copied, what it would keep is shared. |
 | `model.append(source: IfcModel, ids: Iterable[int], *, global_ids: str = 'keep', reuse: Iterable[str] = ('units', 'contexts', 'owner_history', 'materials', 'styles'), dry_run: bool = False) -> CopyReport` | Copy entities `ids` of `source` into this model with what belongs to them, as one checked transaction (#479): what they reference, their property sets, type, material and classification, their openings, fillings and ports, and what attaches to their geometry. Units, contexts, the owner history, materials and styles equal to this model's are reused, for the kinds `reuse` names. Relationships to objects not copied (a spatial container) are skipped and reported; relate the copies afterwards. |
+| `model.convert_unit_value(value: float, from_unit: int, to_unit: int) -> float` | Convert `value` from unit entity `from_unit` to unit entity `to_unit` of this model (an `IfcSIUnit`, `IfcConversionBasedUnit` or `IfcDerivedUnit`), exactly: prefixes convert by a power of ten, conversion-based units through their factor, derived units by their exponents. |
+| `model.convert_length_unit(target: str, *, area_and_volume: bool = True, remove_replaced_units: bool = True, dry_run: bool = False) -> domains.LengthUnitReport` | Convert the model's length unit to `target` (an SI `METRE` with any prefix, such as `"MILLIMETRE"`, or `"inch"`, `"foot"`, `"yard"`, `"mile"`, `"US survey foot"`), rescaling every length, area and volume value -- geometry, placements, quantities and property values -- as one checked transaction. |
 | `model.dangling_references() -> List[Tuple[int, int]]` | Every `(from, to)` pair where `to` does not exist. |
 | `model.by_id(id: int) -> Entity` | Entity `#id` as an :class:`Entity`; raises :class:`openbim_ifc.IfcError` (`missing-entity`) when absent. |
 | `model.by_guid(global_id: str) -> Optional[Entity]` | The entity whose `GlobalId` is `global_id` as an :class:`Entity`, or `None`: :meth:`IfcModel.id_by_guid`. |

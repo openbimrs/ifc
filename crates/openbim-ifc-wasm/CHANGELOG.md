@@ -17,6 +17,21 @@ a release here does not imply a release of any other crate in the family.
 
 Semver: additive: minor.
 
+### Added (#469, unit conversion)
+
+- `IfcModel.convertUnit(value, from, to)` between units named as text (SI
+  with prefix, IFC4 Table 673 names with exact factors), and
+  `IfcModel.formatLength(value, unit, { style?, places?, displayUnit?,
+  suppressZeroInches? })` (decimal, feet-inches, inches with fractions).
+- `model.convertUnitValue(value, from, to)` between two unit entities of the
+  model.
+- `model.convertLengthUnit(target, { areaAndVolume?, removeReplacedUnits?,
+  dryRun? })`: rescales every length, area and volume value to a new
+  project length unit as one checked transaction, returning a
+  `LengthUnitReport` (`ConvertedValues`, `KeptValues`; `LengthUnitOptions`,
+  `LengthFormatOptions` in the declarations). Refusals use the existing
+  codes.
+
 ### Added (#474, tables)
 
 - `model.exportTable(query, columns, { format, key, null })` returns the

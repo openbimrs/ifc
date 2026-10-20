@@ -58,6 +58,36 @@ everything released before per-crate changelogs began.
 Semver: additive (`AuthorOp`, `AuthoringFailure`, `AuthoringOutcome` and
 `StagedAuthoring` are `#[non_exhaustive]`): minor.
 
+### Added (#469)
+
+- `convert_length_unit` and `stage_length_unit_conversion`: rescale every
+  length-dimensioned value of a model to a new project length unit (an SI
+  `METRE` with any prefix, or `inch`, `foot`, `yard`, `mile`, `US survey
+  foot`) as one checked transaction. Which values are lengths, areas and
+  volumes comes from the declared release's tables (IFC2X3, IFC4, IFC4X3),
+  through every attribute, aggregate and typed `SELECT` value: geometry,
+  placements, profiles, quantities and property values. Values with a unit
+  of their own keep it. Every `REAL` and `IfcParameterValue` attribute of
+  the three releases is reviewed (a test fails on an unreviewed one):
+  `IfcGeometricRepresentationContext.Precision` rescales, light
+  attenuations rescale inversely, parameter values follow their curve or
+  surface (kept on lines, conics, polylines, B-splines, clothoids and
+  composite curves of those; rescaled on planes and along a cylinder's
+  axis). Georeferencing keeps map coordinates in a `MapUnit` and rescales
+  `Scale`; IFC2X3 `ePSet_MapConversion` likewise. Areas and volumes follow
+  the length unit by default (`LengthUnitOptions`). Refused, each by
+  name, with nothing written (`LengthUnitError::Refused`): parameter
+  values on curves whose parameter space IFC leaves undefined (other
+  spirals, `IfcCurveSegment`, `IfcOffsetCurveByDistances`), p-curves on
+  curved surfaces, `IfcPolynomialCurve` coefficients, texture generator
+  parameters, untyped numbers in a `SELECT`, contexts with their own
+  units. The `LengthUnitReport` lists what was rescaled and kept.
+  Verified over the fixture corpus: a millimetre-metre round trip restores
+  every value, compiled geometry agrees in metres after converting to
+  feet, and validation findings are unchanged.
+
+Semver: minor (additions).
+
 ### Added (#472, #474, values by path as text and tables)
 
 - `ifc::selector::value_text` writes a `SelectedValue` as the text of one

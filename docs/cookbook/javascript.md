@@ -675,3 +675,33 @@ const bytes = model.write();
 Every operation is checked against the release the header declares, and a
 batch is one transaction. The [binding page](/bindings/javascript#creating-entities)
 lists every operation.
+
+## Convert units and a model's length unit
+
+Between units named as text, as feet and inches, then the whole of
+`test/fixtures/synthetic-bindings/binding_geometry.ifc` from millimetres to
+metres:
+
+<!-- SNIPPET:cookbook-js-convert-units -->
+
+```js
+// Between units named as text: exact factors, checked dimensions.
+log(IfcModel.convertUnit(1, "foot", "MILLIMETRE")); // 304.8
+log(IfcModel.formatLength(444.5, "MILLIMETRE", { style: "feet-inches" }));
+// 1' - 5 1/2"
+
+// The whole model to metres: geometry, quantities and properties, as one
+// checked transaction. A dry run only reports.
+const dry = model.convertLengthUnit("METRE", { dryRun: true });
+log(dry.from, dry.to, dry.lengthFactor); // "MILLI METRE" "METRE" 0.001
+const report = model.convertLengthUnit("METRE");
+log(report.applied); // true
+for (const kept of report.kept) log(kept.entityType, kept.attribute, kept.reason);
+```
+
+<!-- /SNIPPET -->
+
+Every length, area and volume value is rescaled: geometry, placements,
+quantities and property values. Values with a unit of their own keep it and
+appear in `kept` with the reason. A model holding a value the conversion
+cannot carry is refused whole, with `unsupported`, and left unchanged.

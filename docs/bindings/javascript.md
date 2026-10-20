@@ -951,13 +951,40 @@ type is that entity, and its relationships are joined), or regenerated
 (`"regenerate"`, or `"regenerate-colliding"` for those this model holds). Between releases each attribute moves by name; a type,
 attribute or enumeration constant the target release lacks is refused
 with `unsupported-schema`, never dropped. Models whose length or plane
-angle units differ are refused with `unsupported`: convert one first. The
+angle units differ are refused with `unsupported`: convert one with
+`convertLengthUnit` first. The
 [cookbook](/cookbook/javascript#copy-a-product-and-append-from-another-model) has a recipe.
 
 In a batch, the `copyProduct` and `copyEntity` operations do the same (the copy is the operation's
 produced entity), and a low-level deep copy follows an entity's references
 by an explicit policy: classes always copied, classes always shared, and
 whether other `IfcRoot`s and definitions are copied (by default shared).
+
+## Units and a model's length unit
+
+`IfcModel.convertUnit(value, from, to)` converts between units named as
+text: an SI unit with its prefix written before it (`"METRE"`,
+`"MILLIMETRE"`, `"MILLI METRE"`, `"SQUARE_MILLIMETRE"`, `"KILOGRAM"`) or a
+named unit of IFC4 Table 673 with its exact legal factor (`"inch"`,
+`"foot"`, `"square foot"`, `"gallon US"`, `"pound"` ...). Units of
+different dimensions throw `type-mismatch`; a unit with an offset (degree
+Fahrenheit) throws `unsupported` until #110 is settled.
+`model.convertUnitValue(value, from, to)` converts between two unit
+entities of the model. `IfcModel.formatLength(value, unit, { style,
+places, displayUnit, suppressZeroInches })` writes a length as decimal text
+or as feet and inches with fractions (`5' - 6 1/2"`).
+
+`model.convertLengthUnit(target, { areaAndVolume, removeReplacedUnits,
+dryRun })` assigns a new project length unit (an SI `METRE` with any
+prefix, or `"inch"`, `"foot"`, `"yard"`, `"mile"`, `"US survey foot"`) and
+rescales every length, area and volume value as one checked transaction;
+values with a unit of their own keep it. The `LengthUnitReport` lists what
+was rescaled (`converted`), what was kept and why (`kept`), the factors and
+the units written and removed; `dryRun` only reports. A value the
+conversion cannot carry refuses the whole conversion with `unsupported`,
+naming each. The
+[cookbook](/cookbook/javascript#convert-units-and-a-model-s-length-unit) has
+a recipe.
 
 ## Module size
 

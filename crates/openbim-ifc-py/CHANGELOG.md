@@ -18,6 +18,21 @@ a release here does not imply a release of any other crate in the family.
 
 Semver: additive: minor.
 
+### Added (#469, unit conversion)
+
+- `openbim_ifc.convert_unit(value, from_unit, to_unit)` between units named
+  as text (SI with prefix, IFC4 Table 673 names with exact factors), and
+  `openbim_ifc.format_length(value, unit, *, style, places, display_unit,
+  suppress_zero_inches)` (decimal, feet-inches, inches with fractions).
+- `model.convert_unit_value(value, from_unit, to_unit)` between two unit
+  entities of the model.
+- `model.convert_length_unit(target, *, area_and_volume=True,
+  remove_replaced_units=True, dry_run=False)`: rescales every length, area
+  and volume value to a new project length unit as one checked transaction,
+  returning a `LengthUnitReport` (`ConvertedValues`, `KeptValues`).
+  Refusals use the existing codes (`type-mismatch`, `unsupported`,
+  `invalid-value`, `invalid-model`).
+
 ### Added (#474, tables)
 
 - `model.export_table(query, columns, *, format="csv", key=None,

@@ -11,7 +11,8 @@
 //! an `IfcTypeObject`; `unsupported` for an offset onto a placement that is
 //! not a local placement with a Cartesian location, a moved copy whose
 //! openings, fillings or ports are not placed relative to it, and models
-//! whose length or plane angle units differ (convert one first, #469);
+//! whose length or plane angle units differ (convert one with
+//! `convert_length_unit` first, #469);
 //! `unsupported-schema` for an entity the target release cannot hold (a
 //! type or attribute it lacks, a constant it does not know); `invalid-value`
 //! for a `GlobalId` the target holds already, kept, and for an unknown

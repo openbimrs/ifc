@@ -955,13 +955,58 @@ type is that entity, and its relationships are joined), or regenerated
 (`OPENBIM_IFC_GLOBAL_IDS_REGENERATE`, or `_REGENERATE_COLLIDING` for those this model holds). Between releases each attribute moves by name; a type,
 attribute or enumeration constant the target release lacks is refused
 with `unsupported-schema`, never dropped. Models whose length or plane
-angle units differ are refused with `unsupported`: convert one first. The
+angle units differ are refused with `unsupported`: convert one with
+`openbim_ifc_v0_1_model_convert_length_unit` first. The
 [cookbook](/cookbook/c#copy-a-product-and-append-from-another-model) has a recipe.
 
 In a batch, the `copy_product` and `copy_entity` operations do the same (the copy is the operation's
 produced entity), and a low-level deep copy follows an entity's references
 by an explicit policy: classes always copied, classes always shared, and
 whether other `IfcRoot`s and definitions are copied (by default shared).
+
+## Units and the model's length unit
+
+A unit is named as UTF-8 text: an SI unit with its prefix written before
+it (`METRE`, `MILLIMETRE`, `MILLI METRE`, `SQUARE_MILLIMETRE`; `METER`
+spellings accepted), or a named conversion-based unit of IFC4 Table 673
+with exact factors (`inch`, `foot`, `yard`, `mile`, `square foot`, `gallon
+US`, `pound`, `degree` ...) or `US survey foot`
+([#469](https://github.com/openbimrs/ifc/issues/469)).
+
+`openbim_ifc_v0_1_convert_unit(value, from, from_len, to, to_len,
+&out_value)` converts one value and needs no model;
+`openbim_ifc_v0_1_model_convert_unit_value(model, value, from, to,
+&out_value)` converts between two unit entities of the model.
+`openbim_ifc_v0_1_format_length` writes a length as NUL-terminated text:
+`OPENBIM_IFC_LENGTH_FORMAT_DECIMAL` in a display unit,
+`OPENBIM_IFC_LENGTH_FORMAT_FEET_INCHES` (`5' - 6 1/2"`, rounded to
+`1/places` of an inch) or `OPENBIM_IFC_LENGTH_FORMAT_INCHES`. Units of
+different dimensions are `TYPE_MISMATCH`; a monetary, context-dependent or
+offset unit (degree Fahrenheit, `IfcConversionBasedUnitWithOffset`, not
+applied until [#110](https://github.com/openbimrs/ifc/issues/110) is
+settled) is `UNSUPPORTED`.
+
+`openbim_ifc_v0_1_model_convert_length_unit(model, target, target_len,
+flags, ...)` converts the model's length unit and rescales every length,
+area and volume value the release declares as one, as one checked
+transaction, and answers a `LengthUnitReport` tape: from and to (`TEXT`),
+the length factor (`REAL`), the area and volume factors (`REAL`, `NULL`
+when that unit does not follow), the new length, area and volume unit ids,
+converted (`LIST` of `ConvertedValues`: entity type, attribute, kind,
+entities, values), kept (`LIST` of `KeptValues`: entity type, attribute,
+reason, values), entities changed, values converted, created and removed
+(`LIST`s of `REF`) and applied (`BOOL`). `OPENBIM_IFC_LENGTH_UNIT_KEEP_AREA_AND_VOLUME`
+leaves the area and volume units and their values;
+`OPENBIM_IFC_LENGTH_UNIT_KEEP_REPLACED_UNITS` keeps the replaced unit
+entities; `OPENBIM_IFC_LENGTH_UNIT_DRY_RUN` only reports. A size query or a
+short buffer plans the conversion, answers `BUFFER_TOO_SMALL` and leaves the
+model unchanged; the plan lists the ids the commit creates, so the applied
+report has the planned size. Values the conversion cannot carry (a parameter on a
+curve whose parameter space IFC leaves undefined, a p-curve off a plane,
+polynomial coefficients) refuse the whole call with `UNSUPPORTED`, each
+named in the last error message. These exports make the ABI version 0.1.19.
+The [cookbook](/cookbook/c#convert-units-and-the-model-s-length-unit) has a
+recipe.
 
 ## API
 

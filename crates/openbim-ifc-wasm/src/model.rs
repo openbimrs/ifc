@@ -25,6 +25,7 @@ mod removal;
 mod selector;
 mod table;
 mod types;
+mod units;
 
 /// An IFC model: entities keyed by their `#id`, in file order.
 ///

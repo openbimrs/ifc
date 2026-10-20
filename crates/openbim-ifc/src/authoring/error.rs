@@ -288,7 +288,8 @@ pub enum AuthoringFailure {
     },
     /// The source and target models measure in different units (#479):
     /// appended coordinates and values would change meaning. Convert one
-    /// model's units first (unit conversion, openbimrs/ifc#469).
+    /// model's length unit first (`convert_length_unit`, feature `properties`, #469);
+    /// the append never converts on its own.
     UnitMismatch {
         /// The `IfcUnitEnum` constant, e.g. `LENGTHUNIT`.
         unit_type: String,
@@ -480,7 +481,7 @@ impl fmt::Display for AuthoringFailure {
             } => write!(
                 f,
                 "the source model's {unit_type} is {source}, the target's {target}; \
-                 convert one model's units first (unit conversion, openbimrs/ifc#469)"
+                 convert one model's length unit first (`convert_length_unit`, #469)"
             ),
         }
     }

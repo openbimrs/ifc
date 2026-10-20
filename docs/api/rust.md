@@ -137,6 +137,38 @@ let out = StepCodec.write_bytes(&model)?;
 `XmlCodec` behaves identically behind the `ifcxml` feature. Conversion is a read
 with one and a write with the other.
 
+## Units
+
+`ifc::properties` converts between units: SI units with any prefix (by an
+exact power of ten), the named conversion-based units of IFC4 Table 673
+with their exact factors, and a model's own unit entities
+(`resolve_unit`), refusing units of different dimensions, monetary units
+and offset units. `ifc::convert_length_unit` gives a whole model a new
+length unit, rescaling every length, area and volume the release's
+measure types identify and refusing by name what it cannot carry.
+
+<!-- SNIPPET:api-length-unit -->
+
+```rust
+use ifc::properties::{convert_value, ConversionUnit};
+use ifc::{convert_length_unit, LengthUnitOptions};
+
+let foot = ConversionUnit::parse("foot")?;
+let millimetre = ConversionUnit::parse("MILLIMETRE")?;
+assert_eq!(convert_value(1.0, &foot, &millimetre)?, 304.8);
+
+// Every length, area and volume, in one transaction, or nothing.
+let metre = ConversionUnit::parse("METRE")?;
+let report = convert_length_unit(&mut model, &metre, &LengthUnitOptions::new())?;
+println!(
+    "{} values rescaled by {}",
+    report.values_converted,
+    report.length.factor()
+);
+```
+
+<!-- /SNIPPET -->
+
 ## Reading a file without decoding it
 
 A strict read is already lazy (ADR 0015): `StepCodec.read_bytes` validates

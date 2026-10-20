@@ -757,10 +757,16 @@ class IfcModel(ModelAccess):
                 id,
                 offset=tuple(offset) if offset is not None else None,
                 placement=placement,
-                openings=openings,
-                fillings=fillings,
-                container=container,
-                aggregate=aggregate,
+                skip=[
+                    part
+                    for part, keep in (
+                        ("openings", openings),
+                        ("fillings", fillings),
+                        ("container", container),
+                        ("aggregate", aggregate),
+                    )
+                    if not keep
+                ],
                 dry_run=dry_run,
             )
         )
@@ -789,7 +795,7 @@ class IfcModel(ModelAccess):
         ``regenerate`` or ``regenerate-colliding``.
 
         Raises ``unsupported`` when the models' length or plane angle units
-        differ (convert one first), ``unsupported-schema`` for an entity
+        differ (convert one with :meth:`convert_length_unit` first), ``unsupported-schema`` for an entity
         this model's release cannot hold (a type or attribute it lacks, a
         constant it does not know), ``invalid-value`` for a kept
         ``GlobalId`` this model holds. With ``dry_run`` nothing changes.
@@ -800,6 +806,56 @@ class IfcModel(ModelAccess):
                 list(ids),
                 global_ids=global_ids,
                 reuse=list(reuse),
+                dry_run=dry_run,
+            )
+        )
+
+    def convert_unit_value(self, value: float, from_unit: int, to_unit: int) -> float:
+        """Convert ``value`` from unit entity ``from_unit`` to unit entity
+        ``to_unit`` of this model (an ``IfcSIUnit``,
+        ``IfcConversionBasedUnit`` or ``IfcDerivedUnit``), exactly: prefixes
+        convert by a power of ten, conversion-based units through their
+        factor, derived units by their exponents.
+
+        Raises ``type-mismatch`` for units of different dimensions,
+        ``unsupported`` for a monetary or context-dependent unit or one with
+        an offset (#110), and ``missing-entity`` for an id the model lacks.
+        """
+        return self._native.convert_unit_value(value, from_unit, to_unit)
+
+    def convert_length_unit(
+        self,
+        target: str,
+        *,
+        area_and_volume: bool = True,
+        remove_replaced_units: bool = True,
+        dry_run: bool = False,
+    ) -> "domains.LengthUnitReport":
+        """Convert the model's length unit to ``target`` (an SI ``METRE``
+        with any prefix, such as ``"MILLIMETRE"``, or ``"inch"``,
+        ``"foot"``, ``"yard"``, ``"mile"``, ``"US survey foot"``), rescaling
+        every length, area and volume value -- geometry, placements,
+        quantities and property values -- as one checked transaction.
+
+        Which values are lengths is read from the release's measure types;
+        values with a unit of their own keep it, and curve parameters that
+        are angles, knots or multiples stay. With ``area_and_volume`` the
+        area and volume units become the square and cube of the new length
+        unit; with ``dry_run`` nothing changes and the report says what
+        would.
+
+        Raises ``unsupported`` naming every value the conversion cannot
+        carry (a p-curve off a plane, a polynomial curve, a parameter on an
+        undefined parameter space), ``invalid-value`` for a target that is
+        not a length unit, ``invalid-model`` when the project length unit
+        cannot be resolved and ``unsupported-schema`` for a release other
+        than IFC2X3, IFC4 or IFC4X3. A refusal leaves the model unchanged.
+        """
+        return domains._from_wire(
+            self._native.convert_length_unit(
+                target,
+                area_and_volume=area_and_volume,
+                remove_replaced_units=remove_replaced_units,
                 dry_run=dry_run,
             )
         )

@@ -14,6 +14,15 @@ SELECTOR_GRAMMAR_VERSION: str
 def new_guid() -> str: ...
 def name_based_guid(parts: List[str]) -> str: ...
 def canonical_selector(query: str) -> str: ...
+def convert_unit(value: float, from_: str, to: str) -> float: ...
+def format_length(
+    value: float,
+    unit: str,
+    style: str,
+    places: int,
+    display_unit: Optional[str] = ...,
+    suppress_zero_inches: bool = ...,
+) -> str: ...
 
 class NativeModel:
     def __init__(self) -> None: ...
@@ -126,10 +135,7 @@ class NativeModel:
         id: int,
         offset: Optional[Tuple[float, float, float]] = ...,
         placement: Optional[int] = ...,
-        openings: bool = ...,
-        fillings: bool = ...,
-        container: bool = ...,
-        aggregate: bool = ...,
+        skip: List[str] = ...,
         dry_run: bool = ...,
     ) -> Dict[str, Any]: ...
     def append(
@@ -138,6 +144,14 @@ class NativeModel:
         ids: List[int],
         global_ids: str = ...,
         reuse: List[str] = ...,
+        dry_run: bool = ...,
+    ) -> Dict[str, Any]: ...
+    def convert_unit_value(self, value: float, from_: int, to: int) -> float: ...
+    def convert_length_unit(
+        self,
+        target: str,
+        area_and_volume: bool = ...,
+        remove_replaced_units: bool = ...,
         dry_run: bool = ...,
     ) -> Dict[str, Any]: ...
     def export_table(

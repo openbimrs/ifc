@@ -14,6 +14,7 @@ mod edits;
 mod error;
 mod model;
 mod records;
+mod units;
 
 use pyo3::prelude::*;
 
@@ -49,6 +50,7 @@ fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(new_guid, module)?)?;
     module.add_function(wrap_pyfunction!(name_based_guid, module)?)?;
     module.add_function(wrap_pyfunction!(canonical_selector, module)?)?;
+    units::register(module)?;
     module.add(
         "SELECTOR_GRAMMAR_VERSION",
         openbim_ifc_binding_core::SELECTOR_GRAMMAR_VERSION,

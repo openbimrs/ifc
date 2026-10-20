@@ -1120,6 +1120,63 @@ test("append merges, regenerates and refuses with stable codes", () => {
   throwsCode(() => cascade("cascade_ifc2x3.ifc").append(source, [111n], { globalIds: "regenerate" }), "unsupported-schema");
 });
 
+// --- Units (#469) -------------------------------------------------------------
+
+const MILLIMETRES = new TextEncoder().encode(`ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION((''),'2;1');
+FILE_NAME('','',(''),(''),'','','');
+FILE_SCHEMA(('IFC4'));
+ENDSEC;
+DATA;
+#1=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);
+#2=IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.);
+#3=IFCMONETARYUNIT('EUR');
+#4=IFCUNITASSIGNMENT((#1,#2,#3));
+#5=IFCPROJECT('0000000000000000000005',$,'P',$,$,$,$,(#6),#4);
+#6=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,0.01,#7,$);
+#7=IFCAXIS2PLACEMENT3D(#8,$,$);
+#8=IFCCARTESIANPOINT((1000.,2500.,0.));
+ENDSEC;
+END-ISO-10303-21;
+`);
+
+test("convertUnit and formatLength, with stable refusal codes", () => {
+  assert.equal(IfcModel.convertUnit(1, "foot", "MILLIMETRE"), 304.8);
+  assert.equal(IfcModel.convertUnit(1500, "MILLI METRE", "METRE"), 1.5);
+  throwsCode(() => IfcModel.convertUnit(1, "METRE", "SQUARE_METRE"), "type-mismatch");
+  throwsCode(() => IfcModel.convertUnit(1, "furlong", "METRE"), "invalid-value");
+  throwsCode(() => IfcModel.convertUnit(1, "degree Fahrenheit", "KELVIN"), "unsupported");
+  assert.equal(IfcModel.formatLength(1250, "MILLIMETRE", { displayUnit: "METRE" }), "1.25");
+  assert.equal(IfcModel.formatLength(66.5, "inch", { style: "inches", places: 2 }), '66 1/2"');
+  throwsCode(() => IfcModel.formatLength(1, "METRE", { style: "roman" }), "invalid-value");
+});
+
+test("convertLengthUnit reports, applies and refuses", () => {
+  const model = IfcModel.parse(MILLIMETRES);
+  assert.equal(model.convertUnitValue(2, 1n, 1n), 2);
+  throwsCode(() => model.convertUnitValue(1, 3n, 1n), "unsupported");
+  throwsCode(() => model.convertUnitValue(1, 99n, 1n), "missing-entity");
+  const dry = model.convertLengthUnit("METRE", { dryRun: true });
+  assert.equal(dry.applied, false);
+  assert.deepEqual(dry.removed, [1n]);
+  const report = model.convertLengthUnit("METRE");
+  assert.equal(report.applied, true);
+  assert.equal(report.from, "MILLI METRE");
+  assert.equal(report.lengthFactor, 0.001);
+  assert.equal(report.areaFactor, 1);
+  assert.deepEqual(
+    report.converted.find((c) => c.entityType === "IFCCARTESIANPOINT"),
+    { entityType: "IFCCARTESIANPOINT", attribute: "Coordinates", kind: "length", entities: 1, values: 3 },
+  );
+  assert.deepEqual(
+    model.attribute(8n, 0).items.map((item) => item.value),
+    [1, 2.5, 0],
+  );
+  throwsCode(() => model.convertLengthUnit("SQUARE_METRE"), "invalid-value");
+  throwsCode(() => model.convertLengthUnit("METRE", { dryRun: "yes" }), "invalid-value");
+});
+
 // --- Selectors and values by path (#464) ------------------------------------
 
 const SELECTOR_RELEASES = ["selector_ifc2x3.ifc", "selector_ifc4.ifc", "selector_ifc4x3.ifc"];

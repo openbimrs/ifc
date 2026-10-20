@@ -18,11 +18,39 @@ a release here does not imply a release of any other crate in the family.
   `OPENBIM_IFC_COPY_*`, `OPENBIM_IFC_APPEND_*`, modes
   `OPENBIM_IFC_GLOBAL_IDS_*`. The batch tape takes `COPY_PRODUCT` and
   `COPY_ENTITY`. The header is regenerated.
-- ABI version 0.1.19 (on top of #474's 0.1.18); every export above is new,
+- ABI version 0.1.20 (on top of #469's 0.1.19); every export above is new,
   no `v0_1` symbol changed.
 
 Semver: additive, released on the 0.1 line: the `v0_1` ABI only gains
 symbols, and the C package keeps 0.1.x.
+
+### Added (#469)
+
+- Unit conversion, ABI version 0.1.18. `openbim_ifc_v0_1_convert_unit`
+  converts a value between two units named as text (an SI unit with its
+  prefix, `MILLIMETRE`, `MILLI METRE`, `SQUARE_MILLIMETRE`; or a named
+  conversion-based unit of IFC4 Table 673 with exact factors, `foot`,
+  `inch`, `square foot` ...), needing no model;
+  `openbim_ifc_v0_1_model_convert_unit_value` converts between two unit
+  entities of a model; `openbim_ifc_v0_1_format_length` writes a length as
+  decimal text or as feet and inches with fractions
+  (`OPENBIM_IFC_LENGTH_FORMAT_*`). Units of different dimensions are
+  `TypeMismatch`; monetary, context-dependent and offset units (degree
+  Fahrenheit, `IfcConversionBasedUnitWithOffset`, pending #110) are
+  `Unsupported`.
+- `openbim_ifc_v0_1_model_convert_length_unit` converts a model's length
+  unit, rescaling every length, area and volume value as one checked
+  transaction, and answers a `LengthUnitReport` tape (from, to, factors,
+  new unit ids, converted and kept attributes, created and removed ids,
+  applied). Flags `OPENBIM_IFC_LENGTH_UNIT_KEEP_AREA_AND_VOLUME`,
+  `_KEEP_REPLACED_UNITS`, `_DRY_RUN`. A size query or a short buffer plans
+  without applying; the plan lists the ids the commit creates, so the
+  applied report has its size. Values the
+  conversion cannot carry are `Unsupported`, each named in the last error.
+  Header regenerated.
+
+Semver: minor in ABI terms (new `v0_1` symbols, none changed), released on
+the 0.1 line.
 
 ### Added (#474, tables)
 

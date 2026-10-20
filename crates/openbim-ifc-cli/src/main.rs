@@ -29,12 +29,13 @@
 //! | `sarif` | SARIF 2.1.0 for `validate` and `lint` |
 //! | `output` | Writing a model: the format a path implies, edits beside or over the input |
 //! | `report` | The changes and refusals of `edit` and `import-table` |
-//! | `validate`, `convert`, `info`, `psets`, `tree`, `lint`, `select`, `edit` | One command each |
+//! | `validate`, `convert`, `info`, `psets`, `tree`, `lint`, `select`, `edit`, `convert_units` | One command each |
 //! | `relations`, `materials`, `cost`, `schedule` | One read-only view each |
 //! | `table` | `export-table` and `import-table` |
 
 mod cli;
 mod convert;
+mod convert_units;
 mod cost;
 mod edit;
 mod error;
@@ -71,6 +72,7 @@ fn main() -> ExitCode {
         cli::Command::Tree(args) => tree::run(&args, &mut out),
         cli::Command::Lint(args) => lint::run(&args, &mut out),
         cli::Command::Select(args) => select::run(&args, &mut out),
+        cli::Command::ConvertUnits(args) => convert_units::run(&args, &mut out),
         cli::Command::Edit(args) => edit::run(&args, &mut out),
         cli::Command::ExportTable(args) => table::run_export(&args, &mut out),
         cli::Command::ImportTable(args) => table::run_import(&args, &mut out),
