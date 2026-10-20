@@ -67,6 +67,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `systems` |  | [`ifc-systems`](./ifc-systems): Distribution systems, ports, and connectivity between elements. |
 | `tabular` |  | [`ifc-tabular`](./ifc-tabular): Structured IFC value containers indexed by position or time. |
 | `validate` |  | [`ifc-validate`](./ifc-validate): Schema conformance: WHERE rules, cardinality, GUID and reference integrity. |
+| `validate-express` |  | Validation (`validate`) with the EXPRESS rule evaluator (`ifc::validate::express`): every WHERE rule, type rule and global rule of a release, evaluated from the `.exp` text the caller supplies (#461). |
 | `zip` |  | ifcZIP (`ifc::ifczip`, `ifc::ifczip::IfcZipCodec`): read an archive holding one STEP or ifcXML model within a decompression budget, and write one; Stored and Deflate only, through the pure-Rust `zip` and `flate2` (miniz_oxide) crates. |
 
 ## Depends on
