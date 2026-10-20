@@ -799,6 +799,38 @@ public sealed unsafe class IfcModel : IDisposable
         }).One());
     }
 
+    /// <summary>Convert the model's length unit to <paramref name="target"/> (#469): an SI <c>METRE</c> with any prefix (<c>MILLIMETRE</c>, <c>MILLI METRE</c>) or <c>inch</c>, <c>foot</c>, <c>yard</c>, <c>mile</c>, <c>US survey foot</c>. Every length, area and volume value the release declares as one is rescaled, as one checked transaction; values with a unit of their own keep it. With <paramref name="dryRun"/> nothing changes.</summary>
+    /// <param name="target">The new length unit.</param>
+    /// <param name="areaAndVolume">Replace the area and volume units by the square and cube of the new length unit, rescaling their values.</param>
+    /// <param name="removeReplacedUnits">Remove the replaced unit entities when nothing else refers to them.</param>
+    /// <param name="dryRun">Report only.</param>
+    /// <returns>What was rescaled, kept, created and removed.</returns>
+    /// <exception cref="IfcException"><c>invalid-value</c> for a target that is not a length unit; <c>unsupported</c> naming the values the conversion cannot carry (a parameter on a curve whose parameter space IFC leaves undefined, a p-curve off a plane, polynomial coefficients) or an offset unit (#110); <c>invalid-model</c> when the project length unit does not resolve.</exception>
+    public LengthUnitReport ConvertLengthUnit(string target, bool areaAndVolume = true, bool removeReplacedUnits = true, bool dryRun = false)
+    {
+        uint flags = (areaAndVolume ? 0u : 1u) | (removeReplacedUnits ? 0u : 2u) | (dryRun ? 4u : 0u);
+        var bytes = Calls.Encode(target);
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return RecordDecoder.Decode<LengthUnitReport>(Tape(m, (n, nc, nr, s, sc, sr) =>
+        {
+            fixed (byte* t = bytes)
+            {
+                return NativeMethods.openbim_ifc_v0_1_model_convert_length_unit(m, t, (nuint)bytes.Length, flags, n, nc, nr, s, sc, sr);
+            }
+        }).One());
+    }
+
+    /// <summary>Convert <paramref name="value"/> from unit entity <paramref name="from"/> to unit entity <paramref name="to"/> of this model (an <c>IfcSIUnit</c>, <c>IfcConversionBasedUnit</c> or <c>IfcDerivedUnit</c>).</summary>
+    /// <exception cref="IfcException"><c>type-mismatch</c> for units of different dimensions; <c>unsupported</c> for a monetary, context-dependent or offset unit; <c>missing-entity</c>.</exception>
+    public double ConvertUnitValue(double value, ulong from, ulong to)
+    {
+        double converted = 0;
+        using var lease = handle.Acquire();
+        Calls.Check(lease.Model, NativeMethods.openbim_ifc_v0_1_model_convert_unit_value(lease.Model, value, from, to, &converted));
+        return converted;
+    }
+
     /// <summary>Remove shape representation <paramref name="id"/> with what only it uses (#481), as one checked transaction: taken off its product definition shape (which goes when left empty), representation map or shape aspects, then removed with its items down to what nothing else uses. Shared items, profiles, points and styles stay. With <paramref name="dryRun"/> nothing changes.</summary>
     /// <param name="id">The <c>IfcShapeModel</c>; <c>wrong-entity-type</c> otherwise, <c>still-referenced</c> for a representation map an <c>IfcMappedItem</c> still maps.</param>
     /// <param name="dryRun">Report only.</param>

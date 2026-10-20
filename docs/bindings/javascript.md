@@ -914,6 +914,32 @@ and the owner history with its actors stay unless asked (`includeRoots`,
 leaves references dangling. Use `removeWithRelationships(id)` for one
 entity or `removeProduct(id)` for a product.
 
+## Units and a model's length unit
+
+`IfcModel.convertUnit(value, from, to)` converts between units named as
+text: an SI unit with its prefix written before it (`"METRE"`,
+`"MILLIMETRE"`, `"MILLI METRE"`, `"SQUARE_MILLIMETRE"`, `"KILOGRAM"`) or a
+named unit of IFC4 Table 673 with its exact legal factor (`"inch"`,
+`"foot"`, `"square foot"`, `"gallon US"`, `"pound"` ...). Units of
+different dimensions throw `type-mismatch`; a unit with an offset (degree
+Fahrenheit) throws `unsupported` until #110 is settled.
+`model.convertUnitValue(value, from, to)` converts between two unit
+entities of the model. `IfcModel.formatLength(value, unit, { style,
+places, displayUnit, suppressZeroInches })` writes a length as decimal text
+or as feet and inches with fractions (`5' - 6 1/2"`).
+
+`model.convertLengthUnit(target, { areaAndVolume, removeReplacedUnits,
+dryRun })` assigns a new project length unit (an SI `METRE` with any
+prefix, or `"inch"`, `"foot"`, `"yard"`, `"mile"`, `"US survey foot"`) and
+rescales every length, area and volume value as one checked transaction;
+values with a unit of their own keep it. The `LengthUnitReport` lists what
+was rescaled (`converted`), what was kept and why (`kept`), the factors and
+the units written and removed; `dryRun` only reports. A value the
+conversion cannot carry refuses the whole conversion with `unsupported`,
+naming each. The
+[cookbook](/cookbook/javascript#convert-units-and-a-model-s-length-unit) has
+a recipe.
+
 ## Module size
 
 Size of the module after `wasm-bindgen` (0.2.128), without `wasm-opt`,

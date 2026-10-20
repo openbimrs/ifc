@@ -719,6 +719,56 @@ class IfcModel(ModelAccess):
         """
         return domains._from_wire(self._native.remove_representation(id, dry_run=dry_run))
 
+    def convert_unit_value(self, value: float, from_unit: int, to_unit: int) -> float:
+        """Convert ``value`` from unit entity ``from_unit`` to unit entity
+        ``to_unit`` of this model (an ``IfcSIUnit``,
+        ``IfcConversionBasedUnit`` or ``IfcDerivedUnit``), exactly: prefixes
+        convert by a power of ten, conversion-based units through their
+        factor, derived units by their exponents.
+
+        Raises ``type-mismatch`` for units of different dimensions,
+        ``unsupported`` for a monetary or context-dependent unit or one with
+        an offset (#110), and ``missing-entity`` for an id the model lacks.
+        """
+        return self._native.convert_unit_value(value, from_unit, to_unit)
+
+    def convert_length_unit(
+        self,
+        target: str,
+        *,
+        area_and_volume: bool = True,
+        remove_replaced_units: bool = True,
+        dry_run: bool = False,
+    ) -> "domains.LengthUnitReport":
+        """Convert the model's length unit to ``target`` (an SI ``METRE``
+        with any prefix, such as ``"MILLIMETRE"``, or ``"inch"``,
+        ``"foot"``, ``"yard"``, ``"mile"``, ``"US survey foot"``), rescaling
+        every length, area and volume value -- geometry, placements,
+        quantities and property values -- as one checked transaction.
+
+        Which values are lengths is read from the release's measure types;
+        values with a unit of their own keep it, and curve parameters that
+        are angles, knots or multiples stay. With ``area_and_volume`` the
+        area and volume units become the square and cube of the new length
+        unit; with ``dry_run`` nothing changes and the report says what
+        would.
+
+        Raises ``unsupported`` naming every value the conversion cannot
+        carry (a p-curve off a plane, a polynomial curve, a parameter on an
+        undefined parameter space), ``invalid-value`` for a target that is
+        not a length unit, ``invalid-model`` when the project length unit
+        cannot be resolved and ``unsupported-schema`` for a release other
+        than IFC2X3, IFC4 or IFC4X3. A refusal leaves the model unchanged.
+        """
+        return domains._from_wire(
+            self._native.convert_length_unit(
+                target,
+                area_and_volume=area_and_volume,
+                remove_replaced_units=remove_replaced_units,
+                dry_run=dry_run,
+            )
+        )
+
     def dangling_references(self) -> List[Tuple[int, int]]:
         """Every ``(from, to)`` pair where ``to`` does not exist."""
         return self._native.dangling_references()

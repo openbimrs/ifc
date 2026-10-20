@@ -24,6 +24,8 @@ from ._native import (
     SELECTOR_GRAMMAR_VERSION,
     IfcError,
     canonical_selector as _canonical_selector,
+    convert_unit as _convert_unit,
+    format_length as _format_length,
     name_based_guid as _name_based_guid,
     new_guid as _new_guid,
 )
@@ -48,6 +50,9 @@ from .domains import (
     AuthoringResult,
     KeptEntity,
     RemovalReport,
+    LengthUnitReport,
+    ConvertedValues,
+    KeptValues,
     RemovedEntity,
     TableChange,
     TableImport,
@@ -149,8 +154,44 @@ def canonical_selector(query: str) -> str:
     return _canonical_selector(query)
 
 
+def convert_unit(value: float, from_unit: str, to_unit: str) -> float:
+    """Convert ``value`` between two units named as text (#469): an SI unit
+    with its prefix written before it (``"METRE"``, ``"MILLIMETRE"``,
+    ``"MILLI METRE"``, ``"SQUARE_MILLIMETRE"``, ``"KILOGRAM"``) or a named
+    unit of IFC4 Table 673 with exact factors (``"inch"``, ``"foot"``,
+    ``"square foot"``, ``"gallon US"``, ``"pound"``, ``"degree"`` ...).
+
+    Raises ``type-mismatch`` for units of different dimensions,
+    ``invalid-value`` for text that names no unit, and ``unsupported`` for a
+    unit with an offset (degree Fahrenheit, #110)."""
+    return _convert_unit(value, from_unit, to_unit)
+
+
+def format_length(
+    value: float,
+    unit: str,
+    *,
+    style: str = "decimal",
+    places: _Optional[int] = None,
+    display_unit: _Optional[str] = None,
+    suppress_zero_inches: bool = False,
+) -> str:
+    """Write ``value``, a length in ``unit``, as text (#469).
+
+    ``style`` is ``"decimal"`` (in ``display_unit``, default ``unit``, with
+    ``places`` digits, default 2), ``"feet-inches"`` (``5' - 6 1/2"``,
+    rounded to ``1/places`` of an inch, default 8; with
+    ``suppress_zero_inches`` a whole foot is ``5'``) or ``"inches"``
+    (``66 1/2"``)."""
+    if places is None:
+        places = 2 if style == "decimal" else 8
+    return _format_length(value, unit, style, places, display_unit, suppress_zero_inches)
+
+
 __all__ = [
     "open",
+    "convert_unit",
+    "format_length",
     "new_guid",
     "name_based_guid",
     "canonical_selector",
@@ -174,6 +215,9 @@ __all__ = [
     "TableImport",
     "TableRefusal",
     "KeptEntity",
+    "LengthUnitReport",
+    "ConvertedValues",
+    "KeptValues",
     "HANDLE_BASE",
     "handle",
     "ParseOptions",

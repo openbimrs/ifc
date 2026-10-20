@@ -310,6 +310,30 @@ test("find entities by GlobalId, types, openings and fillings", () => {
   assert.equal(printed[5][0], IfcModel.nameBasedGuid(["my-exporter", "wall", "42"]));
 });
 
+test("convert units and a model's length unit", () => {
+  const model = IfcModel.parse(readFileSync(GEOMETRY));
+  const printed = [];
+  const log = (...values) => printed.push(values);
+  // docs:snippet cookbook-js-convert-units
+  // Between units named as text: exact factors, checked dimensions.
+  log(IfcModel.convertUnit(1, "foot", "MILLIMETRE")); // 304.8
+  log(IfcModel.formatLength(444.5, "MILLIMETRE", { style: "feet-inches" }));
+  // 1' - 5 1/2"
+
+  // The whole model to metres: geometry, quantities and properties, as one
+  // checked transaction. A dry run only reports.
+  const dry = model.convertLengthUnit("METRE", { dryRun: true });
+  log(dry.from, dry.to, dry.lengthFactor); // "MILLI METRE" "METRE" 0.001
+  const report = model.convertLengthUnit("METRE");
+  log(report.applied); // true
+  for (const kept of report.kept) log(kept.entityType, kept.attribute, kept.reason);
+  // docs:end
+  assert.deepEqual(printed[0], [304.8]);
+  assert.deepEqual(printed[1], ["1' - 5 1/2\""]);
+  assert.deepEqual(printed[2], ["MILLI METRE", "METRE", 0.001]);
+  assert.deepEqual(printed[3], [true]);
+});
+
 test("remove a product with what it owns, then purge", () => {
   const model = IfcModel.parse(readFileSync(CASCADE));
   const printed = [];

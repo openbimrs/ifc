@@ -76,6 +76,7 @@ fn csharp_type(c_param: &str) -> String {
         "OpenbimIfcModel" | "OpenbimIfcMeshes" | "OpenbimIfcCurves" | "OpenbimIfcGraphs"
         | "uint64_t" => "ulong",
         "float" => "float",
+        "double" => "double",
         "size_t" => "nuint",
         "uint32_t" => "uint",
         "uint8_t" => "byte",

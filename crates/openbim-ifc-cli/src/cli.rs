@@ -46,6 +46,9 @@ pub(crate) enum Command {
     Lint(LintArgs),
     /// List the entities a selector selects, with values read by path.
     Select(SelectArgs),
+    /// Convert the model's length unit, rescaling every length, area and
+    /// volume, and write it as STEP.
+    ConvertUnits(ConvertUnitsArgs),
     /// Set values by path on the entities a selector selects, as one
     /// checked transaction, into a new file (exit 3 on a refusal).
     Edit(EditArgs),
@@ -274,6 +277,37 @@ pub(crate) struct SelectArgs {
     pub(crate) format: TableFormat,
     #[command(flatten)]
     pub(crate) input: InputArgs,
+}
+
+/// `convert-units`.
+#[derive(Debug, Args)]
+pub(crate) struct ConvertUnitsArgs {
+    /// The file to read.
+    pub(crate) input: PathBuf,
+    /// The STEP file to write, or `-` for standard output.
+    pub(crate) output: PathBuf,
+    /// The new length unit: `METRE`, `MILLIMETRE`, `CENTIMETRE` (any SI
+    /// prefix), `inch`, `foot`, `yard`, `mile` or `US survey foot`.
+    #[arg(long, value_name = "UNIT")]
+    pub(crate) unit: String,
+    /// Keep the area and volume units (and their values) instead of
+    /// replacing them by the square and cube of the new length unit.
+    #[arg(long)]
+    pub(crate) keep_area_volume: bool,
+    /// Keep replaced unit entities nothing else uses.
+    #[arg(long)]
+    pub(crate) keep_replaced_units: bool,
+    /// Report what would change and write nothing.
+    #[arg(long)]
+    pub(crate) dry_run: bool,
+    /// Report format, on standard error (standard output for a dry run).
+    #[arg(long, value_enum, default_value_t = TextFormat::Human)]
+    pub(crate) format: TextFormat,
+    /// Replace an existing output file.
+    #[arg(long)]
+    pub(crate) force: bool,
+    #[command(flatten)]
+    pub(crate) input_options: InputArgs,
 }
 
 /// Where an edited model is written.

@@ -58,6 +58,7 @@ mod selector;
 mod status;
 mod table;
 pub mod tape;
+mod units;
 mod xml;
 
 pub use attributes::*;
@@ -81,6 +82,7 @@ pub use selector::*;
 pub use status::{OpenbimIfcStatus, OpenbimIfcVersion};
 pub use table::*;
 pub use tape::OpenbimIfcValueNode;
+pub use units::*;
 pub use xml::*;
 
 /// Opt-in allocator (feature `rusty_alloc`, off by default). It only covers
@@ -109,6 +111,8 @@ mod removal_tests;
 mod selector_tests;
 #[cfg(test)]
 mod table_tests;
+#[cfg(test)]
+mod units_tests;
 
 #[cfg(feature = "rusty_alloc")]
 #[global_allocator]
