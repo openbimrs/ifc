@@ -966,7 +966,7 @@ angle units differ are refused with `unsupported`: convert one with
 In a batch, the `copy_product` and `copy_entity` operations do the same (the copy is the operation's
 produced entity), and a low-level deep copy follows an entity's references
 by an explicit policy: classes always copied, classes always shared, and
-whether other `IfcRoot`s and definitions are copied (by default shared).
+whether other `IfcRoot`s and definitions are copied (by default shared). These exports make the ABI version 0.1.21.
 
 ## Units and the model's length unit
 

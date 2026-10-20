@@ -18,7 +18,7 @@ a release here does not imply a release of any other crate in the family.
   `OPENBIM_IFC_COPY_*`, `OPENBIM_IFC_APPEND_*`, modes
   `OPENBIM_IFC_GLOBAL_IDS_*`. The batch tape takes `COPY_PRODUCT` and
   `COPY_ENTITY`. The header is regenerated.
-- ABI version 0.1.20 (on top of #469's 0.1.19); every export above is new,
+- ABI version 0.1.21 (on top of #532's 0.1.20); every export above is new,
   no `v0_1` symbol changed.
 
 Semver: additive, released on the 0.1 line: the `v0_1` ABI only gains

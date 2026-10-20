@@ -15,7 +15,7 @@ a release here does not imply a release of any other crate in the family.
   container, aggregate, dryRun)` and `IfcModel.Append(source, ids,
   globalIds, reuse, dryRun)`, returning a `CopyReport` (`CopiedEntity`
   records); `GlobalIdMode`, `ReuseKinds`; `AuthorOp.CopyProduct` and
-  `AuthorOp.CopyEntity`.
+  `AuthorOp.CopyEntity`. Needs the C library with ABI 0.1.21.
 
 Semver: additive: minor.
 
