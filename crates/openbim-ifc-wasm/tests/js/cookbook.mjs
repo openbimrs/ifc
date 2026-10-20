@@ -477,3 +477,30 @@ test("select entities and read values by path", () => {
   assert.deepEqual(printed[3], ["invalid-selector", [9, 15]]);
   assert.deepEqual(model.getValue(18n, "type.Name"), { kind: "text", value: "WT-300" });
 });
+
+test("export a table and import it back", () => {
+  const model = IfcModel.parse(readFileSync(SELECTOR));
+  const printed = [];
+  const log = (...values) => printed.push(values);
+  // docs:snippet cookbook-js-tables
+  const csv = model.exportTable("IfcWall", ["Name", "type.Name"], { key: "id" }); // a Uint8Array
+  const text = new TextDecoder().decode(csv);
+  log(text.split("\r\n")[1]); // "17,Wall A,WT-200"
+
+  // Edit the table, then plan the import: a dry run lists every change.
+  const edited = new TextEncoder().encode(text.replace("17,Wall A,", "17,Wall A1,"));
+  for (const change of model.importTable(edited, { dryRun: true }).changes) {
+    log(change.row, change.path, change.before, change.after); // 2 "Name" "Wall A" "Wall A1"
+  }
+  log(model.importTable(edited).applied); // true: one checked transaction
+
+  // A refused cell refuses the whole table, by row and column.
+  const bad = new TextEncoder().encode("id,Name\n99,Ghost\n");
+  log(model.importTable(bad).refusals.map((r) => [r.row, r.column, r.code])); // [[2, 1, "unknown-key"]]
+  // docs:end
+  assert.deepEqual(printed[0], ["17,Wall A,WT-200"]);
+  assert.deepEqual(printed[1], [2, "Name", "Wall A", "Wall A1"]);
+  assert.deepEqual(printed[2], [true]);
+  assert.deepEqual(printed[3], [[[2, 1, "unknown-key"]]]);
+  assert.deepEqual(model.getValue(17n, "Name"), { kind: "text", value: "Wall A1" });
+});

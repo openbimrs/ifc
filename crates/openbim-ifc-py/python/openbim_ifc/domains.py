@@ -911,6 +911,62 @@ class RemovalReport:
     applied: bool
 
 
+@dataclass(frozen=True)
+class TableChange:
+    """One value :meth:`IfcModel.import_table` changes (#474).
+
+    ``row`` and ``column`` are one-based, the header being row 1; ``key``
+    is the row's key and ``path`` the column's value path. ``entity`` is
+    the row's entity and ``target_entity`` the one written, which a path
+    such as ``type.Name`` finds elsewhere; ``target`` is the attribute
+    name or ``Set.Property`` written. ``before`` and ``after`` are cell
+    text.
+    """
+
+    row: int
+    column: int
+    key: str
+    path: str
+    entity: int
+    target_entity: int
+    target: str
+    before: str
+    after: str
+
+
+@dataclass(frozen=True)
+class TableRefusal:
+    """One refused table, row or cell of :meth:`IfcModel.import_table`.
+
+    ``row`` and ``column`` are one-based and ``None`` for the whole table
+    or row. ``code`` is ``malformed-table``, ``invalid-header``,
+    ``duplicate-column``, ``no-key-column``, ``ragged-row``,
+    ``empty-key``, ``unknown-key``, ``duplicate-key``, ``ambiguous-key``,
+    or the error code of a refused write (``type-mismatch``,
+    ``invalid-value``, ...). ``span`` is the byte range of a header that
+    does not parse.
+    """
+
+    row: Optional[int]
+    column: Optional[int]
+    code: str
+    message: str
+    span: Optional[Tuple[int, int]]
+
+
+@dataclass(frozen=True)
+class TableImport:
+    """What :meth:`IfcModel.import_table` planned, and whether it wrote it.
+
+    Any refusal means nothing was written; ``applied`` is false then, for a
+    dry run, and for a table that changes nothing.
+    """
+
+    applied: bool
+    changes: Tuple[TableChange, ...]
+    refusals: Tuple[TableRefusal, ...]
+
+
 _RECORDS = {
     cls.__name__: cls
     for cls in (
@@ -955,6 +1011,9 @@ _RECORDS = {
         RemovedEntity,
         KeptEntity,
         RemovalReport,
+        TableChange,
+        TableRefusal,
+        TableImport,
     )
 }
 
