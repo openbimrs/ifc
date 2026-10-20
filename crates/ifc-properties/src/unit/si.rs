@@ -134,6 +134,16 @@ pub(crate) fn si_to_base(prefix_exponent: i32, name: &str) -> (f64, f64) {
     (scale, offset)
 }
 
+/// The power of ten [`si_to_base`]'s scale is: the prefix raised to the
+/// name's power, less three for the gram. The scale is exactly
+/// `10^si_decimal_exponent`, kept as an integer so that conversions between
+/// prefixed units shift by an exact power of ten (#469).
+pub(crate) fn si_decimal_exponent(prefix_exponent: i32, name: &str) -> i32 {
+    let upper = name.to_ascii_uppercase();
+    let base_exponent = if upper == "GRAM" { -3 } else { 0 };
+    prefix_exponent * name_power(&upper) + base_exponent
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -347,6 +347,19 @@ mod georeference;
 #[cfg(all(feature = "georef", feature = "properties"))]
 pub use georeference::{georeferencing, GeoreferencingError};
 
+// Converting a model's length unit (#469) reads every attribute against the
+// release's table, resolves units through `ifc-properties`' exact resolver,
+// and rescales geometry, quantities and properties alike, across domains, so
+// it lives in this orchestration layer. The module gates itself on
+// `properties` with an inner `#![cfg]`.
+mod length_unit;
+#[cfg(feature = "properties")]
+pub use length_unit::{
+    convert_length_unit, stage_length_unit_conversion, ConvertedAttribute, ConvertedKind,
+    KeptAttribute, KeptReason, LengthUnitError, LengthUnitOptions, LengthUnitRefusal,
+    LengthUnitReport, RefusalReason, StagedLengthUnitConversion,
+};
+
 // Writing property and quantity values (#123) joins the exact resolver and
 // release-bound writers of `ifc-properties` with the PSD/QTO catalog of
 // `ifc-template-catalog`, siblings under ADR 0003. The module gates itself

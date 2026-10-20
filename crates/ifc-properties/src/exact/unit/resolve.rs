@@ -22,7 +22,9 @@ use super::super::value::{select_accepts_entity, select_accepts_type, typed_payl
 use super::super::ExactPropertyError;
 use super::ExactUnitError;
 use crate::unit::prefix_exponent;
-use crate::unit::si::{si_name_dimensions, si_to_base, unit_enum_dimensions, Dimensions};
+use crate::unit::si::{
+    si_decimal_exponent, si_name_dimensions, si_to_base, unit_enum_dimensions, Dimensions,
+};
 
 const NAMED_DIMENSIONS: usize = 0;
 const NAMED_UNIT_TYPE: usize = 1;
@@ -37,21 +39,26 @@ const ELEMENT_UNIT: usize = 0;
 const ELEMENT_EXPONENT: usize = 1;
 
 /// A unit converted to SI base units.
-pub(super) struct Resolved {
-    pub(super) unit_type: Arc<str>,
-    pub(super) dimensions: Dimensions,
-    pub(super) scale: f64,
-    pub(super) offset: f64,
+pub(crate) struct Resolved {
+    pub(crate) unit_type: Arc<str>,
+    pub(crate) dimensions: Dimensions,
+    pub(crate) scale: f64,
+    pub(crate) offset: f64,
+    /// `scale` split as `mantissa * 10^decimal_exponent`, so that two
+    /// units differing only by SI prefixes convert by an exact power of ten
+    /// (#469).
+    pub(crate) mantissa: f64,
+    pub(crate) decimal_exponent: i32,
 }
 
-pub(super) struct Resolver<'m> {
+pub(crate) struct Resolver<'m> {
     model: &'m Model,
     release: Release,
     chain: Vec<EntityId>,
 }
 
 impl<'m> Resolver<'m> {
-    pub(super) fn new(model: &'m Model, release: Release) -> Self {
+    pub(crate) fn new(model: &'m Model, release: Release) -> Self {
         Self {
             model,
             release,
@@ -59,7 +66,7 @@ impl<'m> Resolver<'m> {
         }
     }
 
-    pub(super) fn resolve(&mut self, unit: EntityId) -> Result<Resolved, ExactUnitError> {
+    pub(crate) fn resolve(&mut self, unit: EntityId) -> Result<Resolved, ExactUnitError> {
         self.resolve_from(unit, unit)
     }
 
@@ -132,6 +139,8 @@ impl<'m> Resolver<'m> {
             dimensions,
             scale,
             offset,
+            mantissa: 1.0,
+            decimal_exponent: si_decimal_exponent(exponent, name),
         })
     }
 
@@ -174,6 +183,8 @@ impl<'m> Resolver<'m> {
             dimensions: declared,
             scale: factor * inner.scale,
             offset: 0.0,
+            mantissa: factor * inner.mantissa,
+            decimal_exponent: inner.decimal_exponent,
         })
     }
 
@@ -187,6 +198,8 @@ impl<'m> Resolver<'m> {
         )?;
         let mut dimensions = [0; 7];
         let mut scale = 1.0;
+        let mut mantissa = 1.0;
+        let mut decimal_exponent = 0;
         for element in nonempty_refs_at(unit, entity.attributes.get(DERIVED_ELEMENTS), "Elements")?
         {
             let element_entity = self.record(unit, element)?;
@@ -206,12 +219,16 @@ impl<'m> Resolver<'m> {
                 *total += exponent * part;
             }
             scale *= inner.scale.powi(exponent);
+            mantissa *= inner.mantissa.powi(exponent);
+            decimal_exponent += inner.decimal_exponent * exponent;
         }
         Ok(Resolved {
             unit_type,
             dimensions,
             scale,
             offset: 0.0,
+            mantissa,
+            decimal_exponent,
         })
     }
 
