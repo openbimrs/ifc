@@ -32,13 +32,25 @@
 //! Since `axiolid-mesh-compile` 0.3.28 the kernel trims a line, circle or
 //! ellipse edge curve at its vertices (axiolid/kernel#319; #509): a seam
 //! `IfcLine` with a unit vector and half-circle rim edges, along and
-//! against their circles (`split_rim_cylinder`), compile. A B-spline or
-//! polyline edge curve must still run from vertex to vertex (#525).
+//! against their circles (`split_rim_cylinder`), compile. Since 0.3.30 it
+//! trims B-spline edge curves at their vertices by certified projection and
+//! polyline edge curves exactly (axiolid/kernel#333; #525; `partial_edges`),
+//! and refuses a vertex off its curve by name.
+//!
+//! Since 0.3.30 an edge is sampled once, before its faces, from the
+//! strictest face using it (axiolid/kernel#336; #528), so a planar face and
+//! a cylindrical face sharing straight rulings close: the D-shaped half
+//! cylinder (`half_cylinder`) is watertight.
 //!
 //! The kernel's refusals of 3D-bounded faces it cannot parametrise reach
 //! the caller as `GeometryError::CompilationRefused`, naming the reason.
 
 #![cfg(feature = "compile-reference-backend")]
+
+#[path = "advanced_brep_3d_edges_compile/half_cylinder.rs"]
+mod half_cylinder;
+#[path = "advanced_brep_3d_edges_compile/partial_edges.rs"]
+mod partial_edges;
 
 use std::f64::consts::PI;
 use std::path::PathBuf;
@@ -302,7 +314,8 @@ fn a_unit_vector_seam_line_is_trimmed_at_its_vertices() {
 /// `i` (bottom `y >= 0`, bottom `y <= 0`, top `y <= 0`, top `y >= 0`)
 /// against its circle (`SameSense = .F.`, its vertices exchanged), its
 /// oriented edges flipped to match, so the solid is the same either way.
-/// `seam` is the seam's `EdgeGeometry`, record `#43`, from `A` up.
+/// `seam` holds the seam's `EdgeGeometry`, record `#43`, and its edge,
+/// record `#54` from `A` up (and any points they add, from `#90`).
 fn split_rim_cylinder(schema: &str, against: [bool; 4], seam: &str) -> Model {
     let flag = |b: bool| if b { ".T." } else { ".F." };
     // Each half's (start, end) in the circle's sense, and the direction the
@@ -365,8 +378,7 @@ DATA;
 #41=IFCCIRCLE(#17,1.);
 #42=IFCVECTOR(#10,1.);
 {seam}
-{edges}#54=IFCEDGECURVE(#34,#36,#43,.T.);
-#60=IFCORIENTEDEDGE(*,*,#50,{s0});
+{edges}#60=IFCORIENTEDEDGE(*,*,#50,{s0});
 #61=IFCORIENTEDEDGE(*,*,#51,{s1});
 #62=IFCORIENTEDEDGE(*,*,#54,.T.);
 #63=IFCORIENTEDEDGE(*,*,#52,{s2});
@@ -407,7 +419,7 @@ END-ISO-10303-21;
 }
 
 /// The seam as an `IfcLine` from `A` with a unit vector.
-const SEAM_LINE: &str = "#43=IFCLINE(#30,#42);";
+const SEAM_LINE: &str = "#43=IFCLINE(#30,#42);\n#54=IFCEDGECURVE(#34,#36,#43,.T.);\n";
 
 /// The split-rim cylinder compiles to `pi r^2 h` with its half-circle rim
 /// edges authored along and against their circles (#509). The kernel trims
@@ -441,39 +453,6 @@ fn half_circle_edges_compile_along_and_against_their_circles() {
             let report = report(&model, "SPLIT");
             assert!(report.meets_requested(), "{what}: {report:?}");
             assert_eq!(report.unbounded().count(), 0, "{what}: {report:?}");
-        }
-    }
-}
-
-/// The seam as a B-spline or a polyline from `(1, 0, -1)`, a metre below
-/// its start vertex `A`, to the top vertex. The kernel trims only lines,
-/// circles and ellipses at their vertices; any other family must already
-/// run from vertex to vertex, so this is refused by name, never meshed
-/// past its vertex.
-//
-// TODO(#525): compiles once the kernel trims B-spline and polyline edge
-// curves at their vertices (axiolid/kernel#333).
-#[test]
-fn a_bspline_or_polyline_edge_past_its_vertex_is_refused_by_name() {
-    for seam in [
-        "#43=IFCBSPLINECURVEWITHKNOTS(1,(#38,#32),.POLYLINE_FORM.,.F.,.F.,(2,2),(0.,1.),.UNSPECIFIED.);",
-        "#43=IFCPOLYLINE((#38,#32));",
-    ] {
-        for schema in ["IFC4", "IFC4X3"] {
-            let model = split_rim_cylinder(schema, [false; 4], seam);
-            let id = product(&model, "SPLIT");
-            let error = compile_product_mesh(&model, id, Tolerance::MILLIMETRE)
-                .expect_err("the seam runs past its vertex");
-            match error {
-                GeometryError::CompilationRefused { entity, reason } => {
-                    assert_eq!(entity, id);
-                    assert!(
-                        reason.contains("neither runs its whole domain from the edge's start vertex"),
-                        "{schema}, {seam}: {reason}"
-                    );
-                }
-                other => panic!("{schema}, {seam}: expected CompilationRefused, got {other:?}"),
-            }
         }
     }
 }

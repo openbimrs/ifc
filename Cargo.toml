@@ -138,8 +138,10 @@ axiolid-curve = { version = "0.3.9" }
 axiolid-evaluate = { version = "0.3.17" }
 axiolid-curve-evaluate-contract = { version = "0.3.7" }
 # Dev-only: the exact volume of a compiled body, to check an arc-bounded
-# half-space clip against its closed form (#398).
-axiolid-measure = { version = "0.3.10" }
+# half-space clip against its closed form (#398). 0.3.11 sums volumes and
+# second moments about a local point, not the world origin, so they hold at
+# georeferenced coordinates (axiolid/kernel#343; #539).
+axiolid-measure = { version = "0.3.11" }
 axiolid-topology = { version = "0.3.0" }
 # Execution provider. Only ifc-geometry's opt-in `compile` feature may use
 # these; the default dependency graph stays representation-only (ADR 0004).
@@ -195,7 +197,14 @@ axiolid-contracts = { version = "0.3.1" }
 # with `axiolid-brep-boolean` 0.1.11). 0.3.29 is a packaging fix: it
 # requires `axiolid-reference` 0.3.9, which states the `axiolid-evaluate`
 # ^0.3.17 it needs (0.3.8 claimed ^0.3.12); no behaviour of ours changes.
-axiolid-mesh-compile = { version = "0.3.29" }
+# 0.3.30 trims B-spline edge curves at their vertices by certified
+# projection and polyline edge curves exactly, refusing off-curve or
+# ambiguous vertices by name (axiolid/kernel#333; #525), and samples an
+# edge before its faces, from the strictest face using it, so planar and
+# curved faces sharing a straight edge close (axiolid/kernel#336; #528).
+# 0.3.31 reports a faceted face without a surface whose corners are not
+# exactly coplanar with its slab width instead of 0.
+axiolid-mesh-compile = { version = "0.3.31" }
 axiolid-mesh-compile-contract = { version = "0.3.4" }
 # 0.3.5: batch booleans keep their memory budget (axiolid/kernel#259).
 # 0.3.6: a boolean whose result outgrows its operands keeps its memory
@@ -213,8 +222,11 @@ axiolid-mesh-boolean-boolmesh = { version = "0.3.6" }
 # the prism of a bounded half space along its placement's Z, slabs sized
 # from the subject, outward-facing clockwise boundary rings and closed
 # scaled arc contours (axiolid/kernel#321, #322, #325; #515, #519), the
-# release `axiolid-mesh-compile` 0.3.27 is built with.
-axiolid-construct = { version = "0.3.19" }
+# release `axiolid-mesh-compile` 0.3.27 is built with. 0.3.20: a rectangle
+# corner radius over its limit by at most 4 ulps of the half-extent snaps to
+# the limit (axiolid/kernel#339), the release `axiolid-mesh-compile` 0.3.31
+# is built with.
+axiolid-construct = { version = "0.3.20" }
 
 # No default features: the default `runtime-rng` pulls getrandom 0.3, which
 # does not build on wasm32-unknown-unknown. Members opt into a seed source

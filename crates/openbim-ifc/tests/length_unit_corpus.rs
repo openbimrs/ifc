@@ -191,7 +191,12 @@ mod geometry {
     use super::*;
     use ifc::{product_meshes, ProductMesh};
 
-    /// World vertex positions in metres and the enclosed volume.
+    /// World vertex positions in metres and the enclosed volume. The
+    /// triple products are summed about the body's first vertex, not the
+    /// world origin: at georeferenced coordinates (`6e5` to `5.6e6` m) a sum
+    /// about the origin cancels catastrophically and its volume moves with
+    /// the last bit of the placement (#539; axiolid/kernel#343 fixed the
+    /// same in `axiolid_measure`).
     fn world(mesh: &ProductMesh) -> (Vec<[f64; 3]>, f64) {
         let points: Vec<[f64; 3]> = mesh
             .positions
@@ -201,57 +206,18 @@ mod geometry {
                     .apply([f64::from(p[0]), f64::from(p[1]), f64::from(p[2])])
             })
             .collect();
+        let Some(&origin) = points.first() else {
+            return (points, 0.0);
+        };
+        let local = |p: [f64; 3]| [p[0] - origin[0], p[1] - origin[1], p[2] - origin[2]];
         let mut volume = 0.0;
         for triangle in mesh.indices.chunks(3) {
-            let [a, b, c] = [0, 1, 2].map(|i| points[triangle[i] as usize]);
+            let [a, b, c] = [0, 1, 2].map(|i| local(points[triangle[i] as usize]));
             volume += (a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0])
                 + a[2] * (b[0] * c[1] - b[1] * c[0]))
                 / 6.0;
         }
         (points, volume)
-    }
-
-    /// The products whose mesh does not change when every point
-    /// coordinate moves by a relative 2e-16, about one rounding. A unit
-    /// conversion moves coordinates by that much; a body whose compiled
-    /// volume jumps under it cannot tell a correct conversion from a wrong
-    /// one, and is left out and counted. In the corpus these are booleans
-    /// with coplanar faces (`flush_openings_site_placements.ifc`, the walls
-    /// and windows of `issue_098_wall_W.ifc`, the openings of
-    /// `binding_geometry.ifc`), whose result the kernel decides by the
-    /// last bit; a millimetre-metre round trip meshes them identically.
-    fn stable_products(
-        model: &Model,
-        meshes: &[(ifc::EntityId, ifc::geometry::GeometryResult<ProductMesh>)],
-    ) -> std::collections::HashSet<ifc::EntityId> {
-        let mut perturbed = model.clone();
-        let points: Vec<_> = perturbed.ids_of_type("IFCCARTESIANPOINT").to_vec();
-        for id in points {
-            let Some(Value::List(coordinates)) = perturbed.get(id).map(|e| e.attributes[0].clone())
-            else {
-                continue;
-            };
-            let moved = coordinates
-                .iter()
-                .map(|value| match value {
-                    Value::Real(x) => Value::Real(x * (1.0 + 2e-16)),
-                    other => other.clone(),
-                })
-                .collect();
-            perturbed.set_attribute(id, 0, Value::List(moved));
-        }
-        let again = product_meshes(&perturbed, None);
-        meshes
-            .iter()
-            .zip(again)
-            .filter_map(|((product, a), (_, b))| match (a, b) {
-                (Ok(a), Ok(b)) => {
-                    let (va, vb) = (world(a).1, world(&b).1);
-                    ((va - vb).abs() <= 1e-6 * va.abs().max(1e-12)).then_some(*product)
-                }
-                _ => Some(*product),
-            })
-            .collect()
     }
 
     fn bounds(points: &[[f64; 3]]) -> ([f64; 3], [f64; 3]) {
@@ -271,7 +237,6 @@ mod geometry {
         let mut products = 0;
         let mut models: BTreeMap<String, usize> = BTreeMap::new();
         let mut total = (0.0, 0.0);
-        let mut unstable = 0;
         for (path, original) in convertible() {
             let mut model = original.clone();
             let target = ConversionUnit::parse("foot").unwrap();
@@ -282,7 +247,6 @@ mod geometry {
             let k = report.length.factor();
             let before = product_meshes(&original, None);
             let after = product_meshes(&model, None);
-            let stable = stable_products(&original, &before);
             assert_eq!(before.len(), after.len(), "{}", name(&path));
             for ((product, a), (_, b)) in before.iter().zip(&after) {
                 let (a, b) = match (a, b) {
@@ -303,10 +267,6 @@ mod geometry {
                 let (pb, vb) = world(b);
                 if pa.is_empty() || pb.is_empty() {
                     assert_eq!(pa.len(), pb.len(), "{}: #{}", name(&path), product.0);
-                    continue;
-                }
-                if !stable.contains(product) {
-                    unstable += 1;
                     continue;
                 }
                 // Tessellation may order or place arc vertices differently;
@@ -351,9 +311,9 @@ mod geometry {
         }
         eprintln!(
             "meshed products: {products}, models per release: {models:?}, total volume \
-             {total:?} m3, {unstable} ill-conditioned products skipped"
+             {total:?} m3"
         );
-        assert!(products >= 50, "{products} products compared");
+        assert!(products >= 181, "{products} products compared");
         for release in ["IFC2X3", "IFC4", "IFC4X3_ADD2"] {
             assert!(models.get(release).copied().unwrap_or(0) >= 3, "{models:?}");
         }
