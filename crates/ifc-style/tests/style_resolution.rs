@@ -631,3 +631,71 @@ fn text_font_and_texture_coordinates_are_required() {
         }) if target == wrong
     ));
 }
+
+/// `IfcFillStyleSelect` nests the `IfcColour` select (#514): a solid
+/// `IfcColourRgb` fill and an `IfcDraughtingPreDefinedColour` are read in
+/// every release, next to a hatching, and a non-colour member is still
+/// refused with the outer select named.
+#[test]
+fn fill_styles_resolve_the_nested_colour_select_in_every_release() {
+    for version in ifc_schema::SchemaVersion::ALL {
+        let schema = ifc_schema::for_version(version).expect("bundled");
+        let mut model = Model::new();
+        let rgb = model.push(Entity::new(
+            "IFCCOLOURRGB",
+            vec![text("Stahl"), real(0.85), real(0.2), real(0.2)],
+        ));
+        let predefined = model.push(Entity::new(
+            "IFCDRAUGHTINGPREDEFINEDCOLOUR",
+            vec![text("black")],
+        ));
+        let hatching = model.push(Entity::new("IFCFILLAREASTYLEHATCHING", vec![]));
+        let solid = model.push(Entity::new(
+            "IFCFILLAREASTYLE",
+            vec![
+                text("Stahl"),
+                Value::List(vec![Value::Ref(rgb)]),
+                Value::Bool(false),
+            ],
+        ));
+        let mixed = model.push(Entity::new(
+            "IFCFILLAREASTYLE",
+            vec![
+                Value::Null,
+                Value::List(vec![Value::Ref(predefined), Value::Ref(hatching)]),
+                Value::Null,
+            ],
+        ));
+        let wrong = model.push(Entity::new("IFCCARTESIANPOINT", vec![]));
+        let refused = model.push(Entity::new(
+            "IFCFILLAREASTYLE",
+            vec![
+                Value::Null,
+                Value::List(vec![Value::Ref(wrong)]),
+                Value::Null,
+            ],
+        ));
+        let view = StyleView::new(&model, schema);
+
+        let styles = view.fill_area_style(solid).unwrap().fill_styles();
+        assert_eq!(styles, Ok(vec![rgb]), "{version:?}");
+        let colour = view.colour_rgb(rgb).unwrap();
+        assert_eq!(colour.channels(), Ok([0.85, 0.2, 0.2]), "{version:?}");
+        assert_eq!(
+            view.fill_area_style(mixed).unwrap().fill_styles(),
+            Ok(vec![predefined, hatching]),
+            "{version:?}"
+        );
+        assert!(
+            matches!(
+                view.fill_area_style(refused).unwrap().fill_styles(),
+                Err(StyleError::ReferenceType {
+                    target,
+                    expected: "IfcFillStyleSelect",
+                    ..
+                }) if target == wrong
+            ),
+            "{version:?}"
+        );
+    }
+}
