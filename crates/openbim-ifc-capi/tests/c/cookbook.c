@@ -912,6 +912,52 @@ static int recipe_representation(OpenbimIfcModel model) {
   return 0;
 }
 
+static int recipe_length_unit(OpenbimIfcModel model) {
+  out_len = 0;
+  out[0] = 0;
+  // docs:snippet cookbook-c-length-unit
+  /* Convert one value between named units; no model needed. */
+  double feet = 0;
+  openbim_ifc_v0_1_convert_unit(3000.0, (const uint8_t *)"MILLIMETRE", 10, (const uint8_t *)"foot",
+                                4, &feet);
+  char text[64];
+  size_t need = 0;
+  openbim_ifc_v0_1_format_length(3000.0, (const uint8_t *)"MILLIMETRE", 10,
+                                 OPENBIM_IFC_LENGTH_FORMAT_FEET_INCHES, 16, NULL, 0,
+                                 OPENBIM_IFC_LENGTH_FORMAT_SUPPRESS_ZERO_INCHES, (uint8_t *)text,
+                                 sizeof text, &need);
+  printf("3000 mm = %.4f ft = %s\n", feet, text);
+
+  /* Convert the whole model to metres: every length, and areas and
+   * volumes with it, as one transaction. A size query plans and applies
+   * nothing; the call with the sizes it asked for applies. */
+  size_t nodes = 0, strings = 0;
+  uint32_t flags = 0; /* | _KEEP_AREA_AND_VOLUME, _KEEP_REPLACED_UNITS, _DRY_RUN */
+  const char *target = "METRE";
+  openbim_ifc_v0_1_model_convert_length_unit(model, (const uint8_t *)target, strlen(target), flags,
+                                             NULL, 0, &nodes, NULL, 0, &strings);
+  Tape report = tape_alloc(nodes, strings);
+  if (openbim_ifc_v0_1_model_convert_length_unit(model, (const uint8_t *)target, strlen(target),
+                                                 flags, report.nodes, nodes, &nodes,
+                                                 report.strings, strings, &strings) !=
+      OPENBIM_IFC_STATUS_OK) {
+    print_error(model); /* e.g. UNSUPPORTED: a value the conversion cannot carry */
+    tape_free(&report);
+    return 1;
+  }
+  /* LengthUnitReport: from, to, length factor, ..., values converted (12),
+   * ..., applied (14) */
+  printf("%.*s to %.*s: lengths x", TAPE_STR(&report, tape_field(&report, 0, 0)),
+         TAPE_STR(&report, tape_field(&report, 0, 1)));
+  tape_print(&report, tape_field(&report, 0, 2));
+  printf(", %lld values\n", (long long)report.nodes[tape_field(&report, 0, 12)].int_value);
+  tape_free(&report);
+  // docs:end
+  const char *expected = "3000 mm = 9.8425 ft = 9' - 10 1/8\"\nMILLI METRE to METRE: lengths x0.001, ";
+  CHECK(strncmp(out, expected, strlen(expected)) == 0, out);
+  return 0;
+}
+
 int main(int argc, char **argv) {
   if (argc != 3) {
     fprintf(stderr, "usage: cookbook <test/fixtures directory> <scratch directory>\n");
@@ -962,6 +1008,7 @@ int main(int argc, char **argv) {
   if (recipe_meshes(model) != 0) return 1;
   if (recipe_curves(model) != 0) return 1;
   if (recipe_graphs(model) != 0) return 1;
+  if (recipe_length_unit(model) != 0) return 1;
   OK(openbim_ifc_v0_1_model_destroy(model));
 
   snprintf(relations_path, sizeof relations_path, "%s/synthetic-relations/relations_ifc4.ifc",

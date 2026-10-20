@@ -2,7 +2,8 @@
 
 use openbim_ifc_binding_core::record::to_records;
 use openbim_ifc_binding_core::{
-    GeometryEncoding, IfcModel, ParseOptions, PurgeOptions, RemoveProductOptions, ToRecord,
+    GeometryEncoding, IfcModel, LengthUnitOptions, ParseOptions, PurgeOptions,
+    RemoveProductOptions, ToRecord,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -686,6 +687,34 @@ impl NativeModel {
         let report = self
             .inner
             .remove_representation(id, dry_run)
+            .map_err(py_err)?;
+        records::record_to_py(py, &report.to_record())
+    }
+
+    /// Convert `value` between two unit entities of the model (#469).
+    fn convert_unit_value(&self, value: f64, from: u64, to: u64) -> PyResult<f64> {
+        self.inner
+            .convert_unit_value(value, from, to)
+            .map_err(py_err)
+    }
+
+    /// Convert the model's length unit (#469); the report.
+    #[pyo3(signature = (target, area_and_volume = true, remove_replaced_units = true, dry_run = false))]
+    fn convert_length_unit<'py>(
+        &mut self,
+        py: Python<'py>,
+        target: &str,
+        area_and_volume: bool,
+        remove_replaced_units: bool,
+        dry_run: bool,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let mut options = LengthUnitOptions::new();
+        options.area_and_volume = area_and_volume;
+        options.remove_replaced_units = remove_replaced_units;
+        options.dry_run = dry_run;
+        let report = self
+            .inner
+            .convert_length_unit(target, options)
             .map_err(py_err)?;
         records::record_to_py(py, &report.to_record())
     }

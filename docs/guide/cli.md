@@ -134,6 +134,7 @@ and `.github/workflows/nix.yml` builds the flake.
 | `tree FILE` | Project, site, building, storey and space, with their elements | `human`, `json` |
 | `lint FILE...` | Products with geometry that no model viewer will draw | `human`, `json`, `sarif` |
 | `select FILE QUERY` | The entities a [selector](/guide/selectors) selects, with values read by path | `table`, `json`, `csv` |
+| `convert-units IN OUT --unit UNIT` | The model in another length unit, every length, area and volume rescaled | STEP; report `human`, `json` |
 
 `openbim-ifc <command> --help` lists every option. Each command reads STEP or
 ifcXML, chosen by content first and extension second, and an ifcZIP archive
@@ -245,6 +246,27 @@ attribute the release does not declare, is refused as `invalid-selector`
 with the byte span it refuses, never answered with an empty list. JSON
 gives the query in its canonical form and the grammar version beside the
 entities. Quote the selector in the shell: it holds spaces, `!` and `$`.
+
+### convert-units
+
+```bash
+openbim-ifc convert-units model.ifc model-m.ifc --unit METRE
+openbim-ifc convert-units model.ifc - --unit foot --dry-run --format json
+```
+
+Assigns a new project length unit (`METRE` with any SI prefix, `inch`,
+`foot`, `yard`, `mile` or `US survey foot`) and rescales every value the
+release's measure types make a length, area or volume: geometry,
+placements, profiles, quantities and property values. Areas and volumes
+take the square and cube of the new unit unless `--keep-area-volume`.
+Values with a unit of their own keep it, a map conversion with a `MapUnit`
+keeps its map coordinates and rescales its `Scale`, and a parameter value
+follows its curve (kept on a circle, where it is an angle). A value the
+conversion cannot carry, such as a parameter value on a curve whose
+parameter space IFC leaves undefined, refuses the run as `unsupported` with
+every such value listed, and nothing is written. The report goes to
+standard error, or with `--dry-run` to standard output while nothing is
+written.
 
 ## Exit codes
 

@@ -121,7 +121,7 @@ pub struct LengthUnitReport {
     pub entities_changed: usize,
     /// Numbers rescaled.
     pub values_converted: usize,
-    /// Entities created (empty for a dry run).
+    /// Entities created, or for a dry run the ids the commit will create.
     pub created: Vec<u64>,
     /// Entities removed, or for a dry run planned for removal.
     pub removed: Vec<u64>,

@@ -42,6 +42,34 @@ fn canonical_selector(query: &str) -> PyResult<String> {
     openbim_ifc_binding_core::canonical_selector(query).map_err(error::py_err)
 }
 
+/// Convert `value` between two units named as text (#469).
+#[pyfunction]
+fn convert_unit(value: f64, from: &str, to: &str) -> PyResult<f64> {
+    openbim_ifc_binding_core::convert_unit(value, from, to).map_err(error::py_err)
+}
+
+/// A length in `unit` as text (#469).
+#[pyfunction]
+#[pyo3(signature = (value, unit, style, places, display_unit = None, suppress_zero_inches = false))]
+fn format_length(
+    value: f64,
+    unit: &str,
+    style: &str,
+    places: u32,
+    display_unit: Option<&str>,
+    suppress_zero_inches: bool,
+) -> PyResult<String> {
+    openbim_ifc_binding_core::format_length(
+        value,
+        unit,
+        style,
+        places,
+        display_unit,
+        suppress_zero_inches,
+    )
+    .map_err(error::py_err)
+}
+
 /// The `openbim_ifc._native` extension module.
 #[pymodule]
 fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -49,6 +77,8 @@ fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(new_guid, module)?)?;
     module.add_function(wrap_pyfunction!(name_based_guid, module)?)?;
     module.add_function(wrap_pyfunction!(canonical_selector, module)?)?;
+    module.add_function(wrap_pyfunction!(convert_unit, module)?)?;
+    module.add_function(wrap_pyfunction!(format_length, module)?)?;
     module.add(
         "SELECTOR_GRAMMAR_VERSION",
         openbim_ifc_binding_core::SELECTOR_GRAMMAR_VERSION,

@@ -361,6 +361,38 @@ parse, or names a class or attribute the release does not declare, raises
 `IfcError` with `code` `invalid-selector` and `span`, the byte range it
 refuses.
 
+## Convert units and a model's length unit
+
+Between units named as text, as feet and inches, then the whole of
+`test/fixtures/synthetic-bindings/binding_geometry.ifc` from millimetres to
+metres:
+
+<!-- SNIPPET:cookbook-py-convert-units -->
+
+```python
+# Between units named as text: exact factors, checked dimensions.
+print(openbim_ifc.convert_unit(1.0, "foot", "MILLIMETRE"))  # 304.8
+print(openbim_ifc.format_length(444.5, "MILLIMETRE", style="feet-inches"))
+# 1' - 5 1/2"
+
+# The whole model to metres: geometry, quantities and properties,
+# as one checked transaction. A dry run only reports.
+report = model.convert_length_unit("METRE", dry_run=True)
+print((report.from_unit, report.to, report.length_factor))
+# ('MILLI METRE', 'METRE', 0.001)
+report = model.convert_length_unit("METRE")
+print(report.applied)  # True
+for kept in report.kept:  # values left as they are, and why
+    print((kept.entity_type, kept.attribute, kept.reason))
+```
+
+<!-- /SNIPPET -->
+
+Every length, area and volume value is rescaled: geometry, placements,
+quantities and property values. Values with a unit of their own keep it and
+appear in `kept` with the reason. A model holding a value the conversion
+cannot carry is refused whole, with `unsupported`, and left unchanged.
+
 ## Remove a product and purge
 
 A door with what it alone owns, a wall whose openings place their fillings,

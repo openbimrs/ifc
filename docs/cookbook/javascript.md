@@ -435,6 +435,36 @@ takes a plain value or an `IfcValue`. A selector that does not parse
 throws `IfcError` with `code` `invalid-selector` and `span`, the byte range
 it refuses in the UTF-8 query.
 
+## Convert units and a model's length unit
+
+Between units named as text, as feet and inches, then the whole of
+`test/fixtures/synthetic-bindings/binding_geometry.ifc` from millimetres to
+metres:
+
+<!-- SNIPPET:cookbook-js-convert-units -->
+
+```js
+// Between units named as text: exact factors, checked dimensions.
+log(IfcModel.convertUnit(1, "foot", "MILLIMETRE")); // 304.8
+log(IfcModel.formatLength(444.5, "MILLIMETRE", { style: "feet-inches" }));
+// 1' - 5 1/2"
+
+// The whole model to metres: geometry, quantities and properties, as one
+// checked transaction. A dry run only reports.
+const dry = model.convertLengthUnit("METRE", { dryRun: true });
+log(dry.from, dry.to, dry.lengthFactor); // "MILLI METRE" "METRE" 0.001
+const report = model.convertLengthUnit("METRE");
+log(report.applied); // true
+for (const kept of report.kept) log(kept.entityType, kept.attribute, kept.reason);
+```
+
+<!-- /SNIPPET -->
+
+Every length, area and volume value is rescaled: geometry, placements,
+quantities and property values. Values with a unit of their own keep it and
+appear in `kept` with the reason. A model holding a value the conversion
+cannot carry is refused whole, with `unsupported`, and left unchanged.
+
 ## Remove a product and purge
 
 A door with what it alone owns, a wall whose openings place their fillings,

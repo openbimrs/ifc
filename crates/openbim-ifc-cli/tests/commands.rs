@@ -622,3 +622,49 @@ fn select_refuses_a_selector_with_its_span() {
         refused.stderr
     );
 }
+
+#[test]
+fn convert_units_rescales_the_model_and_refuses_what_it_cannot_carry() {
+    let source = fixture(CLEAN);
+    let dry = run(&[
+        "convert-units",
+        &source,
+        "-",
+        "--unit",
+        "METRE",
+        "--dry-run",
+        "--format",
+        "json",
+    ]);
+    assert_eq!(dry.code, 0, "{}", dry.stderr);
+    let report: serde_json::Value = serde_json::from_str(&dry.stdout).unwrap();
+    assert_eq!(report["from"], "MILLI METRE");
+    assert_eq!(report["length_factor"], 0.001);
+    assert_eq!(report["applied"], false);
+
+    let out = run(&["convert-units", &source, "-", "--unit", "foot"]);
+    assert_eq!(out.code, 0, "{}", out.stderr);
+    assert!(
+        out.stdout.contains("IFCCONVERSIONBASEDUNIT"),
+        "{}",
+        out.stdout
+    );
+    assert!(
+        out.stderr.contains("length unit: MILLI METRE -> foot"),
+        "{}",
+        out.stderr
+    );
+
+    let bad = run(&["convert-units", &source, "-", "--unit", "SQUARE_METRE"]);
+    assert_eq!(bad.code, 2);
+    assert!(bad.stderr.contains("usage"), "{}", bad.stderr);
+    let polynomial = fixture("synthetic-surfaces/synthetic_ifc4x3_alignment_curves.ifc");
+    let refused = run(&["convert-units", &polynomial, "-", "--unit", "MILLIMETRE"]);
+    assert_eq!(refused.code, 2);
+    assert!(
+        refused.stderr.contains("PolynomialCoefficients"),
+        "{}",
+        refused.stderr
+    );
+    assert!(refused.stdout.is_empty(), "nothing written on refusal");
+}

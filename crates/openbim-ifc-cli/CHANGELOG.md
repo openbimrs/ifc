@@ -11,6 +11,16 @@ documents) is this crate's public interface.
 
 ## [Unreleased]
 
+### Added (#469)
+
+- `convert-units INPUT OUTPUT --unit UNIT [--keep-area-volume]
+  [--keep-replaced-units] [--dry-run] [--format human|json] [--force]`:
+  the facade's `convert_length_unit` on a file, written as STEP. A value
+  the conversion cannot carry refuses the run (exit 2) with each one
+  named, and nothing is written.
+
+Semver: minor (a new command).
+
 ## [0.3.0] - 2026-10-14
 
 ### Added (#464)

@@ -278,6 +278,18 @@ fn staging_changes_nothing_and_an_unchanged_unit_stages_nothing() {
     assert!(!staged.transaction.is_empty());
     assert!(!staged.report.applied);
     assert_eq!(staged.report.removed, [EntityId(1)]);
+    // The units are reused: nothing to create.
+    assert!(staged.report.created.is_empty());
+    let feet =
+        stage_length_unit_conversion(&model, &unit("foot"), &LengthUnitOptions::new()).unwrap();
+    let mut applied = model.clone();
+    let report =
+        convert_length_unit(&mut applied, &unit("foot"), &LengthUnitOptions::new()).unwrap();
+    assert!(!feet.report.created.is_empty());
+    assert_eq!(
+        feet.report.created, report.created,
+        "the commit keeps the reserved ids"
+    );
     assert_eq!(reals(&model, 9, 0), [1000.0, 2000.0, 3000.0]);
     let mut same = model.clone();
     let report =
@@ -463,4 +475,29 @@ fn georeferencing_resolves_to_the_same_map_transform() {
             }
         }
     }
+}
+
+/// `docs/api/rust.md` -- converting units and a model's length unit.
+#[test]
+fn length_unit_snippet_converts_a_model() -> Result<(), Box<dyn std::error::Error>> {
+    let mut model = ifc4_cases();
+    // docs:snippet api-length-unit
+    use ifc::properties::{convert_value, ConversionUnit};
+    use ifc::{convert_length_unit, LengthUnitOptions};
+
+    let foot = ConversionUnit::parse("foot")?;
+    let millimetre = ConversionUnit::parse("MILLIMETRE")?;
+    assert_eq!(convert_value(1.0, &foot, &millimetre)?, 304.8);
+
+    // Every length, area and volume, in one transaction, or nothing.
+    let metre = ConversionUnit::parse("METRE")?;
+    let report = convert_length_unit(&mut model, &metre, &LengthUnitOptions::new())?;
+    println!(
+        "{} values rescaled by {}",
+        report.values_converted,
+        report.length.factor()
+    );
+    // docs:end
+    assert!(report.applied);
+    Ok(())
 }

@@ -702,6 +702,59 @@ removal; the same call with buffers large enough does, unless
 [binding page](/bindings/c#removing-products-and-purging) lists what the
 cascade removes and keeps.
 
+## Convert units and the model's length unit
+
+A value between named units, a length in feet and inches, then the whole
+millimetre model of `test/fixtures/synthetic-bindings/binding_geometry.ifc`
+in metres:
+
+<!-- SNIPPET:cookbook-c-length-unit -->
+
+```c
+/* Convert one value between named units; no model needed. */
+double feet = 0;
+openbim_ifc_v0_1_convert_unit(3000.0, (const uint8_t *)"MILLIMETRE", 10, (const uint8_t *)"foot",
+                              4, &feet);
+char text[64];
+size_t need = 0;
+openbim_ifc_v0_1_format_length(3000.0, (const uint8_t *)"MILLIMETRE", 10,
+                               OPENBIM_IFC_LENGTH_FORMAT_FEET_INCHES, 16, NULL, 0,
+                               OPENBIM_IFC_LENGTH_FORMAT_SUPPRESS_ZERO_INCHES, (uint8_t *)text,
+                               sizeof text, &need);
+printf("3000 mm = %.4f ft = %s\n", feet, text);
+
+/* Convert the whole model to metres: every length, and areas and
+ * volumes with it, as one transaction. A size query plans and applies
+ * nothing; the call with the sizes it asked for applies. */
+size_t nodes = 0, strings = 0;
+uint32_t flags = 0; /* | _KEEP_AREA_AND_VOLUME, _KEEP_REPLACED_UNITS, _DRY_RUN */
+const char *target = "METRE";
+openbim_ifc_v0_1_model_convert_length_unit(model, (const uint8_t *)target, strlen(target), flags,
+                                           NULL, 0, &nodes, NULL, 0, &strings);
+Tape report = tape_alloc(nodes, strings);
+if (openbim_ifc_v0_1_model_convert_length_unit(model, (const uint8_t *)target, strlen(target),
+                                               flags, report.nodes, nodes, &nodes,
+                                               report.strings, strings, &strings) !=
+    OPENBIM_IFC_STATUS_OK) {
+  print_error(model); /* e.g. UNSUPPORTED: a value the conversion cannot carry */
+  tape_free(&report);
+  return 1;
+}
+/* LengthUnitReport: from, to, length factor, ..., values converted (12),
+ * ..., applied (14) */
+printf("%.*s to %.*s: lengths x", TAPE_STR(&report, tape_field(&report, 0, 0)),
+       TAPE_STR(&report, tape_field(&report, 0, 1)));
+tape_print(&report, tape_field(&report, 0, 2));
+printf(", %lld values\n", (long long)report.nodes[tape_field(&report, 0, 12)].int_value);
+tape_free(&report);
+```
+
+<!-- /SNIPPET -->
+
+`OPENBIM_IFC_LENGTH_UNIT_DRY_RUN` reports without converting. The
+[binding page](/bindings/c#units-and-the-model-s-length-unit) lists the
+report's fields and the refusals.
+
 ## Assign a type and propagate it
 
 Door 1 typed again by its door type, with the type's representation map

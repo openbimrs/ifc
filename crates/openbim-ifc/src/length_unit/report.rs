@@ -225,7 +225,8 @@ pub struct LengthUnitReport {
     pub entities_changed: usize,
     /// Numbers rescaled.
     pub values_converted: usize,
-    /// Entities created, in commit order (empty until committed).
+    /// Entities created, in commit order; staged, the ids the transaction
+    /// reserved for them, which the commit keeps.
     pub created: Vec<EntityId>,
     /// Entities removed (staged: the replaced units planned for removal).
     pub removed: Vec<EntityId>,
@@ -386,6 +387,14 @@ impl Tally {
     }
 
     pub(super) fn staged(mut self, transaction: Transaction) -> StagedLengthUnitConversion {
+        self.report.created = transaction
+            .edits()
+            .iter()
+            .filter_map(|edit| match edit {
+                ifc_model::Edit::Create { id, .. } => Some(*id),
+                _ => None,
+            })
+            .collect();
         self.report.converted = self
             .converted
             .into_iter()

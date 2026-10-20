@@ -911,6 +911,62 @@ class RemovalReport:
     applied: bool
 
 
+@dataclass(frozen=True)
+class ConvertedValues:
+    """Values of one attribute of one entity type that
+    :meth:`IfcModel.convert_length_unit` rescaled.
+
+    ``kind`` is ``length``, ``area``, ``volume``, ``inverse-length``,
+    ``inverse-area`` or ``map-scale``; ``values`` counts numbers (a point
+    has three), ``entities`` the entities holding them."""
+
+    entity_type: str
+    attribute: str
+    kind: str
+    entities: int
+    values: int
+
+
+@dataclass(frozen=True)
+class KeptValues:
+    """Length-like values of one attribute left as they are, with the
+    reason: ``explicit-unit`` (the value states its own unit),
+    ``map-unit`` (a map coordinate in the CRS's ``MapUnit``),
+    ``unitless-parameter`` (a curve or surface parameter that is an angle,
+    a knot or a multiple) or ``unit-not-followed`` (an area or volume while
+    the project has no such unit or ``area_and_volume`` is off)."""
+
+    entity_type: str
+    attribute: str
+    reason: str
+    values: int
+
+
+@dataclass(frozen=True)
+class LengthUnitReport:
+    """What :meth:`IfcModel.convert_length_unit` did, or, for a dry run
+    (``applied`` false), would do. ``from_unit`` and ``to`` name the
+    project length unit before and after (``MILLI METRE``, ``foot``); the
+    factors multiply lengths, areas and volumes (an area or volume factor
+    is ``None`` when that unit did not follow)."""
+
+    from_unit: str
+    to: str
+    length_factor: float
+    area_factor: Optional[float]
+    volume_factor: Optional[float]
+    length_unit: Optional[int]
+    area_unit: Optional[int]
+    volume_unit: Optional[int]
+    converted: Tuple[ConvertedValues, ...]
+    kept: Tuple[KeptValues, ...]
+    entities_changed: int
+    values_converted: int
+    created: Tuple[int, ...]
+    removed: Tuple[int, ...]
+    applied: bool
+
+
 _RECORDS = {
     cls.__name__: cls
     for cls in (
@@ -955,8 +1011,15 @@ _RECORDS = {
         RemovedEntity,
         KeptEntity,
         RemovalReport,
+        ConvertedValues,
+        KeptValues,
+        LengthUnitReport,
     )
 }
+
+
+# Record fields whose wire name is a Python keyword.
+_KEYWORD_FIELDS = {("LengthUnitReport", "from"): "from_unit"}
 
 
 def _from_wire(data: Any) -> Any:
@@ -965,7 +1028,9 @@ def _from_wire(data: Any) -> Any:
         if "_record" in data:
             name = data["_record"]
             fields: Dict[str, Any] = {
-                key: _from_wire(value) for key, value in data.items() if key != "_record"
+                _KEYWORD_FIELDS.get((name, key), key): _from_wire(value)
+                for key, value in data.items()
+                if key != "_record"
             }
             return _RECORDS[name](**fields)
         return _value_from_wire(data)

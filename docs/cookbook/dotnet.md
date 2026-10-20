@@ -416,6 +416,35 @@ purges unreferenced entities of the named classes only. The
 [binding page](/bindings/dotnet#removing-products-and-purging) lists what
 the cascade removes and keeps.
 
+## Convert units and the model's length unit
+
+A value between named units, a length in feet and inches, then the whole
+metre model of `test/fixtures/synthetic-relations/cascade_ifc4.ifc` in
+millimetres:
+
+<!-- SNIPPET:cookbook-dotnet-length-unit -->
+
+```csharp
+// One value between named units, and a length in feet and inches.
+double feet = Units.Convert(3000.0, "MILLIMETRE", "foot");
+string text = Units.FormatLength(3000.0, "MILLIMETRE", LengthStyle.FeetInches, 16, suppressZeroInches: true);
+Print($"3000 mm = {feet.ToString("F4", CultureInfo.InvariantCulture)} ft = {text}"); // 3000 mm = 9.8425 ft = 9' - 10 1/8"
+
+// The whole model in millimetres: every length, and areas and volumes
+// with it, as one checked transaction. dryRun: true only reports.
+LengthUnitReport report = model.ConvertLengthUnit("MILLIMETRE");
+Print($"{report.From} to {report.To}: lengths x{report.LengthFactor}"); // METRE to MILLI METRE: lengths x1000
+foreach (var kept in report.Kept)
+{
+    Print($"{kept.EntityType}.{kept.Attribute} kept: {kept.Reason}");
+}
+```
+
+<!-- /SNIPPET -->
+
+The [binding page](/bindings/dotnet#units-and-the-model-s-length-unit)
+lists the report and the refusals.
+
 ## Assign a type and propagate it
 
 Door 1 typed again by its door type, with the type's representation map

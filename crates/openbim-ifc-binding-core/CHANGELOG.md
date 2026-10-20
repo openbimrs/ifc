@@ -8,6 +8,16 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#469)
+
+- `convert_unit`, `format_length`, `IfcModel::convert_unit_value` and
+  `IfcModel::convert_length_unit` (with `LengthUnitOptions` and a
+  `LengthUnitReport` record) for every host. Refusals use the existing
+  codes (`invalid-value`, `type-mismatch`, `unsupported`,
+  `invalid-model`).
+
+Semver: minor (internal crate, not published).
+
 ### Changed (#506, #509)
 
 - `product_curves` polylines trimmed, composite, offset and intrinsic

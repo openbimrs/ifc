@@ -9,6 +9,22 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#469)
+
+- `Units.Convert(value, from, to)` converts between units named as text
+  (an SI unit with its prefix, or a named IFC4 Table 673 unit with exact
+  factors); `Units.FormatLength` writes a length as decimal text or feet
+  and inches with fractions (`LengthStyle`); `IfcModel.ConvertUnitValue`
+  converts between two unit entities of a model.
+- `IfcModel.ConvertLengthUnit(target, areaAndVolume, removeReplacedUnits,
+  dryRun)` rescales every length, area and volume value to a new project
+  length unit as one checked transaction and returns a `LengthUnitReport`
+  (`ConvertedValues`, `KeptValues`). Values it cannot carry, and offset
+  units (#110), throw `unsupported`. Needs the native library with C ABI
+  0.1.18.
+
+Semver: minor.
+
 ## [0.9.1] - 2026-10-18
 
 ### Changed (#506, #509)
