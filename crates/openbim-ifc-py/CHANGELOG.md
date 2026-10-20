@@ -18,6 +18,18 @@ a release here does not imply a release of any other crate in the family.
 
 Semver: additive: minor.
 
+### Added (#474, tables)
+
+- `model.export_table(query, columns, *, format="csv", key=None,
+  null="")` returns the selected entities as CSV, TSV or XLSX bytes, one
+  column per value path; `model.import_table(data, *, format="csv",
+  key=None, null="", dry_run=False)` applies a table back by key as one
+  checked transaction and returns a `TableImport` (`applied`, `changes` of
+  `TableChange`, `refusals` of `TableRefusal`). Refusals are data, not
+  exceptions.
+
+Semver: additive, a minor release while 0.x.
+
 ## [0.12.1] - 2026-10-18
 
 ### Changed (#506, #509)

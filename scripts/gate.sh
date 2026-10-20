@@ -176,7 +176,7 @@ gate_features() {
 
     # `spatial` and `properties` need a release to read through (#306), so
     # their combinations name one; both crates refuse to compile without.
-    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,ifc4" "--features step,schema-api" "--features step,geometry-select" "--features step,ifc4,validate" "--features step,ifc4,spatial,geometry-select" "--features step,ifc4,properties,geometry-select" "--features step,ifc4,spatial,properties" "--features step,ifc4,georef,properties" "--features step,ifc4,properties,property-catalog-runtime" "--features step,ifc4,authoring" "--features step,ifc4,geometry-wire" "--features step,ifc4,selector" "--features step,ifc4,selector,properties" "--features zip" "--features ifcxml,zip" "--all-features"; do
+    for features in "--no-default-features" "--features step" "--features ifcxml" "--features step,ifc4" "--features step,schema-api" "--features step,geometry-select" "--features step,ifc4,validate" "--features step,ifc4,spatial,geometry-select" "--features step,ifc4,properties,geometry-select" "--features step,ifc4,spatial,properties" "--features step,ifc4,georef,properties" "--features step,ifc4,properties,property-catalog-runtime" "--features step,ifc4,authoring" "--features step,ifc4,geometry-wire" "--features step,ifc4,selector" "--features step,ifc4,selector,properties" "--features step,ifc4,sheet" "--features step,ifc4,sheet-xlsx,properties" "--features zip" "--features ifcxml,zip" "--all-features"; do
         # shellcheck disable=SC2086
         cargo build -p openbim-ifc $features
         # shellcheck disable=SC2086
@@ -214,6 +214,11 @@ gate_features() {
     # `property-catalog`. `--all-features` hides both columns.
     cargo test -p openbim-ifc --features step,ifc4,selector --lib selector
     cargo test -p openbim-ifc --features step,schema,selector,properties --test selector
+    # Tables (#474): the grid codecs without and with XLSX, and the import
+    # tests, whose `Pset_` writes need the catalog; `--all-features` hides
+    # the build without `sheet-xlsx` and its `feature-disabled` refusal.
+    cargo test -p openbim-ifc --features step,ifc4,sheet --lib sheet
+    cargo test -p openbim-ifc --features step,schema,sheet,properties,property-catalog --test sheet
     # Property edits (#123) check `Pset_`/`Qto_` sets against the PSD/QTO
     # catalog when `property-catalog` is on; `--all-features` hides the
     # refusal a build without it gives.

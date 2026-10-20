@@ -338,6 +338,20 @@ not parse throws `IfcException` with `Code` `invalid-selector` and `Span`.
 The [cookbook](/cookbook/dotnet#select-entities-and-read-values-by-path)
 has a recipe.
 
+## Tables
+
+`model.ExportTable(query, columns, format, key, null)` returns the entities
+a selector selects as a [table](/guide/tables), bytes in `csv`, `tsv` or
+`xlsx`: the key column first (`GlobalId`, or `id`), then one column per
+value path. `model.ImportTable(data, format, key, null, dryRun)` applies a
+table back by its key as one checked transaction and returns a
+`TableImport`: `Applied`, every `TableChange` and every `TableRefusal` by
+row and column, with `Code` and, for a header that does not parse, `Span`.
+Refusals are data, not exceptions: any refusal means nothing was written,
+as does `dryRun`. The
+[cookbook](/cookbook/dotnet#export-a-table-and-import-it-back) has a
+recipe.
+
 ## Geometry
 
 Geometry crosses at three levels ([ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes)):
@@ -759,6 +773,8 @@ and `MeshedProduct` included, from its XML documentation comments.
 | `ulong CreateEntity(string type, IEnumerable<KeyValuePair<string, Value>>? attributes = null)` | Create one entity of `type` from named attributes, checked against the declared release (`Author` with one `AuthorOp.Create`); returns its id. |
 | `void RemoveWithRelationships(ulong id)` | Remove entity `id` with the relationships that reference it, leaving nothing dangling; refused with `still-referenced` while an entity other than a relationship needs it. |
 | `RemovalReport RemoveProduct(ulong id, bool rebasePlacements = false, bool untypeOccurrences = false, bool dryRun = false)` | Remove product (or type object) `id` with everything it solely owns -- its placement, representation, own property and quantity sets, material usage, openings and ports, and the relationships left without an end -- as one checked transaction, keeping what is shared (a property set another object uses, a type's representation maps). With `dryRun` nothing changes. |
+| `byte[] ExportTable(string query, IEnumerable<string> columns, string format = "csv", string? key = null, string @null = "")` | The entities selector `query` selects as a table (#474): the key column first (`GlobalId`, or `id` with `key`), then one column per value path of `columns` (`Name`, `type.Name`, `Pset_WallCommon.FireRating`), each cell the value the path reads as text. Refuses with `invalid-selector` a query or path that does not parse, `invalid-value` an unknown format or key, and `wrong-entity-type` an entity without a `GlobalId` in a table keyed by it. |
+| `TableImport ImportTable(byte[] data, string format = "csv", string? key = null, string @null = "", bool dryRun = false)` | Apply a table back to the model by its key column (#474), as one checked transaction: every other cell is written by its header's value path, typed by the attribute's declared type or the property's stated one; a cell that reads what the model holds changes nothing, so an exported table imported unchanged is a no-op. Any refusal means nothing was written, as does `dryRun`. |
 | `RemovalReport Purge(IEnumerable<string>? classes = null, bool includeRoots = false, bool includeOwnerHistory = false, bool dryRun = false)` | Remove unreferenced entities as one checked transaction. Without `classes`, every resource entity no `IfcRoot` reaches (nor annotates something reached); with them, the entities of those classes (subtypes included) nothing references, an `IfcRoot` only with `includeRoots`. The owner history stays unless `includeOwnerHistory`. |
 | `RemovalReport RemoveRepresentation(ulong id, bool dryRun = false)` | Remove shape representation `id` with what only it uses (#481), as one checked transaction: taken off its product definition shape (which goes when left empty), representation map or shape aspects, then removed with its items down to what nothing else uses. Shared items, profiles, points and styles stay. With `dryRun` nothing changes. |
 | `CopyReport CopyProduct(` | Copy product (or type object) `id` with everything it solely owns, as one checked transaction (#479): what `RemoveProduct` would remove with it is copied -- its placement, representation, own property and quantity sets, material usage, ports and, by option, its openings and the doors and windows filling them -- and what it would keep is shared, the copy joining the relationship: its type, shared property sets, classification and, by option, its container and whole. With `dryRun` nothing changes. |

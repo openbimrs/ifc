@@ -17,6 +17,19 @@ a release here does not imply a release of any other crate in the family.
 
 Semver: additive: minor.
 
+### Added (#474, tables)
+
+- `model.exportTable(query, columns, { format, key, null })` returns the
+  selected entities as a CSV or TSV `Uint8Array`, one column per value
+  path; `model.importTable(bytes, { format, key, null, dryRun })` applies
+  a table back by key as one checked transaction and returns a
+  `TableImport` (`applied`, `changes`, `refusals`); TypeScript types
+  `TableOptions`, `TableImportOptions`, `TableChange`, `TableRefusal`,
+  `TableImport`. XLSX throws `feature-disabled` in the npm package; the
+  crate's opt-in feature `sheet-xlsx` carries it.
+
+Semver: additive, a minor release while 0.x.
+
 ## [0.12.1] - 2026-10-18
 
 ### Changed (#506, #509)

@@ -310,3 +310,25 @@ pub(crate) fn string_list(options: &JsValue, key: &str) -> Result<Vec<String>, B
         })
         .collect()
 }
+
+/// The optional string option `key` of `options`; `undefined` and `null`
+/// are `None`.
+pub(crate) fn text(options: &JsValue, key: &str) -> Result<Option<String>, BindingError> {
+    if options.is_undefined() || options.is_null() {
+        return Ok(None);
+    }
+    if !options.is_object() {
+        return Err(BindingError::InvalidValue(
+            "options must be an object".into(),
+        ));
+    }
+    let value = js_sys::Reflect::get(options, &key.into())
+        .map_err(|_| BindingError::InvalidValue(format!("cannot read `{key}`")))?;
+    if value.is_undefined() || value.is_null() {
+        return Ok(None);
+    }
+    value
+        .as_string()
+        .map(Some)
+        .ok_or_else(|| BindingError::InvalidValue(format!("`{key}` must be a string")))
+}

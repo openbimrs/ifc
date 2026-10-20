@@ -140,6 +140,22 @@ class NativeModel:
         reuse: List[str] = ...,
         dry_run: bool = ...,
     ) -> Dict[str, Any]: ...
+    def export_table(
+        self,
+        query: str,
+        columns: List[str],
+        format: str = ...,
+        key: Optional[str] = ...,
+        null: str = ...,
+    ) -> bytes: ...
+    def import_table(
+        self,
+        data: bytes,
+        format: str = ...,
+        key: Optional[str] = ...,
+        null: str = ...,
+        dry_run: bool = ...,
+    ) -> Dict[str, Any]: ...
     @staticmethod
     def handle(index: int) -> int: ...
     def dangling_references(self) -> List[Tuple[int, int]]: ...

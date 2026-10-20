@@ -27,6 +27,7 @@ from .domains import (
     ResolvedUnit,
     SpatialTree,
     Systems,
+    TableImport,
 )
 from .entity import (
     Assignable,
@@ -416,6 +417,56 @@ class IfcModel(ModelAccess):
         nothing; a path naming no single value raises ``invalid-value``."""
         id = entity.id if isinstance(entity, Entity) else entity
         self._native.set_value(id, path, _plain_wire(value, self))
+
+    def export_table(
+        self,
+        query: str,
+        columns: Sequence[str],
+        *,
+        format: str = "csv",
+        key: Optional[str] = None,
+        null: str = "",
+    ) -> bytes:
+        """The entities selector ``query`` selects as a table (#474):
+        ``format`` ``"csv"``, ``"tsv"`` or ``"xlsx"``, the key column first
+        (``"GlobalId"``, or ``"id"`` with ``key="id"``), then one column per
+        value path of ``columns`` (``"Name"``, ``"type.Name"``,
+        ``"Pset_WallCommon.FireRating"``), each cell the value the path
+        reads as text and ``NULL`` as ``null``.
+
+        Raises ``invalid-selector`` for a query or path that does not parse,
+        ``invalid-value`` for an unknown format or key, and
+        ``wrong-entity-type`` for an entity without a ``GlobalId`` in a
+        table keyed by it.
+        """
+        return self._native.export_table(query, list(columns), format, key, null)
+
+    def import_table(
+        self,
+        data: Union[bytes, str],
+        *,
+        format: str = "csv",
+        key: Optional[str] = None,
+        null: str = "",
+        dry_run: bool = False,
+    ) -> TableImport:
+        """Apply a table (``bytes``, or ``str`` for CSV and TSV) back to the
+        model by its key column (#474), as one checked transaction: every
+        other cell is written by its header's value path, typed by the
+        attribute's declared type or the property's stated one, and a cell
+        that reads what the model holds changes nothing, so an exported
+        table imported unchanged is a no-op.
+
+        The answer lists every change and every refusal by row and column;
+        any refusal means nothing was written, as does ``dry_run``.
+        Raises only for a call that cannot start: an unknown format or key,
+        bytes that are no table of the format.
+        """
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+        return domains._from_wire(
+            self._native.import_table(data, format, key, null, dry_run)
+        )
 
     def id_by_guid(self, global_id: str) -> Optional[int]:
         """The id of the entity whose ``GlobalId`` is ``global_id``, or

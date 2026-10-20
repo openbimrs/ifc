@@ -60,6 +60,8 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `schema` |  | The schema API with every bundled release (IFC2X3, IFC4, IFC4X1, IFC4X2, IFC4X3). |
 | `schema-api` |  | The schema API without a bundled release; implied by each release feature. |
 | `selector` |  | The selector query language (`ifc::selector`, grammar 1.0): filter elements by class, `GlobalId`, attribute, property, type, material, classification, location and group, with typed parse errors carrying byte spans; read and write values by path (`type.Name`, `Pset_WallCommon.FireRating`) through a checked transaction. Property facets need `properties` too. |
+| `sheet` |  | Tables of values by path (`ifc::sheet`, #474): export selected entities by attribute, property, quantity and relation paths as CSV or TSV, and import a table back by `GlobalId` or id as one checked transaction, with a planned diff and typed refusals by row and column. |
+| `sheet-xlsx` |  | `sheet` with XLSX workbooks too, through the pure-Rust `rust_xlsxwriter` (write) and `calamine` (read) crates. |
 | `spatial` |  | [`ifc-spatial`](./ifc-spatial): IFC spatial containment and objectified relationship traversal: project, site, building, storey, element. |
 | `step` | yes | [`ifc-step`](./ifc-step): STEP physical file (ISO 10303-21) codec for the IFC model. |
 | `structural` |  | [`ifc-structural`](./ifc-structural): Structural analysis model: members, connections, actions, reactions, loads. |

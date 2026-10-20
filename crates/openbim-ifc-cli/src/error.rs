@@ -18,6 +18,9 @@ pub(crate) enum Outcome {
     /// A multi-file command could not check some file; each such file was
     /// already reported in the output and on stderr.
     Incomplete,
+    /// `edit` or `import-table` refused a planned change; every refusal
+    /// was reported and nothing was written.
+    Refused,
 }
 
 impl Outcome {
@@ -27,6 +30,7 @@ impl Outcome {
             Self::Clean => 0,
             Self::Findings => 1,
             Self::Incomplete => 2,
+            Self::Refused => 3,
         }
     }
 }
@@ -141,6 +145,7 @@ mod tests {
         assert_eq!(Outcome::Clean.code(), 0);
         assert_eq!(Outcome::Findings.code(), 1);
         assert_eq!(Outcome::Incomplete.code(), 2);
+        assert_eq!(Outcome::Refused.code(), 3);
         let refusal = CliError::UnsupportedSchema("IFC9".into());
         assert_eq!(refusal.exit_code(), 2);
         assert_eq!(refusal.to_string(), "unsupported-schema: IFC9");

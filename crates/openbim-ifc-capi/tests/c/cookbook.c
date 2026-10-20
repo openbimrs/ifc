@@ -864,6 +864,61 @@ static int recipe_selectors(OpenbimIfcModel model) {
   return 0;
 }
 
+static int recipe_tables(OpenbimIfcModel model) {
+  out_len = 0;
+  out[0] = 0;
+  // docs:snippet cookbook-c-tables
+  /* The walls as CSV, keyed by id: one column per value path. */
+  const char *query = "IfcWall";
+  const char *columns[] = {"Name", "type.Name"};
+  size_t lengths[] = {strlen(columns[0]), strlen(columns[1])};
+  size_t need = 0;
+  openbim_ifc_v0_1_model_export_table(model, (const uint8_t *)query, strlen(query),
+                                      (const uint8_t *const *)columns, lengths, 2,
+                                      OPENBIM_IFC_TABLE_CSV, OPENBIM_IFC_TABLE_KEY_ID, NULL, 0,
+                                      NULL, 0, &need);
+  char *csv = (char *)malloc(need + 1);
+  if (openbim_ifc_v0_1_model_export_table(model, (const uint8_t *)query, strlen(query),
+                                          (const uint8_t *const *)columns, lengths, 2,
+                                          OPENBIM_IFC_TABLE_CSV, OPENBIM_IFC_TABLE_KEY_ID, NULL,
+                                          0, (uint8_t *)csv, need, &need) != OPENBIM_IFC_STATUS_OK) {
+    print_error(model);
+    free(csv);
+    return 1;
+  }
+  csv[need] = 0;
+  /* id,Name,type.Name\r\n17,Wall A,WT-200\r\n18,Wall B,WT-200\r\n19,Wall C,\r\n */
+
+  /* Rename the shared type in a row, and import the table back: a dry run
+   * first. The answer is a TableImport tape: applied, changes, refusals. */
+  char *renamed = strstr(csv, "17,Wall A,WT-200");
+  memcpy(renamed + strlen("17,Wall A,"), "WT-250", 6);
+  size_t nodes = 0, strings = 0;
+  openbim_ifc_v0_1_model_import_table(model, (const uint8_t *)csv, need, OPENBIM_IFC_TABLE_CSV,
+                                      OPENBIM_IFC_TABLE_KEY_AUTO, NULL, 0,
+                                      OPENBIM_IFC_TABLE_DRY_RUN, NULL, 0, &nodes, NULL, 0,
+                                      &strings);
+  Tape report = tape_alloc(nodes, strings);
+  openbim_ifc_v0_1_model_import_table(model, (const uint8_t *)csv, need, OPENBIM_IFC_TABLE_CSV,
+                                      OPENBIM_IFC_TABLE_KEY_AUTO, NULL, 0,
+                                      OPENBIM_IFC_TABLE_DRY_RUN, report.nodes, nodes, &nodes,
+                                      report.strings, strings, &strings);
+  size_t changes = tape_field(&report, 0, 1), refusals = tape_field(&report, 0, 2);
+  printf("%u change(s), %u refusal(s)\n", report.nodes[changes].child_count,
+         report.nodes[refusals].child_count);
+  /* The change: TableChange(row, column, key, path, entity, target entity,
+   * target, before, after); field 7 is the value now, 8 the value then. */
+  size_t change = changes + 1;
+  printf("row %lld: %.*s -> %.*s\n", (long long)report.nodes[tape_field(&report, change, 0)].int_value,
+         TAPE_STR(&report, tape_field(&report, change, 7)),
+         TAPE_STR(&report, tape_field(&report, change, 8)));
+  tape_free(&report);
+  free(csv);
+  // docs:end
+  CHECK(strcmp(out, "1 change(s), 0 refusal(s)\nrow 2: WT-200 -> WT-250\n") == 0, out);
+  return 0;
+}
+
 static int recipe_assign_type(OpenbimIfcModel model) {
   // docs:snippet cookbook-c-assign-type
   /* Door 1 (#100) typed again by D-90 (#111) with replace: what the old
@@ -1056,6 +1111,7 @@ int main(int argc, char **argv) {
   OK(openbim_ifc_v0_1_model_open((const uint8_t *)selector_path, strlen(selector_path), &model,
                                  NULL, 0));
   if (recipe_selectors(model) != 0) return 1;
+  if (recipe_tables(model) != 0) return 1;
   OK(openbim_ifc_v0_1_model_destroy(model));
 
   if (recipe_create() != 0) return 1;

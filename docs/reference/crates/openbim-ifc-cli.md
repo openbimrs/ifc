@@ -6,7 +6,7 @@ editLink: false
 
 # openbim-ifc-cli
 
-The openbim-ifc command: validate, convert, inspect and query IFC files (STEP, ifcXML and ifcZIP) from a shell or CI.
+The openbim-ifc command: validate, convert, inspect, query and edit IFC files (STEP, ifcXML and ifcZIP), and exchange their values as CSV, TSV or XLSX tables, from a shell or CI.
 
 | | |
 | --- | --- |

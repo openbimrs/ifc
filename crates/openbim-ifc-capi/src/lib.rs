@@ -57,6 +57,7 @@ mod relations;
 mod removal;
 mod selector;
 mod status;
+mod table;
 pub mod tape;
 mod xml;
 
@@ -80,6 +81,7 @@ pub use relations::*;
 pub use removal::*;
 pub use selector::*;
 pub use status::{OpenbimIfcStatus, OpenbimIfcVersion};
+pub use table::*;
 pub use tape::OpenbimIfcValueNode;
 pub use xml::*;
 
@@ -109,6 +111,8 @@ mod relations_tests;
 mod removal_tests;
 #[cfg(test)]
 mod selector_tests;
+#[cfg(test)]
+mod table_tests;
 
 #[cfg(feature = "rusty_alloc")]
 #[global_allocator]

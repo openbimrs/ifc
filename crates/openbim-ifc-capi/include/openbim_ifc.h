@@ -253,6 +253,42 @@
 #define OPENBIM_IFC_SELECTOR_GRAMMAR_MINOR 0
 
 /**
+ * Table format: RFC 4180 CSV, UTF-8.
+ */
+#define OPENBIM_IFC_TABLE_CSV 0
+
+/**
+ * `openbim_ifc_v0_1_model_import_table` flag: plan and report only.
+ */
+#define OPENBIM_IFC_TABLE_DRY_RUN 1
+
+/**
+ * Key column: `GlobalId` for an export; for an import `GlobalId` when the
+ * table has one, else `id`.
+ */
+#define OPENBIM_IFC_TABLE_KEY_AUTO 0
+
+/**
+ * Key column: `GlobalId`.
+ */
+#define OPENBIM_IFC_TABLE_KEY_GLOBAL_ID 1
+
+/**
+ * Key column: `id`, the entity's `#id`.
+ */
+#define OPENBIM_IFC_TABLE_KEY_ID 2
+
+/**
+ * Table format: tab-separated values with `\t`, `\n`, `\r`, `\\` escapes.
+ */
+#define OPENBIM_IFC_TABLE_TSV 1
+
+/**
+ * Table format: an XLSX workbook, every cell text.
+ */
+#define OPENBIM_IFC_TABLE_XLSX 2
+
+/**
  * Result of every ABI call. `Ok` is zero; every failure is non-zero.
  *
  * The values from `Parse` to `FeatureDisabled`, `InvalidModel`, and
@@ -1402,6 +1438,42 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_duplicate_global_ids(OpenbimIfcModel mod
                                                              size_t *out_strings_required);
 
 /**
+ * The entities selector `query` (UTF-8) selects as a table in `format`
+ * (`OPENBIM_IFC_TABLE_CSV`, `_TSV`, `_XLSX`), filling `buffer` as
+ * `openbim_ifc_v0_1_model_write` does: the key column first (`key`:
+ * `OPENBIM_IFC_TABLE_KEY_AUTO` or `_GLOBAL_ID` for `GlobalId`, `_ID` for
+ * `id`), then one column per value path of `columns` (`column_count`
+ * UTF-8 paths of `column_lengths[i]` bytes, e.g. `type.Name`,
+ * `Pset_WallCommon.FireRating`), each cell the value the path reads as
+ * text, `NULL` as `null` (UTF-8, may be empty).
+ *
+ * `InvalidSelector` (span through `openbim_ifc_v0_1_last_error_span`) for
+ * a query or path that does not parse; `WrongEntityType` for an entity
+ * without a `GlobalId` in a table keyed by it; `InvalidArgument` for an
+ * unknown format or key, or text that is not UTF-8; `FeatureDisabled`;
+ * and as for `openbim_ifc_v0_1_model_select`.
+ *
+ * # Safety
+ * `query`, `null` valid for their lengths; `columns` and
+ * `column_lengths` null (with `column_count` 0) or valid for
+ * `column_count` reads, each column valid for its length; the buffer as
+ * for `openbim_ifc_v0_1_model_write`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_export_table(OpenbimIfcModel model,
+                                                     const uint8_t *query,
+                                                     size_t query_len,
+                                                     const uint8_t *const *columns,
+                                                     const size_t *column_lengths,
+                                                     size_t column_count,
+                                                     uint32_t format,
+                                                     uint32_t key,
+                                                     const uint8_t *null,
+                                                     size_t null_len,
+                                                     uint8_t *buffer,
+                                                     size_t capacity,
+                                                     size_t *out_required);
+
+/**
  * Every coordinate operation, resolved: a `LIST` of `MapConversion`
  * records, empty when the model has none; `out_count` gets their number.
  * `MapConversion`: operation, kind, source, source kind, target CRS
@@ -1488,6 +1560,41 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_ids_of_type_including_subtypes(OpenbimIf
                                                                        uint64_t *buffer,
                                                                        size_t capacity,
                                                                        size_t *out_required);
+
+/**
+ * Apply the table `data` (`data_len` bytes in `format`) to the model by
+ * its key column (`key`, as for `openbim_ifc_v0_1_model_export_table`) as
+ * one checked transaction, `null` (UTF-8) being the cell text of `NULL`.
+ * `flags`: `OPENBIM_IFC_TABLE_DRY_RUN`. The answer is a `TableImport`
+ * tape: applied (`BOOL`), changes (`LIST` of `TableChange`: row, column
+ * `INTEGER`, key, path `TEXT`, entity, target entity `REF`, target,
+ * before, after `TEXT`), refusals (`LIST` of `TableRefusal`: row, column
+ * `INTEGER` or `NULL`, code, message `TEXT`, span `LIST` of two
+ * `INTEGER`s or `NULL`). Any refusal means nothing was written; a size
+ * query or a short buffer plans the import and writes nothing.
+ *
+ * `Parse` for bytes that are no table of the format; `InvalidArgument`
+ * for an unknown format, key or flag, or a `null` that is not UTF-8;
+ * `FeatureDisabled`; `UnsupportedSchema`.
+ *
+ * # Safety
+ * `data` and `null` valid for their lengths; the buffers as for
+ * `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_import_table(OpenbimIfcModel model,
+                                                     const uint8_t *data,
+                                                     size_t data_len,
+                                                     uint32_t format,
+                                                     uint32_t key,
+                                                     const uint8_t *null,
+                                                     size_t null_len,
+                                                     uint32_t flags,
+                                                     OpenbimIfcValueNode *nodes,
+                                                     size_t node_capacity,
+                                                     size_t *out_nodes_required,
+                                                     uint8_t *strings,
+                                                     size_t string_capacity,
+                                                     size_t *out_strings_required);
 
 /**
  * Number of entities.

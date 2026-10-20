@@ -348,6 +348,70 @@ export interface CopyReport {
   regenerated: bigint[];
   /** `false` for a dry run. */
   applied: boolean;
+/** Options of `IfcModel.exportTable`. */
+export interface TableOptions {
+  /** `"csv"` (default), `"tsv"` or `"xlsx"` (`feature-disabled` in the npm package). */
+  format?: "csv" | "tsv" | "xlsx";
+  /** The key column: `"GlobalId"` (default) or `"id"`. */
+  key?: "GlobalId" | "id";
+  /** The cell text of `NULL`; empty by default. */
+  null?: string;
+}
+
+/** Options of `IfcModel.importTable`. */
+export interface TableImportOptions {
+  /** `"csv"` (default), `"tsv"` or `"xlsx"`. */
+  format?: "csv" | "tsv" | "xlsx";
+  /** The key column; by default `"GlobalId"` when the table has one, else `"id"`. */
+  key?: "GlobalId" | "id";
+  /** The cell text of `NULL`; empty by default. */
+  null?: string;
+  /** Plan and report only; the model is unchanged. */
+  dryRun?: boolean;
+}
+
+/** One value `IfcModel.importTable` changes. */
+export interface TableChange {
+  /** One-based; the header is row 1. */
+  row: number;
+  /** One-based. */
+  column: number;
+  /** The row's key as the table gives it. */
+  key: string;
+  /** The column's value path. */
+  path: string;
+  /** The row's entity. */
+  entity: bigint;
+  /** The entity written, which a path such as `type.Name` finds elsewhere. */
+  targetEntity: bigint;
+  /** The attribute name or `Set.Property` written. */
+  target: string;
+  /** The value now, as cell text. */
+  before: string;
+  /** The value then, as cell text. */
+  after: string;
+}
+
+/** One refused table, row or cell of `IfcModel.importTable`. */
+export interface TableRefusal {
+  /** One-based; `undefined` for the whole table. */
+  row: number | undefined;
+  /** One-based; `undefined` for a whole row or the table. */
+  column: number | undefined;
+  /** `malformed-table`, `invalid-header`, `duplicate-column`, `no-key-column`, `ragged-row`, `empty-key`, `unknown-key`, `duplicate-key`, `ambiguous-key`, or the error code of a refused write (`type-mismatch`, `invalid-value`, ...). */
+  code: string;
+  message: string;
+  /** The byte range of a header that does not parse. */
+  span: [number, number] | undefined;
+}
+
+/** What `IfcModel.importTable` planned, and whether it wrote it. */
+export interface TableImport {
+  /** `false` for a dry run, a refused table, or one that changes nothing. */
+  applied: boolean;
+  changes: TableChange[];
+  /** Any refusal means nothing was written. */
+  refusals: TableRefusal[];
 }
 
 /** The containment tree, from `IfcModel.spatialTree`. */

@@ -208,6 +208,29 @@ pub enum SelectorError {
     PropertyEdit(crate::PropertyEditError),
     /// The planned transaction failed its preflight.
     Conflict(Vec<Conflict>),
+    /// A write from text: the text does not read as a value of the
+    /// target's type (#472, #474).
+    InvalidText {
+        /// The entity written.
+        entity: EntityId,
+        /// What is written: an attribute name or `Set.Property`.
+        target: String,
+        /// The text as given.
+        text: String,
+        /// What the text should have been (`an integer`, `one of
+        /// IfcWallTypeEnum: ...`).
+        expected: String,
+    },
+    /// Two writes of one batch give one attribute or property different
+    /// values (#474): two rows renaming the type they share.
+    ConflictingWrite {
+        /// The entity written.
+        entity: EntityId,
+        /// What is written: an attribute name or `Set.Property`.
+        target: String,
+        /// The position of the earlier write in the batch.
+        first: usize,
+    },
 }
 
 impl fmt::Display for SelectorError {
@@ -281,6 +304,21 @@ impl fmt::Display for SelectorError {
             #[cfg(feature = "properties")]
             Self::PropertyEdit(error) => write!(f, "{error}"),
             Self::Conflict(conflicts) => write!(f, "the planned write conflicts: {conflicts:?}"),
+            Self::InvalidText {
+                entity,
+                target,
+                text,
+                expected,
+            } => write!(f, "#{}.{target}: {text:?} is not {expected}", entity.0),
+            Self::ConflictingWrite {
+                entity,
+                target,
+                first,
+            } => write!(
+                f,
+                "#{}.{target} is also written by write {first}, with another value",
+                entity.0
+            ),
         }
     }
 }
