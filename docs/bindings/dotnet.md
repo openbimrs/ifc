@@ -678,6 +678,42 @@ recipe.
 `RemoveWithRelationships(id)` for one entity or `RemoveProduct(id)` for a
 product.
 
+## Units and the model's length unit
+
+A unit is named as text: an SI unit with its prefix written before it
+(`METRE`, `MILLIMETRE`, `MILLI METRE`, `SQUARE_MILLIMETRE`; `METER`
+spellings accepted), or a named conversion-based unit of IFC4 Table 673
+with exact factors (`inch`, `foot`, `yard`, `mile`, `square foot`, `gallon
+US`, `pound`, `degree` ...) or `US survey foot`
+([#469](https://github.com/openbimrs/ifc/issues/469)).
+
+`Units.Convert(value, from, to)` converts one value and needs no model;
+`model.ConvertUnitValue(value, fromId, toId)` converts between two unit
+entities of the model. `Units.FormatLength(value, unit, style, places)`
+writes a length as text: `LengthStyle.Decimal` in a display unit,
+`LengthStyle.FeetInches` (`5' - 6 1/2"`, rounded to `1/places` of an inch)
+or `LengthStyle.Inches`. Units of different dimensions throw
+`type-mismatch`; a monetary, context-dependent or offset unit (degree
+Fahrenheit, `IfcConversionBasedUnitWithOffset`, not applied until
+[#110](https://github.com/openbimrs/ifc/issues/110) is settled) throws
+`unsupported`.
+
+`model.ConvertLengthUnit(target)` converts the model's length unit and
+rescales every length, area and volume value the release declares as one,
+as one checked transaction, and returns a `LengthUnitReport`: `From`, `To`,
+the `LengthFactor` (and `AreaFactor`, `VolumeFactor` when those units
+follow), the new unit ids, `Converted` (`ConvertedValues` per entity type
+and attribute), `Kept` (`KeptValues` with the `Reason`: `explicit-unit`,
+`map-unit`, `unitless-parameter`, `unit-not-followed`), `Created`,
+`Removed` and `Applied`. `areaAndVolume: false` leaves the area and volume
+units and their values; `removeReplacedUnits: false` keeps the replaced unit
+entities; `dryRun: true` only reports. Values the conversion cannot carry
+(a parameter on a curve whose parameter space IFC leaves undefined, a
+p-curve off a plane, polynomial coefficients) throw `unsupported`, naming
+each, and change nothing. The
+[cookbook](/cookbook/dotnet#convert-units-and-the-model-s-length-unit) has a
+recipe.
+
 ## How it is tested
 
 The package is tested as NuGet installs it: `check-dotnet.py` packs the
@@ -727,6 +763,8 @@ and `MeshedProduct` included, from its XML documentation comments.
 | `byte[] ExportTable(string query, IEnumerable<string> columns, string format = "csv", string? key = null, string @null = "")` | The entities selector `query` selects as a table (#474): the key column first (`GlobalId`, or `id` with `key`), then one column per value path of `columns` (`Name`, `type.Name`, `Pset_WallCommon.FireRating`), each cell the value the path reads as text. Refuses with `invalid-selector` a query or path that does not parse, `invalid-value` an unknown format or key, and `wrong-entity-type` an entity without a `GlobalId` in a table keyed by it. |
 | `TableImport ImportTable(byte[] data, string format = "csv", string? key = null, string @null = "", bool dryRun = false)` | Apply a table back to the model by its key column (#474), as one checked transaction: every other cell is written by its header's value path, typed by the attribute's declared type or the property's stated one; a cell that reads what the model holds changes nothing, so an exported table imported unchanged is a no-op. Any refusal means nothing was written, as does `dryRun`. |
 | `RemovalReport Purge(IEnumerable<string>? classes = null, bool includeRoots = false, bool includeOwnerHistory = false, bool dryRun = false)` | Remove unreferenced entities as one checked transaction. Without `classes`, every resource entity no `IfcRoot` reaches (nor annotates something reached); with them, the entities of those classes (subtypes included) nothing references, an `IfcRoot` only with `includeRoots`. The owner history stays unless `includeOwnerHistory`. |
+| `LengthUnitReport ConvertLengthUnit(string target, bool areaAndVolume = true, bool removeReplacedUnits = true, bool dryRun = false)` | Convert the model's length unit to `target` (#469): an SI `METRE` with any prefix (`MILLIMETRE`, `MILLI METRE`) or `inch`, `foot`, `yard`, `mile`, `US survey foot`. Every length, area and volume value the release declares as one is rescaled, as one checked transaction; values with a unit of their own keep it. With `dryRun` nothing changes. |
+| `double ConvertUnitValue(double value, ulong from, ulong to)` | Convert `value` from unit entity `from` to unit entity `to` of this model (an `IfcSIUnit`, `IfcConversionBasedUnit` or `IfcDerivedUnit`). |
 | `RemovalReport RemoveRepresentation(ulong id, bool dryRun = false)` | Remove shape representation `id` with what only it uses (#481), as one checked transaction: taken off its product definition shape (which goes when left empty), representation map or shape aspects, then removed with its items down to what nothing else uses. Shared items, profiles, points and styles stay. With `dryRun` nothing changes. |
 | `ulong SetProperty(ulong obj, string set, string name, Value value, string? setType = null)` | Write one value (`SetProperties` with one edit); returns the id of the entity holding it. |
 | `void RemoveProperty(ulong obj, string set, string name)` | Remove one property from `obj`'s own set (`SetProperties` with one edit). |

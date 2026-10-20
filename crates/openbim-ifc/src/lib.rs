@@ -136,11 +136,16 @@ pub use self::{
 #[cfg(feature = "cost")]
 pub use ifc_cost as cost;
 
-/// Property sets and quantities, and their checked edit (`property_edit`
-/// below).
+/// Property sets and quantities, their checked edit (`property_edit`
+/// below), and converting a model's length unit (`length_unit` below).
 #[cfg(feature = "properties")]
 pub use {
     ifc_properties as properties,
+    length_unit::{
+        convert_length_unit, stage_length_unit_conversion, ConvertedAttribute, ConvertedKind,
+        KeptAttribute, KeptReason, LengthUnitError, LengthUnitOptions, LengthUnitRefusal,
+        LengthUnitReport, RefusalReason, StagedLengthUnitConversion,
+    },
     property_edit::{
         apply_property_edits, stage_property_edits, PropertyEdit, PropertyEditError,
         PropertyEditFailure, PropertyEditOutcome, SetType, StagedPropertyEdits,
@@ -347,6 +352,13 @@ pub use spatial_properties::{
 mod georeference;
 #[cfg(all(feature = "georef", feature = "properties"))]
 pub use georeference::{georeferencing, GeoreferencingError};
+
+// Converting a model's length unit (#469) reads every attribute against the
+// release's table, resolves units through `ifc-properties`' exact resolver,
+// and rescales geometry, quantities and properties alike, across domains, so
+// it lives in this orchestration layer. The module gates itself on
+// `properties` item by item; its exports join the property exports above.
+mod length_unit;
 
 // Writing property and quantity values (#123) joins the exact resolver and
 // release-bound writers of `ifc-properties` with the PSD/QTO catalog of

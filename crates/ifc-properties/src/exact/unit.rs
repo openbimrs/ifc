@@ -14,15 +14,17 @@ mod resolve;
 
 use std::{fmt, sync::Arc};
 
-use ifc_model::{EntityId, Model};
-use ifc_schema::SchemaVersion;
+use ifc_model::{EntityId, Model, Value};
+use ifc_schema::{for_version, SchemaVersion};
 
-use super::measure::measure_unit;
+use super::measure::{measure_unit, MeasureUnit};
 use super::refs::{ref_at, refs_at};
 use super::release::{validate_model, Release};
 use super::value::select_accepts_entity;
 use super::ExactPropertyError;
 use resolve::{declared_unit_type, Resolver};
+
+use crate::convert::{normalise_decimal, unit_conversion, ConversionUnit, UnitConversionError};
 
 /// A measure's effective unit, resolved to SI base units.
 ///
@@ -318,4 +320,154 @@ fn project_unit(
         }
     }
     found.ok_or_else(no_unit)
+}
+
+/// The one unit of `unit_type` (an `IfcUnitEnum` or `IfcDerivedUnitEnum`
+/// constant such as `LENGTHUNIT`) the single project assigns, unresolved.
+///
+/// # Errors
+///
+/// [`ExactUnitError::NoProject`], [`ExactUnitError::MultipleProjects`],
+/// [`ExactUnitError::NoProjectUnit`] when the assignment has none of that
+/// type, [`ExactUnitError::DuplicateProjectUnit`], and the structural
+/// refusals of [`exact_unit`].
+pub fn exact_project_unit(model: &Model, unit_type: &str) -> Result<EntityId, ExactUnitError> {
+    let release = validate_model(model)?;
+    project_unit(model, release, &Arc::from(unit_type.to_ascii_uppercase()))
+}
+
+/// What unit a measure type takes in a release: none, a named unit of an
+/// `IfcUnitEnum` type, or a derived unit of an `IfcDerivedUnitEnum` type.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum MeasureUnitType {
+    /// A dimensionless measure (`IfcRatioMeasure`, `IfcCountMeasure` ...).
+    Dimensionless,
+    /// A named unit of this `IfcUnitEnum` constant: `IfcLengthMeasure`
+    /// and `IfcPositiveLengthMeasure` take a `LENGTHUNIT`.
+    Named(Arc<str>),
+    /// A derived unit of this `IfcDerivedUnitEnum` constant.
+    Derived(Arc<str>),
+}
+
+/// The unit a measure type takes in `schema`, derived from the release's
+/// own tables as [`exact_unit`] derives it (`IfcAreaMeasure` takes an
+/// `AREAUNIT`, `IfcNonNegativeLengthMeasure` a `LENGTHUNIT`).
+///
+/// # Errors
+///
+/// [`ExactUnitError::Structure`] with `UnsupportedSchema` for a release
+/// the exact resolver does not bind (IFC4X1, IFC4X2) or the build leaves
+/// out; [`ExactUnitError::MeasureNotInSchema`],
+/// [`ExactUnitError::NotAMeasure`] and
+/// [`ExactUnitError::UnmappedMeasureType`] as [`exact_unit`] refuses them.
+pub fn measure_unit_type(
+    schema: SchemaVersion,
+    measure_type: &str,
+) -> Result<MeasureUnitType, ExactUnitError> {
+    let unsupported = || {
+        ExactUnitError::Structure(ExactPropertyError::UnsupportedSchema {
+            schema: format!("{schema:?}"),
+        })
+    };
+    if !matches!(
+        schema,
+        SchemaVersion::Ifc2x3 | SchemaVersion::Ifc4 | SchemaVersion::Ifc4x3
+    ) {
+        return Err(unsupported());
+    }
+    let release = Release {
+        version: schema,
+        schema: for_version(schema).map_err(|_| unsupported())?,
+    };
+    Ok(match measure_unit(release, measure_type)? {
+        MeasureUnit::Dimensionless => MeasureUnitType::Dimensionless,
+        MeasureUnit::Named(unit_type) => MeasureUnitType::Named(unit_type),
+        MeasureUnit::Derived(unit_type) => MeasureUnitType::Derived(unit_type),
+    })
+}
+
+/// A model's unit entity reduced to a [`ConversionUnit`] (#469): an
+/// `IfcSIUnit` with its prefix, an `IfcConversionBasedUnit` through its
+/// `ConversionFactor` chain, or an `IfcDerivedUnit` by its elements'
+/// exponents, resolved exactly against the release the header declares.
+///
+/// # Errors
+///
+/// [`UnitConversionError::MonetaryUnit`],
+/// [`UnitConversionError::ContextDependentUnit`],
+/// [`UnitConversionError::OffsetUnit`] for an
+/// `IfcConversionBasedUnitWithOffset` (#110), and
+/// [`UnitConversionError::Resolve`] for every other refusal of the exact
+/// resolver (missing, malformed or cyclic units, an unknown prefix ...).
+pub fn resolve_unit(model: &Model, unit: EntityId) -> Result<ConversionUnit, UnitConversionError> {
+    let release = validate_model(model).map_err(ExactUnitError::from)?;
+    let entity = model.get(unit).ok_or(ExactUnitError::Structure(
+        ExactPropertyError::MissingReference {
+            from: unit,
+            to: unit,
+        },
+    ))?;
+    let is_a = |ancestor| release.schema.is_a(&entity.type_name, ancestor);
+    if is_a("IFCMONETARYUNIT") {
+        return Err(UnitConversionError::MonetaryUnit { unit });
+    }
+    if is_a("IFCCONTEXTDEPENDENTUNIT") {
+        return Err(UnitConversionError::ContextDependentUnit { unit });
+    }
+    let resolved = Resolver::new(model, release).resolve(unit)?;
+    let (mantissa, decimal_exponent) =
+        normalise_decimal(resolved.mantissa, resolved.decimal_exponent);
+    Ok(ConversionUnit {
+        name: unit_label(model, unit).into(),
+        unit_type: Some(resolved.unit_type),
+        dimensions: resolved.dimensions,
+        mantissa,
+        decimal_exponent,
+        offset: resolved.offset,
+    })
+}
+
+/// Convert `value` from one of the model's units to another.
+///
+/// # Errors
+///
+/// As [`resolve_unit`] for either unit, and as
+/// [`crate::unit_conversion`].
+pub fn convert_between(
+    model: &Model,
+    value: f64,
+    from: EntityId,
+    to: EntityId,
+) -> Result<f64, UnitConversionError> {
+    if !value.is_finite() {
+        return Err(UnitConversionError::NonFinite { value });
+    }
+    let from = resolve_unit(model, from)?;
+    let to = resolve_unit(model, to)?;
+    Ok(unit_conversion(&from, &to)?.apply(value))
+}
+
+/// `MILLI METRE` for an SI unit, the `Name` of a conversion-based unit,
+/// otherwise `#id TYPE`.
+fn unit_label(model: &Model, unit: EntityId) -> String {
+    let Some(entity) = model.get(unit) else {
+        return format!("#{}", unit.0);
+    };
+    if entity.is_type("IFCSIUNIT") {
+        if let (Some(prefix), Some(Value::Enum(name))) =
+            (entity.attributes.get(2), entity.attributes.get(3))
+        {
+            return match prefix {
+                Value::Enum(prefix) => format!("{prefix} {name}"),
+                _ => name.to_string(),
+            };
+        }
+    }
+    if entity.type_name.starts_with("IFCCONVERSIONBASEDUNIT") {
+        if let Some(Value::Text(name)) = entity.attributes.get(2) {
+            return name.to_string();
+        }
+    }
+    format!("#{} {}", unit.0, entity.type_name)
 }

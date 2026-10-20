@@ -100,6 +100,48 @@
 #define OPENBIM_IFC_KIND_UNKNOWN 3
 
 /**
+ * `openbim_ifc_v0_1_format_length` style: decimal, in `display_unit`
+ * (default the value's unit) with `places` digits after the point.
+ */
+#define OPENBIM_IFC_LENGTH_FORMAT_DECIMAL 0
+
+/**
+ * `openbim_ifc_v0_1_format_length` style: feet and inches, `5' - 6 1/2"`,
+ * rounded to `1/places` of an inch.
+ */
+#define OPENBIM_IFC_LENGTH_FORMAT_FEET_INCHES 1
+
+/**
+ * `openbim_ifc_v0_1_format_length` style: inches, `66 1/2"`, rounded to
+ * `1/places` of an inch.
+ */
+#define OPENBIM_IFC_LENGTH_FORMAT_INCHES 2
+
+/**
+ * `openbim_ifc_v0_1_format_length` flag: write a whole number of feet as
+ * `5'` rather than `5' - 0"`.
+ */
+#define OPENBIM_IFC_LENGTH_FORMAT_SUPPRESS_ZERO_INCHES 1
+
+/**
+ * `openbim_ifc_v0_1_model_convert_length_unit` flag: report only.
+ */
+#define OPENBIM_IFC_LENGTH_UNIT_DRY_RUN 4
+
+/**
+ * `openbim_ifc_v0_1_model_convert_length_unit` flag: keep the area and
+ * volume units and their values instead of replacing them by the square
+ * and cube of the new length unit.
+ */
+#define OPENBIM_IFC_LENGTH_UNIT_KEEP_AREA_AND_VOLUME 1
+
+/**
+ * `openbim_ifc_v0_1_model_convert_length_unit` flag: keep the replaced
+ * unit entities even when nothing else refers to them.
+ */
+#define OPENBIM_IFC_LENGTH_UNIT_KEEP_REPLACED_UNITS 2
+
+/**
  * Read a real written without its decimal point (`1E-05`) as that real,
  * with a diagnostic.
  */
@@ -493,6 +535,24 @@ typedef struct {
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
+
+/**
+ * Convert `value` from the unit named `from` (`from_len` UTF-8 bytes) to
+ * the unit named `to`, written to `out_value`. Needs no model.
+ * `InvalidValue` for text that names no unit; `TypeMismatch` for units of
+ * different dimensions; `Unsupported` for a unit with an offset (degree
+ * Fahrenheit, #110); `InvalidArgument` for text that is not UTF-8.
+ *
+ * # Safety
+ * `from` and `to` valid for their lengths; `out_value` valid for one
+ * write.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_convert_unit(double value,
+                                               const uint8_t *from,
+                                               size_t from_len,
+                                               const uint8_t *to,
+                                               size_t to_len,
+                                               double *out_value);
 
 /**
  * Destroy a polyline set. A stale or repeated handle is `InvalidHandle`.
@@ -930,6 +990,35 @@ OpenbimIfcStatus openbim_ifc_v0_1_entity_voided_element(OpenbimIfcModel model,
                                                         uint64_t *out_id);
 
 /**
+ * Write `value`, a length in the unit named `unit`, as NUL-terminated
+ * text. `style` is `OPENBIM_IFC_LENGTH_FORMAT_DECIMAL` (in `display_unit`,
+ * or the value's unit when `display_unit` is null, with `places` decimals),
+ * `OPENBIM_IFC_LENGTH_FORMAT_FEET_INCHES` or
+ * `OPENBIM_IFC_LENGTH_FORMAT_INCHES` (rounded to `1/places` of an inch);
+ * `flags`: `OPENBIM_IFC_LENGTH_FORMAT_SUPPRESS_ZERO_INCHES`. Needs no
+ * model. `InvalidValue` for a unit name, a zero denominator or a length
+ * too large; `TypeMismatch` for a unit that is not a length;
+ * `OutOfRange` for more than 255 decimals; `InvalidArgument` for an
+ * unknown style or flag, or text that is not UTF-8.
+ *
+ * # Safety
+ * `unit` valid for `unit_len`; `display_unit` null or valid for
+ * `display_unit_len`; `buffer` and `out_required` as for
+ * `openbim_ifc_v0_1_new_guid`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_format_length(double value,
+                                                const uint8_t *unit,
+                                                size_t unit_len,
+                                                uint32_t style,
+                                                uint32_t places,
+                                                const uint8_t *display_unit,
+                                                size_t display_unit_len,
+                                                uint32_t flags,
+                                                uint8_t *buffer,
+                                                size_t capacity,
+                                                size_t *out_required);
+
+/**
  * Destroy a graph set. A stale or repeated handle is `InvalidHandle`.
  */
 OpenbimIfcStatus openbim_ifc_v0_1_graphs_destroy(OpenbimIfcGraphs graphs);
@@ -1171,6 +1260,57 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_classifications(OpenbimIfcModel model,
                                                         uint8_t *strings,
                                                         size_t string_capacity,
                                                         size_t *out_strings_required);
+
+/**
+ * Convert the model's length unit to the unit named `target`
+ * (`target_len` UTF-8 bytes): an SI `METRE` with any prefix, or `inch`,
+ * `foot`, `yard`, `mile`, `US survey foot`. Every length, area and volume
+ * value is rescaled as one checked transaction. `flags`:
+ * `OPENBIM_IFC_LENGTH_UNIT_KEEP_AREA_AND_VOLUME`,
+ * `OPENBIM_IFC_LENGTH_UNIT_KEEP_REPLACED_UNITS`,
+ * `OPENBIM_IFC_LENGTH_UNIT_DRY_RUN`. The answer is the `LengthUnitReport`
+ * tape of the module docs; a size query or a short buffer plans the
+ * conversion and answers `BufferTooSmall` without applying it.
+ *
+ * `InvalidValue` for a target that is not a length unit;
+ * `Unsupported` naming the values the conversion cannot carry (a
+ * parameter on a curve whose parameter space IFC leaves undefined, a
+ * p-curve off a plane, polynomial coefficients ...) and for an offset
+ * unit (#110); `InvalidModel` when the project length unit does not
+ * resolve; `UnsupportedSchema`; `InvalidArgument` for an unknown flag or
+ * text that is not UTF-8; `FeatureDisabled`.
+ *
+ * # Safety
+ * `target` valid for `target_len`; the buffers as for
+ * `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_convert_length_unit(OpenbimIfcModel model,
+                                                            const uint8_t *target,
+                                                            size_t target_len,
+                                                            uint32_t flags,
+                                                            OpenbimIfcValueNode *nodes,
+                                                            size_t node_capacity,
+                                                            size_t *out_nodes_required,
+                                                            uint8_t *strings,
+                                                            size_t string_capacity,
+                                                            size_t *out_strings_required);
+
+/**
+ * Convert `value` from unit entity `from` to unit entity `to` of the model
+ * (an `IfcSIUnit`, `IfcConversionBasedUnit` or `IfcDerivedUnit`), written
+ * to `out_value`. `MissingEntity`; `TypeMismatch` for units of different
+ * dimensions; `Unsupported` for a monetary, context-dependent or offset
+ * unit; `InvalidModel` for a unit that does not resolve;
+ * `UnsupportedSchema`; `FeatureDisabled`.
+ *
+ * # Safety
+ * `out_value` valid for one write.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_convert_unit_value(OpenbimIfcModel model,
+                                                           double value,
+                                                           uint64_t from,
+                                                           uint64_t to,
+                                                           double *out_value);
 
 /**
  * Every cost schedule and cost item as one `Cost` record: schedules
