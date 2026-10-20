@@ -82,6 +82,19 @@ fn a_file_without_a_declared_schema_is_refused() -> TestResult {
     Ok(())
 }
 
+/// IFC4X3_TC1 names a release with no published EXPRESS (#467): refused
+/// as such, never validated as IFC4X3 ADD2.
+#[test]
+fn an_unpublished_release_is_refused_by_name() -> TestResult {
+    let text = CHECKED.replace("FILE_SCHEMA(('IFC4'));", "FILE_SCHEMA(('IFC4X3_TC1'));");
+    let model = StepCodec.read_bytes(text.as_bytes())?;
+    assert!(matches!(
+        ifc::validate::validate_declared(&model),
+        Err(ifc::validate::ValidateError::UnpublishedSchema(token)) if token == "IFC4X3_TC1"
+    ));
+    Ok(())
+}
+
 /// Errors for the broken file, with rule ids and paths.
 #[test]
 fn a_broken_file_is_not_conformant() -> TestResult {

@@ -404,7 +404,7 @@ representation instead of the Body, such as `"Surface"`.
 representation as polylines ([#458](https://github.com/openbimrs/ifc/issues/458)),
 from the same native library: a `CurvedProduct` per product, its
 `ProductCurves` record (transform, vertex count, a `ProductPolyline` per
-curve, refusal) and `float[] Positions`, every polyline's vertices in
+curve, refusal, skipped items) and `float[] Positions`, every polyline's vertices in
 turn, relative to its transform. `representation` is `"Plan"` by default
 (the best drawing curves: `Plan`, then `Annotation`, `FootPrint` and
 `Axis`, preferring one in a `PLAN_VIEW` context), or `"Axis"`,
@@ -417,7 +417,11 @@ lies from it (0 for a polyline the file authored), against
 intrinsic curves compile ([#506](https://github.com/openbimrs/ifc/issues/506));
 a curve the reference compiler has no certified polyline for (an implicit
 curve, an offset of an offset) is refused `unsupported`, naming the
-product.
+product. A representation that also holds text or a fill area (a dimension
+and its value) gives its curves; each `IfcTextLiteral`,
+`IfcTextLiteralWithExtent` and `IfcAnnotationFillArea` of it is listed
+by entity id in `Skipped`, not drawn and not a refusal
+([#512](https://github.com/openbimrs/ifc/issues/512)).
 
 <!-- SNIPPET:dotnet-geometry-curves -->
 

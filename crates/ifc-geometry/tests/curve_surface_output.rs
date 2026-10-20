@@ -28,13 +28,19 @@
 //!   refuses by name (#506);
 //! - a wall whose `FootPrint` is a closed `IfcCompositeCurve`: two
 //!   polylines (0, 0)-(1, 0)-(1, 1) and an `IfcTrimmedCurve` arc back to
-//!   (0, 0) about (0.5, 0.5) through (0, 1), enclosing `1/2 + pi/4` m2.
+//!   (0, 0) about (0.5, 0.5) through (0, 1), enclosing `1/2 + pi/4` m2;
+//! - a dimension `IfcAnnotation` whose `Annotation2D` holds a dimension
+//!   line and an extension line (`IfcPolyline`s), its value as an
+//!   `IfcTextLiteralWithExtent` and an `IfcAnnotationFillArea` (#512): the
+//!   two polylines, the text and the fill area skipped by kind; an
+//!   annotation of text alone, and one whose text sits in a mapped
+//!   representation, which is lowered and refused.
 #![cfg(feature = "compile-reference-backend")]
 
 use axiolid_core::Tolerance;
 use ifc_geometry::compile::{
-    compile_product_mesh_for, compile_product_mesh_reported, compile_product_polylines,
-    CompiledPolyline, MeshClosure,
+    compile_product_curves, compile_product_mesh_for, compile_product_mesh_reported,
+    compile_product_polylines, CompiledPolyline, MeshClosure, NonCurveItem, SkippedItem,
 };
 use ifc_geometry::error::GeometryError;
 use ifc_geometry::lower::RepresentationPurpose;
@@ -52,6 +58,9 @@ const TRIMMED_BACK_WALL: EntityId = EntityId(150);
 const COMPOSITE_WALL: EntityId = EntityId(160);
 const OFFSET_WALL: EntityId = EntityId(180);
 const OFFSET_OFFSET_WALL: EntityId = EntityId(190);
+const DIMENSION: EntityId = EntityId(200);
+const TEXT_ONLY: EntityId = EntityId(220);
+const MAPPED_TEXT: EntityId = EntityId(230);
 
 const AXIS_POLYLINE: EntityId = EntityId(16);
 const TRIMMED: EntityId = EntityId(145);
@@ -177,6 +186,23 @@ fn fixture(schema: &str) -> Model {
 #192=IFCPRODUCTDEFINITIONSHAPE($,$,(#193));
 #193=IFCSHAPEREPRESENTATION(#2,'Axis','Curve2D',(#195));
 #195=IFCOFFSETCURVE2D(#185,0.1,.F.);
+#202=IFCPRODUCTDEFINITIONSHAPE($,$,(#203));
+#203=IFCSHAPEREPRESENTATION(#2,'Annotation','Annotation2D',(#204,#205,#206,#209));
+#204=IFCPOLYLINE((#9,#77));
+#205=IFCPOLYLINE((#77,#78));
+#206=IFCTEXTLITERALWITHEXTENT('1.00',#207,.LEFT.,#208,'bottom-middle');
+#207=IFCAXIS2PLACEMENT2D(#9,$);
+#208=IFCPLANAREXTENT(0.5,0.1);
+#209=IFCANNOTATIONFILLAREA(#76,$);
+#222=IFCPRODUCTDEFINITIONSHAPE($,$,(#223));
+#223=IFCSHAPEREPRESENTATION(#2,'Annotation','Annotation2D',(#224));
+#224=IFCTEXTLITERAL('label',#207,.LEFT.);
+#232=IFCPRODUCTDEFINITIONSHAPE($,$,(#233));
+#233=IFCSHAPEREPRESENTATION(#2,'Annotation','MappedRepresentation',(#204,#234));
+#234=IFCMAPPEDITEM(#235,#237);
+#235=IFCREPRESENTATIONMAP(#4,#236);
+#236=IFCSHAPEREPRESENTATION(#2,'Annotation','Annotation2D',(#224));
+#237=IFCCARTESIANTRANSFORMATIONOPERATOR2D($,$,#9,$);
 ",
     );
     data.push_str(&element(schema, WALL, "IFCWALL", 11, 12));
@@ -190,6 +216,9 @@ fn fixture(schema: &str) -> Model {
     data.push_str(&element(schema, COMPOSITE_WALL, "IFCWALL", 161, 162));
     data.push_str(&element(schema, OFFSET_WALL, "IFCWALL", 181, 182));
     data.push_str(&element(schema, OFFSET_OFFSET_WALL, "IFCWALL", 191, 192));
+    data.push_str(&annotation(schema, DIMENSION, 202));
+    data.push_str(&annotation(schema, TEXT_ONLY, 222));
+    data.push_str(&annotation(schema, MAPPED_TEXT, 232));
     let text = format!(
         "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n\
          FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('{schema}'));\n\
@@ -676,4 +705,76 @@ fn representation_purposes_round_trip_their_names() {
     assert_eq!(RepresentationPurpose::from_name("body"), None);
     assert_eq!(RepresentationPurpose::Body.identifier(), None);
     assert_eq!(RepresentationPurpose::Axis.identifier(), Some("Axis"));
+}
+
+/// A dimension gives its lines; its text and fill area are skipped by
+/// kind, not drawn and not a refusal (#512). The strict reader still
+/// refuses the representation, and a text literal nested in a mapped
+/// representation is lowered, so refused, rather than skipped.
+#[test]
+fn a_dimension_gives_its_curves_and_skips_its_text_and_fill_area() {
+    for schema in SCHEMAS {
+        let model = fixture(schema);
+        let curves = compile_product_curves(
+            &model,
+            DIMENSION,
+            RepresentationPurpose::Annotation,
+            Tolerance::MILLIMETRE,
+        )
+        .expect("the curves compile")
+        .expect("has the representation");
+        let ids: Vec<_> = curves.polylines.iter().map(|p| p.curve).collect();
+        assert_eq!(ids, [Some(EntityId(204)), Some(EntityId(205))], "{schema}");
+        assert_near(points(&curves.polylines[1])[1], [1.0, 1.0, 0.0], schema);
+        let skipped: Vec<_> = curves
+            .skipped
+            .iter()
+            .map(|SkippedItem { item, kind, .. }| (*item, *kind))
+            .collect();
+        assert_eq!(
+            skipped,
+            [
+                (EntityId(206), NonCurveItem::TextLiteral),
+                (EntityId(209), NonCurveItem::AnnotationFillArea),
+            ],
+            "{schema}"
+        );
+
+        match compile_product_polylines(
+            &model,
+            DIMENSION,
+            RepresentationPurpose::Annotation,
+            Tolerance::MILLIMETRE,
+        ) {
+            Err(GeometryError::Unsupported { entity, .. }) => {
+                assert_eq!(entity, EntityId(206), "{schema}");
+            }
+            other => panic!("{schema}: the strict reader refuses, got {other:?}"),
+        }
+
+        let text = compile_product_curves(
+            &model,
+            TEXT_ONLY,
+            RepresentationPurpose::Annotation,
+            Tolerance::MILLIMETRE,
+        )
+        .expect("text alone is no refusal")
+        .expect("has the representation");
+        assert!(text.polylines.is_empty(), "{schema}");
+        assert_eq!(text.skipped.len(), 1, "{schema}");
+        assert_eq!(text.skipped[0].item, EntityId(224), "{schema}");
+        assert_eq!(text.skipped[0].kind, NonCurveItem::TextLiteral, "{schema}");
+
+        match compile_product_curves(
+            &model,
+            MAPPED_TEXT,
+            RepresentationPurpose::Annotation,
+            Tolerance::MILLIMETRE,
+        ) {
+            Err(GeometryError::Unsupported { entity, .. }) => {
+                assert_eq!(entity, EntityId(224), "{schema}");
+            }
+            other => panic!("{schema}: nested text is refused, got {other:?}"),
+        }
+    }
 }

@@ -100,4 +100,4 @@ pub use export::{
 };
 pub use registry::Schema;
 pub use types::{TypeDef, TypeKind};
-pub use version::SchemaVersion;
+pub use version::{SchemaVersion, UnpublishedRelease};

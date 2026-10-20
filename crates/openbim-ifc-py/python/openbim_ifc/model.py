@@ -323,6 +323,8 @@ class IfcModel(ModelAccess):
         curve the reference compiler has no certified polyline for (an
         implicit curve, an offset of an offset) is ``unsupported``;
         trimmed, composite, offset and intrinsic curves compile (#506).
+        Text literals and annotation fill areas beside the curves (a
+        dimension's value) are listed in ``skipped``, not refused (#512).
         Needs a wheel
         built with the ``mesh`` feature."""
         wire = self._native.product_curves(None if ids is None else list(ids), representation)

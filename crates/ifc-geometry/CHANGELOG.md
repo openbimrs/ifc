@@ -12,6 +12,36 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (`axiolid-mesh-compile` 0.3.29)
+
+Semver: patch. No code change.
+
+- Requires, behind `compile-reference-backend`, `axiolid-mesh-compile`
+  0.3.29, a kernel packaging fix: it brings `axiolid-reference` 0.3.9,
+  which requires the `axiolid-evaluate` ^0.3.17 it is built with (0.3.8
+  claimed ^0.3.12, so a resolver could pair it with an older
+  `axiolid-evaluate`).
+
+### Added (#512)
+
+Semver: minor. Every item below is new; `compile_product_polylines`
+and `compile_product_mesh_for` are unchanged.
+
+- `compile::compile_product_curves` / `compile_product_curves_with`: the
+  curves of a product's representation as `compile::ProductPolylines`,
+  `polylines` and `skipped`. Each `IfcTextLiteral`,
+  `IfcTextLiteralWithExtent` and `IfcAnnotationFillArea` among the
+  representation's own `Items` is not lowered but listed as a
+  `compile::SkippedItem` (the item and its `compile::NonCurveItem` kind,
+  `TextLiteral` or `AnnotationFillArea`), so a dimension (its lines as
+  `IfcPolyline`s, its value as text) gives its lines instead of being
+  refused. Nothing is drawn in a skipped item's place: a fill area's
+  boundaries are not returned. Every other item lowers as before and its
+  refusal still refuses the product; a text literal nested in a mapped
+  representation is lowered, so refused, not skipped.
+  `compile_product_polylines` keeps the strict rule and refuses such a
+  representation as a whole.
+
 ## [0.29.0] - 2026-10-18
 
 ### Changed (#506, #509: `axiolid-mesh-compile` 0.3.28)

@@ -12,7 +12,11 @@
 //! product the backend refuses carries a typed [`GeometryRefusal`]: a
 //! curve the reference compiler has no certified polyline for (an
 //! implicit curve, an offset of an offset) is `unsupported`, naming the
-//! product, its message the compiler's reason.
+//! product, its message the compiler's reason. A representation that also
+//! holds text or a fill area (a dimension and its value) gives its curves:
+//! each `IfcTextLiteral`, `IfcTextLiteralWithExtent` and
+//! `IfcAnnotationFillArea` among its items is not drawn and is listed by
+//! id in [`ProductCurves::skipped`] (#512).
 
 use super::GeometryRefusal;
 use crate::record::{Field, Record, ToRecord};
@@ -56,6 +60,10 @@ pub struct ProductCurves {
     pub polylines: Vec<ProductPolyline>,
     /// Why there are no polylines.
     pub refusal: Option<GeometryRefusal>,
+    /// The representation's text literals and annotation fill areas, by
+    /// entity id in authored order: not drawn, read through the style
+    /// views (#512).
+    pub skipped: Vec<u64>,
 }
 
 impl IfcModel {
@@ -103,10 +111,16 @@ fn curves(
             positions: Vec::new(),
             polylines: Vec::new(),
             refusal: None,
+            skipped: Vec::new(),
         };
         match curves {
             Ok(curves) => {
                 record.transform = Some(ifc::column_major(&curves.world));
+                record.skipped = curves
+                    .skipped
+                    .iter()
+                    .map(|skipped| skipped.item.0)
+                    .collect();
                 for polyline in curves.polylines {
                     record.polylines.push(ProductPolyline {
                         curve: polyline.curve.map(|id| id.0),
@@ -156,6 +170,7 @@ impl ToRecord for ProductCurves {
                 ("vertex_count", Field::Count(self.positions.len() / 3)),
                 ("polylines", Field::records(&self.polylines)),
                 ("refusal", Field::record(self.refusal.as_ref())),
+                ("skipped", Field::ids(self.skipped.iter().copied())),
             ],
         )
     }

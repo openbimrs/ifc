@@ -580,7 +580,9 @@ OpenbimIfcStatus openbim_ifc_v0_1_curves_positions(OpenbimIfcCurves curves,
  * `out_count` gets their number. `ProductCurves`: id (`REF`), global id,
  * type name, transform (`LIST` of 16 `REAL`s, column-major, metres, or
  * `NULL`), vertex count (`INTEGER`), polylines (`LIST` of
- * `ProductPolyline`), refusal (`GeometryRefusal` or `NULL`).
+ * `ProductPolyline`), refusal (`GeometryRefusal` or `NULL`), skipped
+ * (`LIST` of `REF`s: the representation's text literals and annotation
+ * fill areas, not drawn and not a refusal, #512).
  * `ProductPolyline`: curve (`REF` of the IFC curve, or `NULL`), first
  * vertex and vertex count (`INTEGER`s: its slice of the positions),
  * closed (`BOOL`: its last vertex repeats its first), chord bound and

@@ -224,6 +224,11 @@ export interface ProductCurves {
   /** In authored order; empty with no refusal: no such curves. */
   polylines: ProductPolyline[];
   refusal: GeometryRefusal | undefined;
+  /**
+   * The representation's text literals and annotation fill areas, by
+   * entity id in authored order: not drawn, and not a refusal (#512).
+   */
+  skipped: bigint[];
   /** `x, y, z` per vertex, metres, relative to `transform`: every polyline in turn. */
   positions: Float32Array;
 }

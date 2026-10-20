@@ -54,6 +54,23 @@ the 0.1 line.
 Semver: additive, released on the 0.1 line: the `v0_1` ABI only gains
 symbols, and CMake's `find_package(openbim_ifc 0.1)` does not accept 0.2.
 
+### Changed (#512)
+
+- `openbim_ifc_v0_1_model_product_curves` gives the curves of a representation that also holds text or a
+  fill area: a dimension `IfcAnnotation` (its lines as `IfcPolyline`s,
+  its value as an `IfcTextLiteralWithExtent`) was an `unsupported`
+  refusal and now returns its lines. `skipped` (a `LIST` of `REF`s), the record's new last
+  field, lists each `IfcTextLiteral`, `IfcTextLiteralWithExtent` and
+  `IfcAnnotationFillArea` of the representation by entity id: not drawn,
+  not a refusal.
+  No function signature changed; the header changes only in its
+  documentation.
+- ABI version 0.1.20 (on top of #469's 0.1.19); no `v0_1` symbol changed.
+
+Semver: additive, released on the 0.1 line (the `v0_1` ABI is unchanged
+and additive: a reader that walks a record's fields by its child count
+sees one more trailing field).
+
 ## [0.1.15] - 2026-10-18
 
 ### Changed (#506, #509)

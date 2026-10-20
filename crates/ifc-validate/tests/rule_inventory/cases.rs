@@ -42,6 +42,12 @@ const HEADER: &[Case] = &[
         passes: || ifc4(&declared("IFC4")),
     },
     Case {
+        rule: "header.schema.unpublished",
+        form: "IFC4X3_TC1 or IFC4X3_ADD1, named releases with no published EXPRESS (#467)",
+        fails: || ifc4(&declared("IFC4X3_TC1")),
+        passes: || ifc4(&declared("IFC4X3_ADD2")),
+    },
+    Case {
         rule: "header.implementation_level",
         form: "a level other than 2;1",
         fails: || {

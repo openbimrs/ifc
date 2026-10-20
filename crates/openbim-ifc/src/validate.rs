@@ -99,8 +99,15 @@ mod with_catalog {
             .header()
             .schema_token()
             .ok_or(ValidateError::NoSchemaDeclared)?;
-        let version = SchemaVersion::from_header_token(token)
-            .ok_or_else(|| ValidateError::UnknownSchema(token.to_string()))?;
+        let version = SchemaVersion::from_header_token(token).ok_or_else(|| {
+            // A named release with no published EXPRESS (#467) is refused
+            // as such, never read with a neighbour's tables.
+            if ifc_schema::UnpublishedRelease::from_header_token(token).is_some() {
+                ValidateError::UnpublishedSchema(token.to_string())
+            } else {
+                ValidateError::UnknownSchema(token.to_string())
+            }
+        })?;
         let schema = ifc_schema::for_version(version)
             .map_err(|_| ValidateError::UnbundledSchema(token.to_string()))?;
         Ok(validate(model, schema))
