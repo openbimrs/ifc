@@ -65,7 +65,7 @@ symbols, and CMake's `find_package(openbim_ifc 0.1)` does not accept 0.2.
   not a refusal.
   No function signature changed; the header changes only in its
   documentation.
-- ABI version 0.1.19 (on top of #474's 0.1.18); no `v0_1` symbol changed.
+- ABI version 0.1.20 (on top of #469's 0.1.19); no `v0_1` symbol changed.
 
 Semver: additive, released on the 0.1 line (the `v0_1` ABI is unchanged
 and additive: a reader that walks a record's fields by its child count
