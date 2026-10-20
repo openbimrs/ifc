@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.37.0] - 2026-10-20
+
 ### Added (#479, copy and append)
 
 - `AuthorOp::CopyProduct { product, options }` copies an `IfcProduct` or
@@ -1194,7 +1196,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.36.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.37.0...HEAD
+[0.37.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.37.0
 [0.36.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.36.0
 [0.35.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.35.0
 [0.34.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.34.0

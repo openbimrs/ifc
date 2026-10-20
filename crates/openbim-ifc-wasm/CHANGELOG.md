@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-20
+
 ### Added (#479, copy and append)
 
 - `IfcModel.copyProduct(id, options?)` and `IfcModel.append(source, ids,
@@ -561,7 +563,8 @@ Published to npm by hand, before the release workflow existed.
 - `scripts/build-node-pkg.sh` builds a Node package with the pinned
   `wasm-bindgen` CLI and runs the Node smoke and corpus suites.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.12.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.13.0...HEAD
+[0.13.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.13.0
 [0.12.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.12.1
 [0.12.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.12.0
 [0.11.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.11.0

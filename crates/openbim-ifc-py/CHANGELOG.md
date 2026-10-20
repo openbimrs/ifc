@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-20
+
 ### Added (#479, copy and append)
 
 - `IfcModel.copy_product(id, *, offset, placement, openings, fillings,
