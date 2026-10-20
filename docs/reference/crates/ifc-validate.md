@@ -29,6 +29,7 @@ so parsing is permissive and validation is an explicit, separate pass.
 
 | Feature | Default | Enables |
 | --- | --- | --- |
+| `express` | yes |  |
 | `ifc2x3` | yes | `ifc-schema/ifc2x3` |
 | `ifc4` | yes | `ifc-schema/ifc4` |
 | `ifc4x1` | yes | `ifc-schema/ifc4x1` |

@@ -23,6 +23,18 @@ a release here does not imply a release of any other crate in the family.
 
 Semver: additive (`FieldKind` is `#[non_exhaustive]`): minor.
 
+### Changed (#511)
+
+- `validate` reports a property or quantity set named with the reserved
+  `Pset_`/`Qto_` prefix that the declared release's catalog does not
+  define as a `warning`, rule `property.reserved_set_name`, when a catalog
+  is built in (`property-catalog`) or installed (`property-catalog-runtime`);
+  otherwise such names get one `unsupported` finding. No record or code
+  changes; the bindings do not evaluate EXPRESS rule text, so no finding
+  is `indeterminate`.
+
+Semver: patch (internal crate, not published).
+
 ### Added (#469)
 
 - `convert_unit`, `format_length`, `IfcModel::convert_unit_value` and

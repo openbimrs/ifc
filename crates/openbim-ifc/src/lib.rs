@@ -213,9 +213,10 @@ pub use ifc_systems as systems;
 #[cfg(feature = "style")]
 pub use ifc_style as style;
 
-/// Schema and integrity validation.
+/// Schema and integrity validation: `ifc-validate`, with the PSD/QTO
+/// catalog composed in when one is built in (#511).
 #[cfg(feature = "validate")]
-pub use ifc_validate as validate;
+pub mod validate;
 
 // Schema-checked construction and editing of entities: `ifc-author` as
 // `author`, its builder and editor by attribute name, and the checked

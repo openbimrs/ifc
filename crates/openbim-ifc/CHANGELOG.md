@@ -58,6 +58,21 @@ everything released before per-crate changelogs began.
 Semver: additive (`AuthorOp`, `AuthoringFailure`, `AuthoringOutcome` and
 `StagedAuthoring` are `#[non_exhaustive]`): minor.
 
+### Added (#461, #511)
+
+- Feature `validate-express`: `ifc::validate::express`, the EXPRESS rule
+  evaluator of `ifc-validate` (every WHERE rule, type rule and global rule
+  of a release, from the `.exp` text the caller supplies). In `full`.
+- `ifc::validate` is a module re-exporting `ifc-validate` whole. With
+  `property-catalog` or `property-catalog-runtime`, its `validate`,
+  `validate_with`, `validate_declared` and `validate_with_options` check
+  `Pset_`/`Qto_` set names against the declared release's catalog
+  (`ReleaseCatalog`): a set the catalog does not define is a
+  `property.reserved_set_name` warning. Without a catalog the names are
+  reported once as unsupported.
+
+Semver: minor.
+
 ### Added (#469)
 
 - `convert_length_unit` and `stage_length_unit_conversion`: rescale every

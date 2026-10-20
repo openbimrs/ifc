@@ -51,7 +51,10 @@ fn each_release(mut check: impl FnMut(&str, Model, &'static Schema)) {
 
 /// The model has no validation error and nothing dangles.
 fn assert_valid(what: &str, model: &Model, schema: &Schema) {
-    let report = ifc::validate::validate(model, schema);
+    // With INVERSE cardinalities (#533): a copy joins its type's
+    // IfcRelDefinesByType rather than adding a second one.
+    let options = ifc::validate::ValidateOptions::new().inverse_cardinality(true);
+    let report = ifc::validate::validate_with_options(model, schema, &options);
     let errors: Vec<String> = report
         .sorted()
         .iter()

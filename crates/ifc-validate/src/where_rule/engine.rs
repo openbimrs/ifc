@@ -15,11 +15,31 @@ use crate::report::{Finding, Path, Report};
 /// distinguishes "conformant" from "conformant as far as we can tell", and
 /// says which rules fall in the gap.
 pub fn evaluate(model: &Model, schema: &Schema, budget: Budget, report: &mut Report) {
+    evaluate_except(model, schema, budget, report, &|_| false, false);
+}
+
+/// [`evaluate`], leaving out every registered rule `superseded` accepts.
+///
+/// With the release's EXPRESS rules supplied, those are evaluated instead
+/// of the hand-written rules carrying the same id, and `express` says so:
+/// the release then has WHERE rules evaluated even when the registry
+/// scopes none to it.
+pub(crate) fn evaluate_except(
+    model: &Model,
+    schema: &Schema,
+    budget: Budget,
+    report: &mut Report,
+    superseded: &dyn Fn(&str) -> bool,
+    express: bool,
+) {
     // A recognised release no registered rule is scoped to (IFC4X1, IFC4X2)
     // gets no WHERE-rule verdict at all. Say so, rather than let the report
     // read as if its rules had passed.
-    if let Some(version) = schema.version() {
-        if !registry::RULES.iter().any(|entry| entry.applies_to(schema)) {
+    if let Some(version) = schema.version().filter(|_| !express) {
+        if !registry::RULES
+            .iter()
+            .any(|entry| entry.applies_to(schema) && entry.id != registry::UNIQUE_GLOBAL_ID)
+        {
             report.push(Finding::unsupported(
                 "where.release",
                 Path::File,
@@ -33,7 +53,7 @@ pub fn evaluate(model: &Model, schema: &Schema, budget: Budget, report: &mut Rep
         }
     }
     for entry in registry::implemented() {
-        if entry.applies_to(schema) {
+        if entry.applies_to(schema) && !superseded(entry.id) {
             let dispatched = builtin::run(entry, model, schema, report);
             debug_assert!(dispatched, "{} has no native implementation", entry.id);
         }
@@ -47,7 +67,7 @@ pub fn evaluate(model: &Model, schema: &Schema, budget: Budget, report: &mut Rep
         let Support::Unsupported(reason) = entry.support else {
             continue;
         };
-        if !entry.applies_to(schema) {
+        if !entry.applies_to(schema) || superseded(entry.id) {
             continue;
         }
         // Only mention a rule the file could actually trip: an unsupported

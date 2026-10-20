@@ -7,15 +7,19 @@
 //! - `cardinality`: scalar-vs-aggregate shape
 //! - `bounds`: aggregate bounds, nesting and element uniqueness
 //! - `unique`: the release's `UNIQUE` clauses
+//! - `inverse`: the release's `INVERSE` cardinalities, on request
+//!   ([`crate::ValidateOptions::inverse_cardinality`])
 
 mod bounds;
 mod cardinality;
+mod inverse;
 mod reference;
 mod required;
 mod unique;
 
 pub use bounds::aggregate_bounds;
 pub use cardinality::aggregate_shape;
+pub use inverse::inverse_cardinality;
 pub(crate) use reference::expected_references;
 pub use reference::{dangling_references, wrong_kind_references};
 pub use required::required_attributes;
