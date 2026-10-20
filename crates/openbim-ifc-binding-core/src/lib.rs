@@ -70,6 +70,11 @@
 //! not parse is refused with `invalid-selector` and the byte span of the
 //! offending text ([`BindingError::span`]).
 //!
+//! Units convert between each other ([`convert_unit`],
+//! [`IfcModel::convert_unit_value`], [`format_length`], #469), and
+//! [`IfcModel::convert_length_unit`] rescales a whole model to a new
+//! project length unit as one checked transaction ([`units`]).
+//!
 //! `INVERSE` attributes read by name too ([`inverse`], #462):
 //! `attribute_by_name(wall, "IsDefinedBy")` follows the declared release's
 //! `FOR` clause through a reverse index built on first use and rebuilt
@@ -98,6 +103,7 @@ pub mod relations;
 pub mod selector;
 pub mod spatial;
 pub mod systems;
+pub mod units;
 pub mod unreachable;
 pub mod validation;
 pub mod value;
@@ -123,5 +129,8 @@ pub use options::{OnMalformed, ParseOptions};
 pub use record::{Field, Record, ToRecord};
 pub use relations::{name_based_guid, new_guid, DuplicateGlobalId};
 pub use selector::{canonical_selector, Selected, SELECTOR_GRAMMAR_VERSION};
+pub use units::{
+    convert_unit, format_length, ConvertedValues, KeptValues, LengthUnitOptions, LengthUnitReport,
+};
 pub use unreachable::UnreachableProduct;
 pub use validation::{ValidationFinding, ValidationReport, ValidationSummary};
