@@ -991,6 +991,9 @@ class CopyReport:
     skipped: Tuple[int, ...]
     regenerated: Tuple[int, ...]
     applied: bool
+
+
+@dataclass(frozen=True)
 class TableChange:
     """One value :meth:`IfcModel.import_table` changes (#474).
 
