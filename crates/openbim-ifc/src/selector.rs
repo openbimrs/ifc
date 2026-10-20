@@ -12,6 +12,13 @@
 //! ([`SelectorIndex::value`]) and writes it ([`set_value`]) through a
 //! transaction, checked against the release.
 //!
+//! Values also cross as text (#472, #474): [`value_text`] writes one as
+//! the text of a table cell, and [`SelectorIndex::plan_text_edits`] plans
+//! many [`TextEdit`]s -- a table's cells, a command line's `--set`s -- as
+//! one transaction, each text read as a value of its target's declared or
+//! stated type, every refusal collected, and nothing written unless
+//! everything can be ([`apply_text_edits`]).
+//!
 //! # Grammar, version [`GRAMMAR_VERSION`]
 //!
 //! ```text
@@ -80,6 +87,7 @@
 #![cfg(feature = "selector")]
 
 mod ast;
+mod batch;
 mod error;
 mod eval;
 mod exact;
@@ -87,15 +95,18 @@ mod index;
 mod parse;
 mod path;
 mod set;
+mod text;
 mod value;
 
 pub use ast::{
     Comparison, Facet, FacetKind, FacetList, Key, Keyword, Literal, Operator, PathKey, Pattern,
     Selector, ValuePath,
 };
+pub use batch::{apply_text_edits, EditPlan, EditRefusal, PlannedChange, TextEdit};
 pub use error::{ParseError, ParseErrorKind, SelectorError};
 pub use index::SelectorIndex;
 pub use set::{set_value, SetTarget};
+pub use text::value_text;
 pub use value::{compare, SelectedValue};
 
 use ifc_model::{EntityId, Model};

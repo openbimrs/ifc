@@ -50,6 +50,8 @@ ifc4x1 = "The schema API with the bundled IFC4X1 FINAL table."
 ifc4x2 = "The schema API with the bundled IFC4X2 FINAL table."
 ifc4x3 = "The schema API with the bundled IFC4X3 ADD2 table."
 js-random = "Random `GlobalId`s (`new_guid`) on `wasm32-unknown-unknown` from the JavaScript host's `crypto.getRandomValues`; native targets always have them."
+sheet = "Tables of values by path (`ifc::sheet`, #474): export selected entities by attribute, property, quantity and relation paths as CSV or TSV, and import a table back by `GlobalId` or id as one checked transaction, with a planned diff and typed refusals by row and column."
+sheet-xlsx = "`sheet` with XLSX workbooks too, through the pure-Rust `rust_xlsxwriter` (write) and `calamine` (read) crates."
 selector = "The selector query language (`ifc::selector`, grammar 1.0): filter elements by class, `GlobalId`, attribute, property, type, material, classification, location and group, with typed parse errors carrying byte spans; read and write values by path (`type.Name`, `Pset_WallCommon.FireRating`) through a checked transaction. Property facets need `properties` too."
 properties = "Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry; together with `spatial`, element properties by spatial container."
 
@@ -75,6 +77,13 @@ flate2 = { version = "1.1", optional = true, default-features = false, features 
 # The selector language's `/pattern/`s (#464): `regex-lite`, pure Rust and
 # small (no Unicode tables), so the browser package can carry it.
 regex-lite = { version = "0.1", optional = true }
+
+# XLSX tables (#474, `sheet-xlsx`): the two maintained pure-Rust crates,
+# `rust_xlsxwriter` to write a workbook and `calamine` to read one. Both
+# build on the `zip` 9 and `quick-xml` 0.42 the workspace already links,
+# with no default features; opt-in, so no other build carries them.
+rust_xlsxwriter = { version = "0.100", optional = true, default-features = false }
+calamine = { version = "0.37", optional = true, default-features = false }
 
 # --- schema (optional: needed for conformant ifcXML names and subtype queries) ---
 ifc-schema = { workspace = true, optional = true }
@@ -225,6 +234,12 @@ alignment = ["dep:ifc-alignment"]
 # group, and read and write values by path. Property facets and paths need
 # `properties` too; without it they refuse with `FeatureDisabled`.
 selector = ["schema-api", "dep:regex-lite"]
+# Tables of values by path (#474, `ifc::sheet`): export and import CSV and
+# TSV through the selector's set-by-path API. Pure facade code; property
+# columns need `properties` too.
+sheet = ["selector"]
+# XLSX workbooks for `ifc::sheet`, through `rust_xlsxwriter` and `calamine`.
+sheet-xlsx = ["sheet", "dep:rust_xlsxwriter", "dep:calamine"]
 # Random `GlobalId`s on `wasm32-unknown-unknown` through the JavaScript
 # host's `crypto.getRandomValues` (browsers, Node 19 and later). Only a
 # build that runs under JavaScript should name it, as the npm package does;
@@ -253,7 +268,7 @@ domains = [
     "author",
     "spatial",
 ]
-full = ["codecs", "zip", "schema", "domains", "selector", "property-catalog", "material-templates", "geometry", "geometry-wire", "mesh", "georef", "alignment", "js-random"]
+full = ["codecs", "zip", "schema", "domains", "selector", "sheet-xlsx", "property-catalog", "material-templates", "geometry", "geometry-wire", "mesh", "georef", "alignment", "js-random"]
 
 [dev-dependencies]
 # `Schema::from_express` for the documented authoring example; production
