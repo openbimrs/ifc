@@ -103,6 +103,15 @@ Semver: minor (additive).
 Semver: minor. `ProductCurves` is `#[non_exhaustive]` and gains a field;
 products that were refused now return their curves.
 
+### Changed (#467)
+
+- `validate::validate_declared` refuses a file declaring `IFC4X3_TC1` or
+  `IFC4X3_ADD1` as `ValidateError::UnpublishedSchema`, as
+  `ifc_validate::validate_declared` does: a release buildingSMART
+  publishes no EXPRESS for, never validated as IFC4X3 ADD2.
+
+Semver: minor, following `ifc-validate`.
+
 ## [0.36.0] - 2026-10-18
 
 ### Changed (#506, #509)

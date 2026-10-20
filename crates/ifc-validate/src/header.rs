@@ -24,7 +24,7 @@
 use ifc_model::Model;
 use ifc_schema::{SchemaVersion, UnpublishedRelease};
 
-use crate::report::{Finding, Path, Report};
+use crate::report::{Finding, FindingDetail, Path, Report};
 
 /// Check the declared schema and implementation level.
 pub fn check(model: &Model, report: &mut Report) {
@@ -41,18 +41,21 @@ pub fn check(model: &Model, report: &mut Report) {
             // Tables passed by the caller (`validate`) are the caller's
             // explicit choice; this finding keeps the report from reading
             // as a check against the declared release.
-            Some(release) => report.push(Finding::warning(
-                "header.schema.unpublished",
-                Path::File,
-                format!(
-                    "schema {token:?} is IFC {} ({}), a release buildingSMART \
-                     publishes no EXPRESS schema for; it is not checked against \
-                     its own tables, and {} is not assumed to match it",
-                    release.version_number(),
-                    release.identifier(),
-                    release.superseded_by().release_id()
-                ),
-            )),
+            Some(release) => report.push(
+                Finding::warning(
+                    "header.schema.unpublished",
+                    Path::File,
+                    format!(
+                        "schema {token:?} is IFC {} ({}), a release buildingSMART \
+                         publishes no EXPRESS schema for; it is not checked against \
+                         its own tables, and {} is not assumed to match it",
+                        release.version_number(),
+                        release.identifier(),
+                        release.superseded_by().release_id()
+                    ),
+                )
+                .with_detail(FindingDetail::UnpublishedSchema(release)),
+            ),
             None => report.push(Finding::warning(
                 "header.schema.unknown",
                 Path::File,

@@ -40,6 +40,12 @@ fn an_unpublished_ifc4x3_release_is_refused_by_name_not_aliased() {
             .collect();
         assert_eq!(marked.len(), 1, "{token}: {:#?}", chosen.findings());
         assert!(marked[0].message.contains(token), "{}", marked[0].message);
+        assert_eq!(
+            marked[0].detail,
+            Some(ifc_validate::FindingDetail::UnpublishedSchema(
+                ifc_schema::UnpublishedRelease::from_header_token(token).expect("named")
+            ))
+        );
     }
     model.header_mut().schema = vec!["IFC9_DRAFT".to_string()];
     assert_eq!(
