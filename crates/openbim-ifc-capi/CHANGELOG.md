@@ -35,10 +35,13 @@ symbols, and CMake's `find_package(openbim_ifc 0.1)` does not accept 0.2.
   field, lists each `IfcTextLiteral`, `IfcTextLiteralWithExtent` and
   `IfcAnnotationFillArea` of the representation by entity id: not drawn,
   not a refusal.
-  No `v0_1` symbol changed; a tape reader that checks the record's arity
-  sees one more field.
+  No function signature changed; the header changes only in its
+  documentation.
+- ABI version 0.1.19 (on top of #474's 0.1.18); no `v0_1` symbol changed.
 
-Semver: minor.
+Semver: additive, released on the 0.1 line (the `v0_1` ABI is unchanged
+and additive: a reader that walks a record's fields by its child count
+sees one more trailing field).
 
 ## [0.1.15] - 2026-10-18
 

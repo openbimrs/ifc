@@ -28,7 +28,8 @@ Semver: additive, a minor release while 0.x.
   field, lists each `IfcTextLiteral`, `IfcTextLiteralWithExtent` and
   `IfcAnnotationFillArea` of the representation by entity id: not drawn,
   not a refusal.
-  The positional `ProductCurves` record gains that parameter.
+  The positional `ProductCurves` record gains that parameter. Needs the C
+  library with ABI 0.1.19.
 
 Semver: minor.
 
