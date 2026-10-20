@@ -12,6 +12,43 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#469)
+
+- Conversion between units. `ConversionUnit` is a unit reduced to its SI
+  dimensional exponents and its factor into SI base units, kept as a
+  mantissa and a power of ten: from an SI name and prefix
+  (`ConversionUnit::si`), a named conversion-based unit
+  (`ConversionUnit::named`: the IFC4 Table 673 designations `inch`,
+  `foot`, `yard`, `mile`, `square foot`, `acre`, `cubic foot`, `litre`,
+  `gallon US`, `pound`, `degree`, `psi`, ... with their exact legal
+  factors where the table rounds, and `US survey foot`; listed by
+  `named_units`), text (`ConversionUnit::parse`: `MILLIMETRE`, `MILLI
+  METRE`, `SQUARE_MILLIMETRE`, `foot`), or a model's unit entity
+  (`resolve_unit`: `IfcSIUnit` prefixes, `IfcConversionBasedUnit` factor
+  chains and `IfcDerivedUnit` exponents through the exact resolver).
+  `unit_conversion` checks the dimensions agree and gives a
+  `UnitConversion`; prefixed SI units convert by an exact power of ten
+  (millimetres to metres divides by 1000). `convert_value` and
+  `convert_between` (two unit entities of a model) convert one value.
+- Refused with `UnitConversionError`: units of different dimensions,
+  `IfcMonetaryUnit`, `IfcContextDependentUnit`, and
+  `IfcConversionBasedUnitWithOffset` or degree Fahrenheit by name, whose
+  offset is not applied until #110 is settled. The SI `DEGREE_CELSIUS`
+  converts affinely.
+- `format_length`: a length as decimal text in any length unit, or as
+  feet and inches (`5' - 6 1/2"`) or inches rounded to a fraction of an
+  inch (`LengthFormat`).
+- `measure_unit_type`: the unit type a measure takes in a release, as the
+  exact resolver derives it (`IfcNonNegativeLengthMeasure` takes a
+  `LENGTHUNIT`); `exact_project_unit`: the project's unit of a type.
+
+### Changed (#469)
+
+- The exact unit resolver also tracks each unit's factor as a mantissa
+  and a power of ten. `ExactUnit` and every answer are unchanged.
+
+Semver: minor (additions).
+
 ## [0.8.1] - 2026-10-04
 
 ### Added

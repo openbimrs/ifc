@@ -273,6 +273,31 @@ class Cookbook(unittest.TestCase):
         self.assertEqual(printed[5], openbim_ifc.name_based_guid("my-exporter", "wall", "42"))
         self.assertIsNone(model.by_guid("3MtNd0Uaz8Ix2OPtRq_3Kk"))
 
+    def test_convert_units(self) -> None:
+        model = openbim_ifc.open(GEOMETRY)
+        printed: List[Any] = []
+        print = printed.append  # noqa: A001
+        # docs:snippet cookbook-py-convert-units
+        # Between units named as text: exact factors, checked dimensions.
+        print(openbim_ifc.convert_unit(1.0, "foot", "MILLIMETRE"))  # 304.8
+        print(openbim_ifc.format_length(444.5, "MILLIMETRE", style="feet-inches"))
+        # 1' - 5 1/2"
+
+        # The whole model to metres: geometry, quantities and properties,
+        # as one checked transaction. A dry run only reports.
+        report = model.convert_length_unit("METRE", dry_run=True)
+        print((report.from_unit, report.to, report.length_factor))
+        # ('MILLI METRE', 'METRE', 0.001)
+        report = model.convert_length_unit("METRE")
+        print(report.applied)  # True
+        for kept in report.kept:  # values left as they are, and why
+            print((kept.entity_type, kept.attribute, kept.reason))
+        # docs:end
+        self.assertEqual(printed[0], 304.8)
+        self.assertEqual(printed[1], "1' - 5 1/2\"")
+        self.assertEqual(printed[2], ("MILLI METRE", "METRE", 0.001))
+        self.assertTrue(printed[3])
+
     def test_remove_product_and_purge(self) -> None:
         model = openbim_ifc.open(CASCADE)
         printed: List[Any] = []

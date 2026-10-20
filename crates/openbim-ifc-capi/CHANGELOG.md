@@ -8,6 +8,34 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#469)
+
+- Unit conversion, ABI version 0.1.18. `openbim_ifc_v0_1_convert_unit`
+  converts a value between two units named as text (an SI unit with its
+  prefix, `MILLIMETRE`, `MILLI METRE`, `SQUARE_MILLIMETRE`; or a named
+  conversion-based unit of IFC4 Table 673 with exact factors, `foot`,
+  `inch`, `square foot` ...), needing no model;
+  `openbim_ifc_v0_1_model_convert_unit_value` converts between two unit
+  entities of a model; `openbim_ifc_v0_1_format_length` writes a length as
+  decimal text or as feet and inches with fractions
+  (`OPENBIM_IFC_LENGTH_FORMAT_*`). Units of different dimensions are
+  `TypeMismatch`; monetary, context-dependent and offset units (degree
+  Fahrenheit, `IfcConversionBasedUnitWithOffset`, pending #110) are
+  `Unsupported`.
+- `openbim_ifc_v0_1_model_convert_length_unit` converts a model's length
+  unit, rescaling every length, area and volume value as one checked
+  transaction, and answers a `LengthUnitReport` tape (from, to, factors,
+  new unit ids, converted and kept attributes, created and removed ids,
+  applied). Flags `OPENBIM_IFC_LENGTH_UNIT_KEEP_AREA_AND_VOLUME`,
+  `_KEEP_REPLACED_UNITS`, `_DRY_RUN`. A size query or a short buffer plans
+  without applying; the plan lists the ids the commit creates, so the
+  applied report has its size. Values the
+  conversion cannot carry are `Unsupported`, each named in the last error.
+  Header regenerated.
+
+Semver: minor in ABI terms (new `v0_1` symbols, none changed), released on
+the 0.1 line.
+
 ### Added (#474, tables)
 
 - `openbim_ifc_v0_1_model_export_table(model, query, query_len, columns,
