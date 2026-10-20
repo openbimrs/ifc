@@ -11,7 +11,7 @@ The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned 
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.9.1 (2026-10-18) |
+| Latest release | 0.10.0 (2026-10-20) |
 | Registries | [NuGet `OpenBim.Ifc`](https://www.nuget.org/packages/OpenBim.Ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_dotnet/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-dotnet/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-dotnet) |
@@ -44,18 +44,56 @@ The behaviour is tested from C# against the packed `.nupkg` by
 
 ## Changes
 
-Latest release, 0.9.1 (2026-10-18):
+Latest release, 0.10.0 (2026-10-20):
 
-### Changed (#506, #509)
+### Added (#479, copy and append)
 
-- `ProductCurves` returns polylines for trimmed, composite, offset and intrinsic
-  curves (an `IfcTrimmedCurve` axis, an `IfcCompositeCurve` footprint, an
-  IFC4X3 clothoid), which were `unsupported` refusals. A curve the
-  reference compiler has no certified polyline for (an implicit curve, an
-  offset of an offset) is still `unsupported`, its refusal now naming the
-  product rather than the curve. Advanced B-reps whose edges cover part of
-  their line, circle or ellipse mesh (#509). No API change.
+- `IfcModel.CopyProduct(id, offset, placement, openings, fillings,
+  container, aggregate, dryRun)` and `IfcModel.Append(source, ids,
+  globalIds, reuse, dryRun)`, returning a `CopyReport` (`CopiedEntity`
+  records); `GlobalIdMode`, `ReuseKinds`; `AuthorOp.CopyProduct` and
+  `AuthorOp.CopyEntity`. Needs the C library with ABI 0.1.21.
 
-Semver: patch.
+Semver: additive: minor.
+
+### Added (#469)
+
+- `Units.Convert(value, from, to)` converts between units named as text
+  (an SI unit with its prefix, or a named IFC4 Table 673 unit with exact
+  factors); `Units.FormatLength` writes a length as decimal text or feet
+  and inches with fractions (`LengthStyle`); `IfcModel.ConvertUnitValue`
+  converts between two unit entities of a model.
+- `IfcModel.ConvertLengthUnit(target, areaAndVolume, removeReplacedUnits,
+  dryRun)` rescales every length, area and volume value to a new project
+  length unit as one checked transaction and returns a `LengthUnitReport`
+  (`ConvertedValues`, `KeptValues`). Values it cannot carry, and offset
+  units (#110), throw `unsupported`. Needs the native library with C ABI
+  0.1.18.
+
+Semver: minor.
+
+### Added (#474, tables)
+
+- `IfcModel.ExportTable(query, columns, format, key, null)` returns the
+  selected entities as CSV, TSV or XLSX bytes; `IfcModel.ImportTable(data,
+  format, key, null, dryRun)` applies a table back by key as one checked
+  transaction and returns a `TableImport` record (`Applied`,
+  `TableChange`s, `TableRefusal`s). Needs the C library with ABI 0.1.18.
+
+Semver: additive, a minor release while 0.x.
+
+### Changed (#512)
+
+- `ProductCurves` gives the curves of a representation that also holds text or a
+  fill area: a dimension `IfcAnnotation` (its lines as `IfcPolyline`s,
+  its value as an `IfcTextLiteralWithExtent`) was an `unsupported`
+  refusal and now returns its lines. `ProductCurves.Skipped` (`EquatableList<ulong>`), the record's new last
+  field, lists each `IfcTextLiteral`, `IfcTextLiteralWithExtent` and
+  `IfcAnnotationFillArea` of the representation by entity id: not drawn,
+  not a refusal.
+  The positional `ProductCurves` record gains that parameter. Needs the C
+  library with ABI 0.1.20.
+
+Semver: minor.
 
 Full history: [`crates/openbim-ifc-dotnet/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-dotnet/CHANGELOG.md)

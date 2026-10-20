@@ -11,8 +11,8 @@ Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP file
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.1.15 (2026-10-18) |
-| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.15) |
+| Latest release | 0.1.16 (2026-10-20) |
+| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.16) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_capi/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-capi/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-capi) |
 
@@ -67,18 +67,85 @@ than altering a `v0_1_` one.
 
 ## Changes
 
-Latest release, 0.1.15 (2026-10-18):
+Latest release, 0.1.16 (2026-10-20):
 
-### Changed (#506, #509)
+### Added (#479, copy and append)
 
-- `openbim_ifc_v0_1_model_product_curves` returns polylines for trimmed, composite, offset and intrinsic
-  curves (an `IfcTrimmedCurve` axis, an `IfcCompositeCurve` footprint, an
-  IFC4X3 clothoid), which were `unsupported` refusals. A curve the
-  reference compiler has no certified polyline for (an implicit curve, an
-  offset of an offset) is still `unsupported`, its refusal now naming the
-  product rather than the curve. Advanced B-reps whose edges cover part of
-  their line, circle or ellipse mesh (#509). No API change.
+- `openbim_ifc_v0_1_model_copy_product(model, product, placement, offset,
+  flags, ...)` and `openbim_ifc_v0_1_model_append(target, source, ids,
+  id_count, global_ids, flags, ...)`, each answering a `CopyReport` tape
+  (copy, copied and reused `CopiedEntity` lists, joined, skipped,
+  regenerated, applied); a size query plans without applying. Flags
+  `OPENBIM_IFC_COPY_*`, `OPENBIM_IFC_APPEND_*`, modes
+  `OPENBIM_IFC_GLOBAL_IDS_*`. The batch tape takes `COPY_PRODUCT` and
+  `COPY_ENTITY`. The header is regenerated.
+- ABI version 0.1.21 (on top of #532's 0.1.20); every export above is new,
+  no `v0_1` symbol changed.
 
-Semver: patch.
+Semver: additive, released on the 0.1 line: the `v0_1` ABI only gains
+symbols, and the C package keeps 0.1.x.
+
+### Added (#469)
+
+- Unit conversion, ABI version 0.1.18. `openbim_ifc_v0_1_convert_unit`
+  converts a value between two units named as text (an SI unit with its
+  prefix, `MILLIMETRE`, `MILLI METRE`, `SQUARE_MILLIMETRE`; or a named
+  conversion-based unit of IFC4 Table 673 with exact factors, `foot`,
+  `inch`, `square foot` ...), needing no model;
+  `openbim_ifc_v0_1_model_convert_unit_value` converts between two unit
+  entities of a model; `openbim_ifc_v0_1_format_length` writes a length as
+  decimal text or as feet and inches with fractions
+  (`OPENBIM_IFC_LENGTH_FORMAT_*`). Units of different dimensions are
+  `TypeMismatch`; monetary, context-dependent and offset units (degree
+  Fahrenheit, `IfcConversionBasedUnitWithOffset`, pending #110) are
+  `Unsupported`.
+- `openbim_ifc_v0_1_model_convert_length_unit` converts a model's length
+  unit, rescaling every length, area and volume value as one checked
+  transaction, and answers a `LengthUnitReport` tape (from, to, factors,
+  new unit ids, converted and kept attributes, created and removed ids,
+  applied). Flags `OPENBIM_IFC_LENGTH_UNIT_KEEP_AREA_AND_VOLUME`,
+  `_KEEP_REPLACED_UNITS`, `_DRY_RUN`. A size query or a short buffer plans
+  without applying; the plan lists the ids the commit creates, so the
+  applied report has its size. Values the
+  conversion cannot carry are `Unsupported`, each named in the last error.
+  Header regenerated.
+
+Semver: minor in ABI terms (new `v0_1` symbols, none changed), released on
+the 0.1 line.
+
+### Added (#474, tables)
+
+- `openbim_ifc_v0_1_model_export_table(model, query, query_len, columns,
+  column_lengths, column_count, format, key, null, null_len, buffer,
+  capacity, out_required)` writes the selected entities as a table
+  (`OPENBIM_IFC_TABLE_CSV`, `_TSV`, `_XLSX`; key
+  `OPENBIM_IFC_TABLE_KEY_AUTO`, `_GLOBAL_ID`, `_ID`) into a byte buffer.
+- `openbim_ifc_v0_1_model_import_table(model, data, data_len, format, key,
+  null, null_len, flags, ...)` applies a table back by key as one checked
+  transaction and answers with a `TableImport` tape (applied, changes,
+  refusals); `OPENBIM_IFC_TABLE_DRY_RUN` plans only, and a size query or
+  a short buffer writes nothing.
+- ABI version 0.1.18 (on top of main's 0.1.17); every export above is
+  new, no `v0_1` symbol changed. Header regenerated.
+
+Semver: additive, released on the 0.1 line: the `v0_1` ABI only gains
+symbols, and CMake's `find_package(openbim_ifc 0.1)` does not accept 0.2.
+
+### Changed (#512)
+
+- `openbim_ifc_v0_1_model_product_curves` gives the curves of a representation that also holds text or a
+  fill area: a dimension `IfcAnnotation` (its lines as `IfcPolyline`s,
+  its value as an `IfcTextLiteralWithExtent`) was an `unsupported`
+  refusal and now returns its lines. `skipped` (a `LIST` of `REF`s), the record's new last
+  field, lists each `IfcTextLiteral`, `IfcTextLiteralWithExtent` and
+  `IfcAnnotationFillArea` of the representation by entity id: not drawn,
+  not a refusal.
+  No function signature changed; the header changes only in its
+  documentation.
+- ABI version 0.1.20 (on top of #469's 0.1.19); no `v0_1` symbol changed.
+
+Semver: additive, released on the 0.1 line (the `v0_1` ABI is unchanged
+and additive: a reader that walks a record's fields by its child count
+sees one more trailing field).
 
 Full history: [`crates/openbim-ifc-capi/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-capi/CHANGELOG.md)

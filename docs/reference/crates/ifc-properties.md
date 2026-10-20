@@ -11,7 +11,7 @@ Property sets, quantities, and unit resolution. No geometry.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.8.1 (2026-10-04) |
+| Latest release | 0.9.0 (2026-10-20) |
 | Registries | [crates.io `ifc-properties`](https://crates.io/crates/ifc-properties) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_properties/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-properties) |
@@ -44,34 +44,43 @@ standard Psets are data here rather than hand-written tables.
 
 ## Changes
 
-Latest release, 0.8.1 (2026-10-04):
+Latest release, 0.9.0 (2026-10-20):
 
-### Added
+### Added (#469)
 
-- `PropertyIndex`: the exact resolver's view of one model, built once by
-  `PropertyIndex::build(&model)` and asked per object (#352). It validates
-  every `IfcRelDefinesByProperties` and `IfcRelDefinesByType` once and
-  records each object's assignments, so resolving every object is linear
-  in objects plus relationships instead of their product. Its
-  `exact_property`, `exact_properties`, `exact_properties_where`,
-  `exact_property_sets_where` and `exact_predefined_sets` answer exactly
-  what the free functions of the same name answer, refusals included, in
-  the same precedence. It borrows the model (ADR 0003), so the model
-  cannot be edited while an index exists; rebuild it after a commit.
-  Measured on a generated IFC4 model (`benches/properties`,
-  `benchmarks/baseline.md`): one property for every one of 100,000 walls
-  takes 2.0 s instead of about 31 hours (extrapolated; 10,000 walls:
-  195 ms instead of 814 s), scaling ten-fold per ten-fold more walls.
+- Conversion between units. `ConversionUnit` is a unit reduced to its SI
+  dimensional exponents and its factor into SI base units, kept as a
+  mantissa and a power of ten: from an SI name and prefix
+  (`ConversionUnit::si`), a named conversion-based unit
+  (`ConversionUnit::named`: the IFC4 Table 673 designations `inch`,
+  `foot`, `yard`, `mile`, `square foot`, `acre`, `cubic foot`, `litre`,
+  `gallon US`, `pound`, `degree`, `psi`, ... with their exact legal
+  factors where the table rounds, and `US survey foot`; listed by
+  `named_units`), text (`ConversionUnit::parse`: `MILLIMETRE`, `MILLI
+  METRE`, `SQUARE_MILLIMETRE`, `foot`), or a model's unit entity
+  (`resolve_unit`: `IfcSIUnit` prefixes, `IfcConversionBasedUnit` factor
+  chains and `IfcDerivedUnit` exponents through the exact resolver).
+  `unit_conversion` checks the dimensions agree and gives a
+  `UnitConversion`; prefixed SI units convert by an exact power of ten
+  (millimetres to metres divides by 1000). `convert_value` and
+  `convert_between` (two unit entities of a model) convert one value.
+- Refused with `UnitConversionError`: units of different dimensions,
+  `IfcMonetaryUnit`, `IfcContextDependentUnit`, and
+  `IfcConversionBasedUnitWithOffset` or degree Fahrenheit by name, whose
+  offset is not applied until #110 is settled. The SI `DEGREE_CELSIUS`
+  converts affinely.
+- `format_length`: a length as decimal text in any length unit, or as
+  feet and inches (`5' - 6 1/2"`) or inches rounded to a fraction of an
+  inch (`LengthFormat`).
+- `measure_unit_type`: the unit type a measure takes in a release, as the
+  exact resolver derives it (`IfcNonNegativeLengthMeasure` takes a
+  `LENGTHUNIT`); `exact_project_unit`: the project's unit of a type.
 
-### Changed
+### Changed (#469)
 
-- The free functions scan the relationships for the one queried object
-  through the same code, so their answers are unchanged (a dump of every
-  answer over the fixture corpus and the new equivalence models is
-  byte-identical before and after); with `ifc-schema`'s precomputed
-  tables a single call is several times cheaper, but it still validates
-  every relationship of the file, as it must.
+- The exact unit resolver also tracks each unit's factor as a mantissa
+  and a power of ten. `ExactUnit` and every answer are unchanged.
 
-Semver: one new public type, nothing changed or removed: a patch release.
+Semver: minor (additions).
 
 Full history: [`crates/ifc-properties/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-properties/CHANGELOG.md)
