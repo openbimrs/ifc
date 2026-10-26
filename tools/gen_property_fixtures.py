@@ -32,7 +32,7 @@ def build():
         ApplicationFullName="gen_property_fixtures", ApplicationIdentifier="gpf")
     owner = f.create_entity(
         "IfcOwnerHistory", OwningUser=p_and_o, OwningApplication=app,
-        ChangeAction="ADDED", CreationDate=0)
+        ChangeAction="NOCHANGE", CreationDate=0)
 
     # ---- Units -----------------------------------------------------------
     #

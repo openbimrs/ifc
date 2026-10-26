@@ -79,3 +79,31 @@ an `IfcGradientCurve` over it (grade, parabola, grade), an
 `IfcSegmentedReferenceCurve` over that, and one transition per `IfcSpiral`
 subtype. Its docstring gives the hand-checkable stations. Regenerate with
 `python3 tools/gen_ifc4x3_curve_fixtures.py test/fixtures/synthetic-surfaces`.
+
+## EXPRESS rule findings that are left on purpose (#536)
+
+`crates/ifc-validate/tests/express_rules/` evaluates every EXPRESS rule of a
+fixture's release and pins what remains. Four files keep a finding, each
+because the fixture pins the behaviour the rule forbids or the rule itself is
+defective:
+
+- `synthetic_advanced_brep.ifc`: its `IfcEdgeCurve` on an `IfcPcurve` breaks
+  `IfcAdvancedFace.ApplicableEdgeCurves` on purpose, to pin p-curve edge
+  lowering (the `advanced_brep_3d_edges_*` pair is the conforming form).
+  `IfcAdvancedBrepWithVoids.VoidsHaveAdvancedFaces` as published holds only
+  when every void shell has a face that is not an `IfcAdvancedFace`; a void
+  that follows the rule's intent cannot satisfy it
+  (buildingSMART/IFC4.x-development#1235).
+- `synthetic_conic_offset_bounded.ifc`: the boundary curves use p-curve
+  segments (`IfcCompositeCurveSegment.ParentIsBoundedCurve`) because the
+  tests pin that lowering keeps a surface-parameter curve.
+- `synthetic_surface_of_revolution.ifc`: the generatrix is a 3D polyline,
+  which `IfcArbitraryOpenProfileDef.WR12` forbids (the profile must be 2D).
+  A conforming profile needs `IfcSweptSurface.Position`, which the
+  revolution lowering does not apply (#547), so it would lower to another
+  surface.
+
+The generated files state a 2D `TrueNorth`, a `NOCHANGE` owner-history change
+action and a representation type that admits all of the body's items; a
+product's items that no single type admits (the bounding box, the curve set)
+ride in their own representation.

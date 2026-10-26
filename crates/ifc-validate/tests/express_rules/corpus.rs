@@ -126,22 +126,33 @@ fn rule_findings() -> BTreeSet<(String, String, u64, String)> {
 /// `expected.rs`, every one a defect IfcOpenShell's rule evaluation finds
 /// too or one it cannot see (UNKNOWN, or a rule it fails to evaluate).
 ///
-/// # Why the fixtures are not fixed
+/// # What is left, and why
 ///
-/// Fifty-five rule violations live in fixtures that predate this
-/// evaluator. None is a defect a fixture exists to exhibit, and each is
-/// left in place for a stated reason:
+/// Every violation in a fixture this repository authors was fixed at its
+/// source (#536): owner-history `ChangeAction`, a 3D `TrueNorth`, representation
+/// types, a missing aggregation, unplaced intermediate placements. The rows
+/// that remain are not defects to repair:
 ///
-/// - upstream copies (`ifclite-geometry/`, `ifcopenshell-validate/`) are
-///   not ours to edit; their provenance pins their bytes;
-/// - generated fixtures (`synthetic-surfaces/`, `synthetic-coverage/`,
-///   `synthetic-properties/`, `synthetic-systems/`) are regenerated from
-///   their scripts, never edited, and regeneration draws new GlobalIds;
-/// - the hand-authored ones (`synthetic-relations/`, `costing/`,
-///   `hostile/`, two IFC4X3 surfaces) carry owner-history, true-north and
-///   representation-type defects unrelated to what they test, and are
-///   copied verbatim into the binding suites (`OpenBim.Ifc.Tests`), so an
-///   edit reaches every language's tests.
+/// - upstream copies (`ifclite-geometry/`, `ifcopenshell-validate/`) are not
+///   ours to edit; their provenance pins their bytes;
+/// - `synthetic-lowering/` `IfcLocalPlacement.WR21` is UNKNOWN, not a
+///   violation: the rule's helper cannot be decided for a placement relative
+///   to a grid or linear placement, and IfcOpenShell passes UNKNOWN silently;
+/// - `synthetic_advanced_brep` states an `IfcPcurve` edge on purpose (lowering
+///   of p-curve edges), which `IfcAdvancedFace.ApplicableEdgeCurves` forbids;
+///   `advanced_brep_3d_edges_*` carry the conforming form. Its
+///   `IfcAdvancedBrepWithVoids.VoidsHaveAdvancedFaces` is a defect of the
+///   published rule, which holds only when every void shell has a face that
+///   is not an `IfcAdvancedFace`; no void shell that follows the rule's
+///   intent can satisfy it (buildingSMART/IFC4.x-development#1235);
+/// - `synthetic_conic_offset_bounded` gives its boundary curves p-curve
+///   segments on purpose (`IfcCompositeCurveSegment.ParentIsBoundedCurve`):
+///   the test pins that lowering keeps a surface-parameter curve;
+/// - `synthetic_surface_of_revolution` states its generatrix as a 3D curve
+///   (`IfcArbitraryOpenProfileDef.WR12`, the profile must be 2D);
+///   `lower_revolution` does not apply `IfcSweptSurface.Position` (#547), so
+///   a 2D profile placed through `Position` would lower to a different
+///   surface.
 ///
 /// The table keeps them visible: a fixture edit that fixes or adds a
 /// violation fails here until the table says so.
@@ -170,7 +181,7 @@ fn the_corpus_reports_exactly_its_pinned_findings() {
     );
     // The table is a guard only while it has rows: an evaluator that found
     // nothing would otherwise pass against an emptied table.
-    assert!(pinned.len() >= 50, "{}", pinned.len());
+    assert!(pinned.len() >= 20, "{}", pinned.len());
     for (_, _, _, severity, agreement) in EXPECTED {
         let consistent = match agreement {
             Agreement::Agrees => *severity == "error",

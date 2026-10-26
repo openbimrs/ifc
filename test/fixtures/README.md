@@ -228,6 +228,10 @@ manifest is checked and the prose is not.
    small and hand-picked.
 6. **A generated fixture is changed through its generator**, never by
    editing the `.ifc` output; regenerate and commit both.
+7. **A fixture we author satisfies every EXPRESS rule of its release**, or
+   says why not: `crates/ifc-validate/tests/express_rules/` evaluates the whole
+   corpus and pins what remains (upstream copies and the deliberate cases,
+   each justified in `express_rules/corpus.rs` and the directory's README).
 
 `synthetic-compile/` is derived here from two `ifclite-geometry/` files, not
 copied from upstream, and holds two hand-authored gable-wall clips (#515)

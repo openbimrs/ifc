@@ -61,11 +61,11 @@ def units_and_context(f):
                           CoordinateSpaceDimension=3,
                           Precision=1e-5,
                           WorldCoordinateSystem=placement(f),
-                          TrueNorth=dr(f, (0.0, 1.0, 0.0)))
+                          TrueNorth=dr(f, (0.0, 1.0)))
     return assignment, ctx
 
 
-def wrap(f, ctx, items, rep_id):
+def wrap(f, ctx, items, rep_id, extra=()):
     """Attach items to a product so the file is a real model, not loose geometry.
 
     A bare IfcCylindricalSurface with no product would parse but would be
@@ -78,7 +78,15 @@ def wrap(f, ctx, items, rep_id):
                             RepresentationIdentifier="Body",
                             RepresentationType=rep_id,
                             Items=items)
-    return f.create_entity("IfcProductDefinitionShape", Representations=[shape])
+    # Items that no single RepresentationType admits beside the body
+    # (IfcShapeRepresentation.CorrectItemsForType) ride in their own
+    # representation: (identifier, type, items).
+    more = [f.create_entity("IfcShapeRepresentation",
+                            ContextOfItems=ctx,
+                            RepresentationIdentifier=ident,
+                            RepresentationType=kind,
+                            Items=its) for ident, kind, its in extra]
+    return f.create_entity("IfcProductDefinitionShape", Representations=[shape, *more])
 
 
 def spatial_tree(f, assignment, ctx, product):
@@ -119,8 +127,8 @@ def build(fn):
     """Run one builder into a fresh file with the shared scaffold."""
     f = new_model()
     assignment, ctx = units_and_context(f)
-    items, rep_id = fn(f)
-    shape = wrap(f, ctx, items, rep_id)
+    items, rep_id, *extra = fn(f)
+    shape = wrap(f, ctx, items, rep_id, *extra)
     product = proxy(f, shape)
     spatial_tree(f, assignment, ctx, product)
     return f
@@ -143,7 +151,7 @@ def elementary_surfaces(f):
                           Position=placement(f, (0.0, 0.0, 700.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)),
                           MajorRadius=300.0,
                           MinorRadius=60.0)
-    return [cyl, sph, tor], "SurfaceModel"
+    return [cyl, sph, tor], "Surface3D"
 
 
 def surface_of_revolution(f):
@@ -173,7 +181,7 @@ def surface_of_revolution(f):
                               BasisSurface=rev,
                               U1=0.0, V1=0.0, U2=90.0, V2=1.0,
                               Usense=True, Vsense=True)
-    return [rev, trimmed], "SurfaceModel"
+    return [rev, trimmed], "Surface3D"
 
 
 def bspline_surface(f):
@@ -205,7 +213,7 @@ def bspline_surface(f):
                             VMultiplicities=[2, 2],
                             UKnots=[0.0, 1.0],
                             VKnots=[0.0, 1.0],
-                            KnotSpec="UNSPECIFIED")], "SurfaceModel"
+                            KnotSpec="UNSPECIFIED")], "AdvancedSurface"
 
 
 def curve_bounded_plane(f):
@@ -225,7 +233,7 @@ def curve_bounded_plane(f):
     return [f.create_entity("IfcCurveBoundedPlane",
                             BasisSurface=base,
                             OuterBoundary=outer,
-                            InnerBoundaries=[hole])], "SurfaceModel"
+                            InnerBoundaries=[hole])], "Surface3D"
 
 
 
@@ -298,7 +306,7 @@ def misc_items(f):
                           XLength=300.0, YLength=200.0, Height=450.0)
     box = f.create_entity("IfcBoundingBox", Corner=pt(f, (10.0, 20.0, 30.0)),
                           XDim=100.0, YDim=200.0, ZDim=300.0)
-    return [pyr, box], "CSG"
+    return [pyr], "CSG", [("Box", "BoundingBox", [box])]
 
 
 def collections(f):
@@ -321,7 +329,7 @@ def collections(f):
         return f.create_entity("IfcFace", Bounds=[bd])
     sh = f.create_entity("IfcOpenShell", CfsFaces=[tri(a, b, cc), tri(a, cc, d)])
     sbsm = f.create_entity("IfcShellBasedSurfaceModel", SbsmBoundary=[sh])
-    return [cset, sbsm], "GeometricCurveSet"
+    return [sbsm], "SurfaceModel", [("FootPrint", "GeometricCurveSet", [cset])]
 
 
 def tapered_sweeps(f):
@@ -378,7 +386,7 @@ def tapered_sweeps(f):
                                Directrix=poly_path, Radius=45.0,
                                StartParam=0.0, EndParam=2.0, FilletRadius=90.0)
 
-    return [tap_ext, tap_rev, fixed, sharp, filleted], "SweptSolid"
+    return [tap_ext, tap_rev, fixed, sharp, filleted], "AdvancedSweptSolid"
 
 
 def sectioned_spine(f):
@@ -407,7 +415,7 @@ def sectioned_spine(f):
                                            (1200.0, 900.0, 0.0))]
     item = f.create_entity("IfcSectionedSpine", SpineCurve=spine,
                            CrossSections=secs, CrossSectionPositions=positions)
-    return [item], "AdvancedSweptSolid"
+    return [item], "SectionedSpine"
 
 
 

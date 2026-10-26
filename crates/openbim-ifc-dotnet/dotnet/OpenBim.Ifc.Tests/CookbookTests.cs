@@ -25,7 +25,7 @@ public class CookbookTests
         + "#2=IFCORGANIZATION($,'openbim.rs',$,$,$);\n"
         + "#3=IFCPERSONANDORGANIZATION(#1,#2,$);\n"
         + "#4=IFCAPPLICATION(#2,'1','cookbook','cb');\n"
-        + "#5=IFCOWNERHISTORY(#3,#4,$,.ADDED.,$,$,$,0);\n"
+        + "#5=IFCOWNERHISTORY(#3,#4,$,.NOCHANGE.,$,$,$,0);\n"
         + "#6=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);\n"
         + "#7=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);\n"
         + "#18=IFCUNITASSIGNMENT((#6));\n"
