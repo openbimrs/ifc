@@ -86,7 +86,7 @@ fn expected(kind: ControlKind, version: SchemaVersion) -> Expected {
     };
     Expected {
         predefined,
-        object_type: Some("Chiller COP log").filter(|_| predefined == Some("USERDEFINED")),
+        object_type: (predefined == Some("USERDEFINED")).then_some("Chiller COP log"),
         identification: (ifc4 || !history).then_some("C-1"),
         status: (!history && (ifc4 || kind == ControlKind::ProjectOrder)).then_some("OPEN"),
         long_description: (ifc4 && !history).then_some("Covers the east wing only."),

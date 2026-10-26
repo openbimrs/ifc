@@ -86,7 +86,7 @@ fn finite(leaf: &Leaf, token: &str, text: &str) -> Result<f64, XmlError> {
 /// `xs:hexBinary` text as the STEP form the model stores: the count of
 /// unused leading bits, then the hex digits. Whole bytes have none unused.
 pub(crate) fn hex_binary(token: &str) -> Option<Arc<str>> {
-    if token.len() % 2 != 0 || !token.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+    if !token.len().is_multiple_of(2) || !token.bytes().all(|byte| byte.is_ascii_hexdigit()) {
         return None;
     }
     Some(format!("0{}", token.to_ascii_uppercase()).into())
@@ -160,7 +160,7 @@ fn chunk(items: Vec<Value>, inner: &[usize]) -> Option<Value> {
         return Some(Value::List(items));
     };
     let stride: usize = inner.iter().product();
-    if size == 0 || stride == 0 || items.len() % stride != 0 {
+    if size == 0 || stride == 0 || !items.len().is_multiple_of(stride) {
         return None;
     }
     let mut out = Vec::with_capacity(items.len() / stride);

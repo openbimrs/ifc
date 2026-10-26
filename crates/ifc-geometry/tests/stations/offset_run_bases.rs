@@ -364,7 +364,9 @@ mod kernel {
     fn signed_volume(mesh: &axiolid_mesh::TriMesh) -> f64 {
         let base = mesh.positions[0];
         mesh.indices
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|t| {
                 let [a, b, c] = [t[0], t[1], t[2]].map(|i| mesh.positions[i as usize] - base);
                 a.dot(b.cross(c)) / 6.0
@@ -529,7 +531,13 @@ mod kernel {
     #[test]
     fn a_certification_past_the_panel_budget_is_refused_by_name() {
         let (n, dx, amplitude) = (40_usize, 0.1_f64, 0.5_f64);
-        let side = |i: usize| if i % 2 == 0 { amplitude } else { -amplitude };
+        let side = |i: usize| {
+            if i.is_multiple_of(2) {
+                amplitude
+            } else {
+                -amplitude
+            }
+        };
         let mut records = String::new();
         let mut points = Vec::new();
         let mut polygon = 0.0;

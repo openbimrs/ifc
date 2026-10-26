@@ -210,7 +210,9 @@ ENDSEC;\nEND-ISO-10303-21;\n";
     };
     let area: f64 = slab
         .indices
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|t| {
             let (a, b, c) = (p(t[0]), p(t[1]), p(t[2]));
             let (u, v) = ([b[0] - a[0], b[1] - a[1]], [c[0] - a[0], c[1] - a[1]]);
@@ -231,7 +233,9 @@ ENDSEC;\nEND-ISO-10303-21;\n";
     );
     let vertices: Vec<[f64; 3]> = arc
         .positions
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|v| [v[0], v[1], v[2]].map(f64::from))
         .collect();
     let (first, last) = (vertices[0], vertices[vertices.len() - 1]);

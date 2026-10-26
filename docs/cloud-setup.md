@@ -25,7 +25,7 @@ A failure in this part stops setup with the failing command.
 
 | Tool | Why |
 | --- | --- |
-| Rust 1.88.0 with rustfmt and clippy | `rust-toolchain.toml` and CI |
+| Rust 1.99.1 with rustfmt and clippy | `rust-toolchain.toml` and CI |
 | `wasm32-unknown-unknown` target | the gate's browser WASM builds |
 | `<arch>-unknown-linux-musl` target | the CLI's static build, `.deb` and release archives |
 | `cargo fetch --locked` | warm crate cache |

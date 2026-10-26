@@ -376,7 +376,7 @@ END-ISO-10303-21;
         let line = &arc.polylines[0];
         assert_eq!((line.curve, line.closed), (Some(23), false));
         assert!(line.chord_bound > 0.0 && line.chord_bound <= line.chord_requested);
-        for vertex in arc.positions.chunks_exact(3) {
+        for vertex in arc.positions.as_chunks::<3>().0 {
             let radius = f64::from(vertex[0]).hypot(f64::from(vertex[1]));
             assert!((radius - 1.0).abs() < 1e-6, "{vertex:?}");
         }

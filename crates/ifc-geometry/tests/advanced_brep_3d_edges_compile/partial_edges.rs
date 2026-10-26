@@ -93,7 +93,7 @@ const PARTIAL_SEAMS: [(&str, &str, &[[f64; 3]], bool); 5] = [
 fn sampled_wall_deviation(mesh: &TriMesh, r: f64) -> f64 {
     let radius = |q: axiolid_core::Vec3| (q.x * q.x + q.y * q.y).sqrt();
     let mut deviation: f64 = 0.0;
-    for t in mesh.indices.chunks_exact(3) {
+    for t in mesh.indices.as_chunks::<3>().0 {
         let p = [t[0], t[1], t[2]].map(|i| mesh.positions[i as usize]);
         let on_wall = p.iter().all(|&q| (radius(q) - r).abs() <= 1e-9)
             && (p[1] - p[0]).cross(p[2] - p[0]).normalize().z.abs() < 0.5;

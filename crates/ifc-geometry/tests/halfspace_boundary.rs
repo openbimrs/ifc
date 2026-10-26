@@ -474,7 +474,9 @@ fn each_clipped_wall_compiles_to_its_polyline_twins_volume() {
             .expect("the wall has a body");
         let base = mesh.positions[0];
         mesh.indices
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|t| {
                 let [a, b, c] = [t[0], t[1], t[2]].map(|i| mesh.positions[i as usize] - base);
                 a.dot(b.cross(c)) / 6.0
@@ -631,7 +633,9 @@ fn each_arc_bounded_wall_meshes_to_its_closed_form_volume() {
         let base = mesh.positions[0];
         let measured = mesh
             .indices
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|t| {
                 let [a, b, c] = [t[0], t[1], t[2]].map(|i| mesh.positions[i as usize] - base);
                 a.dot(b.cross(c)) / 6.0

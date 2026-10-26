@@ -359,10 +359,7 @@ impl Classifier {
                 Ok(_) => return None,
                 Err(_) => {}
             }
-            match self.defined_base(&current) {
-                Some(base) => current = base,
-                None => return None,
-            }
+            current = self.defined_base(&current)?;
         }
         None
     }

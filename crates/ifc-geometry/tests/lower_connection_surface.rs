@@ -541,7 +541,9 @@ mod meshing {
     /// Sum of triangle area vectors: its length is the area, its sign the side.
     fn area_vector(mesh: &TriMesh) -> Vec3 {
         mesh.indices
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|t| {
                 let [a, b, c] = [t[0], t[1], t[2]].map(|i| mesh.positions[i as usize]);
                 (b - a).cross(c - a) * 0.5
