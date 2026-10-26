@@ -8,6 +8,20 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#538, EXPRESS rules)
+
+- `openbim_ifc_v0_1_model_validate_express(model, express, express_len,
+  max_findings, &summary, ...)` validates with the EXPRESS rules of the
+  declared release from the UTF-8 `.exp` text the caller supplies, with the
+  findings tape of `_model_validate`. A size query parses and validates.
+  New `OpenbimIfcExpressValidationSummary` (the counts plus `indeterminate`);
+  `OpenbimIfcValidationSummary` and `_model_validate` are unchanged.
+- Statuses `EXPRESS_MISMATCH` (36, `express-mismatch`) and `INVALID_EXPRESS`
+  (37, `invalid-express`).
+- ABI version 0.1.22; no `v0_1` symbol changed.
+
+Semver: additive, released on the 0.1 line.
+
 ## [0.1.16] - 2026-10-20
 
 ### Added (#479, copy and append)

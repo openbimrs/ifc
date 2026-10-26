@@ -8,6 +8,19 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#538, EXPRESS rules)
+
+- `IfcModel::validate_express(express, max_findings)` validates with the
+  EXPRESS rules of the declared release, parsed per call from the `.exp`
+  text the caller supplies (feature `validate-express`, on by default;
+  `feature-disabled` without it). New codes `express-mismatch` and
+  `invalid-express`.
+- `ValidationSummary::indeterminate`: EXPRESS rules that evaluated to
+  UNKNOWN (0 from `validate`).
+
+Semver: adding a field to `ValidationSummary` breaks literal construction
+(0.x minor); the crate is not published.
+
 ### Changed (#537)
 
 - `validate` also reports `property.undeclared_member` and

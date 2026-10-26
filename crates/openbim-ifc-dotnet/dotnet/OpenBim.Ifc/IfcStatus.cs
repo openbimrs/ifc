@@ -6,7 +6,7 @@ namespace OpenBim.Ifc;
 /// </summary>
 /// <remarks>
 /// <see cref="Parse"/> to <see cref="FeatureDisabled"/>, <see cref="InvalidModel"/>
-/// and <see cref="MissingReference"/> to <see cref="InverseAttribute"/> are the
+/// and <see cref="MissingReference"/> to <see cref="InvalidExpress"/> are the
 /// errors every binding shares, each with a stable <see cref="IfcException.Code"/>.
 /// The rest describe misuse of the C boundary, which this binding does not
 /// commit; <see cref="Panic"/> is a bug in the library, worth reporting.
@@ -75,6 +75,10 @@ public enum IfcStatus
     InvalidSelector = 34,
     /// <summary>A by-name attribute write named an <c>INVERSE</c> attribute, which holds no slot (<c>inverse-attribute</c>).</summary>
     InverseAttribute = 35,
+    /// <summary>EXPRESS rule text declares another schema than the model's, or disagrees with the release's tables (<c>express-mismatch</c>).</summary>
+    ExpressMismatch = 36,
+    /// <summary>EXPRESS rule text does not parse, or names something that binds to nothing (<c>invalid-express</c>).</summary>
+    InvalidExpress = 37,
     /// <summary>A Rust panic was contained at the boundary.</summary>
     Panic = 255,
 }

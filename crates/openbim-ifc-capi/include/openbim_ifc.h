@@ -489,6 +489,16 @@ enum OpenbimIfcStatus
    */
   OPENBIM_IFC_STATUS_INVERSE_ATTRIBUTE = 35,
   /**
+   * EXPRESS rule text declares another schema than the model's, or
+   * disagrees with the release's tables (`express-mismatch`).
+   */
+  OPENBIM_IFC_STATUS_EXPRESS_MISMATCH = 36,
+  /**
+   * EXPRESS rule text does not parse, or names something that binds to
+   * nothing (`invalid-express`).
+   */
+  OPENBIM_IFC_STATUS_INVALID_EXPRESS = 37,
+  /**
    * A Rust panic was contained at the boundary. Report it as a bug.
    */
   OPENBIM_IFC_STATUS_PANIC = 255,
@@ -584,6 +594,48 @@ typedef struct {
    */
   uint32_t truncated;
 } OpenbimIfcValidationSummary;
+
+/**
+ * Counts from one validation run with EXPRESS rules (#538).
+ *
+ * A separate record from [`OpenbimIfcValidationSummary`], which the frozen
+ * `v0_1` symbol `openbim_ifc_v0_1_model_validate` keeps: this one adds the
+ * `indeterminate` count.
+ */
+typedef struct {
+  /**
+   * Number of findings on the tape.
+   */
+  size_t finding_count;
+  /**
+   * Schema violations.
+   */
+  size_t errors;
+  /**
+   * Implemented rules that could not be decided for an instance.
+   */
+  size_t evaluation_errors;
+  /**
+   * Legal but suspicious conditions.
+   */
+  size_t warnings;
+  /**
+   * EXPRESS rules that evaluated to UNKNOWN for an instance.
+   */
+  size_t indeterminate;
+  /**
+   * Rules this validator does not evaluate.
+   */
+  size_t unsupported;
+  /**
+   * 1 when there are no errors and no evaluation errors, else 0.
+   */
+  uint32_t conformant;
+  /**
+   * 1 when the run hit `max_findings`: the counts are lower bounds.
+   */
+  uint32_t truncated;
+} OpenbimIfcExpressValidationSummary;
 
 /**
  * ABI and crate versions, reported separately: the ABI version changes only
@@ -2412,7 +2464,8 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_unreachable_products(OpenbimIfcModel mod
  * `out_summary` gets the counts, also when the tape does not fit. The tape
  * is a `LIST` of findings, sorted by severity, rule, entity and slot; each
  * finding is a `LIST` of seven values: severity (`TEXT`: `error`,
- * `evaluation-error`, `warning` or `unsupported`), rule id (`TEXT`),
+ * `evaluation-error`, `warning` or `unsupported`; also `indeterminate` from
+ * `openbim_ifc_v0_1_model_validate_express`), rule id (`TEXT`),
  * entity (`REF`, or `NULL` for the file), attribute index (`INTEGER` or
  * `NULL`), attribute name (`TEXT` or `NULL`), path (`TEXT`) and message
  * (`TEXT`). `max_findings` 0 is the validator's default budget (10,000).
@@ -2432,6 +2485,37 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_validate(OpenbimIfcModel model,
                                                  uint8_t *strings,
                                                  size_t string_capacity,
                                                  size_t *out_strings_required);
+
+/**
+ * Validate with the EXPRESS rules of the declared release, read from
+ * `express`, the UTF-8 text of that release's `.exp` file (#538).
+ *
+ * As `openbim_ifc_v0_1_model_validate` (the same findings tape and
+ * `max_findings` convention), with every WHERE, type and global rule
+ * evaluated and INVERSE cardinality checked; findings of severity
+ * `indeterminate` are rules that evaluated to UNKNOWN. The text is parsed on
+ * every call, so a size query parses and validates. `InvalidArgument` when
+ * `express` is not UTF-8; `ExpressMismatch` when it declares another schema
+ * than the model's or disagrees with the release's tables; `InvalidExpress`
+ * when it does not parse; `UnsupportedSchema` when the declared schema is
+ * not bundled; `FeatureDisabled` in a build without the `validate-express`
+ * feature. The schemas are CC BY-ND, so none is bundled.
+ *
+ * # Safety
+ * `express` valid for reads of `express_len` bytes; `out_summary` valid for
+ * one write; otherwise as for `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_validate_express(OpenbimIfcModel model,
+                                                         const uint8_t *express,
+                                                         size_t express_len,
+                                                         size_t max_findings,
+                                                         OpenbimIfcExpressValidationSummary *out_summary,
+                                                         OpenbimIfcValueNode *nodes,
+                                                         size_t node_capacity,
+                                                         size_t *out_nodes_required,
+                                                         uint8_t *strings,
+                                                         size_t string_capacity,
+                                                         size_t *out_strings_required);
 
 /**
  * Serialize as STEP into a caller buffer; `out_required` gets the size.

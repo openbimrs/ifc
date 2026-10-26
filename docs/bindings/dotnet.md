@@ -188,6 +188,14 @@ using var fromXml = IfcModel.ParseIfcXml(xml);
   schema its header declares and returns a `ValidationReport`: counts by
   severity, `Conformant`, `Truncated`, and `ValidationFinding`s sorted by
   severity, rule, entity and slot.
+  `ValidateExpress(express, maxFindings)` also evaluates every WHERE, type
+  and global rule of the declared release from `express`, the text of that
+  release's `.exp` file, which you supply (the schemas are CC BY-ND, so none
+  is bundled); `Indeterminate` counts the rules that evaluated to UNKNOWN.
+  The text is parsed on every call. Text that declares another schema than
+  the model's, or disagrees with the release's tables, throws
+  `express-mismatch` (`IfcStatus.ExpressMismatch`); text that does not parse
+  throws `invalid-express` (`IfcStatus.InvalidExpress`).
 - **ifcXML.** `WriteIfcXml()` and `IfcModel.ParseIfcXml(data)` use this
   library's lossless layout; `xsdProfile: "IFC4"` or `"IFC4X3_ADD2"`
   selects the buildingSMART XSD layout, which refuses with `write` what it
@@ -798,6 +806,7 @@ and `MeshedProduct` included, from its XML documentation comments.
 | `byte[] WriteIfcZip(string inner = "step", string? xsdProfile = null)` | Serialize as ifcZIP bytes: one Deflate entry holding STEP (`model.ifc`), or with `inner` `ifcxml` ifcXML (`model.ifcXML`) in the layout `xsdProfile` names, as for `WriteIfcXml`; `Parse` reads it back. Refuses with `invalid-value` another `inner`, or a profile with STEP inside. |
 | `Header Header { get; set; }` | The STEP file header; assign a changed copy (`with`) to replace it. |
 | `ValidationReport Validate(int? maxFindings = null)` | Validate against the schema the header declares; findings sorted by severity, rule, entity and slot. `maxFindings` caps the report (default 10,000). |
+| `ValidationReport ValidateExpress(string express, int? maxFindings = null)` | Validate with the EXPRESS rules of the declared release, read from `express`, the text of that release's `.exp` file, which the caller supplies (the schemas are CC BY-ND and not bundled). Every WHERE, type and global rule is evaluated; `ValidationReport.Indeterminate` counts the rules that evaluated to UNKNOWN. The text is parsed on every call. Refuses with `express-mismatch` text that declares another schema than the model's or disagrees with the release's tables, and with `invalid-express` text that does not parse. `maxFindings` caps the report (default 10,000). |
 | `IReadOnlyList<UnreachableProduct> UnreachableProducts()` | Products no viewer will draw, with a stable reason, in id order. |
 | `IReadOnlyList<ProductPlacement> ProductPlacements(IReadOnlyList<ulong>? ids = null)` | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or, when null, every product with a shape, in id order (#328). |
 | `IReadOnlyList<ProductGraph> ProductGeometry(IReadOnlyList<ulong>? ids = null, GeometryEncoding encoding = GeometryEncoding.Json)` | Each product's Body as Axiolid's neutral geometry graph (#367), for `ids` or, when null, every product with a shape, in id order, encoded as `encoding` in Axiolid's wire format (1.0; 1.1 when a station carries a seam-snapping window, 1.2 when a run's sections do, 1.3 when an offset run continues to a basis end the kernel measures, 1.4 when a polygonal bounded half-space clips). |

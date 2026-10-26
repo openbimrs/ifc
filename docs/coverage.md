@@ -274,7 +274,9 @@ evaluates every entity WHERE rule (inherited ones included), every type
 WHERE rule and every global rule of the release, with the FUNCTIONs they
 call, and the hand-written rules above with the same id are not run. The
 schemas are CC BY-ND 4.0, so the rule text is supplied at run time and never
-bundled.
+bundled. The CLI (`validate --express FILE.exp`) and the JavaScript, Python,
+C and .NET bindings take it the same way, and refuse text that does not
+match the file's release.
 
 <!-- COVERAGE:EXPRESS:BEGIN -->
 

@@ -82,6 +82,7 @@ fn csharp_type(c_param: &str) -> String {
         "uint8_t" => "byte",
         "OpenbimIfcValueNode" => "ValueNode",
         "OpenbimIfcValidationSummary" => "NativeValidationSummary",
+        "OpenbimIfcExpressValidationSummary" => "NativeExpressValidationSummary",
         "OpenbimIfcVersion" => "NativeVersion",
         other => panic!("no C# type for the C type `{other}`; extend this table"),
     };
@@ -231,6 +232,10 @@ fn every_struct_has_the_headers_fields_in_order() {
     for (c, cs) in [
         ("OpenbimIfcValueNode", "ValueNode"),
         ("OpenbimIfcValidationSummary", "NativeValidationSummary"),
+        (
+            "OpenbimIfcExpressValidationSummary",
+            "NativeExpressValidationSummary",
+        ),
         ("OpenbimIfcVersion", "NativeVersion"),
     ] {
         let fields = c_struct(&header, c);

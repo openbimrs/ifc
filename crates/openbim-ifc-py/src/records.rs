@@ -111,6 +111,7 @@ pub fn report_to_py<'py>(
     dict.set_item("errors", report.summary.errors)?;
     dict.set_item("evaluation_errors", report.summary.evaluation_errors)?;
     dict.set_item("warnings", report.summary.warnings)?;
+    dict.set_item("indeterminate", report.summary.indeterminate)?;
     dict.set_item("unsupported", report.summary.unsupported)?;
     let findings = PyList::empty(py);
     for finding in &report.findings {
@@ -197,4 +198,20 @@ fn field_to_py<'py>(
         }
         Field::Record(record) => record_to_py(py, record)?.into_any(),
     })
+}
+
+/// Parse options from the native keywords; `None` flags are `False`.
+pub fn native_parse_options(
+    py: Python<'_>,
+    on_malformed: &str,
+    check_references: Option<&Bound<'_, PyAny>>,
+    accept_real_without_point: Option<&Bound<'_, PyAny>>,
+) -> PyResult<ParseOptions> {
+    let off = PyBool::new(py, false).to_owned().into_any();
+    parse_options(
+        on_malformed,
+        check_references.unwrap_or(&off),
+        accept_real_without_point.unwrap_or(&off),
+    )
+    .map_err(crate::error::py_err)
 }

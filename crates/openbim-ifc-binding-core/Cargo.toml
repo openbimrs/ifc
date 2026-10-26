@@ -51,7 +51,7 @@ required-features = ["properties"]
 # capabilities it ships (see openbim-ifc-wasm).
 default = [
     "ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3",
-    "ifcxml", "zip", "validate", "unreachable",
+    "ifcxml", "zip", "validate", "validate-express", "unreachable",
     "properties", "properties-write", "property-catalog",
     "spatial", "classification", "material", "systems", "cost", "georef",
     "author", "placements", "sheet-xlsx",
@@ -73,6 +73,10 @@ zip = ["openbim-ifc/zip"]
 # Schema validation, against the tables of the releases enabled above
 # (#306).
 validate = ["openbim-ifc/validate"]
+# Validation with EXPRESS rules (#538): `validate_express` evaluates every
+# WHERE, type and global rule of the declared release from the `.exp` text
+# the host supplies. The schemas are CC BY-ND, so no text is bundled.
+validate-express = ["validate", "openbim-ifc/validate-express"]
 # The viewer reachability lint: spatial containment plus representation
 # contexts, with no geometry kernel. Classifies containers from the
 # enabled releases' tables (#306).

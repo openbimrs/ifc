@@ -9,6 +9,20 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#538, EXPRESS rules)
+
+- `IfcModel.ValidateExpress(express, maxFindings)` validates with the
+  EXPRESS rules of the declared release from the `.exp` text the caller
+  supplies. `IfcStatus.ExpressMismatch` (36) and `IfcStatus.InvalidExpress`
+  (37), codes `express-mismatch` and `invalid-express`.
+- `ValidationReport.Indeterminate`: EXPRESS rules that evaluated to UNKNOWN
+  (0 from `Validate`).
+- `IfcStatus.InverseAttribute` (35) is now recorded as the model's last
+  error like the other shared binding errors.
+- Needs the C library of ABI 0.1.22.
+
+Semver: additive: minor.
+
 ## [0.10.0] - 2026-10-20
 
 ### Added (#479, copy and append)

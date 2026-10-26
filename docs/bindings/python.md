@@ -336,6 +336,13 @@ from_xml = IfcModel.parse_ifcxml(xml)
   the schema its header declares and returns a frozen `ValidationReport`:
   counts by severity, `conformant`, `truncated`, and `ValidationFinding`s
   sorted by severity, rule, entity and slot.
+  `validate_express(express, max_findings=None)` also evaluates every WHERE,
+  type and global rule of the declared release from `express`, the text of
+  that release's `.exp` file, which you supply (the schemas are CC BY-ND, so
+  none is bundled); `indeterminate` counts the rules that evaluated to
+  UNKNOWN. The text is parsed on every call. Text that declares another
+  schema than the model's, or disagrees with the release's tables, raises
+  `express-mismatch`; text that does not parse raises `invalid-express`.
 - **ifcXML.** `write_ifcxml()` and `IfcModel.parse_ifcxml(data)` use this
   library's lossless layout; `xsd_profile="IFC4"` or `"IFC4X3_ADD2"`
   selects the buildingSMART XSD layout, which refuses with `write` what it
@@ -1029,6 +1036,7 @@ class, record and function of the package with its docstring and types.
 | `model.header: Header` | The STEP file header: description, name, time stamp, author, ... |
 | `model.set_header(header: Header) -> None` | Replace the STEP file header, e.g. with `dataclasses.replace`. |
 | `model.validate(max_findings: Optional[int] = None) -> ValidationReport` | Validate against the schema the header declares. |
+| `model.validate_express(express: str, max_findings: Optional[int] = None) -> ValidationReport` | Validate with the EXPRESS rules of the declared release. |
 | `model.unreachable_products() -> List[UnreachableProduct]` | Products no viewer will draw, with a stable `reason`, in id order. |
 | `model.property_sets(id: int) -> List[PropertySet]` | The property sets, quantity sets and predefined property sets of object `id`: its own first, then those its type object holds, an occurrence property overriding an inherited one of the same name. |
 | `model.property_sets_many(ids: Optional[Iterable[int]] = None) -> List[ObjectPropertySets]` | :meth:`property_sets` of each of `ids`, in that order, or, with `None`, of every object definition (`IfcObjectDefinition` and its subtypes) in file order, in one pass. |
