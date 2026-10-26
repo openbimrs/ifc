@@ -1,6 +1,7 @@
 // The #244 surface: lenient reads, the header, validation, ifcXML and the
 // reachability lint, as smoke.c's `capabilities()` checks them.
 
+using System;
 using System.Linq;
 using Xunit;
 
