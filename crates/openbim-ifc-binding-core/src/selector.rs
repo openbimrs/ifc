@@ -152,6 +152,22 @@ impl IfcModel {
     /// stated property types), `ambiguous-value`, and the property edit's
     /// refusals.
     pub fn set_value(&mut self, id: u64, path: &str, value: Plain) -> Result<(), BindingError> {
+        self.set_value_seeded(id, path, value, ifc::fresh_seed())
+    }
+
+    /// [`Self::set_value`]
+    /// with the seed the `GlobalId`s of new sets and relationships derive
+    /// from: a host with entropy of its own (the browser) passes it. The
+    /// seed names the batch: a fixed seed reproduces its `GlobalId`s, also
+    /// after a write/read cycle; reusing it where the model holds one it
+    /// derives is refused (`invalid-value`).
+    pub fn set_value_seeded(
+        &mut self,
+        id: u64,
+        path: &str,
+        value: Plain,
+        seed: u128,
+    ) -> Result<(), BindingError> {
         let path = ValuePath::parse(path).map_err(parse_error)?;
         let schema = self.declared_schema()?;
         let targets = SelectorIndex::new(&self.inner, schema)
@@ -168,7 +184,7 @@ impl IfcModel {
                     .map(|_| ())
                     .map_err(|conflicts| BindingError::InvalidModel(format!("{conflicts:?}")))
             }
-            Some(_) => write_properties(self, &targets, plain_tagged(value)?.into_value()?),
+            Some(_) => write_properties(self, &targets, plain_tagged(value)?.into_value()?, seed),
             None => Err(BindingError::InvalidValue(format!(
                 "{path} names no value to write"
             ))),
@@ -181,12 +197,13 @@ fn write_properties(
     model: &mut IfcModel,
     targets: &[SetTarget],
     value: ifc::Value,
+    seed: u128,
 ) -> Result<(), BindingError> {
     let schema = model.declared_schema()?;
     let edits = SelectorIndex::new(&model.inner, schema)
         .property_edits(targets, &value)
         .map_err(selector_error)?;
-    ifc::apply_property_edits(&mut model.inner, &edits)
+    ifc::apply_property_edits(&mut model.inner, &edits, seed)
         .map(|_| ())
         .map_err(crate::property_edit::write::edit_error)
 }
@@ -196,6 +213,7 @@ fn write_properties(
     _model: &mut IfcModel,
     _targets: &[SetTarget],
     _value: ifc::Value,
+    _seed: u128,
 ) -> Result<(), BindingError> {
     Err(BindingError::FeatureDisabled("properties-write"))
 }

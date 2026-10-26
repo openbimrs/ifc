@@ -228,7 +228,7 @@ mod authoring;
 #[cfg(feature = "authoring")]
 pub use {
     authoring::{
-        apply_append, apply_authoring, authoring_handle, fresh_seed, stage_append, stage_authoring,
+        apply_append, apply_authoring, authoring_handle, stage_append, stage_authoring,
         AppendOptions, AppendOutcome, AssignTypeOptions, AuthorOp, AuthoringError,
         AuthoringFailure, AuthoringOutcome, CopiedEntity, CopyPlacement, CopyPolicy,
         CopyProductOptions, CopyReport, GlobalIdMode, KeepReason, KeptEntity, LayerAxis,
@@ -376,6 +376,9 @@ mod property_edit;
 mod name_guid;
 pub use ifc_model::guid::Guid;
 pub use name_guid::{name_based_guid, new_guid, GuidError};
+// The seed a batch derives its GlobalIds from (#548, #559): checked authoring and property edits. Available in every build.
+mod seed;
+pub use seed::fresh_seed;
 
 mod feature_report;
 mod io;

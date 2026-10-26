@@ -55,7 +55,7 @@
 //! assert_eq!(csv, "GlobalId,Name\r\n31t64Uzj98DhdKplMxBpF5,Wall\r\n");
 //!
 //! let edited = Sheet::read(csv.replace(",Wall", ",Wall 1").as_bytes(), SheetFormat::Csv).unwrap();
-//! let changes = import(&mut model, schema, &edited, &options).unwrap();
+//! let changes = import(&mut model, schema, &edited, &options, ifc::fresh_seed()).unwrap();
 //! assert_eq!(changes.len(), 1);
 //! # }
 //! ```

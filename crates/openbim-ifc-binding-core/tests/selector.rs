@@ -201,3 +201,21 @@ fn plain_strings_become_enumeration_items() {
         Ok(vec![17, 18, 19])
     );
 }
+
+#[cfg(feature = "properties-write")]
+#[test]
+fn a_seeded_write_by_path_reproduces_its_global_ids() {
+    for (mut a, mut b) in fixtures().into_iter().zip(fixtures()) {
+        let typed = || {
+            Plain::Exact(Tagged::Typed {
+                type_name: "IFCLABEL".into(),
+                value: Box::new(Tagged::Text("x".into())),
+            })
+        };
+        a.set_value_seeded(19, "Custom_Notes.Note", typed(), 559)
+            .unwrap();
+        b.set_value_seeded(19, "Custom_Notes.Note", typed(), 559)
+            .unwrap();
+        assert_eq!(a.write().unwrap(), b.write().unwrap());
+    }
+}

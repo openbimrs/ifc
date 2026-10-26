@@ -182,7 +182,14 @@ assert_eq!(error.span, 9..15);
 // Writes are checked against the release and staged on one transaction.
 let mut model = model.clone();
 let renamed = ifc::Value::Text("WT-300".into());
-set_value(&mut model, schema, EntityId(17), &type_name, &renamed)?;
+set_value(
+    &mut model,
+    schema,
+    EntityId(17),
+    &type_name,
+    &renamed,
+    ifc::fresh_seed(),
+)?;
 ```
 
 <!-- /SNIPPET -->

@@ -202,6 +202,10 @@ impl SelectorIndex<'_> {
     /// type of the attribute or property it writes; `null` is the text
     /// that writes `$`.
     ///
+    /// `seed` is the batch's seed: the `GlobalId`s of the property sets and
+    /// relationships a property write creates derive from it (see
+    /// `apply_property_edits`); an attribute write ignores it.
+    ///
     /// # Errors
     ///
     /// Every refusal found, each naming its edit: the refusals of
@@ -215,6 +219,7 @@ impl SelectorIndex<'_> {
         &self,
         edits: &[TextEdit],
         null: &str,
+        seed: u128,
     ) -> Result<EditPlan, Vec<EditRefusal>> {
         let mut collected = Collected::default();
         for (index, edit) in edits.iter().enumerate() {
@@ -222,7 +227,7 @@ impl SelectorIndex<'_> {
                 collected.refuse(index, error);
             }
         }
-        let mut transaction = self.stage_properties_of(&mut collected);
+        let mut transaction = self.stage_properties_of(&mut collected, seed);
         for (entity, slot, value) in collected.attributes.drain(..) {
             transaction.set_attribute(entity, slot, value);
         }
@@ -408,13 +413,13 @@ impl SelectorIndex<'_> {
     /// planner refuses is recorded and left out, and the rest replanned,
     /// up to [`PROPERTY_REFUSALS`] times.
     #[cfg(feature = "properties")]
-    fn stage_properties_of(&self, collected: &mut Collected) -> Transaction {
+    fn stage_properties_of(&self, collected: &mut Collected, seed: u128) -> Transaction {
         let mut pending = std::mem::take(&mut collected.properties);
         let mut refused = 0;
         while !pending.is_empty() {
             let edits: Vec<crate::PropertyEdit> =
                 pending.iter().map(|(_, edit)| edit.clone()).collect();
-            match crate::stage_property_edits(self.model, &edits) {
+            match crate::stage_property_edits(self.model, &edits, seed) {
                 Ok(staged) => return staged.transaction,
                 Err(error) => {
                     refused += 1;
@@ -437,7 +442,7 @@ impl SelectorIndex<'_> {
     }
 
     #[cfg(not(feature = "properties"))]
-    fn stage_properties_of(&self, _collected: &mut Collected) -> Transaction {
+    fn stage_properties_of(&self, _collected: &mut Collected, _seed: u128) -> Transaction {
         Transaction::new(self.model)
     }
 }
@@ -458,6 +463,10 @@ fn describe(target: &SetTarget) -> (EntityId, String) {
 /// them or none. Returns what changed; an empty list leaves the model and
 /// its revision untouched.
 ///
+/// `seed` is the batch's seed: the `GlobalId`s of the property sets and
+/// relationships a property write creates derive from it (see
+/// `apply_property_edits`); an attribute write ignores it.
+///
 /// # Errors
 ///
 /// As [`SelectorIndex::plan_text_edits`], and a batch refusal carrying
@@ -468,8 +477,9 @@ pub fn apply_text_edits(
     schema: &Schema,
     edits: &[TextEdit],
     null: &str,
+    seed: u128,
 ) -> Result<Vec<PlannedChange>, Vec<EditRefusal>> {
-    let plan = SelectorIndex::new(model, schema).plan_text_edits(edits, null)?;
+    let plan = SelectorIndex::new(model, schema).plan_text_edits(edits, null, seed)?;
     let changes = plan.changes.clone();
     plan.commit(model)
         .map_err(|error| vec![EditRefusal { edit: None, error }])?;

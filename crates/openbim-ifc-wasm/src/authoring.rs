@@ -9,7 +9,8 @@
 //! `IfcValue`s by name. `undefined` and `null` are an absent field.
 //!
 //! JavaScript has entropy the WebAssembly module lacks, so the seed fresh
-//! `GlobalId`s derive from is drawn here, from `Math.random`.
+//! `GlobalId`s derive from is drawn here, from `Math.random`: for authoring,
+//! copies and appends, and for every property, value and table write (#559).
 
 use js_sys::{Array, Math, Object, Reflect};
 use openbim_ifc_binding_core::authoring::{op_spec, FieldKind};

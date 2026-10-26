@@ -1,4 +1,5 @@
-//! The seed a batch derives its fresh `GlobalId`s from.
+//! The seed a batch derives its fresh `GlobalId`s from: a checked authoring
+//! batch, or a property edit (and the selector and sheet writes built on it).
 //!
 //! A `GlobalId` must be unique across files, not only within one, so the
 //! seed must differ between batches and processes. Native targets draw it
@@ -15,7 +16,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::name_guid::avalanche;
 
-/// A fresh seed for [`apply_authoring`](super::apply_authoring).
+/// A fresh seed for one batch: of `apply_authoring` or `apply_append`, or of a
+/// property edit (`apply_property_edits` and the selector and sheet writes
+/// built on it).
 ///
 /// On `wasm32-unknown-unknown` it carries no entropy (see the module
 /// documentation); pass a seed drawn by the host there.

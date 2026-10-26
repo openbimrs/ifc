@@ -152,6 +152,10 @@ impl SelectorIndex<'_> {
     /// wrapped in the type of the property already stated, and refused
     /// when none is.
     ///
+    /// `seed` is the batch's seed: the `GlobalId`s of the property sets and
+    /// relationships a property write creates derive from it (see
+    /// `apply_property_edits`); an attribute write ignores it.
+    ///
     /// # Errors
     ///
     /// As [`Self::set_targets`]; [`SelectorError::TypeMismatch`];
@@ -163,6 +167,7 @@ impl SelectorIndex<'_> {
         entity: EntityId,
         path: &ValuePath,
         value: &Value,
+        seed: u128,
     ) -> Result<Transaction, SelectorError> {
         let targets = self.set_targets(entity, path)?;
         if targets
@@ -171,7 +176,7 @@ impl SelectorIndex<'_> {
         {
             return self.stage_attributes(&targets, value);
         }
-        self.stage_properties(&targets, value)
+        self.stage_properties(&targets, value, seed)
     }
 
     /// Stage writing `value` to every attribute target, each checked as
@@ -306,9 +311,10 @@ impl SelectorIndex<'_> {
         &self,
         targets: &[SetTarget],
         value: &Value,
+        seed: u128,
     ) -> Result<Transaction, SelectorError> {
         let edits = self.property_edits(targets, value)?;
-        crate::stage_property_edits(self.model, &edits)
+        crate::stage_property_edits(self.model, &edits, seed)
             .map(|staged| staged.transaction)
             .map_err(SelectorError::PropertyEdit)
     }
@@ -319,12 +325,17 @@ impl SelectorIndex<'_> {
         &self,
         _targets: &[SetTarget],
         _value: &Value,
+        _seed: u128,
     ) -> Result<Transaction, SelectorError> {
         Err(SelectorError::FeatureDisabled("properties"))
     }
 }
 
 /// Write `value` at `path` of `entity` and commit, as one transaction.
+///
+/// `seed` is the batch's seed: the `GlobalId`s of the property sets and
+/// relationships a property write creates derive from it (see
+/// `apply_property_edits`); an attribute write ignores it.
 ///
 /// # Errors
 ///
@@ -337,8 +348,10 @@ pub fn set_value(
     entity: EntityId,
     path: &ValuePath,
     value: &Value,
+    seed: u128,
 ) -> Result<ifc_model::Applied, SelectorError> {
-    let transaction = SelectorIndex::new(model, schema).stage_set_value(entity, path, value)?;
+    let transaction =
+        SelectorIndex::new(model, schema).stage_set_value(entity, path, value, seed)?;
     transaction.commit(model).map_err(SelectorError::Conflict)
 }
 

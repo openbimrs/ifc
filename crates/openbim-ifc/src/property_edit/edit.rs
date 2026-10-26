@@ -222,6 +222,15 @@ pub enum PropertyEditFailure {
         /// The catalog edition the release reads, such as `IFC4X3 ADD2`.
         edition: String,
     },
+    /// A `GlobalId` derived from the batch seed that an entity the batch
+    /// leaves in the model already holds: the seed named an earlier batch's
+    /// records (#559). Draw one seed per batch (`fresh_seed`).
+    SeedReused {
+        /// The derived `GlobalId`.
+        global_id: String,
+        /// The entity holding it.
+        holder: EntityId,
+    },
     /// The planned transaction failed its preflight.
     Conflict(Vec<Conflict>),
 }
@@ -278,6 +287,10 @@ impl fmt::Display for PropertyEditFailure {
                 f,
                 "{set} is a catalog set and the {edition} catalog is not installed"
             ),
+            Self::SeedReused { global_id, holder } => write!(
+                f,
+                "GlobalId `{global_id}` derived from the batch seed is already held by {holder}; the seed names an earlier batch: draw one seed per batch"
+            ),
             Self::Conflict(conflicts) => write!(f, "the planned edit conflicts: {conflicts:?}"),
         }
     }
@@ -294,10 +307,12 @@ impl std::error::Error for PropertyEditError {}
 /// # Errors
 ///
 /// The first edit that cannot be planned, as a [`PropertyEditError`] naming
-/// its position.
+/// its position, and [`PropertyEditFailure::SeedReused`] when a `GlobalId`
+/// derived from `seed` is held by an entity the batch leaves in the model.
 pub fn stage_property_edits(
     model: &Model,
     edits: &[PropertyEdit],
+    seed: u128,
 ) -> Result<StagedPropertyEdits, PropertyEditError> {
     let mut planner = Planner::new(model)?;
     for (index, edit) in edits.iter().enumerate() {
@@ -305,21 +320,23 @@ pub fn stage_property_edits(
             .apply(index, edit)
             .map_err(|failure| PropertyEditError::at(index, failure))?;
     }
-    emit(planner)
+    emit(planner, seed)
 }
 
 /// Plan, stage and commit `edits` as one transaction: all of them or none.
 ///
 /// # Errors
 ///
-/// As [`stage_property_edits`], and [`PropertyEditFailure::Conflict`] when
-/// the planned transaction fails its preflight. The model is unchanged on
-/// every error.
+/// As [`stage_property_edits`] (including [`PropertyEditFailure::SeedReused`]
+/// when a `GlobalId` derived from `seed` is held by an entity the batch leaves
+/// in the model), and [`PropertyEditFailure::Conflict`] when the planned
+/// transaction fails its preflight. The model is unchanged on every error.
 pub fn apply_property_edits(
     model: &mut Model,
     edits: &[PropertyEdit],
+    seed: u128,
 ) -> Result<PropertyEditOutcome, PropertyEditError> {
-    let staged = stage_property_edits(model, edits)?;
+    let staged = stage_property_edits(model, edits, seed)?;
     let applied = staged
         .transaction
         .commit(model)
