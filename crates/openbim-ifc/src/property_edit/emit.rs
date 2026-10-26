@@ -5,7 +5,7 @@
 //! object records a new set derives from. Nothing is committed: the caller
 //! commits the transaction, whose preflight is the last word on references.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use ifc_model::{Edit, Entity, EntityId, Transaction, Value};
 use ifc_properties::{
@@ -22,14 +22,18 @@ use super::plan::{Form, Member, MemberState, Origin, Planner, SetDraft};
 use super::value::quantity_number;
 
 /// Stage `planner`'s drafts.
-pub(super) fn emit(mut planner: Planner<'_>) -> Result<StagedPropertyEdits, PropertyEditError> {
+pub(super) fn emit(
+    mut planner: Planner<'_>,
+    seed: u128,
+) -> Result<StagedPropertyEdits, PropertyEditError> {
     let model = planner.model;
     let release = planner.release;
     let mut stage = Stage {
         tx: Transaction::new(model),
         release,
-        next_id: model.next_id().0,
-        serial: 0,
+        seed,
+        drawn: BTreeMap::new(),
+        derived: Vec::new(),
         rels: BTreeMap::new(),
         types: BTreeMap::new(),
     };
@@ -43,6 +47,7 @@ pub(super) fn emit(mut planner: Planner<'_>) -> Result<StagedPropertyEdits, Prop
         finals.push(staged);
     }
     stage.flush(model);
+    stage.refuse_held(model)?;
     let properties = planner
         .results
         .iter()
@@ -67,8 +72,12 @@ type Failed = (usize, PropertyEditFailure);
 struct Stage {
     tx: Transaction,
     release: Release,
-    next_id: u64,
-    serial: u64,
+    seed: u128,
+    /// Records drawn so far per object `GlobalId`, set name and role: the
+    /// serial of the next one.
+    drawn: BTreeMap<(String, String, &'static str), u32>,
+    /// Every derived `GlobalId` with the edit that asked for it, in order.
+    derived: Vec<(usize, String)>,
     /// `RelatedObjects` of shared relationships the batch detaches from.
     rels: BTreeMap<EntityId, Vec<EntityId>>,
     /// `HasPropertySets` of type objects whose sets the batch changes.
@@ -144,7 +153,7 @@ impl Stage {
                         });
                         related.retain(|object| *object != holder.id);
                         if let Some(copy) = copy {
-                            self.attach(model, holder, &draft.name, copy)
+                            self.attach(model, holder, draft.edit, &draft.name, copy)
                                 .map_err(failed)?;
                         }
                     }
@@ -171,7 +180,7 @@ impl Stage {
                 if holder.is_type {
                     self.type_list(holder.id, model).push(set);
                 } else {
-                    self.attach(model, holder, &draft.name, set)
+                    self.attach(model, holder, draft.edit, &draft.name, set)
                         .map_err(failed)?;
                 }
             }
@@ -275,7 +284,7 @@ impl Stage {
         copy_of: Option<EntityId>,
     ) -> Result<EntityId, PropertyEditFailure> {
         let model = planner.model;
-        let global_id = self.global_id(holder, &draft.name, "set")?;
+        let global_id = self.global_id(draft.edit, holder, &draft.name, "set")?;
         let owner_history = self.owner_history(holder)?;
         let release = self.release;
         let text = |attribute: &str| copy_of.and_then(|set| release.text(model, set, attribute));
@@ -325,10 +334,11 @@ impl Stage {
         &mut self,
         model: &ifc_model::Model,
         holder: &Holder,
+        edit: usize,
         name: &str,
         set: EntityId,
     ) -> Result<EntityId, PropertyEditFailure> {
-        let global_id = self.global_id(holder, name, "rel")?;
+        let global_id = self.global_id(edit, holder, name, "rel")?;
         match self.owner_history(holder)? {
             Some(history) => attach_property_set_with_owner_history(
                 &mut self.tx,
@@ -345,9 +355,10 @@ impl Stage {
 
     fn global_id(
         &mut self,
+        edit: usize,
         holder: &Holder,
         set: &str,
-        role: &str,
+        role: &'static str,
     ) -> Result<String, PropertyEditFailure> {
         let owner = holder
             .global_id
@@ -359,14 +370,85 @@ impl Stage {
                     holder.id
                 ))
             })?;
-        self.serial += 1;
-        Ok(derived_global_id(
-            owner,
-            set,
-            role,
-            self.next_id,
-            self.serial,
-        ))
+        let drawn = self
+            .drawn
+            .entry((owner.to_owned(), set.to_owned(), role))
+            .or_insert(0);
+        let serial = *drawn;
+        *drawn += 1;
+        let global_id = derived_global_id(self.seed, owner, set, role, serial);
+        self.derived.push((edit, global_id.clone()));
+        Ok(global_id)
+    }
+
+    /// Refuse a derived `GlobalId` that an `IfcRoot` the batch leaves in the
+    /// model already holds: the seed named an earlier batch's records.
+    fn refuse_held(&self, model: &ifc_model::Model) -> Result<(), PropertyEditError> {
+        if self.derived.is_empty() {
+            return Ok(());
+        }
+        let wanted: HashSet<&str> = self.derived.iter().map(|(_, id)| id.as_str()).collect();
+        let removed: HashSet<EntityId> = self
+            .tx
+            .edits()
+            .iter()
+            .filter_map(|edit| match edit {
+                Edit::Remove { id } => Some(*id),
+                _ => None,
+            })
+            .collect();
+        let mut held: HashMap<&str, EntityId> = HashMap::new();
+        for (type_name, _) in model.type_histogram() {
+            if !self.release.schema.is_a(type_name, "IfcRoot") {
+                continue;
+            }
+            for (id, entity) in model.of_type(type_name) {
+                if removed.contains(&id) {
+                    continue;
+                }
+                if let Some(Value::Text(text)) = entity.attributes.first() {
+                    if let Some(&key) = wanted.get(&**text) {
+                        let slot = held.entry(key).or_insert(id);
+                        *slot = (*slot).min(id);
+                    }
+                }
+            }
+        }
+        let mut seen: HashSet<&str> = HashSet::new();
+        for (edit, global_id) in &self.derived {
+            // Two records of one batch must not share a `GlobalId`: refuse,
+            // naming the first entity the batch created with it.
+            if !seen.insert(global_id.as_str()) {
+                let first = self.tx.edits().iter().find_map(|staged| match staged {
+                    Edit::Create { id, entity }
+                        if matches!(entity.attributes.first(),
+                            Some(Value::Text(text)) if &**text == global_id.as_str()) =>
+                    {
+                        Some(*id)
+                    }
+                    _ => None,
+                });
+                if let Some(holder) = first {
+                    return Err(PropertyEditError::at(
+                        *edit,
+                        PropertyEditFailure::SeedReused {
+                            global_id: global_id.clone(),
+                            holder,
+                        },
+                    ));
+                }
+            }
+            if let Some(&holder) = held.get(global_id.as_str()) {
+                return Err(PropertyEditError::at(
+                    *edit,
+                    PropertyEditFailure::SeedReused {
+                        global_id: global_id.clone(),
+                        holder,
+                    },
+                ));
+            }
+        }
+        Ok(())
     }
 
     /// The holder's `OwnerHistory` for new records; IFC2X3 requires one.

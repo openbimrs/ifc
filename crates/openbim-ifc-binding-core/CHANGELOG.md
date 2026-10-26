@@ -8,6 +8,20 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#559)
+
+- `set_properties_seeded`, `set_property_seeded`, `remove_property_seeded`,
+  `set_value_seeded` and `import_table_seeded`, for hosts with their own
+  entropy and for journal replay. The unseeded forms draw `fresh_seed()` per
+  call.
+
+### Changed (#559)
+
+- `SeedReused` maps to `invalid-value`; an unseeded write gives other
+  `GlobalId`s per call.
+
+Semver: patch (internal crate, not published).
+
 ### Changed (#548)
 
 - `SeedReused` maps to `invalid-value`; `author_seeded` documents the seed as

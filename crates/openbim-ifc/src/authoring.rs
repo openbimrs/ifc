@@ -33,7 +33,7 @@
 //! operation, not its id, so a fixed seed reproduces the `GlobalId`s after a
 //! write/read cycle. A seed names one batch: a derived `GlobalId` the model
 //! holds is refused with [`AuthoringFailure::SeedReused`], and
-//! [`fresh_seed`] draws one per batch. `OwnerHistory` is never invented, the way
+//! [`fresh_seed`](crate::fresh_seed) draws one per batch. `OwnerHistory` is never invented, the way
 //! `ifc-author` handles it: a builder writes the one the caller names on the
 //! entity and every relationship it creates, and IFC2X3, which requires it,
 //! refuses a record without. [`AuthorOp::OwnerHistory`] builds one through
@@ -97,7 +97,6 @@ mod release;
 mod remove;
 mod report;
 mod represent;
-mod seed;
 mod shape_type;
 
 use ifc_model::{EntityId, Model, Transaction, Value};
@@ -111,7 +110,6 @@ pub use options::{
     RemoveProductOptions, ReuseOptions,
 };
 pub use report::{CopiedEntity, CopyReport, KeepReason, KeptEntity, RemovalReport, RemovedEntity};
-pub use seed::fresh_seed;
 
 use overlay::Overlay;
 use plan::Planner;

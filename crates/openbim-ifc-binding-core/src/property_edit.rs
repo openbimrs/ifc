@@ -161,19 +161,35 @@ impl IfcModel {
     /// `feature-disabled` without the `properties-write` feature, or without
     /// a catalog feature for a `Pset_` or `Qto_` set, and
     /// `catalog-not-loaded` for such a set in a `property-catalog-runtime`
-    /// build before [`crate::catalog::load`] loaded its release. The message
-    /// names the refused edit's position.
+    /// build before [`crate::catalog::load`] loaded its release, and
+    /// `invalid-value` for a `GlobalId` derived from a seed the model
+    /// already holds. The message names the refused edit's position. The
+    /// new `GlobalId`s derive from a fresh seed per call.
     pub fn set_properties(
         &mut self,
         edits: Vec<PropertyEdit>,
     ) -> Result<PropertyEditResult, BindingError> {
+        self.set_properties_seeded(edits, ifc::fresh_seed())
+    }
+
+    /// [`Self::set_properties`]
+    /// with the seed the `GlobalId`s of new sets and relationships derive
+    /// from: a host with entropy of its own (the browser) passes it. The
+    /// seed names the batch: a fixed seed reproduces its `GlobalId`s, also
+    /// after a write/read cycle; reusing it where the model holds one it
+    /// derives is refused (`invalid-value`).
+    pub fn set_properties_seeded(
+        &mut self,
+        edits: Vec<PropertyEdit>,
+        seed: u128,
+    ) -> Result<PropertyEditResult, BindingError> {
         #[cfg(feature = "properties-write")]
         {
-            write::apply(self, edits)
+            write::apply(self, edits, seed)
         }
         #[cfg(not(feature = "properties-write"))]
         {
-            let _ = edits;
+            let _ = (edits, seed);
             Err(BindingError::FeatureDisabled("properties-write"))
         }
     }
@@ -188,11 +204,29 @@ impl IfcModel {
         value: Tagged,
         set_type: Option<String>,
     ) -> Result<u64, BindingError> {
+        self.set_property_seeded(object, set, name, value, set_type, ifc::fresh_seed())
+    }
+
+    /// [`Self::set_property`]
+    /// with the seed the `GlobalId`s of new sets and relationships derive
+    /// from: a host with entropy of its own (the browser) passes it. The
+    /// seed names the batch: a fixed seed reproduces its `GlobalId`s, also
+    /// after a write/read cycle; reusing it where the model holds one it
+    /// derives is refused (`invalid-value`).
+    pub fn set_property_seeded(
+        &mut self,
+        object: u64,
+        set: &str,
+        name: &str,
+        value: Tagged,
+        set_type: Option<String>,
+        seed: u128,
+    ) -> Result<u64, BindingError> {
         let mut edit = PropertyEdit::set(object, set, name, value);
         if let EditAction::Set { set_type: slot, .. } = &mut edit.action {
             *slot = set_type;
         }
-        let result = self.set_properties(vec![edit])?;
+        let result = self.set_properties_seeded(vec![edit], seed)?;
         result
             .properties
             .first()
@@ -208,7 +242,23 @@ impl IfcModel {
         set: &str,
         name: &str,
     ) -> Result<(), BindingError> {
-        self.set_properties(vec![PropertyEdit::remove(object, set, name)])
+        self.remove_property_seeded(object, set, name, ifc::fresh_seed())
+    }
+
+    /// [`Self::remove_property`]
+    /// with the seed the `GlobalId`s of new sets and relationships derive
+    /// from: a host with entropy of its own (the browser) passes it. The
+    /// seed names the batch: a fixed seed reproduces its `GlobalId`s, also
+    /// after a write/read cycle; reusing it where the model holds one it
+    /// derives is refused (`invalid-value`).
+    pub fn remove_property_seeded(
+        &mut self,
+        object: u64,
+        set: &str,
+        name: &str,
+        seed: u128,
+    ) -> Result<(), BindingError> {
+        self.set_properties_seeded(vec![PropertyEdit::remove(object, set, name)], seed)
             .map(drop)
     }
 }
@@ -240,13 +290,14 @@ pub(crate) mod write {
     pub(super) fn apply(
         model: &mut IfcModel,
         edits: Vec<PropertyEdit>,
+        seed: u128,
     ) -> Result<PropertyEditResult, BindingError> {
         let edits = edits
             .into_iter()
             .enumerate()
             .map(|(index, edit)| facade_edit(edit).map_err(|error| at(index, error)))
             .collect::<Result<Vec<_>, _>>()?;
-        let outcome = apply_property_edits(&mut model.inner, &edits).map_err(edit_error)?;
+        let outcome = apply_property_edits(&mut model.inner, &edits, seed).map_err(edit_error)?;
         let ids = |ids: Vec<EntityId>| ids.into_iter().map(|EntityId(id)| id).collect();
         Ok(PropertyEditResult {
             properties: outcome
@@ -321,7 +372,7 @@ pub(crate) mod write {
                 other => other,
             },
             F::Authoring(authoring) => authoring_error(authoring, detail),
-            F::InvalidValue(_) => BindingError::InvalidValue(detail),
+            F::InvalidValue(_) | F::SeedReused { .. } => BindingError::InvalidValue(detail),
             F::Template(_) => BindingError::TemplateViolation(detail),
             F::MissingProperty { .. } => BindingError::MissingProperty(detail),
             F::WrongSetType(_) => BindingError::WrongEntityType(detail),

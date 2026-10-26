@@ -150,6 +150,61 @@ mod with_properties {
     }
 
     #[test]
+    fn a_seeded_batch_reproduces_its_global_ids() {
+        let edits = || vec![PropertyEdit::set(30, "Custom", "Note", label("seeded"))];
+        let (mut a, mut b, mut c) = (fixture(), fixture(), fixture());
+        a.set_properties_seeded(edits(), 559).expect("applies");
+        b.set_properties_seeded(edits(), 559).expect("applies");
+        c.set_properties_seeded(edits(), 560).expect("applies");
+        assert_eq!(a.write().unwrap(), b.write().unwrap());
+        assert_ne!(a.write().unwrap(), c.write().unwrap());
+    }
+
+    #[test]
+    fn the_one_edit_forms_take_the_seed() {
+        let (mut one, mut batch) = (fixture(), fixture());
+        one.set_property_seeded(30, "Custom", "Note", label("x"), None, 559)
+            .expect("sets");
+        batch
+            .set_properties_seeded(
+                vec![PropertyEdit::set(30, "Custom", "Note", label("x"))],
+                559,
+            )
+            .expect("applies");
+        assert_eq!(one.write().unwrap(), batch.write().unwrap());
+        one.remove_property_seeded(30, "Custom", "Note", 560)
+            .expect("removes");
+        batch
+            .set_properties_seeded(vec![PropertyEdit::remove(30, "Custom", "Note")], 560)
+            .expect("applies");
+        assert_eq!(one.write().unwrap(), batch.write().unwrap());
+    }
+
+    #[test]
+    fn a_seed_whose_global_id_is_held_is_an_invalid_value() {
+        let mut model = fixture();
+        let edits = || vec![PropertyEdit::set(30, "Custom", "Note", label("x"))];
+        let created = model
+            .set_properties_seeded(edits(), 559)
+            .expect("applies")
+            .created;
+        let set = created
+            .into_iter()
+            .find(|id| model.type_of(*id).unwrap() == "IFCPROPERTYSET")
+            .expect("a set was created");
+        model
+            .set_attribute_by_name(set, "Name", Tagged::Text("Renamed".into()))
+            .expect("renames");
+        let before = model.write().unwrap();
+        let error = model
+            .set_properties_seeded(edits(), 559)
+            .expect_err("refused");
+        assert_eq!(error.code(), "invalid-value");
+        assert_eq!(model.write().unwrap(), before);
+        model.set_properties_seeded(edits(), 560).expect("applies");
+    }
+
+    #[test]
     fn every_refusal_has_its_code_and_changes_nothing() {
         let mut model = fixture();
         let cases: Vec<(&str, Vec<PropertyEdit>)> = vec![

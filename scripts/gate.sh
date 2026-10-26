@@ -222,7 +222,7 @@ gate_features() {
     # Property edits (#123) check `Pset_`/`Qto_` sets against the PSD/QTO
     # catalog when `property-catalog` is on; `--all-features` hides the
     # refusal a build without it gives.
-    cargo test -p openbim-ifc --features step,schema,properties --test property_edit
+    cargo test -p openbim-ifc --features step,schema,properties --test property_edit --test property_edit_identity
     # With the catalog supplied at runtime (#318), a `Pset_`/`Qto_` edit
     # waits for its edition to be installed; `--all-features` embeds it.
     cargo test -p openbim-ifc --features step,schema,properties,property-catalog-runtime \

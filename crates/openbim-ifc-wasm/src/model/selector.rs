@@ -6,6 +6,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
 
 use super::IfcModel;
+use crate::authoring;
 use crate::error::js_error;
 use crate::geometry;
 use crate::value::{plain_from_js, to_js};
@@ -93,7 +94,9 @@ impl IfcModel {
         #[wasm_bindgen(unchecked_param_type = "IfcValue | IfcPlainValue")] value: &JsValue,
     ) -> Result<(), JsValue> {
         let value = plain_from_js(value).map_err(js_error)?;
-        self.0.set_value(id, path, value).map_err(js_error)
+        self.0
+            .set_value_seeded(id, path, value, authoring::seed())
+            .map_err(js_error)
     }
 
     /// Selector `query` in its canonical form: spacing, quoting and

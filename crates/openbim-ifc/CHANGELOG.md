@@ -12,6 +12,34 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#559)
+
+- The `GlobalId`s a property edit derives for the sets and relationships it
+  creates derive from a caller seed, the object's `GlobalId`, the set name,
+  the record's role and its count among the batch's records of that object,
+  set and role, no longer from the model's next free id. The same edits
+  under the same seed give the same `GlobalId`s after a write/read cycle
+  that shifts the next id, so a journal of property edits replays to the
+  same identities.
+- `stage_property_edits` and `apply_property_edits` take that `seed`, and
+  so does every write that may create a set: `SelectorIndex::stage_set_value`,
+  `selector::set_value`, `SelectorIndex::plan_text_edits`,
+  `selector::apply_text_edits`, `sheet::plan_import` and `sheet::import`
+  (an attribute write ignores it).
+- `fresh_seed` is available in every build, no longer only with `authoring`.
+
+### Added (#559)
+
+- `PropertyEditFailure::SeedReused`, raised when a derived `GlobalId` is
+  held by an entity the batch leaves in the model (the seed named an
+  earlier batch's records). A seed may edit other objects or sets, and may
+  be used again once its records are removed.
+
+Semver: breaking (minor while 0.x), released with #548 in 0.38.0: the
+property-edit, selector-write and sheet-import entry points take a seed,
+the same edit of the same file no longer gives the same `GlobalId`s, and
+`SeedReused` is a new variant of the `#[non_exhaustive]` `PropertyEditFailure`.
+
 ### Changed (#548)
 
 - The `GlobalId`s a batch derives (an `IfcRoot` created without one, every

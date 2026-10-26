@@ -213,6 +213,24 @@ impl IfcModel {
         null: &str,
         dry_run: bool,
     ) -> Result<TableImport, BindingError> {
+        self.import_table_seeded(data, format_name, key, null, dry_run, ifc::fresh_seed())
+    }
+
+    /// [`Self::import_table`]
+    /// with the seed the `GlobalId`s of new sets and relationships derive
+    /// from: a host with entropy of its own (the browser) passes it. The
+    /// seed names the batch: a fixed seed reproduces its `GlobalId`s, also
+    /// after a write/read cycle; reusing it where the model holds one it
+    /// derives is refused (`invalid-value`).
+    pub fn import_table_seeded(
+        &mut self,
+        data: &[u8],
+        format_name: &str,
+        key: Option<&str>,
+        null: &str,
+        dry_run: bool,
+        seed: u128,
+    ) -> Result<TableImport, BindingError> {
         let format = format(format_name)?;
         let options = options(key, null)?;
         let table = match Sheet::read(data, format) {
@@ -237,8 +255,12 @@ impl IfcModel {
             Err(other) => return Err(format_error(other)),
         };
         let schema = self.declared_schema()?;
-        let planned =
-            sheet::plan_import(&SelectorIndex::new(&self.inner, schema), &table, &options);
+        let planned = sheet::plan_import(
+            &SelectorIndex::new(&self.inner, schema),
+            &table,
+            &options,
+            seed,
+        );
         let plan = match planned {
             Ok(plan) => plan,
             Err(refused) => {

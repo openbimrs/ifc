@@ -11,6 +11,17 @@ documents) is this crate's public interface.
 
 ## [Unreleased]
 
+### Changed (#559)
+
+- `edit` and `import-table` derive the `GlobalId`s of the sets and
+  relationships they create from a seed drawn per run, no longer from the
+  file's next free id. Behaviour change: the output of `edit` and
+  `import-table` is no longer reproducible between runs; the same edit of
+  the same file gives new `GlobalId`s on each run.
+
+Semver: patch (commands, flags, exit codes and documents unchanged; only
+the `GlobalId`s of newly created records differ per run).
+
 ### Added (#538, EXPRESS rules)
 
 - `validate --express FILE.exp` (repeatable, one file per release)

@@ -8,6 +8,14 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#559)
+
+- `set_properties`, `set_property`, `remove_property`, `set_value`, `import_table`: draw a seed per call for the `GlobalId`s of the sets and
+  relationships they create; one the model already holds is refused with
+  `invalid-value`.
+
+Semver: patch (signatures unchanged).
+
 ### Added (#538, EXPRESS rules)
 
 - `IfcModel.validate_express(express, max_findings=None)` validates with the

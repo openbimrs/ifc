@@ -8,6 +8,14 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Fixed (#559)
+
+- `setProperties`, `setProperty`, `removeProperty`, `setValue` and
+  `importTable` draw their `GlobalId` seed from `Math.random`, as `author`,
+  `copyProduct` and `append` do.
+
+Semver: patch (signatures unchanged).
+
 ### Fixed (#548)
 
 - `IfcModel.copyProduct` and `IfcModel.append` draw their `GlobalId` seed

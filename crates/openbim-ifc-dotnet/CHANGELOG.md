@@ -9,6 +9,14 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#559)
+
+- `SetProperties`, `SetProperty`, `RemoveProperty`, `SetValue`, `ImportTable`: draw a seed per call for the `GlobalId`s of the sets and
+  relationships they create; one the model already holds is refused with
+  `invalid-value`.
+
+Semver: patch (signatures unchanged).
+
 ### Added (#538, EXPRESS rules)
 
 - `IfcModel.ValidateExpress(express, maxFindings)` validates with the

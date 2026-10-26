@@ -54,8 +54,12 @@ fn a_catalog_set_waits_for_its_edition_then_is_checked() {
     );
 
     assert!(!is_installed(CatalogEdition::Ifc4Add2Tc1));
-    let error = apply_property_edits(&mut model, std::slice::from_ref(&fire_rating))
-        .expect_err("refused before loading");
+    let error = apply_property_edits(
+        &mut model,
+        std::slice::from_ref(&fire_rating),
+        ifc::fresh_seed(),
+    )
+    .expect_err("refused before loading");
     assert_eq!(
         error.failure,
         PropertyEditFailure::CatalogNotLoaded {
@@ -74,9 +78,13 @@ fn a_catalog_set_waits_for_its_edition_then_is_checked() {
     // Another edition installed does not stand in for IFC4's.
     install(CatalogEdition::Ifc4x3Add2, CONTAINER).unwrap();
     assert!(matches!(
-        apply_property_edits(&mut model, std::slice::from_ref(&fire_rating))
-            .unwrap_err()
-            .failure,
+        apply_property_edits(
+            &mut model,
+            std::slice::from_ref(&fire_rating),
+            ifc::fresh_seed()
+        )
+        .unwrap_err()
+        .failure,
         PropertyEditFailure::CatalogNotLoaded { .. }
     ));
 
@@ -88,6 +96,7 @@ fn a_catalog_set_waits_for_its_edition_then_is_checked() {
             "Pset_WallCommon",
             "IsExternal",
         )],
+        ifc::fresh_seed(),
     )
     .expect("removal needs no template");
     apply_property_edits(
@@ -98,12 +107,17 @@ fn a_catalog_set_waits_for_its_edition_then_is_checked() {
             "Note",
             typed("IFCLABEL", Value::Text("x".into())),
         )],
+        ifc::fresh_seed(),
     )
     .expect("an application set needs no template");
 
     install(CatalogEdition::Ifc4Add2Tc1, CONTAINER).unwrap();
-    apply_property_edits(&mut model, std::slice::from_ref(&fire_rating))
-        .expect("checked and written");
+    apply_property_edits(
+        &mut model,
+        std::slice::from_ref(&fire_rating),
+        ifc::fresh_seed(),
+    )
+    .expect("checked and written");
     // The template applies: FireRating is an IfcLabel, never a boolean.
     let refused = apply_property_edits(
         &mut model,
@@ -113,6 +127,7 @@ fn a_catalog_set_waits_for_its_edition_then_is_checked() {
             "FireRating",
             typed("IFCBOOLEAN", Value::Bool(true)),
         )],
+        ifc::fresh_seed(),
     )
     .expect_err("the template refuses");
     assert!(

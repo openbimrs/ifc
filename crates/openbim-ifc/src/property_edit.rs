@@ -57,9 +57,12 @@
 //! Sets and relationships are written by the release-bound `ifc-properties`
 //! writers. They take the `OwnerHistory` of the edited object, which IFC2X3
 //! requires; one is never invented. Their `GlobalId`s are name-based
-//! (UUID version 8): derived from the object's `GlobalId`, the set name, the
-//! record's role and the model's next free id, so the same edit of the same
-//! file gives the same file, and no two new records share one.
+//! (UUID version 8): derived from the batch seed, the object's `GlobalId`,
+//! the set name, the record's role and a serial, never from an entity id, so
+//! the same edits under the same seed reproduce their `GlobalId`s after a
+//! write/read cycle. A derived `GlobalId` the model holds is refused with
+//! `SeedReused`. Reusing a seed for other objects or sets, or after its
+//! records were removed, is accepted. Draw one per batch with `fresh_seed`.
 #![cfg(feature = "properties")]
 
 mod checks;

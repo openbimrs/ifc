@@ -189,6 +189,10 @@ struct Origin {
 /// [`SelectorIndex::plan_text_edits`] plans it, `options.null` writing
 /// `$`.
 ///
+/// `seed` is the batch's seed: the `GlobalId`s of the property sets and
+/// relationships a property write creates derive from it (see
+/// `apply_property_edits`); an attribute write ignores it.
+///
 /// # Errors
 ///
 /// Every refusal found, by row and column: the sheet's, its header's
@@ -198,6 +202,7 @@ pub fn plan_import(
     index: &SelectorIndex<'_>,
     sheet: &Sheet,
     options: &SheetOptions,
+    seed: u128,
 ) -> Result<ImportPlan, Vec<SheetRefusal>> {
     let refusal = |row, column, reason| SheetRefusal {
         row,
@@ -305,7 +310,7 @@ pub fn plan_import(
         }
     }
 
-    let planned = index.plan_text_edits(&edits, &options.null);
+    let planned = index.plan_text_edits(&edits, &options.null, seed);
     if let Err(refused) = &planned {
         refusals.extend(refused.iter().map(|EditRefusal { edit, error }| {
             let origin = edit.and_then(|edit| origins.get(edit));
@@ -379,6 +384,10 @@ fn resolve(
 /// cell or none. Returns what changed; an empty list leaves the model and
 /// its revision untouched.
 ///
+/// `seed` is the batch's seed: the `GlobalId`s of the property sets and
+/// relationships a property write creates derive from it (see
+/// `apply_property_edits`); an attribute write ignores it.
+///
 /// # Errors
 ///
 /// As [`plan_import`], and a refusal carrying [`SelectorError::Conflict`]
@@ -389,8 +398,9 @@ pub fn import(
     schema: &Schema,
     sheet: &Sheet,
     options: &SheetOptions,
+    seed: u128,
 ) -> Result<Vec<CellChange>, Vec<SheetRefusal>> {
-    let plan = plan_import(&SelectorIndex::new(model, schema), sheet, options)?;
+    let plan = plan_import(&SelectorIndex::new(model, schema), sheet, options, seed)?;
     let changes = plan.changes.clone();
     plan.commit(model)?;
     Ok(changes)

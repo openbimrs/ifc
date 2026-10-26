@@ -8,6 +8,14 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#559)
+
+- `openbim_ifc_v0_1_model_set_properties`, `_set_property`, `_remove_property`, `openbim_ifc_v0_1_entity_set_value`, `openbim_ifc_v0_1_model_import_table`: draw a seed per call for the `GlobalId`s of the sets and
+  relationships they create; one the model already holds is refused with
+  `invalid-value`.
+
+Semver: patch, on the 0.1 line (no symbol changed).
+
 ### Added (#538, EXPRESS rules)
 
 - `openbim_ifc_v0_1_model_validate_express(model, express, express_len,

@@ -58,7 +58,7 @@ pub(crate) fn run(args: &EditArgs, out: &mut impl Write) -> CliResult<Outcome> {
                 edits.push(TextEdit::new(*id, path.clone(), value.clone()));
             }
         }
-        index.plan_text_edits(&edits, &args.null)
+        index.plan_text_edits(&edits, &args.null, ifc::fresh_seed())
     };
     let plan = match planned {
         Ok(plan) => plan,

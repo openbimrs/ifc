@@ -376,7 +376,10 @@ impl IfcModel {
         #[wasm_bindgen(unchecked_param_type = "PropertyEdit[]")] edits: &JsValue,
     ) -> Result<JsValue, JsValue> {
         let edits = edits::edits_from_js(edits).map_err(js_error)?;
-        let result = self.0.set_properties(edits).map_err(js_error)?;
+        let result = self
+            .0
+            .set_properties_seeded(edits, authoring::seed())
+            .map_err(js_error)?;
         Ok(records::record_to_js(&result.to_record()))
     }
 
@@ -393,7 +396,7 @@ impl IfcModel {
     ) -> Result<u64, JsValue> {
         let value = from_js(value).map_err(js_error)?;
         self.0
-            .set_property(object, set, name, value, set_type)
+            .set_property_seeded(object, set, name, value, set_type, authoring::seed())
             .map_err(js_error)
     }
 
@@ -433,7 +436,9 @@ impl IfcModel {
         set: &str,
         name: &str,
     ) -> Result<(), JsValue> {
-        self.0.remove_property(object, set, name).map_err(js_error)
+        self.0
+            .remove_property_seeded(object, set, name, authoring::seed())
+            .map_err(js_error)
     }
 
     /// Number of entities.

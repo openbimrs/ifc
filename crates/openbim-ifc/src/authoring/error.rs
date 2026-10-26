@@ -85,7 +85,7 @@ pub enum AuthoringFailure {
     },
     /// A `GlobalId` derived from the batch seed that an entity of the model
     /// already holds: the seed named an earlier batch (#548). Draw one seed
-    /// per batch ([`fresh_seed`](super::fresh_seed)).
+    /// per batch ([`fresh_seed`](crate::fresh_seed)).
     SeedReused {
         /// The derived `GlobalId`.
         global_id: String,

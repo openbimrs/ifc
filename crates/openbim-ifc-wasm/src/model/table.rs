@@ -6,6 +6,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
 
 use super::IfcModel;
+use crate::authoring;
 use crate::error::js_error;
 use crate::records;
 
@@ -66,12 +67,13 @@ impl IfcModel {
         let dry_run = records::flag(options, "dryRun").map_err(js_error)?;
         let report = self
             .0
-            .import_table(
+            .import_table_seeded(
                 data,
                 format.as_deref().unwrap_or("csv"),
                 key.as_deref(),
                 null.as_deref().unwrap_or(""),
                 dry_run,
+                authoring::seed(),
             )
             .map_err(js_error)?;
         Ok(records::record_to_js(&report.to_record()))

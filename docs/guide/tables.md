@@ -50,7 +50,8 @@ let edited = Sheet::read(
     csv.replace("17,Wall A,", "17,Wall A1,").as_bytes(),
     SheetFormat::Csv,
 );
-let plan = plan_import(&index, &edited.unwrap(), &options).expect("no refusal");
+let plan =
+    plan_import(&index, &edited.unwrap(), &options, ifc::fresh_seed()).expect("no refusal");
 for cell in &plan.changes {
     let (before, after) = (&cell.change.before, &cell.change.after);
     println!("row {} {}: {before:?} -> {after:?}", cell.row, cell.path);

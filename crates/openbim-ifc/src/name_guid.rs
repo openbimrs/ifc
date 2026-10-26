@@ -26,7 +26,8 @@
 //! a name-to-identity mapping, not a security boundary, and it is unique
 //! only as far as the names are. The library's own writers (property edits,
 //! checked authoring) derive the `GlobalId`s they create this way, from an
-//! object's `GlobalId` or a per-batch seed plus the model's next free id.
+//! object's `GlobalId` and set name with a per-batch seed (property edits), or
+//! the operation and type with one (checked authoring).
 //!
 //! ```
 //! use ifc::{name_based_guid, new_guid, Guid};

@@ -230,6 +230,14 @@ crate directly.
   binding adds `OpenbimIfcExpressValidationSummary` for it, since the
   `v0_1` summary is frozen. The `validate-express` feature is on by
   default, so the npm package carries it.
+- *Amended 2026-10-26 (#559, property-edit identity):* the property edit's
+  new sets and relationships derive their name-based `GlobalId` over a
+  per-batch seed too: the seed, the object's `GlobalId`, the set name, the
+  role and a serial, never an entity id. Hosts draw the seed as for
+  authoring: the operating system's on native targets, `Math.random` in the
+  browser. binding-core adds `*_seeded` forms of the property, value and
+  table writes; a `GlobalId` the model holds is refused with
+  `invalid-value`.
 
 ## Alternatives considered
 
