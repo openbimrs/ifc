@@ -27,7 +27,8 @@ pub type NamedValues = Vec<(String, Value)>;
 pub enum AuthorOp {
     /// Create one entity of `type_name` from named attributes, checked
     /// against the declared release. An `IfcRoot` without a `GlobalId` gets
-    /// a fresh one. Produces the entity.
+    /// one derived from the batch seed (see the
+    /// module documentation). Produces the entity.
     Create {
         /// The entity type, any case (`IfcWall`).
         type_name: String,

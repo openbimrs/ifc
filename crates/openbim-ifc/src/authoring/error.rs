@@ -83,6 +83,15 @@ pub enum AuthoringFailure {
         /// The entity holding it.
         holder: EntityId,
     },
+    /// A `GlobalId` derived from the batch seed that an entity of the model
+    /// already holds: the seed named an earlier batch (#548). Draw one seed
+    /// per batch ([`fresh_seed`](super::fresh_seed)).
+    SeedReused {
+        /// The derived `GlobalId`.
+        global_id: String,
+        /// The entity holding it.
+        holder: EntityId,
+    },
     /// The operation would give an object a second relationship the
     /// schema allows once: a second containment (`ContainedInStructure`),
     /// decomposition (`Decomposes`) or type (`IsTypedBy`), or a second
@@ -348,6 +357,10 @@ impl fmt::Display for AuthoringFailure {
             Self::DuplicateGlobalId { global_id, holder } => {
                 write!(f, "GlobalId `{global_id}` is already held by {holder}")
             }
+            Self::SeedReused { global_id, holder } => write!(
+                f,
+                "GlobalId `{global_id}` derived from the batch seed is already held by {holder}; the seed names an earlier batch: draw one seed per batch"
+            ),
             Self::AlreadyRelated {
                 id,
                 relationship,

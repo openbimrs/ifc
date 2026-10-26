@@ -28,9 +28,12 @@
 //!
 //! # Identity and ownership
 //!
-//! An `IfcRoot` created without a `GlobalId` gets one, name-based over a
-//! seed and its entity id ([`fresh_seed`] draws a seed; a fixed seed
-//! reproduces a file). `OwnerHistory` is never invented, the way
+//! An `IfcRoot` created without a `GlobalId` gets one derived from the seed,
+//! the operation's position, the entity's type and its count in the
+//! operation, not its id, so a fixed seed reproduces the `GlobalId`s after a
+//! write/read cycle. A seed names one batch: a derived `GlobalId` the model
+//! holds is refused with [`AuthoringFailure::SeedReused`], and
+//! [`fresh_seed`] draws one per batch. `OwnerHistory` is never invented, the way
 //! `ifc-author` handles it: a builder writes the one the caller names on the
 //! entity and every relationship it creates, and IFC2X3, which requires it,
 //! refuses a record without. [`AuthorOp::OwnerHistory`] builds one through
@@ -78,6 +81,7 @@ mod copy;
 mod copy_entity;
 mod equivalence;
 mod error;
+mod identity;
 mod kinds;
 mod op;
 mod options;
@@ -170,6 +174,8 @@ pub struct AuthoringOutcome {
 /// # Errors
 ///
 /// The first refused operation, with its position; nothing is staged.
+/// [`AuthoringFailure::SeedReused`] when a `GlobalId` derived from `seed`
+/// is already held by an entity of the model.
 pub fn stage_authoring(
     model: &Model,
     schema: &Schema,
@@ -188,7 +194,7 @@ pub fn stage_authoring(
         let op = resolve(op.clone(), index, &planner.ids)
             .map_err(|failure| AuthoringError::at(Some(index), failure))?;
         let id = planner
-            .run(op)
+            .run(index, op)
             .map_err(|failure| AuthoringError::at(Some(index), failure))?;
         planner.ids.push(id);
     }
@@ -204,7 +210,8 @@ pub fn stage_authoring(
 ///
 /// # Errors
 ///
-/// As [`stage_authoring`], and [`AuthoringFailure::Conflict`] when the
+/// As [`stage_authoring`] (including [`AuthoringFailure::SeedReused`]), and
+/// [`AuthoringFailure::Conflict`] when the
 /// planned transaction fails its preflight. The model is unchanged on every
 /// error.
 pub fn apply_authoring(

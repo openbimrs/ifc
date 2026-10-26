@@ -7,6 +7,9 @@
 //! has none of those without a global build flag, so there the seed is only
 //! a counter, and a browser host passes entropy of its own instead (the
 //! JavaScript binding draws it from `Math.random`).
+//!
+//! A seed names one batch: the `GlobalId`s a batch derives are a function of
+//! the seed, so reusing it on a model that holds them is refused.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 

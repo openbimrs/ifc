@@ -12,6 +12,29 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#548)
+
+- The `GlobalId`s a batch derives (an `IfcRoot` created without one, every
+  relationship a builder writes, copies) derive from the seed, the
+  operation's position in the batch, the created entity's type and its
+  count among that type in the operation, no longer from the entity id; an
+  `apply_append` derives from the seed, the type and the count. The same
+  seed and operations give the same `GlobalId`s after a write/read cycle
+  that shifts the next id, so a journal of batches replays to the same
+  identities. An `AssignType` that joins an existing relationship derives
+  none.
+
+### Added (#548)
+
+- `AuthoringFailure::SeedReused`, raised when a derived `GlobalId` is held
+  by an entity of the model (the seed named an earlier batch). A seed whose
+  entities were all removed may be used again.
+
+Semver: breaking (minor while 0.x): a fixed seed gives other `GlobalId`s than
+0.37.0, and a batch that reuses a seed may now be refused; `SeedReused` is a
+new variant of the `#[non_exhaustive]` `AuthoringFailure`. No binding surface
+changes: the hosts draw a fresh seed per batch.
+
 ### Fixed (#534)
 
 - `AuthorOp::AssignType` on a type that already has an

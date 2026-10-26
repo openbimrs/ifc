@@ -8,6 +8,13 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#548)
+
+- `SeedReused` maps to `invalid-value`; `author_seeded` documents the seed as
+  the batch's identity; `author` and the hosts are unchanged.
+
+Semver: patch (internal crate, not published).
+
 ### Added (#538, EXPRESS rules)
 
 - `IfcModel::validate_express(express, max_findings)` validates with the

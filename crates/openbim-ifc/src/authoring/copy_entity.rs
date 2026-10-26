@@ -131,8 +131,9 @@ impl Planner<'_, '_> {
         let id = self.view.allocate();
         let root = self.schema.is_a(&entity.type_name, "IfcRoot");
         if root {
+            let global_id = self.fresh_global_id(id, &entity.type_name)?;
             if let Some(slot) = entity.attributes.first_mut() {
-                *slot = Value::Text(self.global_id(id).into());
+                *slot = Value::Text(global_id.into());
             }
         }
         recheck(self.schema, &entity)?;

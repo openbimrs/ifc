@@ -79,14 +79,14 @@ fn copy(product: u64, options: CopyProductOptions) -> AuthorOp {
 
 /// Apply one copy; the copy and its report.
 fn apply_copy(model: &mut Model, schema: &Schema, op: AuthorOp) -> (EntityId, CopyReport) {
-    let outcome = apply_authoring(model, schema, &[op], 479).expect("applies");
+    let outcome = apply_authoring(model, schema, &[op], ifc::fresh_seed()).expect("applies");
     let report = outcome.copies[0].clone().expect("a copy report");
     (outcome.ids[0].expect("the copy"), report)
 }
 
 fn refusal(model: &mut Model, schema: &Schema, op: AuthorOp) -> AuthoringFailure {
     let before = model.revision();
-    let error = apply_authoring(model, schema, &[op], 479).expect_err("refused");
+    let error = apply_authoring(model, schema, &[op], ifc::fresh_seed()).expect_err("refused");
     assert_eq!(model.revision(), before, "a refusal leaves the model alone");
     *error.failure
 }
@@ -318,7 +318,8 @@ fn repeated_copies_stay_valid_and_distinct() {
             copy(20, CopyProductOptions::new()),
             copy(150, CopyProductOptions::new()),
         ];
-        let outcome = apply_authoring(&mut model, schema, &ops, 479).expect("applies");
+        let outcome =
+            apply_authoring(&mut model, schema, &ops, ifc::fresh_seed()).expect("applies");
         let (first, second) = (outcome.ids[0].unwrap(), outcome.ids[1].unwrap());
         assert_ne!(global_id(&model, first), global_id(&model, second));
         let (again, _) = apply_copy(&mut model, schema, copy(first.0, CopyProductOptions::new()));
@@ -373,7 +374,8 @@ fn a_given_placement_carries_the_openings() {
                 CopyProductOptions::new().placement(CopyPlacement::At(authoring_handle(0))),
             ),
         ];
-        let outcome = apply_authoring(&mut model, schema, &ops, 479).expect("applies");
+        let outcome =
+            apply_authoring(&mut model, schema, &ops, ifc::fresh_seed()).expect("applies");
         assert_valid(name, &model, schema);
         let (given, wall) = (outcome.ids[0].unwrap(), outcome.ids[1].unwrap());
         assert_eq!(
@@ -495,8 +497,13 @@ fn copy_entity_follows_the_policy() {
             entity: EntityId(26),
             policy: CopyPolicy::new().share(["IfcProfileDef"]),
         };
-        let outcome =
-            apply_authoring(&mut model, schema, &[deep, shared_profile], 479).expect("applies");
+        let outcome = apply_authoring(
+            &mut model,
+            schema,
+            &[deep, shared_profile],
+            ifc::fresh_seed(),
+        )
+        .expect("applies");
         let (solid, report) = (outcome.ids[0].unwrap(), outcome.copies[0].as_ref().unwrap());
         assert_eq!(copy_of(report, 26), solid, "{name}");
         // The profile, its position and point, the placement and direction.
@@ -514,7 +521,8 @@ fn copy_entity_follows_the_policy() {
             entity: EntityId(64),
             policy: CopyPolicy::new(),
         };
-        let outcome = apply_authoring(&mut model, schema, &[pset], 479).expect("applies");
+        let outcome =
+            apply_authoring(&mut model, schema, &[pset], ifc::fresh_seed()).expect("applies");
         let copy = outcome.ids[0].unwrap();
         assert_ne!(global_id(&model, copy), global_id(&model, EntityId(64)));
         assert_eq!(
