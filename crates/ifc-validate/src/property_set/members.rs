@@ -295,6 +295,25 @@ impl Run<'_> {
             );
             return;
         };
+        // A single value declared with an entity type (the IFC2X3 `*PHistory`
+        // sets: `IfcTimeSeries`) can only be written as a reference to it.
+        if let CatalogMemberForm::SingleValue {
+            data_type: Some(entity),
+        } = &template.form
+        {
+            if self.schema.entity(entity).is_some()
+                && self.schema.type_def(entity).is_none()
+                && self.schema.is_a(type_name, "IfcPropertyReferenceValue")
+            {
+                let at = Member {
+                    id,
+                    entity: member,
+                    dotted: &dotted,
+                };
+                self.reference(&at, site, entity);
+                return;
+            }
+        }
         let want = template.form.entity_name();
         if !self.schema.is_a(type_name, want) {
             let found = self.entity_name(type_name);
@@ -463,8 +482,47 @@ impl Run<'_> {
     }
 
     /// Whether `candidate` is `declared`, or a defined type whose alias
-    /// chain reaches it, ignoring case.
+    /// chain reaches it, ignoring case; for a declared SELECT, whether it
+    /// reaches any defined type the SELECT closes over.
     fn reaches(&self, candidate: &str, declared: &str) -> bool {
+        if self.chain_reaches(candidate, declared) {
+            return true;
+        }
+        if !matches!(
+            self.schema.type_def(declared).map(|def| &def.kind),
+            Some(TypeKind::Select(_))
+        ) {
+            return false;
+        }
+        self.select_members(declared)
+            .iter()
+            .any(|member| self.chain_reaches(candidate, member))
+    }
+
+    /// The types the SELECT `name` closes over: nested SELECTs are walked,
+    /// every other member is a leaf.
+    fn select_members(&self, name: &str) -> BTreeSet<String> {
+        let mut members = BTreeSet::new();
+        let mut seen = BTreeSet::new();
+        let mut frontier = vec![name.to_owned()];
+        while let Some(current) = frontier.pop() {
+            if !seen.insert(current.to_ascii_uppercase()) {
+                continue;
+            }
+            match self.schema.type_def(&current).map(|def| &def.kind) {
+                Some(TypeKind::Select(list)) => frontier.extend(list.iter().cloned()),
+                _ if current != name => {
+                    members.insert(current);
+                }
+                _ => {}
+            }
+        }
+        members
+    }
+
+    /// Whether `candidate` is `declared`, or a defined type whose alias
+    /// chain reaches it, ignoring case.
+    fn chain_reaches(&self, candidate: &str, declared: &str) -> bool {
         let mut current = candidate.trim().to_owned();
         for _ in 0..MAX_ALIAS_STEPS {
             if current.eq_ignore_ascii_case(declared) {

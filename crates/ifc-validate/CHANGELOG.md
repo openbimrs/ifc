@@ -33,8 +33,18 @@ everything released before per-crate changelogs began.
   not checked"); a declared value type the release's tables lack gets one
   unsupported `property.member_type` finding. Neither is silent.
 
-Semver: minor (0.8.0); `FindingDetail` is `#[non_exhaustive]`, but a
-validation run with a template-giving catalog now produces more warnings.
+- A declared SELECT type (`IfcValue`, as in `BendingParameters`) takes any
+  defined type its closure holds, and a single value declared with an
+  entity type (the IFC2X3 `*PHistory` sets: `IfcTimeSeries`) is written as
+  an `IfcPropertyReferenceValue` to that entity, which is checked against it.
+
+Known false-positive source: some catalog templates disagree with the
+schema or with each other (`Qto_BuildingElementProxyQuantities`, ProcessItem
+sets); those are catalog data issues tracked in #553, not fixed here.
+
+Semver: minor (0.8.0): runs with a template-giving catalog report new
+warnings, and `PropertySetCatalog`, `FindingDetail` and the new types grow
+the public API.
 
 ## [0.7.0] - 2026-10-20
 

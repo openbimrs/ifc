@@ -31,6 +31,13 @@ everything released before per-crate changelogs began.
   the members of a catalog set. A set kind the build does not know gives no
   template, and its members are reported as not checked.
 
+Semver: minor; it re-exports `ifc-validate` 0.8.0 and its new findings.
+
+### Fixed (#537)
+
+- The property writer's template check accepts any type a declared SELECT
+  (`IfcValue`) closes over, as `validate` does; it refused them before.
+
 ### Changed (#539, tests)
 
 Semver: no release on its own. No code change.

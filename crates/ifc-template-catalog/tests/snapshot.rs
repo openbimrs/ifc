@@ -31,11 +31,14 @@ fn sha256(bytes: &[u8]) -> String {
 }
 
 #[test]
+// IFC2X3 TC1 and IFC4X3 ADD2 fingerprints were retaken when the importer
+// began trimming `DataType@type` and `reftype` (#537); IFC4 ADD2 TC1 holds
+// the format-2 values.
 fn decoded_content_matches_the_format_2_fingerprints() {
     for (edition, official, corrected) in [
         (
             CatalogEdition::Ifc2x3Tc1,
-            "5466e7cafb1ac29575235dde2887ef5c938174c6971140a161baa1d186250af1",
+            "27ce9e975ac59f31ffbc7b35b9da1168b826fe7d0d3002118711fa7a123a1b29",
             None,
         ),
         (
@@ -45,8 +48,8 @@ fn decoded_content_matches_the_format_2_fingerprints() {
         ),
         (
             CatalogEdition::Ifc4x3Add2,
-            "ecdef98d4b42c0e4ab1eefdcc0500ac7ca1702573719ca929013b85fad631a42",
-            Some("c13b9e726ffbe50b8e9ae195d000c99f3cfc9f67bfd3a3133cdd37951651575f"),
+            "ad8e3a96b4390b7e89cb92512ac192757d34def146275d0b9a4c5d049241fa78",
+            Some("bd153948d5b121a35d8ce8a39e56a1298bcfc67f1003af7a06ae98e3ec52f2b9"),
         ),
     ] {
         let catalog = official_catalog(edition).unwrap();

@@ -377,3 +377,358 @@ fn the_same_checks_run_against_the_ifc4x3_tables() {
     let report = run(&model, &catalog, ifc_schema::ifc4x3());
     assert_eq!(rules(&report, MEMBER_TYPE).len(), 1);
 }
+
+/// One member entity of `type_name` with `attributes`, alone in `Pset_Test`.
+fn member_model(type_name: &str, attributes: Vec<Value>) -> Model {
+    let mut model = Model::new();
+    let member = model.push(Entity::new(type_name, attributes));
+    set(&mut model, "IFCPROPERTYSET", "Pset_Test", &[member]);
+    model
+}
+
+fn member_types(report: &Report) -> Vec<&Finding> {
+    rules(report, MEMBER_TYPE)
+}
+
+/// The attribute name a finding points at.
+fn slot_of(finding: &Finding) -> &str {
+    match &finding.path {
+        Path::Attribute { name, .. } => name.as_deref().unwrap_or(""),
+        other => panic!("not an attribute path: {other}"),
+    }
+}
+
+fn labels(values: &[Value]) -> Value {
+    Value::List(values.to_vec())
+}
+
+fn form(name: &str, form: CatalogMemberForm) -> Fixed {
+    props(vec![CatalogMember::new(name, form)])
+}
+
+#[test]
+fn a_declared_select_takes_every_member_of_its_closure() {
+    let catalog = form(
+        "Params",
+        CatalogMemberForm::ListValue {
+            data_type: Some("IfcValue".into()),
+        },
+    );
+    let good = member_model(
+        "IFCPROPERTYLISTVALUE",
+        vec![
+            text("Params"),
+            Value::Null,
+            labels(&[
+                typed("IFCLENGTHMEASURE", Value::Real(1.0)),
+                typed("IFCPLANEANGLEMEASURE", Value::Real(1.0)),
+                typed("IFCLABEL", text("a")),
+            ]),
+            Value::Null,
+        ],
+    );
+    let report = run(&good, &catalog, ifc_schema::ifc4());
+    assert!(report.findings().is_empty(), "{:?}", report.findings());
+
+    let bad = member_model(
+        "IFCPROPERTYLISTVALUE",
+        vec![
+            text("Params"),
+            Value::Null,
+            labels(&[typed("IFCNOSUCHTYPE", Value::Real(1.0))]),
+            Value::Null,
+        ],
+    );
+    let report = run(&bad, &catalog, ifc_schema::ifc4());
+    assert_eq!(member_types(&report).len(), 1, "{:?}", report.findings());
+}
+
+#[test]
+fn each_bound_of_a_bounded_value_is_checked() {
+    let catalog = form(
+        "Range",
+        CatalogMemberForm::BoundedValue {
+            data_type: Some("IfcLengthMeasure".into()),
+        },
+    );
+    let length = || typed("IFCLENGTHMEASURE", Value::Real(1.0));
+    let label = || typed("IFCLABEL", text("x"));
+    // Name, Description, UpperBoundValue, LowerBoundValue, Unit, SetPointValue.
+    for (wrong, slot) in [
+        (2, "UpperBoundValue"),
+        (3, "LowerBoundValue"),
+        (5, "SetPointValue"),
+    ] {
+        let mut attributes = vec![
+            text("Range"),
+            Value::Null,
+            length(),
+            length(),
+            Value::Null,
+            length(),
+        ];
+        let clean = member_model("IFCPROPERTYBOUNDEDVALUE", attributes.clone());
+        let report = run(&clean, &catalog, ifc_schema::ifc4());
+        assert!(report.findings().is_empty(), "{:?}", report.findings());
+        attributes[wrong] = label();
+        let model = member_model("IFCPROPERTYBOUNDEDVALUE", attributes);
+        let report = run(&model, &catalog, ifc_schema::ifc4());
+        let found = member_types(&report);
+        assert_eq!(found.len(), 1, "{slot}: {:?}", report.findings());
+        assert_eq!(slot_of(found[0]), slot);
+    }
+}
+
+#[test]
+fn an_enumerated_value_is_checked_against_its_declared_type() {
+    let catalog = form(
+        "Status",
+        CatalogMemberForm::EnumeratedValue {
+            data_type: Some("IfcLabel".into()),
+        },
+    );
+    let model = |value: Value| {
+        member_model(
+            "IFCPROPERTYENUMERATEDVALUE",
+            vec![text("Status"), Value::Null, labels(&[value]), Value::Null],
+        )
+    };
+    let report = run(
+        &model(typed("IFCLABEL", text("NEW"))),
+        &catalog,
+        ifc_schema::ifc4(),
+    );
+    assert!(report.findings().is_empty(), "{:?}", report.findings());
+    let report = run(
+        &model(typed("IFCINTEGER", Value::Integer(1))),
+        &catalog,
+        ifc_schema::ifc4(),
+    );
+    let found = member_types(&report);
+    assert_eq!(found.len(), 1, "{:?}", report.findings());
+    assert_eq!(slot_of(found[0]), "EnumerationValues");
+}
+
+#[test]
+fn every_member_of_a_list_value_is_checked() {
+    let catalog = form(
+        "Items",
+        CatalogMemberForm::ListValue {
+            data_type: Some("IfcLabel".into()),
+        },
+    );
+    let model = |second: Value| {
+        member_model(
+            "IFCPROPERTYLISTVALUE",
+            vec![
+                text("Items"),
+                Value::Null,
+                labels(&[typed("IFCLABEL", text("a")), second]),
+                Value::Null,
+            ],
+        )
+    };
+    let report = run(
+        &model(typed("IFCLABEL", text("b"))),
+        &catalog,
+        ifc_schema::ifc4(),
+    );
+    assert!(report.findings().is_empty(), "{:?}", report.findings());
+    let report = run(
+        &model(typed("IFCBOOLEAN", Value::Bool(true))),
+        &catalog,
+        ifc_schema::ifc4(),
+    );
+    let found = member_types(&report);
+    assert_eq!(found.len(), 1, "{:?}", report.findings());
+    assert_eq!(slot_of(found[0]), "ListValues");
+}
+
+#[test]
+fn a_table_value_swapping_its_columns_fails() {
+    let catalog = form(
+        "Curve",
+        CatalogMemberForm::TableValue {
+            defining_type: Some("IfcLengthMeasure".into()),
+            defined_type: Some("IfcLabel".into()),
+        },
+    );
+    let length = || typed("IFCLENGTHMEASURE", Value::Real(1.0));
+    let label = || typed("IFCLABEL", text("x"));
+    // Name, Description, DefiningValues, DefinedValues, Expression,
+    // DefiningUnit, DefinedUnit, CurveInterpolation.
+    let table = |defining: Value, defined: Value| {
+        member_model(
+            "IFCPROPERTYTABLEVALUE",
+            vec![
+                text("Curve"),
+                Value::Null,
+                labels(&[defining]),
+                labels(&[defined]),
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+            ],
+        )
+    };
+    let report = run(&table(length(), label()), &catalog, ifc_schema::ifc4());
+    assert!(report.findings().is_empty(), "{:?}", report.findings());
+    let report = run(&table(label(), length()), &catalog, ifc_schema::ifc4());
+    let mut slots: Vec<_> = member_types(&report).into_iter().map(slot_of).collect();
+    slots.sort_unstable();
+    assert_eq!(slots, ["DefinedValues", "DefiningValues"]);
+}
+
+#[test]
+fn a_reference_value_must_point_at_the_declared_entity() {
+    let catalog = form(
+        "Ref",
+        CatalogMemberForm::ReferenceValue {
+            reference_type: "IfcWall".into(),
+        },
+    );
+    let model = |target: &str| {
+        let mut model = Model::new();
+        let target = model.push(Entity::new(target, vec![]));
+        let reference = model.push(Entity::new(
+            "IFCPROPERTYREFERENCEVALUE",
+            vec![text("Ref"), Value::Null, Value::Null, Value::Ref(target)],
+        ));
+        set(&mut model, "IFCPROPERTYSET", "Pset_Test", &[reference]);
+        model
+    };
+    let report = run(&model("IFCWALL"), &catalog, ifc_schema::ifc4());
+    assert!(report.findings().is_empty(), "{:?}", report.findings());
+    let report = run(&model("IFCDOOR"), &catalog, ifc_schema::ifc4());
+    let found = member_types(&report);
+    assert_eq!(found.len(), 1, "{:?}", report.findings());
+    assert_eq!(slot_of(found[0]), "PropertyReference");
+    assert!(matches!(
+        &found[0].detail,
+        Some(FindingDetail::CatalogMember(CatalogMemberDetail {
+            mismatch: CatalogMismatch::DataType { declared, found },
+            ..
+        })) if declared == "IfcWall" && found == "IfcDoor"
+    ));
+
+    let unknown = form(
+        "Ref",
+        CatalogMemberForm::ReferenceValue {
+            reference_type: "IfcNoSuchEntity".into(),
+        },
+    );
+    let report = run(&model("IFCWALL"), &unknown, ifc_schema::ifc4());
+    assert_eq!(report.findings().len(), 1, "{:?}", report.findings());
+    assert_eq!(report.findings()[0].severity, Severity::Unsupported);
+    assert!(report.findings()[0].message.contains("IfcNoSuchEntity"));
+}
+
+#[test]
+fn two_sets_sharing_a_member_give_one_finding() {
+    let catalog = props(vec![single("IsExternal", Some("IfcBoolean"))]);
+    let mut model = Model::new();
+    let shared = prop(&mut model, "IsExternal", typed("IFCLABEL", text("yes")));
+    set(&mut model, "IFCPROPERTYSET", "Pset_Test", &[shared]);
+    set(&mut model, "IFCPROPERTYSET", "Pset_Test", &[shared]);
+    let report = run(&model, &catalog, ifc_schema::ifc4());
+    assert_eq!(member_types(&report).len(), 1, "{:?}", report.findings());
+}
+
+#[cfg(feature = "ifc2x3")]
+mod history {
+    use super::*;
+
+    fn history_catalog() -> Fixed {
+        Fixed {
+            templates: vec![(
+                "Pset_AirTerminalBoxPHistory",
+                CatalogSet::property(vec![single("AirflowCurve", Some("IfcTimeSeries"))]),
+            )],
+            known: vec!["Pset_AirTerminalBoxPHistory"],
+        }
+    }
+
+    fn history(member: &str, attributes: Vec<Value>, mut model: Model) -> Model {
+        let member = model.push(Entity::new(member, attributes));
+        set(
+            &mut model,
+            "IFCPROPERTYSET",
+            "Pset_AirTerminalBoxPHistory",
+            &[member],
+        );
+        model
+    }
+
+    fn reference_to(target: &str) -> Model {
+        let mut model = Model::new();
+        let target = model.push(Entity::new(target, vec![]));
+        history(
+            "IFCPROPERTYREFERENCEVALUE",
+            vec![
+                text("AirflowCurve"),
+                Value::Null,
+                Value::Null,
+                Value::Ref(target),
+            ],
+            model,
+        )
+    }
+
+    #[test]
+    fn a_reference_to_the_declared_time_series_is_the_legal_encoding() {
+        let model = reference_to("IFCREGULARTIMESERIES");
+        let report = run(&model, &history_catalog(), ifc_schema::ifc2x3());
+        assert!(report.findings().is_empty(), "{:?}", report.findings());
+    }
+
+    #[test]
+    fn a_reference_to_the_declared_time_series_value_is_the_legal_encoding() {
+        let catalog = Fixed {
+            templates: vec![(
+                "Pset_AirTerminalBoxPHistory",
+                CatalogSet::property(vec![single("AirflowCurve", Some("IfcTimeSeriesValue"))]),
+            )],
+            known: vec!["Pset_AirTerminalBoxPHistory"],
+        };
+        let report = run(
+            &reference_to("IFCTIMESERIESVALUE"),
+            &catalog,
+            ifc_schema::ifc2x3(),
+        );
+        assert!(report.findings().is_empty(), "{:?}", report.findings());
+        let report = run(&reference_to("IFCWALL"), &catalog, ifc_schema::ifc2x3());
+        assert_eq!(member_types(&report).len(), 1, "{:?}", report.findings());
+    }
+
+    #[test]
+    fn a_reference_to_another_entity_is_a_data_type_mismatch() {
+        let model = reference_to("IFCWALL");
+        let report = run(&model, &history_catalog(), ifc_schema::ifc2x3());
+        assert_eq!(member_types(&report).len(), 1, "{:?}", report.findings());
+    }
+
+    #[test]
+    fn any_other_form_is_still_a_form_mismatch() {
+        let model = history(
+            "IFCPROPERTYLISTVALUE",
+            vec![
+                text("AirflowCurve"),
+                Value::Null,
+                Value::List(vec![]),
+                Value::Null,
+            ],
+            Model::new(),
+        );
+        let report = run(&model, &history_catalog(), ifc_schema::ifc2x3());
+        let found = member_types(&report);
+        assert_eq!(found.len(), 1, "{:?}", report.findings());
+        assert!(matches!(
+            &found[0].detail,
+            Some(FindingDetail::CatalogMember(CatalogMemberDetail {
+                mismatch: CatalogMismatch::Form { .. },
+                ..
+            }))
+        ));
+    }
+}

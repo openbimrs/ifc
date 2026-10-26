@@ -17,7 +17,10 @@ use ifc::property_catalog::definition::{
     CatalogEdition, PropertyKind, QuantityKind, SetTemplateKind,
 };
 use ifc::property_catalog::embedded::load_catalog;
-use ifc::validate::{validate, CatalogMismatch, FindingDetail, Path, Report, Severity};
+use ifc::validate::{
+    validate, CatalogMember, CatalogMemberForm, CatalogMismatch, FindingDetail, Path, Report,
+    Severity,
+};
 use ifc::{Codec, EntityId, StepCodec};
 
 const RELEASES: [(&str, CatalogEdition, CatalogProfile); 3] = [
@@ -213,4 +216,178 @@ fn a_release_without_a_catalog_judges_no_members() {
     );
     assert!(members(&report, "property.undeclared_member").is_empty());
     assert!(members(&report, "property.member_type").is_empty());
+}
+
+/// IFC2X3's PSD writes `type="IfcBoolean "`; the declared type is the
+/// trimmed name, so an `IfcLabel` there is a data-type warning (#537).
+#[test]
+fn a_declared_type_with_published_whitespace_still_matches() {
+    let text = "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n\
+         FILE_NAME('sets.ifc','',(''),(''),'','','');\nFILE_SCHEMA(('IFC2X3'));\nENDSEC;\nDATA;\n\
+         #2=IFCPROPERTYSINGLEVALUE('IsCoated',$,IFCLABEL('yes'),$);\n\
+         #3=IFCPROPERTYSET('0YvctVUKr0kugbFTf53O03',$,'Pset_DoorWindowGlazingType',$,(#2));\n\
+         ENDSEC;\nEND-ISO-10303-21;\n";
+    let model = StepCodec
+        .read_bytes(text.as_bytes())
+        .expect("the model parses");
+    let report = validate(&model, ifc::schema::ifc2x3());
+    let found = members(&report, "property.member_type");
+    assert_eq!(found.len(), 1, "{:?}", report.findings());
+    assert!(
+        matches!(&found[0].detail, Some(FindingDetail::CatalogMember(detail))
+        if detail.mismatch == CatalogMismatch::DataType {
+            declared: "IfcBoolean".into(),
+            found: "IfcLabel".into(),
+        }),
+        "{:?}",
+        found[0].detail
+    );
+}
+
+/// The neutral member the facade hands `ifc-validate` has the form and the
+/// value types of the catalog's own template, for every set of every
+/// edition. The expectation is spelled out here, independently of the
+/// conversion, so a form mapped to a neighbour fails.
+fn expect_form(
+    context: &str,
+    property: &ifc::property_catalog::definition::PropertyTemplate,
+    member: &CatalogMember,
+    seen: &mut std::collections::BTreeSet<&'static str>,
+) {
+    let declared = |data_type: &ifc::property_catalog::definition::PropertyDataType| {
+        data_type.type_name.clone()
+    };
+    assert_eq!(member.name, property.name, "{context}");
+    let entity = match (&property.kind, &member.form) {
+        (
+            PropertyKind::SingleValue { data_type },
+            CatalogMemberForm::SingleValue { data_type: got },
+        ) => {
+            assert_eq!(got, &declared(data_type), "{context}");
+            "IfcPropertySingleValue"
+        }
+        (
+            PropertyKind::BoundedValue { data_type },
+            CatalogMemberForm::BoundedValue { data_type: got },
+        ) => {
+            assert_eq!(got, &declared(data_type), "{context}");
+            "IfcPropertyBoundedValue"
+        }
+        (
+            PropertyKind::ListValue { data_type },
+            CatalogMemberForm::ListValue { data_type: got },
+        ) => {
+            assert_eq!(got, &declared(data_type), "{context}");
+            "IfcPropertyListValue"
+        }
+        (
+            PropertyKind::EnumeratedValue { data_type, .. },
+            CatalogMemberForm::EnumeratedValue { data_type: got },
+        ) => {
+            assert_eq!(got, &data_type.as_ref().and_then(declared), "{context}");
+            "IfcPropertyEnumeratedValue"
+        }
+        (
+            PropertyKind::TableValue {
+                defining_type,
+                defined_type,
+                ..
+            },
+            CatalogMemberForm::TableValue {
+                defining_type: got_defining,
+                defined_type: got_defined,
+            },
+        ) => {
+            assert_eq!(got_defining, &declared(defining_type), "{context}");
+            assert_eq!(got_defined, &declared(defined_type), "{context}");
+            "IfcPropertyTableValue"
+        }
+        (
+            PropertyKind::ReferenceValue { reference_type },
+            CatalogMemberForm::ReferenceValue {
+                reference_type: got,
+            },
+        ) => {
+            assert_eq!(got, reference_type, "{context}");
+            "IfcPropertyReferenceValue"
+        }
+        (PropertyKind::Complex { properties, .. }, CatalogMemberForm::Complex { members }) => {
+            assert_eq!(properties.len(), members.len(), "{context}");
+            for (nested, got) in properties.iter().zip(members) {
+                expect_form(context, nested, got, seen);
+            }
+            "IfcComplexProperty"
+        }
+        (kind, form) => panic!("{context}: {} became {form:?} ({kind:?})", property.name),
+    };
+    assert_eq!(member.form.entity_name(), entity, "{context}");
+    seen.insert(entity);
+}
+
+#[test]
+fn every_catalog_member_keeps_its_form_through_the_facade() {
+    use ifc::property_catalog::definition::QuantityKind;
+    use ifc::validate::{CatalogQuantityKind, CatalogSetKind, PropertySetCatalog, ReleaseCatalog};
+
+    let mut seen = std::collections::BTreeSet::new();
+    let mut quantities = std::collections::BTreeSet::new();
+    for (token, edition, profile) in RELEASES {
+        let version = schema(token).version().expect("a bundled release");
+        let catalog = load_catalog(edition, profile).expect("embedded catalog");
+        for template in catalog.iter() {
+            let context = format!("{token} {}", template.name);
+            let set = ReleaseCatalog
+                .template(version, &template.name)
+                .unwrap_or_else(|| panic!("{context}: no template"));
+            match &template.kind {
+                SetTemplateKind::Property { properties, .. } => {
+                    assert_eq!(set.kind, CatalogSetKind::Property, "{context}");
+                    assert_eq!(set.members.len(), properties.len(), "{context}");
+                    for (property, member) in properties.iter().zip(&set.members) {
+                        expect_form(&context, property, member, &mut seen);
+                    }
+                }
+                SetTemplateKind::Quantity { quantities: q, .. } => {
+                    assert_eq!(set.kind, CatalogSetKind::Quantity, "{context}");
+                    assert_eq!(set.members.len(), q.len(), "{context}");
+                    for (quantity, member) in q.iter().zip(&set.members) {
+                        let expected = match quantity.kind {
+                            QuantityKind::Length => CatalogQuantityKind::Length,
+                            QuantityKind::Area => CatalogQuantityKind::Area,
+                            QuantityKind::Volume => CatalogQuantityKind::Volume,
+                            QuantityKind::Weight => CatalogQuantityKind::Weight,
+                            QuantityKind::Time => CatalogQuantityKind::Time,
+                            QuantityKind::Count => CatalogQuantityKind::Count,
+                            QuantityKind::Number => CatalogQuantityKind::Number,
+                            _ => panic!("{context}: an unlisted quantity kind"),
+                        };
+                        assert_eq!(member.name, quantity.name, "{context}");
+                        assert_eq!(
+                            member.form,
+                            CatalogMemberForm::Quantity(expected),
+                            "{context}"
+                        );
+                        quantities.insert(expected.entity_name());
+                    }
+                }
+                _ => panic!("{context}: an unlisted set kind"),
+            }
+        }
+    }
+    // The comparison is not vacuous: every form occurs in the catalogs.
+    for entity in [
+        "IfcPropertySingleValue",
+        "IfcPropertyBoundedValue",
+        "IfcPropertyListValue",
+        "IfcPropertyEnumeratedValue",
+        "IfcPropertyTableValue",
+        "IfcPropertyReferenceValue",
+        "IfcComplexProperty",
+    ] {
+        assert!(
+            seen.contains(entity),
+            "no {entity} in the catalogs: {seen:?}"
+        );
+    }
+    assert!(quantities.len() >= 6, "{quantities:?}");
 }

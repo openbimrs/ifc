@@ -376,9 +376,9 @@ call, or a concurrent one, reads nothing.
 
 | Edition | File | Bytes | gzip -9 | brotli 11 |
 | --- | --- | ---: | ---: | ---: |
-| IFC2X3 TC1 | `catalog/ifc2x3-tc1.bin` | 325,739 | 105,577 | 87,767 |
+| IFC2X3 TC1 | `catalog/ifc2x3-tc1.bin` | 325,279 | 105,382 | 87,630 |
 | IFC4 ADD2 TC1 | `catalog/ifc4-add2-tc1.bin` | 1,015,315 | 368,172 | 280,574 |
-| IFC4X3 ADD2 | `catalog/ifc4x3-add2.bin` | 1,086,526 | 401,730 | 308,355 |
+| IFC4X3 ADD2 | `catalog/ifc4x3-add2.bin` | 1,086,514 | 401,727 | 308,335 |
 
 Where the bytes come from:
 

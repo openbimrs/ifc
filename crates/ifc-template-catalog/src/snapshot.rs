@@ -29,7 +29,7 @@ pub const FORMAT_VERSION: u16 = 3;
 /// SHA-256 of the embedded container, `data/catalog.bin`, holding every
 /// edition.
 pub const CONTAINER_SHA256: &str =
-    "875a3902ac9a5c9d1f3b21dcbd5afe27fc65d1363be4452e852f9c6815c75996";
+    "bcfa9a7efa4d01af50cd4a3a12b99e2da2b4097630d2fcc100877c104b18510e";
 
 /// Every edition with a committed snapshot, in container order.
 pub const EDITIONS: [CatalogEdition; 3] = [
@@ -53,13 +53,13 @@ pub fn file_name(edition: CatalogEdition) -> &'static str {
 pub fn pinned_sha256(edition: CatalogEdition) -> &'static str {
     match edition {
         CatalogEdition::Ifc2x3Tc1 => {
-            "b416694e2ddcb0d3011a7acb1b23def34ae16b3f2d27156be74c594d42248955"
+            "484c8d50d1f374aa2fec0793be5508d8a02faa0455f7de4f142e6001469e5504"
         }
         CatalogEdition::Ifc4Add2Tc1 => {
             "1ea624205c45cb31489f265c53fcef1334ba8556046cf296f73ee4e7550c6539"
         }
         CatalogEdition::Ifc4x3Add2 => {
-            "0cfa3e0700b98e65ad1c2743e92f65299246a4aaf663520837346196179a29c2"
+            "3cb41a5a7bb7bd81990872b1abd47b029691241447d478aa9ce0e82eb6bbf89b"
         }
     }
 }

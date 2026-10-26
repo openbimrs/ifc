@@ -218,3 +218,19 @@ fn property_count(properties: &[ifc_template_catalog::definition::PropertyTempla
         })
         .sum()
 }
+
+/// The published IFC2X3 PSD writes `type="IfcBoolean "`; the embedded
+/// catalog holds the trimmed name (#537).
+#[test]
+fn embedded_data_types_carry_no_stray_whitespace() {
+    let catalog = official_catalog(CatalogEdition::Ifc2x3Tc1).unwrap();
+    let set = catalog.get("Pset_DoorWindowGlazingType").unwrap();
+    let SetTemplateKind::Property { properties, .. } = &set.kind else {
+        panic!()
+    };
+    let is_coated = properties.iter().find(|p| p.name == "IsCoated").unwrap();
+    let PropertyKind::SingleValue { data_type } = &is_coated.kind else {
+        panic!()
+    };
+    assert_eq!(data_type.type_name.as_deref(), Some("IfcBoolean"));
+}

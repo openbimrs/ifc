@@ -155,3 +155,23 @@ fn rejects_document_type_declarations() {
     let xml = "<!DOCTYPE x><PropertySetDef/>";
     assert!(matches!(parse_template(xml), Err(XmlImportError::Xml(_))));
 }
+
+#[test]
+fn trims_the_data_type_and_reference_type_names() {
+    let text = r#"<PropertySetDef><Name>Pset_Spaces</Name><PropertyDefs>
+<PropertyDef><Name>Single</Name><PropertyType><TypePropertySingleValue><DataType type="IfcBoolean "/></TypePropertySingleValue></PropertyType></PropertyDef>
+<PropertyDef><Name>Reference</Name><PropertyType><TypePropertyReferenceValue reftype=" IfcTimeSeries "/></PropertyType></PropertyDef>
+</PropertyDefs></PropertySetDef>"#;
+    let set = parse_template(text).unwrap();
+    let SetTemplateKind::Property { properties, .. } = set.kind else {
+        panic!()
+    };
+    let PropertyKind::SingleValue { data_type } = &properties[0].kind else {
+        panic!()
+    };
+    assert_eq!(data_type.type_name.as_deref(), Some("IfcBoolean"));
+    let PropertyKind::ReferenceValue { reference_type } = &properties[1].kind else {
+        panic!()
+    };
+    assert_eq!(reference_type, "IfcTimeSeries");
+}
