@@ -143,21 +143,24 @@ pub enum AuthorOp {
         /// `OwnerHistory`, which IFC2X3 requires.
         owner_history: Option<EntityId>,
     },
-    /// Type `objects` by `type_object` with one `IfcRelDefinesByType`;
-    /// an object already typed is refused unless
+    /// Type `objects` by `type_object` with `IfcRelDefinesByType`: the
+    /// type's existing relationship when it has one (the objects join its
+    /// `RelatedObjects`, #534), else a new one. An object already typed is
+    /// refused unless
     /// [`AssignTypeOptions::replace`]. With [`AssignTypeOptions`], the
     /// type is also propagated to each object (#480): its
     /// `RepresentationMaps` mapped onto the object as `IfcMappedItem`
     /// representations, a material set usage derived from its material
     /// set, and `PredefinedType` synchronised or validated. Produces the
-    /// relationship.
+    /// relationship: the type's existing one when the objects joined it.
     AssignType {
         /// The `IfcTypeObject`.
         type_object: EntityId,
         /// The objects it types; at least one.
         objects: Vec<EntityId>,
-        /// `OwnerHistory` of the relationship and of every relationship
-        /// the propagation creates.
+        /// `OwnerHistory` of the relationship, when it is created (a
+        /// relationship the objects join keeps its own), and of every
+        /// relationship the propagation creates.
         owner_history: Option<EntityId>,
         /// What to propagate, and whether to replace a previous type.
         options: AssignTypeOptions,

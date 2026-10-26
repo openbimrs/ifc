@@ -87,7 +87,6 @@ struct Base {
     context: EntityId,
     storey: EntityId,
     other_storey: EntityId,
-    placement: EntityId,
     wall_type: EntityId,
     wall_map: EntityId,
     wall_set: EntityId,
@@ -257,12 +256,13 @@ fn fixture(release: SchemaVersion, token: &str) -> Fixture {
         ]),
         owner_history: Some(owner),
     });
-    let site_placement = b.push(AuthorOp::Placement {
-        relative_to: None,
-        location: [0.0; 3],
-        axes: None,
-    });
     let spatial = |b: &mut Batch, type_name: &str, name: &str, parent: EntityId| {
+        // One placement per object: IFC2X3's `PlacesObject` is `SET [1:1]`.
+        let site_placement = b.push(AuthorOp::Placement {
+            relative_to: None,
+            location: [0.0; 3],
+            axes: None,
+        });
         b.push(AuthorOp::Spatial {
             type_name: type_name.into(),
             parent,
@@ -277,11 +277,6 @@ fn fixture(release: SchemaVersion, token: &str) -> Fixture {
     let building = spatial(&mut b, "IfcBuilding", "Building", project);
     let storey = spatial(&mut b, "IfcBuildingStorey", "Level 0", building);
     let other_storey = spatial(&mut b, "IfcBuildingStorey", "Level 1", building);
-    let placement = b.push(AuthorOp::Placement {
-        relative_to: Some(site_placement),
-        location: [1.0, 2.0, 0.0],
-        axes: None,
-    });
     // IFC2X3's `IfcWallTypeEnum` has neither SOLIDWALL nor PARTITIONING.
     let kinds = if release == SchemaVersion::Ifc2x3 {
         ("STANDARD", "SHEAR")
@@ -330,7 +325,6 @@ fn fixture(release: SchemaVersion, token: &str) -> Fixture {
         context: real(context),
         storey: real(storey),
         other_storey: real(other_storey),
-        placement: real(placement),
         wall_type: real(wall_type_id),
         wall_map: real(wall_map),
         wall_set: real(wall_set),
@@ -381,12 +375,30 @@ impl Fixture {
     }
 
     /// A product of `type_name`, contained in the storey, placed.
-    fn product(&self, type_name: &str, attributes: Vec<(&str, Value)>) -> AuthorOp {
+    ///
+    /// Each product gets its own `IfcLocalPlacement` (IFC2X3's
+    /// `PlacesObject` is `SET [1:1]`).
+    fn product(&mut self, type_name: &str, attributes: Vec<(&str, Value)>) -> AuthorOp {
+        // Applied unvalidated: the placement is referenced once the
+        // product it is for lands.
+        let placement = apply_authoring(
+            &mut self.model,
+            self.schema,
+            &[AuthorOp::Placement {
+                relative_to: None,
+                location: [0.0; 3],
+                axes: None,
+            }],
+            7,
+        )
+        .unwrap_or_else(|error| panic!("{}: {error}", self.name()))
+        .ids[0]
+            .unwrap();
         AuthorOp::Product {
             type_name: type_name.into(),
             container: Some(self.base.storey),
             attributes: named(attributes),
-            placement: Some(self.base.placement),
+            placement: Some(placement),
             type_object: None,
             owner_history: Some(self.base.owner),
         }
@@ -469,7 +481,9 @@ impl Fixture {
 
 /// The model has no validation error and no dangling reference.
 fn assert_valid(what: &str, model: &Model, schema: &Schema) {
-    let report = ifc::validate::validate(model, schema);
+    // With INVERSE cardinalities (#534): a type has one IfcRelDefinesByType.
+    let options = ifc::validate::ValidateOptions::new().inverse_cardinality(true);
+    let report = ifc::validate::validate_with_options(model, schema, &options);
     let errors: Vec<String> = report
         .sorted()
         .iter()

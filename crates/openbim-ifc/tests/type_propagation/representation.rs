@@ -138,7 +138,7 @@ fn a_representation_in_the_way_is_refused_and_another_kept() {
             "IfcProductDefinitionShape",
             vec![("Representations", refs(&[body]))],
         );
-        let with_shape = |b: &mut Batch, shape: EntityId| {
+        let mut with_shape = |b: &mut Batch, shape: EntityId| {
             b.push(f.product(
                 "IfcWall",
                 vec![

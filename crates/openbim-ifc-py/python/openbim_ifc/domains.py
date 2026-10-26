@@ -693,6 +693,11 @@ class AuthorOp:
         """``IfcRelDefinesByType``; an object already typed is refused
         unless ``replace``.
 
+        When the type already has an ``IfcRelDefinesByType`` the objects
+        join its ``RelatedObjects`` and the produced id is that
+        relationship's; ``owner_history`` applies only to a relationship
+        that is created (#534).
+
         With ``map_representations`` the type's ``RepresentationMaps`` are
         mapped onto each object (``IfcMappedItem`` through
         ``mapping_target`` or an identity operator); with

@@ -63,7 +63,7 @@ fn userdefined_compares_object_type_with_element_type() {
             ]),
             owner_history: Some(f.base.owner),
         });
-        let door = |b: &mut Batch, name: &str| {
+        let mut door = |b: &mut Batch, name: &str| {
             b.push(f.product(
                 "IfcDoor",
                 vec![

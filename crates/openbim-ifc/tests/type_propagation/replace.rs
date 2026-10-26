@@ -140,11 +140,16 @@ fn replacing_an_aggregate_parent_moves_the_part() {
                 // IFC2X3 requires it.
                 attributes.push(("PredefinedType", enumeration("NOTDEFINED")));
             }
+            let placement = b.push(AuthorOp::Placement {
+                relative_to: None,
+                location: [0.0; 3],
+                axes: None,
+            });
             b.push(AuthorOp::Product {
                 type_name: type_name.into(),
                 container,
                 attributes: named(attributes),
-                placement: Some(f.base.placement),
+                placement: Some(placement),
                 type_object: None,
                 owner_history: Some(f.base.owner),
             })
@@ -361,5 +366,47 @@ fn replacing_into_a_type_with_a_relationship_joins_it() {
         f.apply(vec![op]);
         assert_eq!(f.type_of(wall), Some(f.base.other_wall_type));
         assert_eq!(f.of_type("IFCRELDEFINESBYTYPE").len(), 1, "{}", f.name());
+    });
+}
+
+#[test]
+fn a_relationship_that_does_not_list_its_objects_is_refused_not_rewritten() {
+    each_release(|mut f| {
+        let wall = f.wall(vec![]);
+        let other = f.wall(vec![]);
+        let op = f.assign(f.base.wall_type, &[wall], AssignTypeOptions::new());
+        let relationship = f.apply(vec![op])[0].unwrap();
+        // A hand-edited model: RelatedObjects holds a bare reference.
+        let mut broken = f.get(relationship).clone();
+        let slot = f
+            .schema
+            .attributes(&broken.type_name)
+            .iter()
+            .position(|attribute| attribute.name == "RelatedObjects")
+            .unwrap();
+        broken.attributes[slot] = Value::Ref(wall);
+        f.model.insert(relationship, broken);
+
+        // Joining it, and leaving it by replace, are both refused.
+        let join = f.assign(f.base.wall_type, &[other], AssignTypeOptions::new());
+        let leave = f.assign(
+            f.base.other_wall_type,
+            &[wall],
+            AssignTypeOptions::new().replace(true),
+        );
+        for op in [join, leave] {
+            let failure = f.refuse(vec![op]);
+            assert!(
+                matches!(
+                    failure,
+                    AuthoringFailure::InvalidRelationship {
+                        relationship: "IFCRELDEFINESBYTYPE",
+                        ..
+                    }
+                ),
+                "{}: {failure:?}",
+                f.name()
+            );
+        }
     });
 }
