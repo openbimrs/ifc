@@ -185,6 +185,27 @@ impl IfcModel {
     ) -> Result<CopyReport, BindingError> {
         #[cfg(feature = "author")]
         {
+            self.copy_product_seeded(id, options, ifc::fresh_seed())
+        }
+        #[cfg(not(feature = "author"))]
+        {
+            let _ = (id, options);
+            Err(BindingError::FeatureDisabled("author"))
+        }
+    }
+
+    /// [`Self::copy_product`] with the seed the copy's new `GlobalId`s
+    /// derive from: a host with entropy of its own (the browser) passes it.
+    /// The seed names the batch; reusing it on a model that holds its
+    /// `GlobalId`s is refused (`invalid-value`).
+    pub fn copy_product_seeded(
+        &mut self,
+        id: u64,
+        options: CopyProductOptions,
+        seed: u128,
+    ) -> Result<CopyReport, BindingError> {
+        #[cfg(feature = "author")]
+        {
             let placement = match (options.offset, options.placement) {
                 (Some(_), Some(_)) => {
                     return Err(BindingError::InvalidValue(
@@ -206,7 +227,6 @@ impl IfcModel {
             };
             let schema = self.declared_schema()?;
             let ops = [op];
-            let seed = ifc::fresh_seed();
             let (ids, copies) = if options.dry_run {
                 let staged = ifc::stage_authoring(&self.inner, schema, &ops, seed)
                     .map_err(super::convert::error)?;
@@ -227,7 +247,7 @@ impl IfcModel {
         }
         #[cfg(not(feature = "author"))]
         {
-            let _ = (id, options);
+            let _ = (id, options, seed);
             Err(BindingError::FeatureDisabled("author"))
         }
     }
@@ -244,6 +264,28 @@ impl IfcModel {
         source: &IfcModel,
         roots: &[u64],
         options: &AppendOptions,
+    ) -> Result<CopyReport, BindingError> {
+        #[cfg(feature = "author")]
+        {
+            self.append_seeded(source, roots, options, ifc::fresh_seed())
+        }
+        #[cfg(not(feature = "author"))]
+        {
+            let _ = (source, roots, options);
+            Err(BindingError::FeatureDisabled("author"))
+        }
+    }
+
+    /// [`Self::append`] with the seed new `GlobalId`s derive from: a host
+    /// with entropy of its own (the browser) passes it. The seed names the
+    /// batch; reusing it on a model that holds its `GlobalId`s is refused
+    /// (`invalid-value`).
+    pub fn append_seeded(
+        &mut self,
+        source: &IfcModel,
+        roots: &[u64],
+        options: &AppendOptions,
+        seed: u128,
     ) -> Result<CopyReport, BindingError> {
         #[cfg(feature = "author")]
         {
@@ -265,7 +307,6 @@ impl IfcModel {
             let (target_schema, source_schema) =
                 (self.declared_schema()?, source.declared_schema()?);
             let roots: Vec<ifc::EntityId> = roots.iter().copied().map(ifc::EntityId).collect();
-            let seed = ifc::fresh_seed();
             let report = if options.dry_run {
                 ifc::stage_append(
                     &self.inner,
@@ -295,7 +336,7 @@ impl IfcModel {
         }
         #[cfg(not(feature = "author"))]
         {
-            let _ = (source, roots, options);
+            let _ = (source, roots, options, seed);
             Err(BindingError::FeatureDisabled("author"))
         }
     }

@@ -32,8 +32,8 @@ everything released before per-crate changelogs began.
 
 Semver: breaking (minor while 0.x): a fixed seed gives other `GlobalId`s than
 0.37.0, and a batch that reuses a seed may now be refused; `SeedReused` is a
-new variant of the `#[non_exhaustive]` `AuthoringFailure`. No binding surface
-changes: the hosts draw a fresh seed per batch.
+new variant of the `#[non_exhaustive]` `AuthoringFailure`. The hosts draw a
+fresh seed per batch (the browser from `Math.random`).
 
 ### Fixed (#534)
 

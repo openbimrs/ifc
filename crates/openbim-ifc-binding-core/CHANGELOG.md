@@ -11,7 +11,14 @@ a release here does not imply a release of any other crate in the family.
 ### Changed (#548)
 
 - `SeedReused` maps to `invalid-value`; `author_seeded` documents the seed as
-  the batch's identity; `author` and the hosts are unchanged.
+  the batch's identity; `author` is unchanged.
+
+### Added (#548)
+
+- `IfcModel::copy_product_seeded` and `IfcModel::append_seeded`, the seeded
+  forms of `copy_product` and `append` (which draw `fresh_seed()`), for hosts
+  with entropy of their own: `fresh_seed` has none on
+  `wasm32-unknown-unknown`.
 
 Semver: patch (internal crate, not published).
 

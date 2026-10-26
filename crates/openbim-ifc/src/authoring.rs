@@ -264,7 +264,8 @@ pub struct AppendOutcome {
 ///
 /// # Errors
 ///
-/// As [`apply_append`]; nothing is staged.
+/// As [`apply_append`] (including [`AuthoringFailure::SeedReused`]); nothing
+/// is staged.
 #[allow(clippy::too_many_arguments)]
 pub fn stage_append(
     target: &Model,
@@ -309,7 +310,9 @@ pub fn stage_append(
 /// [`AuthoringFailure::UnitMismatch`] when the models' length or plane
 /// angle units differ; [`AuthoringFailure::IncompatibleRelease`] for an
 /// entity the target release cannot hold; [`AuthoringFailure::DuplicateGlobalId`]
-/// for a kept `GlobalId` the target holds; [`AuthoringFailure::MissingEntity`]
+/// for a kept `GlobalId` the target holds; [`AuthoringFailure::SeedReused`]
+/// for a regenerated `GlobalId` derived from `seed` that the target holds;
+/// [`AuthoringFailure::MissingEntity`]
 /// for a root `source` lacks; [`AuthoringFailure::Conflict`] when the
 /// planned transaction fails its preflight. The target is unchanged on
 /// every error.

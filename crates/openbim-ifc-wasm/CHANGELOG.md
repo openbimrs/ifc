@@ -8,6 +8,14 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Fixed (#548)
+
+- `IfcModel.copyProduct` and `IfcModel.append` draw their `GlobalId` seed
+  from `Math.random`, as `author` does. The `GlobalId`s a batch derives now
+  depend on the seed alone, and the library's own seed has no entropy on
+  `wasm32-unknown-unknown` (a counter from 0 per page load), so without this
+  the n-th copy of every page load would collide.
+
 ### Added (#538, EXPRESS rules)
 
 - `IfcModel.validateExpress(express, maxFindings?)` validates with the
