@@ -25,7 +25,7 @@ dependency, design decision, fixture, or licensing check.
 
 ## Prepare the repository
 
-Requires Rust 1.88 or newer. Documentation work also requires Node.js and npm.
+Requires Rust 1.99 or newer. Documentation work also requires Node.js and npm.
 
 ```bash
 git clone https://github.com/openbimrs/ifc.git

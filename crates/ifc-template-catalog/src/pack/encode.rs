@@ -471,7 +471,7 @@ fn set_strings<'a>(set: &'a SetTemplate, f: &mut impl FnMut(&'a str)) {
 /// decodes back to the same text, so storing it as bytes is lossless.
 fn hex_bytes(s: &str) -> Option<Vec<u8>> {
     let digits = s.as_bytes();
-    if digits.is_empty() || digits.len() % 2 != 0 {
+    if digits.is_empty() || !digits.len().is_multiple_of(2) {
         return None;
     }
     let nibble = |digit: u8| match digit {
@@ -480,7 +480,9 @@ fn hex_bytes(s: &str) -> Option<Vec<u8>> {
         _ => None,
     };
     digits
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|pair| Some((nibble(pair[0])? << 4) | nibble(pair[1])?))
         .collect()
 }

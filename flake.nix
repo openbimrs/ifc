@@ -45,7 +45,7 @@
             }
           )
         );
-      # The channel the gate and CI pin (1.88.0), so the flake compiles
+      # The channel the gate and CI pin (1.99.1), so the flake compiles
       # with the same compiler.
       channel = (lib.importTOML ./rust-toolchain.toml).toolchain.channel;
       cli = (lib.importTOML ./crates/openbim-ifc-cli/Cargo.toml).package;

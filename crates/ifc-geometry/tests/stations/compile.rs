@@ -45,7 +45,9 @@ fn records(item: &str) -> String {
 fn signed_volume(mesh: &TriMesh) -> f64 {
     let base = mesh.positions[0];
     mesh.indices
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|t| {
             let [a, b, c] = [t[0], t[1], t[2]].map(|i| mesh.positions[i as usize] - base);
             a.dot(b.cross(c)) / 6.0
@@ -55,7 +57,9 @@ fn signed_volume(mesh: &TriMesh) -> f64 {
 
 fn area(mesh: &TriMesh) -> f64 {
     mesh.indices
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|t| {
             let [a, b, c] = [t[0], t[1], t[2]].map(|i| mesh.positions[i as usize]);
             (b - a).cross(c - a).length() / 2.0

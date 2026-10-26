@@ -90,7 +90,7 @@ Both are checked against the resolved dependency graph, not the manifest.
 
 ## Develop
 
-Requires Rust 1.88 or newer.
+Requires Rust 1.99 or newer.
 
 ```bash
 git clone https://github.com/openbimrs/ifc.git
