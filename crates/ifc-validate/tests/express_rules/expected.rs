@@ -176,13 +176,6 @@ pub const EXPECTED: &[(&str, &str, u64, &str, Agreement)] = &[
         Agrees,
     ),
     (
-        "synthetic-surfaces/synthetic_conic_offset_bounded.ifc",
-        "IfcIntersectionCurve.DistinctSurfaces",
-        49,
-        "indeterminate",
-        Indeterminate,
-    ),
-    (
         "synthetic-surfaces/synthetic_surface_of_revolution.ifc",
         "IfcArbitraryOpenProfileDef.WR12",
         18,

@@ -134,29 +134,25 @@ fn rule_findings() -> BTreeSet<(String, String, u64, String)> {
 /// that remain are not defects to repair:
 ///
 /// - upstream copies (`ifclite-geometry/`, `ifcopenshell-validate/`) are not
-///   ours to edit; their provenance pins their bytes. The
-///   `ifcopenshell-validate/` rows are the negative cases that directory
-///   exists for;
+///   ours to edit; their provenance pins their bytes;
 /// - `synthetic-lowering/` `IfcLocalPlacement.WR21` is UNKNOWN, not a
 ///   violation: the rule's helper cannot be decided for a placement relative
 ///   to a grid or linear placement, and IfcOpenShell passes UNKNOWN silently;
-/// - `IfcIntersectionCurve.DistinctSurfaces` in `synthetic_conic_offset_bounded`
-///   is UNKNOWN too: the two p-curves now lie on different planes, which this
-///   evaluator cannot decide for two distinct instances;
 /// - `synthetic_advanced_brep` states an `IfcPcurve` edge on purpose (lowering
 ///   of p-curve edges), which `IfcAdvancedFace.ApplicableEdgeCurves` forbids;
 ///   `advanced_brep_3d_edges_*` carry the conforming form. Its
 ///   `IfcAdvancedBrepWithVoids.VoidsHaveAdvancedFaces` is a defect of the
-///   published rule, which holds only when a void shell has a face that is
-///   not an `IfcAdvancedFace`; no void shell that follows the rule's intent
-///   can satisfy it;
+///   published rule, which holds only when every void shell has a face that
+///   is not an `IfcAdvancedFace`; no void shell that follows the rule's
+///   intent can satisfy it (buildingSMART/IFC4.x-development#1235);
 /// - `synthetic_conic_offset_bounded` gives its boundary curves p-curve
 ///   segments on purpose (`IfcCompositeCurveSegment.ParentIsBoundedCurve`):
 ///   the test pins that lowering keeps a surface-parameter curve;
 /// - `synthetic_surface_of_revolution` states its generatrix as a 3D curve
 ///   (`IfcArbitraryOpenProfileDef.WR12`, the profile must be 2D);
-///   `lower_revolution` does not apply `IfcSweptSurface.Position`, so a 2D
-///   profile placed through `Position` would lower to a different surface.
+///   `lower_revolution` does not apply `IfcSweptSurface.Position` (#547), so
+///   a 2D profile placed through `Position` would lower to a different
+///   surface.
 ///
 /// The table keeps them visible: a fixture edit that fixes or adds a
 /// violation fails here until the table says so.

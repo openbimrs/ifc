@@ -91,17 +91,17 @@ defective:
   `IfcAdvancedFace.ApplicableEdgeCurves` on purpose, to pin p-curve edge
   lowering (the `advanced_brep_3d_edges_*` pair is the conforming form).
   `IfcAdvancedBrepWithVoids.VoidsHaveAdvancedFaces` as published holds only
-  for a void shell with a face that is not an `IfcAdvancedFace`; a void that
-  follows the rule's intent cannot satisfy it.
+  when every void shell has a face that is not an `IfcAdvancedFace`; a void
+  that follows the rule's intent cannot satisfy it
+  (buildingSMART/IFC4.x-development#1235).
 - `synthetic_conic_offset_bounded.ifc`: the boundary curves use p-curve
   segments (`IfcCompositeCurveSegment.ParentIsBoundedCurve`) because the
   tests pin that lowering keeps a surface-parameter curve.
-  `IfcIntersectionCurve.DistinctSurfaces` is UNKNOWN to the evaluator (its
-  two p-curves lie on different planes); it is not a violation.
 - `synthetic_surface_of_revolution.ifc`: the generatrix is a 3D polyline,
   which `IfcArbitraryOpenProfileDef.WR12` forbids (the profile must be 2D).
   A conforming profile needs `IfcSweptSurface.Position`, which the
-  revolution lowering does not apply, so it would lower to another surface.
+  revolution lowering does not apply (#547), so it would lower to another
+  surface.
 
 The generated files state a 2D `TrueNorth`, a `NOCHANGE` owner-history change
 action and a representation type that admits all of the body's items; a

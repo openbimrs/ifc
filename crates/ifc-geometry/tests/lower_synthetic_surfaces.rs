@@ -315,10 +315,9 @@ fn offset_intersection_and_seam_curve_semantics_survive_corpus_lowering() {
                     sides.is_two_sided(),
                     "{kind}: both parametric sides survive"
                 );
-                // Each side records the surface its p-curve lies on. This
-                // fixture's two p-curves happen to share one surface, which
-                // is legal, so the pairing is asserted rather than assuming
-                // the surfaces differ.
+                // Each side records the surface its p-curve lies on. An
+                // intersection curve lies on two distinct surfaces; the
+                // seam of a closed surface lies on the same one twice.
                 let (s1, _p1) = sides.first();
                 let (s2, _p2) = sides.second().expect("two-sided");
                 for (side, surface) in [("first", s1), ("second", s2)] {
@@ -326,6 +325,11 @@ fn offset_intersection_and_seam_curve_semantics_survive_corpus_lowering() {
                         matches!(lowered.graph.get(surface), Some(GeometryNode::Surface(_))),
                         "{kind}: the {side} side must name a surface node"
                     );
+                }
+                if kind == "IFCINTERSECTIONCURVE" {
+                    assert_ne!(s1, s2, "{kind}: the two surfaces are distinct");
+                } else {
+                    assert_eq!(s1, s2, "{kind}: both sides lie on one surface");
                 }
                 assert_eq!(*master, MasterRepresentation::Curve3d);
             }
