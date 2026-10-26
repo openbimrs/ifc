@@ -92,7 +92,6 @@ jobs:
           echo "::error::$GITHUB_REF_NAME is not on main or a maint/* branch"; exit 1
       - name: Install Rust 1.99.1
         uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
-        with:
       - name: Resolve registries
         id: plan
         env:
@@ -142,7 +141,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install Rust 1.99.1
         uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
-        with:
       - name: Authenticate with crates.io (trusted publishing)
         # A short-lived token, revoked when the job ends. crates.io issues
         # it when ANY crate trusts this workflow and the `release`
