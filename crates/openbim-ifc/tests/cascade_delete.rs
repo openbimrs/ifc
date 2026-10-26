@@ -455,8 +455,10 @@ fn a_cascade_sees_what_the_batch_did_before_it() {
         .expect("applies");
         assert_eq!(model.len(), before, "{name}");
         assert_eq!(
+            // The product joined the type's existing relationship (#534),
+            // so no typing relationship goes with it.
             outcome.reports[2].as_ref().unwrap().removed.len(),
-            6,
+            5,
             "{name}"
         );
         assert_valid(name, &model, schema);

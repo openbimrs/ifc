@@ -275,3 +275,91 @@ fn door_one_is_retyped_and_wall_b_moved_in_the_cascade_fixtures() {
         assert!(shape.0 > 174, "{name}: a fresh product definition shape");
     }
 }
+
+// --- joining a type's relationship (#534) ---
+
+#[test]
+fn a_second_assignment_joins_the_types_existing_relationship() {
+    each_release(|mut f| {
+        let first = f.wall(vec![]);
+        let second = f.wall(vec![]);
+        let third = f.wall(vec![]);
+        let op = f.assign(f.base.wall_type, &[first], AssignTypeOptions::new());
+        let relationship = f.apply(vec![op])[0].unwrap();
+        // Later, and twice in one batch: all join the first relationship.
+        let op = f.assign(f.base.wall_type, &[second], AssignTypeOptions::new());
+        let joined = f.apply(vec![op])[0].unwrap();
+        assert_eq!(joined, relationship, "{}", f.name());
+        let op = f.assign(f.base.wall_type, &[third], AssignTypeOptions::propagate());
+        f.apply(vec![op]);
+        let typing = f.of_type("IFCRELDEFINESBYTYPE");
+        assert_eq!(typing, vec![relationship], "{}", f.name());
+        assert_eq!(
+            f.list(relationship, "RelatedObjects"),
+            vec![first, second, third],
+            "{}",
+            f.name()
+        );
+    });
+}
+
+#[test]
+fn assignments_in_one_batch_share_one_relationship() {
+    each_release(|mut f| {
+        let first = f.wall(vec![]);
+        let second = f.wall(vec![]);
+        let ops = vec![
+            f.assign(f.base.wall_type, &[first], AssignTypeOptions::new()),
+            f.assign(f.base.wall_type, &[second], AssignTypeOptions::new()),
+        ];
+        let ids = f.apply(ops);
+        assert_eq!(ids[0], ids[1], "{}", f.name());
+        assert_eq!(f.of_type("IFCRELDEFINESBYTYPE").len(), 1, "{}", f.name());
+    });
+}
+
+#[test]
+fn a_typed_object_is_refused_by_another_type_and_the_model_stays() {
+    each_release(|mut f| {
+        let wall = f.wall(vec![]);
+        let op = f.assign(f.base.wall_type, &[wall], AssignTypeOptions::new());
+        f.apply(vec![op]);
+        let fresh = f.wall(vec![]);
+        // `fresh` is fine, `wall` is not: nothing of the batch lands.
+        let op = f.assign(
+            f.base.other_wall_type,
+            &[fresh, wall],
+            AssignTypeOptions::new(),
+        );
+        let failure = f.refuse(vec![op]);
+        assert!(
+            matches!(failure, AuthoringFailure::AlreadyRelated { id, relationship: "IFCRELDEFINESBYTYPE", .. } if id == wall),
+            "{failure:?}"
+        );
+    });
+}
+
+#[test]
+fn replacing_into_a_type_with_a_relationship_joins_it() {
+    each_release(|mut f| {
+        let wall = f.wall(vec![]);
+        let neighbour = f.wall(vec![]);
+        let ops = vec![
+            f.assign(f.base.wall_type, &[wall], AssignTypeOptions::new()),
+            f.assign(
+                f.base.other_wall_type,
+                &[neighbour],
+                AssignTypeOptions::new(),
+            ),
+        ];
+        f.apply(ops);
+        let op = f.assign(
+            f.base.other_wall_type,
+            &[wall],
+            AssignTypeOptions::new().replace(true),
+        );
+        f.apply(vec![op]);
+        assert_eq!(f.type_of(wall), Some(f.base.other_wall_type));
+        assert_eq!(f.of_type("IFCRELDEFINESBYTYPE").len(), 1, "{}", f.name());
+    });
+}
