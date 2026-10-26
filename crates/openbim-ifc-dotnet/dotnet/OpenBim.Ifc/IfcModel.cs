@@ -239,14 +239,12 @@ public sealed unsafe class IfcModel : IDisposable
         }
         var max = (nuint)(maxFindings ?? 0);
         var summary = new NativeExpressValidationSummary[1];
-        // An empty array pins to a null pointer, which the C ABI refuses as a
-        // null pointer; empty text should reach the parser and refuse there.
-        var pinned = text.Length == 0 ? new byte[1] : text;
         using var lease = handle.Acquire();
         var m = lease.Model;
         var findings = Tape(m, (n, nc, nr, s, sc, sr) =>
         {
-            fixed (byte* source = pinned)
+            // An empty array pins to a null pointer; the C ABI accepts that for length 0.
+            fixed (byte* source = text)
             fixed (NativeExpressValidationSummary* counts = summary)
             {
                 return NativeMethods.openbim_ifc_v0_1_model_validate_express(m, source, (nuint)text.Length, max, counts, n, nc, nr, s, sc, sr);

@@ -16,6 +16,8 @@ a release here does not imply a release of any other crate in the family.
 - `ValidationReport.indeterminate` (default 0): EXPRESS rules that evaluated
   to UNKNOWN; findings gain the severity `indeterminate`.
 
+Semver: additive: minor.
+
 ## [0.13.0] - 2026-10-20
 
 ### Added (#479, copy and append)

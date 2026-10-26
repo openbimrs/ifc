@@ -128,9 +128,9 @@ pub(crate) struct ValidateArgs {
     /// Also evaluate every WHERE, type and global rule of the release from
     /// its EXPRESS schema text (`IFC4.exp` and the like), which you supply:
     /// the schemas are CC BY-ND and not bundled. Repeat it for several
-    /// releases, one file each; a file is checked with the first one that
-    /// declares its release, and refused with `express-mismatch` when none
-    /// does.
+    /// releases, one file each; a file is checked with the one that declares
+    /// its release, and refused with `express-mismatch` when none or
+    /// several do.
     #[arg(long = "express", value_name = "FILE.exp")]
     pub(crate) express: Vec<PathBuf>,
     #[command(flatten)]

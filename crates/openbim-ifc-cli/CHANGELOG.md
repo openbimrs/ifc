@@ -22,6 +22,8 @@ documents) is this crate's public interface.
   adds it when `--express` is given. An indeterminate rule never fails the
   run.
 
+Semver: minor (additive; exit codes keep their meaning).
+
 ## [0.4.0] - 2026-10-20
 
 ### Added (#469)

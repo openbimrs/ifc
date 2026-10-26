@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 use openbim_ifc_binding_core::{BindingError, IfcModel, ValidationReport};
 
-/// An IFC4 file whose loop has points of two dimensions.
+/// An IFC4 file with two loops whose points have two dimensions.
 const FILE: &str = "ISO-10303-21;
 HEADER;
 FILE_DESCRIPTION(('ViewDefinition [CoordinationView]'),'2;1');
@@ -22,6 +22,7 @@ DATA;
 #2=IFCCARTESIANPOINT((1.,0.));
 #3=IFCCARTESIANPOINT((1.,1.,0.));
 #4=IFCPOLYLOOP((#1,#2,#3));
+#5=IFCPOLYLOOP((#3,#2,#1));
 ENDSEC;
 END-ISO-10303-21;
 ";
@@ -118,4 +119,11 @@ fn the_supplied_rules_decide_what_the_plain_run_leaves_unsupported() {
     assert_eq!(severity(&report).as_deref(), Some("error"));
     assert!(!report.conformant);
     assert!(report.summary.errors >= 1);
+
+    // Two violating loops against a budget of one: the report stops there.
+    let capped = model
+        .validate_express(&text, Some(1))
+        .expect("the supplied rules evaluate");
+    assert_eq!(capped.findings.len(), 1);
+    assert!(capped.truncated);
 }

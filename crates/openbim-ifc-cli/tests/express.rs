@@ -185,3 +185,65 @@ fn one_express_file_per_release_serves_a_run_over_both() {
     }
     assert_eq!(report["files"][1]["conformant"], false);
 }
+
+#[test]
+fn a_broken_express_file_refuses_the_model_in_either_order() {
+    let dir = scratch("express-order");
+    let good = write(&dir, "good.exp", "SCHEMA IFC4; END_SCHEMA;");
+    let bad = write(&dir, "bad2x3.exp", "SCHEMA IFC2X3; ENTITY ; END_SCHEMA;");
+    let file = fixture(CLEAN);
+    for order in [[&good, &bad], [&bad, &good]] {
+        let out = run(&[
+            "validate",
+            "--format",
+            "json",
+            "--express",
+            order[0],
+            "--express",
+            order[1],
+            &file,
+        ]);
+        assert_eq!(out.code, 2, "{}{}", out.stdout, out.stderr);
+        let report = out.json();
+        let error = &report["files"][0]["error"];
+        assert_eq!(error["kind"], "invalid-express", "{report}");
+        assert!(
+            error["message"].as_str().unwrap().contains(&bad),
+            "{report}"
+        );
+    }
+}
+
+#[test]
+fn two_files_for_one_release_are_refused() {
+    let Some(exp) = spec("ifc4-add2-tc1/IFC4.exp") else {
+        return;
+    };
+    let dir = scratch("express-twice");
+    let copy = dir.join("IFC4-copy.exp");
+    std::fs::copy(&exp, &copy).unwrap();
+    let (first, second) = (exp.to_str().unwrap(), copy.to_str().unwrap());
+    for order in [[first, second], [second, first]] {
+        let out = run(&[
+            "validate",
+            "--format",
+            "json",
+            "--express",
+            order[0],
+            "--express",
+            order[1],
+            &fixture(CLEAN),
+        ]);
+        assert_eq!(out.code, 2, "{}{}", out.stdout, out.stderr);
+        let report = out.json();
+        let error = &report["files"][0]["error"];
+        assert_eq!(error["kind"], "express-mismatch", "{report}");
+        assert!(
+            error["message"]
+                .as_str()
+                .unwrap()
+                .contains("more than one --express file declares IFC4"),
+            "{report}"
+        );
+    }
+}

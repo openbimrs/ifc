@@ -21,6 +21,8 @@ a release here does not imply a release of any other crate in the family.
   error like the other shared binding errors.
 - Needs the C library of ABI 0.1.22.
 
+Semver: additive: minor.
+
 ## [0.10.0] - 2026-10-20
 
 ### Added (#479, copy and append)

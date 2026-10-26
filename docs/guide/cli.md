@@ -179,10 +179,12 @@ rule of the release, and checks INVERSE cardinality, from the EXPRESS schema
 text you supply: the schemas are CC BY-ND, so none is bundled (the
 [schema fetch script](https://github.com/openbimrs/ifc/blob/main/scripts/fetch-ifc-schemas.sh)
 downloads all five). Repeat the option to cover several releases, one file
-per release. Each model is checked with the first file that declares its
-release; when none does, that model is refused with `express-mismatch` and
-the run exits 2, after the other files are checked. A file that does not
-parse is `invalid-express`, with its path in the message. An `.exp` file
+per release. Every file is tried against each model's release, so the
+result never depends on the order of the options. A model is checked with
+the one file that declares its release; when none does, or when more than
+one does, it is refused with `express-mismatch` and the run exits 2, after
+the other files are checked. A file that does not parse is
+`invalid-express`, with its path in the message, and refuses every model. An `.exp` file
 that cannot be read ends the run before any model is checked. Files are read
 as UTF-8, or as Latin-1 when they are not.
 
