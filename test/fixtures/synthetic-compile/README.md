@@ -3,6 +3,10 @@
 `union_over_halfspace_unbounded.ifc`, derived from
 `ifclite-geometry/issue_1155_halfspace_flyaway.ifc` by retyping
 `IFCBOOLEANCLIPPINGRESULT(.DIFFERENCE.,...)` to `IFCBOOLEANRESULT(.UNION.,...)`.
+Its representation type is `CSG` (a union is no `Clipping` result) and the empty
+intermediate `IfcLocalPlacement`s of the upstream column were dropped (IFC2X3
+requires every placement to place exactly one product), so the file satisfies
+every EXPRESS rule of its release (#536).
 Not byte-identical to upstream, so it must never move into
 `ifclite-geometry/`, whose provenance rule requires exactly that.
 

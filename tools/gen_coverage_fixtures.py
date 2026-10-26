@@ -120,7 +120,7 @@ def units_and_context(f):
     ctx = f.create_entity("IfcGeometricRepresentationContext", ContextType="Model",
                           CoordinateSpaceDimension=3, Precision=1e-5,
                           WorldCoordinateSystem=placement(f),
-                          TrueNorth=dr(f, (0.0, 1.0, 0.0)))
+                          TrueNorth=dr(f, (0.0, 1.0)))
     body = f.create_entity("IfcGeometricRepresentationSubContext",
                            ContextIdentifier="Body", ContextType="Model",
                            ParentContext=ctx, TargetView="MODEL_VIEW")

@@ -30,7 +30,7 @@ def build():
         "IfcApplication", ApplicationDeveloper=org,
         Version="1", ApplicationFullName="gen_system_fixtures", ApplicationIdentifier="gsf")
     owner = f.create_entity(
-        "IfcOwnerHistory", OwningUser=pando, OwningApplication=app, ChangeAction="ADDED", CreationDate=0)
+        "IfcOwnerHistory", OwningUser=pando, OwningApplication=app, ChangeAction="NOCHANGE", CreationDate=0)
 
     length = f.create_entity("IfcSIUnit", UnitType="LENGTHUNIT", Name="METRE")
     units = f.create_entity("IfcUnitAssignment", Units=[length])
