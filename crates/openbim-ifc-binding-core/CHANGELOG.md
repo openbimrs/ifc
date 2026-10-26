@@ -8,6 +8,14 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#537)
+
+- `validate` also reports `property.undeclared_member` and
+  `property.member_type` warnings for the members of a catalog set when a
+  catalog is built in or installed. No record or code changes.
+
+Semver: patch (internal crate, not published).
+
 ### Added (#479, copy and append)
 
 - `IfcModel::copy_product(id, CopyProductOptions)` and

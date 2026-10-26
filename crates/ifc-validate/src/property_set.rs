@@ -13,8 +13,22 @@
 //! [`PropertySetCatalog`]. Without one, a file using reserved names gets a
 //! single unsupported finding saying they were not checked, never silence.
 //!
+//! For a set the catalog defines, the members inside it are checked too
+//! (#537): properties and quantities the template does not
+//! declare, and members whose entity form or value types differ from it.
+//! The catalog supplies the template through
+//! [`PropertySetCatalog::template`]; without one, those sets' members are
+//! reported once per rule as not checked.
+//!
 //! The prefix is matched without regard to case (`PSET_x` is reserved
 //! too); the catalog lookup is exact.
+
+mod members;
+mod template;
+
+pub use template::{
+    CatalogMember, CatalogMemberForm, CatalogQuantityKind, CatalogSet, CatalogSetKind,
+};
 
 use ifc_model::{EntityId, Model};
 use ifc_schema::{Schema, SchemaVersion};
@@ -36,6 +50,16 @@ pub trait PropertySetCatalog {
     /// named exactly `name`; `None` when no catalog of that release is
     /// available here.
     fn defines(&self, version: SchemaVersion, name: &str) -> Option<bool>;
+
+    /// The members the catalog of `version` declares for the set named
+    /// exactly `name`; `None` when it gives no member templates for it.
+    ///
+    /// The default gives none, so a catalog that only knows names still
+    /// works: its sets' members are reported once as not checked (#537).
+    fn template(&self, version: SchemaVersion, name: &str) -> Option<CatalogSet> {
+        let _ = (version, name);
+        None
+    }
 }
 
 /// Warns on every set whose reserved-prefix name the catalog lacks.
@@ -74,8 +98,13 @@ pub(crate) fn check(
         ));
         return;
     }
+    let mut defined = Vec::new();
     for (id, slot, name, prefix) in sets {
-        if lookup(&name) == Some(false) {
+        let known = lookup(&name);
+        if known == Some(true) {
+            defined.push((id, name.clone()));
+        }
+        if known == Some(false) {
             report.push(
                 Finding::warning(
                     RULE,
@@ -97,6 +126,9 @@ pub(crate) fn check(
                 })),
             );
         }
+    }
+    if let Some(catalog) = catalog {
+        members::check(model, schema, catalog, &release, &defined, report);
     }
 }
 
@@ -184,6 +216,7 @@ mod tests {
         let warned: Vec<_> = report
             .findings()
             .iter()
+            .filter(|f| f.rule == RULE)
             .map(|f| f.message.clone())
             .collect();
         assert_eq!(warned.len(), 2, "{warned:?}");

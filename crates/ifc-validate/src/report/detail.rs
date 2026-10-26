@@ -15,6 +15,10 @@ pub enum FindingDetail {
     /// A property or quantity set whose name uses a prefix buildingSMART
     /// reserves, but which the release's catalog does not define.
     ReservedSetName(ReservedSetName),
+    /// A property or quantity of a catalog set that the release's catalog
+    /// does not declare, or declares differently (`property.undeclared_member`,
+    /// `property.member_type`, #537).
+    CatalogMember(CatalogMemberDetail),
     /// The file declares a release known by name whose normative EXPRESS
     /// is not published (`header.schema.unpublished`, #467): the report
     /// was not made against that release's own tables.
@@ -127,6 +131,55 @@ pub struct ReservedSetName {
     pub prefix: String,
     /// The release whose catalog was consulted.
     pub release: String,
+}
+
+/// A member of a catalog set that disagrees with the catalog's template.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct CatalogMemberDetail {
+    /// The set's `Name`.
+    pub set: String,
+    /// The member's dotted path inside the set (`Outer.Inner` for a
+    /// property nested in a complex property); `None` when the set itself
+    /// is at fault.
+    pub member: Option<String>,
+    /// The release whose catalog was consulted.
+    pub release: String,
+    /// How it disagrees.
+    pub mismatch: CatalogMismatch,
+}
+
+/// How a set or member disagrees with its catalog template.
+///
+/// Names are in the schema's spelling (`IfcLabel`), never the upper-cased
+/// token a file writes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum CatalogMismatch {
+    /// The catalog declares no member of that name.
+    UndeclaredMember,
+    /// The set is an `IfcPropertySet` where the catalog declares a quantity
+    /// set, or the reverse.
+    SetKind {
+        /// The entity the catalog declares.
+        declared: String,
+        /// The entity the file uses.
+        found: String,
+    },
+    /// The member is written as another entity than the catalog declares.
+    Form {
+        /// The entity the catalog declares.
+        declared: String,
+        /// The entity the file uses.
+        found: String,
+    },
+    /// A value has another type than the catalog declares.
+    DataType {
+        /// The type (or, for a reference, entity) the catalog declares.
+        declared: String,
+        /// The type the file uses.
+        found: String,
+    },
 }
 
 impl std::fmt::Display for BudgetExceeded {

@@ -56,7 +56,7 @@
 //! | [`type_check`] | Values against their declared EXPRESS types |
 //! | [`where_rule`] | Native rules, and honest reporting of the rest |
 //! | [`express`] | Every EXPRESS rule, evaluated from the release's text |
-//! | [`property_set`] | `Pset_`/`Qto_` names the catalog lacks |
+//! | [`property_set`] | `Pset_`/`Qto_` names, and the members of catalog sets |
 //! | [`options`] | What a run is given: budget, rules, catalog |
 //! | [`report`] | Findings, paths, severities, summaries |
 //! | [`error`] | Why validation could not run |
@@ -74,10 +74,13 @@ pub mod where_rule;
 
 pub use error::ValidateError;
 pub use options::{validate_with_options, ValidateOptions};
-pub use property_set::PropertySetCatalog;
+pub use property_set::{
+    CatalogMember, CatalogMemberForm, CatalogQuantityKind, CatalogSet, CatalogSetKind,
+    PropertySetCatalog,
+};
 pub use report::{
-    BudgetExceeded, Finding, FindingDetail, NotEvaluated, Path, Report, ReservedSetName,
-    RuleDetail, RuleOutcome, RuleScope, Severity, Summary,
+    BudgetExceeded, CatalogMemberDetail, CatalogMismatch, Finding, FindingDetail, NotEvaluated,
+    Path, Report, ReservedSetName, RuleDetail, RuleOutcome, RuleScope, Severity, Summary,
 };
 pub use where_rule::Budget;
 

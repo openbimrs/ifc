@@ -23,6 +23,14 @@ everything released before per-crate changelogs began.
   is still refused unless `replace`. A relationship whose `RelatedObjects`
   is not a list is refused with `InvalidRelationship`, not rewritten.
 
+### Added (#537)
+
+- `ReleaseCatalog` gives `ifc-validate` the member templates of the
+  embedded or installed PSD/QTO catalog, so `validate` reports
+  `property.undeclared_member` and `property.member_type` warnings for
+  the members of a catalog set. A set kind the build does not know gives no
+  template, and its members are reported as not checked.
+
 ### Changed (#539, tests)
 
 Semver: no release on its own. No code change.

@@ -12,6 +12,30 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#537)
+
+- `property.undeclared_member` and `property.member_type` warnings (bSI
+  PSE001): for a `Pset_`/`Qto_` set the release's catalog defines, a
+  property or quantity the catalog's template does not declare, and a set
+  kind, entity form or value type that differs from it. A value type
+  passes when it is the declared one or a defined type aliasing it. Names
+  match exactly; a case-only difference is mentioned in the message.
+- `PropertySetCatalog::template`, a provided method returning the
+  neutral `CatalogSet` (`CatalogSetKind`, `CatalogMember`,
+  `CatalogMemberForm`, `CatalogQuantityKind`). The default returns `None`.
+- `FindingDetail::CatalogMember(CatalogMemberDetail)` with
+  `CatalogMismatch`.
+
+### Changed (#537)
+
+- A catalog whose `template` gives none for a set it defines gets one
+  unsupported finding per new rule id ("the members of N catalog sets were
+  not checked"); a declared value type the release's tables lack gets one
+  unsupported `property.member_type` finding. Neither is silent.
+
+Semver: minor (0.8.0); `FindingDetail` is `#[non_exhaustive]`, but a
+validation run with a template-giving catalog now produces more warnings.
+
 ## [0.7.0] - 2026-10-20
 
 ### Added (#461)
