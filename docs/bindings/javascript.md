@@ -178,7 +178,14 @@ const fromXml = IfcModel.parseIfcXml(xml);
 - **Validation.** `validate(maxFindings?)` checks the model against the
   schema its header declares and returns a `ValidationReport`: counts by
   severity, `conformant`, `truncated`, and findings sorted by severity,
-  rule, entity and slot.
+  rule, entity and slot. `validateExpress(express, maxFindings?)` also
+  evaluates every WHERE, type and global rule of the declared release from
+  `express`, the text of that release's `.exp` file, which you supply (the
+  schemas are CC BY-ND, so none is bundled); `indeterminate` counts the
+  rules that evaluated to UNKNOWN. The text is parsed on every call. Text
+  that declares another schema than the model's, or disagrees with the
+  release's tables, throws `express-mismatch`; text that does not parse
+  throws `invalid-express`.
 - **ifcXML.** `writeIfcXml()` and `IfcModel.parseIfcXml(bytes)` use this
   library's lossless layout; pass `"IFC4"` or `"IFC4X3_ADD2"` for the
   buildingSMART XSD layout of that release, which refuses with `write`
@@ -196,7 +203,8 @@ const fromXml = IfcModel.parseIfcXml(xml);
   draw, each with a stable `reason`.
 
 Validation, ifcXML and the reachability lint are cargo features of
-`openbim-ifc-wasm` (`validate`, `ifcxml`, `unreachable`), on by default.
+`openbim-ifc-wasm` (`validate`, `validate-express`, `ifcxml`,
+`unreachable`), on by default.
 A size-trimmed browser build can leave them out, as it can leave out IFC
 releases; their methods then throw `feature-disabled`. Measured after
 `wasm-bindgen`, without `wasm-opt`, on an IFC4-only build: ifcXML adds
@@ -1097,6 +1105,23 @@ it is opt-in. Beside `mesh`, which links the lowering already, it adds
 286 KB (88 KB under `gzip -9`, 46 KB under brotli), so the mesh entry
 carries both.
 
+EXPRESS rules ([#538](https://github.com/openbimrs/ifc/issues/538)),
+measured on 2026-10-26 the same way (`gzip -9` from the `gzip` command,
+brotli 11 from `node:zlib`), at the commit that added `validate-express`:
+
+| Features | Raw | gzip -9 | brotli 11 |
+| --- | ---: | ---: | ---: |
+| default without `validate-express` | 4,057,299 | 1,387,141 | 936,472 |
+| default | 4,364,373 | 1,491,016 | 1,007,194 |
+| `ifc4,validate` | 1,458,404 | 562,413 | 434,546 |
+| `ifc4,validate,validate-express` | 1,765,081 | 665,314 | 507,062 |
+
+The EXPRESS evaluator adds 307 KB to the default module (104 KB under
+`gzip -9`, 71 KB under brotli), so the default carries it and a size-trimmed
+build can leave `validate-express` out; `validateExpress` then throws
+`feature-disabled`. The earlier tables were measured before later domains
+and geometry grew the default; compare rows within a table.
+
 ### Package size
 
 The npm package carries two entries ([#369](https://github.com/openbimrs/ifc/issues/369)),
@@ -1186,7 +1211,6 @@ class, interface and type the package's `.d.ts` declares.
 | `model.writeIfcZip(inner: string \| undefined, profile: string \| undefined): Uint8Array` | yes | Serialize as ifcZIP bytes: one Deflate entry holding STEP (`model.ifc`), or with `inner` `"ifcxml"` ifcXML (`model.ifcXML`) in the layout `profile` names, as for `writeIfcXml`. `parse` reads it back. |
 | `model.header(): IfcHeader` |  | The STEP file header: description, name, time stamp, author, organization, preprocessor, originating system, authorization and schema tokens. |
 | `model.setHeader(header: IfcHeader): void` | yes | Replace the STEP file header; every field is required. |
-| `model.validate(maxFindings: number \| undefined): ValidationReport` | yes | Validate against the schema the header declares; findings are sorted by severity, rule, entity and slot. `maxFindings` caps the report (default 10,000) and sets `truncated` when reached. |
 | `model.unreachableProducts(): UnreachableProduct[]` | yes | Products no viewer will draw (outside the spatial structure, or with geometry only in non-model contexts), with a stable `reason`. |
 | `model.productPlacements(ids: bigint[] \| BigUint64Array \| undefined): ProductPlacement[]` | yes | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or, without, for every product with a shape. A product that cannot be placed is a record with a typed `refusal`; the call itself throws only `unsupported-schema` or `feature-disabled` (feature `placements`). |
 | `model.productGeometry(ids: bigint[] \| BigUint64Array \| undefined, encoding: GeometryPayloadEncoding \| undefined): ProductGeometry[]` | yes | Each product's Body as Axiolid's neutral geometry graph (#367), exact (extrusions, sweeps, B-splines, unevaluated booleans), for `ids` or, without, every product with a shape, in Axiolid's versioned wire format: `{ format: "axiolid-geometry-graph", version: "1.0", graph: { nodes, roots } }` (the lowest version the content needs, `"1.0"` to `"1.4"`), in world coordinates, metres. `encoding` picks the `payload`: `"json"` (the default) the text, `"object"` the text parsed, `"cbor"` the CBOR bytes as a `Uint8Array`. A product that cannot be lowered has a typed `refusal`; the call itself throws only `unsupported-schema`, `feature-disabled` (feature `graph`) or `invalid-value` for an unknown encoding. |
@@ -1236,6 +1260,8 @@ class, interface and type the package's `.d.ts` declares.
 | `model.removeWithRelationships(id: bigint): void` | yes | Remove entity `id` with its relationships, leaving nothing dangling (`author` with one `remove`); refused with `still-referenced` while an entity other than a relationship needs it. |
 | `IfcModel.handle(index: number): bigint` |  | The handle of the entity operation `index` of an `author` batch produces, usable wherever a later operation takes an id (`bigint`). |
 | `model.danglingReferences(): [bigint, bigint][]` |  | Every `[from, to]` pair (`bigint`s) where `to` does not exist. |
+| `model.copyProduct(id: bigint, options: CopyProductOptions \| undefined): CopyReport` | yes | Copy product (or type object) `id` with everything it solely owns, as one checked transaction: what `removeProduct` would remove with it is copied (its placement, representation, own property sets, material usage, ports and, unless `openings` or `fillings` is `false`, its openings and the doors and windows filling them), what it would keep is shared, the copy joining the relationship (its type, shared property sets, classification and, unless `container` or `aggregate` is `false`, its container and whole). `offset` moves the copy in its parent placement's frame; `placement` places it by that `IfcObjectPlacement` instead. The report maps every original to its copy; with `dryRun` nothing changes. Refused with `wrong-entity-type` for neither a product nor a type object, `invalid-value` for both `offset` and `placement`, `unsupported` for an offset onto a placement that is not a local placement with a Cartesian location, or a moved copy whose openings are not placed relative to it. |
+| `model.append(source: IfcModel, ids: bigint[] \| BigUint64Array, options: AppendOptions \| undefined): CopyReport` | yes | Copy entities `ids` of `source` into this model with what belongs to them, as one checked transaction: what they reference, their property sets, type, material and classification, their openings, fillings and ports, and what attaches to their geometry. Units, contexts, the owner history, materials and styles equal to this model's are reused (`reuse` names the kinds; all by default). Relationships to objects not copied (a spatial container) are skipped and reported. `globalIds`: `keep` (the default; one this model holds is refused), `merge` (an `IfcRoot` this model holds by `GlobalId` and type is reused, its relationships joined), `regenerate` or `regenerate-colliding`. Refused with `unsupported` when the models' length or plane angle units differ, `unsupported-schema` for an entity this model's release cannot hold, `invalid-value` for a kept `GlobalId` this model holds. |
 | `model.inverseAttributeNames(id: bigint): InverseAttributeInfo[]` | yes | Every `INVERSE` attribute of entity `id`, inherited ones first, as the declared release defines them (#462). |
 | `model.inverseReferences(id: bigint): InverseReference[]` | yes | Every reference to entity `id`: the referencing entity and the attribute index it references through, in ascending order (#462). |
 | `model.totalInverses(id: bigint): number` | yes | How many distinct entities reference entity `id` (#462). |
@@ -1247,6 +1273,14 @@ class, interface and type the package's `.d.ts` declares.
 | `model.setValue(id: bigint, path: string, value: IfcValue \| IfcPlainValue): void` | yes | Write `value` at `path` of entity `id` as one checked transaction: an attribute coerced as `setAttributeByName` coerces a plain value, or a property from a typed value, or a plain one when the property already states its type. A refused write changes nothing. |
 | `IfcModel.canonicalSelector(query: string): string` | yes | Selector `query` in its canonical form: spacing, quoting and aliases normalised. Throws `invalid-selector`. |
 | `IfcModel.selectorGrammarVersion(): string` |  | The version of the selector grammar this build parses (`"1.0"`). |
+| `model.exportTable(query: string, columns: string[], options: TableOptions \| undefined): Uint8Array` | yes | The entities selector `query` selects as a table (#474), as bytes: `options.format` `"csv"` (default), `"tsv"` or `"xlsx"` (only in a build with `sheet-xlsx`; the npm package throws `feature-disabled`), the key column first (`"GlobalId"`, or `"id"` with `options.key`), then one column per value path of `columns` (`"Name"`, `"type.Name"`, `"Pset_WallCommon.FireRating"`), each cell the value the path reads as text, `NULL` as `options.null` (empty by default). Throws `invalid-selector` for a query or path that does not parse, `invalid-value` for an unknown format or key, and `wrong-entity-type` for an entity without a `GlobalId` in a table keyed by it. |
+| `model.importTable(data: Uint8Array, options: TableImportOptions \| undefined): TableImport` | yes | Apply a table (`Uint8Array`) back to the model by its key column (#474), as one checked transaction: every other cell is written by its header's value path, typed by the attribute's declared type or the property's stated one; a cell that reads what the model holds changes nothing, so an exported table imported unchanged is a no-op. The answer lists every change and every refusal by row and column; any refusal means nothing was written, as does `options.dryRun`. Throws only for a call that cannot start: an unknown format or key, bytes that are no table of the format. |
+| `IfcModel.convertUnit(value: number, from: string, to: string): number` | yes | Convert `value` from the unit named `from` to the unit named `to`: an SI unit with its prefix (`METRE`, `MILLIMETRE`, `MILLI METRE`, `SQUARE_MILLIMETRE`, `KILOGRAM`) or a named unit of IFC4 Table 673 with exact factors (`inch`, `foot`, `square foot`, `gallon US`, `pound` ...). Throws `type-mismatch` for units of different dimensions, `invalid-value` for an unknown unit, `unsupported` for a unit with an offset (degree Fahrenheit, #110). |
+| `IfcModel.formatLength(value: number, unit: string, options: LengthFormatOptions \| undefined): string` | yes | Write `value`, a length in the unit named `unit`, as text: decimal in `displayUnit`, or feet and inches with fractions (`5' - 6 1/2"`). |
+| `model.convertUnitValue(value: number, from: bigint, to: bigint): number` | yes | Convert `value` from unit entity `from` to unit entity `to` of this model (`IfcSIUnit`, `IfcConversionBasedUnit`, `IfcDerivedUnit`). |
+| `model.convertLengthUnit(target: string, options: LengthUnitOptions \| undefined): LengthUnitReport` | yes | Convert the model's length unit to the unit named `target` (an SI `METRE` with any prefix, or `inch`, `foot`, `yard`, `mile`, `US survey foot`), rescaling every length, area and volume value as one checked transaction; with `dryRun`, only report. Values with a unit of their own keep it; values the conversion cannot carry (a p-curve off a plane, a polynomial curve, a parameter on an undefined parameter space) refuse the whole conversion with `unsupported`, each named. |
+| `model.validate(maxFindings: number \| undefined): ValidationReport` | yes | Validate against the schema the header declares; findings are sorted by severity, rule, entity and slot. `maxFindings` caps the report (default 10,000) and sets `truncated` when reached. |
+| `model.validateExpress(express: string, maxFindings: number \| undefined): ValidationReport` | yes | Validate with the EXPRESS rules of the declared release, read from `express`, the text of that release's `.exp` file (#538). Throws `express-mismatch` for text that declares another schema or disagrees with the release's tables, and `invalid-express` for text that does not parse. `maxFindings` is as for `validate`. |
 
 Attribute values and error codes are typed by the package's `.d.ts`:
 
@@ -1307,7 +1341,9 @@ export type IfcErrorCode =
   | "type-mismatch"
   | "ambiguous-value"
   | "invalid-selector"
-  | "inverse-attribute";
+  | "inverse-attribute"
+  | "express-mismatch"
+  | "invalid-express";
 
 /**
  * A value `IfcModel.getValue` reads by path (#464): a tagged value, a list
@@ -1367,7 +1403,12 @@ export interface IfcHeader {
 
 /** One validation finding. `entity` is `undefined` for the file as a whole. */
 export interface ValidationFinding {
-  severity: "error" | "evaluation-error" | "warning" | "unsupported";
+  severity:
+    | "error"
+    | "evaluation-error"
+    | "warning"
+    | "indeterminate"
+    | "unsupported";
   rule: string;
   entity: bigint | undefined;
   attributeIndex: number | undefined;
@@ -1376,7 +1417,7 @@ export interface ValidationFinding {
   message: string;
 }
 
-/** The result of `IfcModel.validate`. */
+/** The result of `IfcModel.validate` or `IfcModel.validateExpress`. */
 export interface ValidationReport {
   /** No errors and no evaluation errors; unsupported rules do not count. */
   conformant: boolean;
@@ -1385,6 +1426,8 @@ export interface ValidationReport {
   errors: number;
   evaluationErrors: number;
   warnings: number;
+  /** EXPRESS rules that evaluated to UNKNOWN; 0 without EXPRESS rules. */
+  indeterminate: number;
   unsupported: number;
   findings: ValidationFinding[];
 }

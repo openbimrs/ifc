@@ -11,6 +11,19 @@ documents) is this crate's public interface.
 
 ## [Unreleased]
 
+### Added (#538, EXPRESS rules)
+
+- `validate --express FILE.exp` (repeatable, one file per release)
+  evaluates every WHERE, type and global rule of each file's release from
+  the EXPRESS text you supply. A file with no matching `--express` is
+  refused with the new kind `express-mismatch`; a file that does not parse
+  is `invalid-express`. Both exit 2.
+- The JSON summary gains `indeterminate`, always present; the human summary
+  adds it when `--express` is given. An indeterminate rule never fails the
+  run.
+
+Semver: minor (additive; exit codes keep their meaning).
+
 ## [0.4.0] - 2026-10-20
 
 ### Added (#469)

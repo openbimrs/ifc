@@ -89,8 +89,8 @@ class Header:
 class ValidationFinding:
     """One finding. ``entity`` is ``None`` for the file as a whole.
 
-    ``severity`` is ``error``, ``evaluation-error``, ``warning`` or
-    ``unsupported``; ``rule`` is the check's stable id.
+    ``severity`` is ``error``, ``evaluation-error``, ``warning``,
+    ``indeterminate`` or ``unsupported``; ``rule`` is the check's stable id.
     """
 
     severity: str
@@ -104,11 +104,12 @@ class ValidationFinding:
 
 @dataclass(frozen=True)
 class ValidationReport:
-    """The result of :meth:`IfcModel.validate`.
+    """The result of :meth:`IfcModel.validate` or :meth:`IfcModel.validate_express`.
 
     ``conformant`` means no errors and no evaluation errors; unsupported
     rules do not count against it. ``truncated`` means the finding budget was
-    reached, so the counts are lower bounds.
+    reached, so the counts are lower bounds. ``indeterminate`` counts EXPRESS
+    rules that evaluated to UNKNOWN; it is 0 without EXPRESS rules.
     """
 
     conformant: bool
@@ -118,6 +119,7 @@ class ValidationReport:
     warnings: int
     unsupported: int
     findings: Tuple[ValidationFinding, ...]
+    indeterminate: int = 0
 
     @classmethod
     def _from_wire(cls, data: Dict[str, Any]) -> "ValidationReport":

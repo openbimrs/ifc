@@ -16,13 +16,51 @@ const MODEL: &str = "crates/openbim-ifc-wasm/src/model.rs";
 const TYPES: &str = "crates/openbim-ifc-wasm/src/model/types.rs";
 /// Submodules of `model.rs` that add `#[wasm_bindgen] impl IfcModel`
 /// blocks, listed after it in this order.
+/// [`reference()`] refuses a file below `model/` that has such a block and is
+/// not listed, so a new part cannot silently drop its methods from the page.
 const MODEL_PARTS: &[&str] = &[
+    "crates/openbim-ifc-wasm/src/model/copying.rs",
     "crates/openbim-ifc-wasm/src/model/inverse.rs",
     "crates/openbim-ifc-wasm/src/model/removal.rs",
     "crates/openbim-ifc-wasm/src/model/selector.rs",
+    "crates/openbim-ifc-wasm/src/model/table.rs",
+    "crates/openbim-ifc-wasm/src/model/units.rs",
+    "crates/openbim-ifc-wasm/src/model/validation.rs",
 ];
 
+/// Every `.rs` file below `model/` with a `#[wasm_bindgen] impl IfcModel`
+/// block must be in [`MODEL_PARTS`].
+fn check_parts_listed(workspace: &Workspace) -> Result<(), String> {
+    let dir = workspace.root.join("crates/openbim-ifc-wasm/src/model");
+    let entries = std::fs::read_dir(&dir).map_err(|error| format!("{}: {error}", dir.display()))?;
+    for entry in entries {
+        let path = entry.map_err(|error| error.to_string())?.path();
+        if path.extension().is_none_or(|ext| ext != "rs") {
+            continue;
+        }
+        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        let rel = format!("crates/openbim-ifc-wasm/src/model/{name}");
+        if MODEL_PARTS.contains(&rel.as_str()) {
+            continue;
+        }
+        let file = parse(workspace, &rel)?;
+        let has_block = file.items.iter().any(|item| {
+            matches!(item, Item::Impl(block) if block.attrs.iter().any(|a| a.path().is_ident("wasm_bindgen")))
+        });
+        if has_block {
+            return Err(format!(
+                "{rel} has a `#[wasm_bindgen] impl` block but is not in MODEL_PARTS \
+                 (xtask/src/docs/bindings/js.rs); its methods would be missing from the page"
+            ));
+        }
+    }
+    Ok(())
+}
+
 pub(super) fn reference(workspace: &Workspace) -> Result<String, String> {
+    check_parts_listed(workspace)?;
     let mut files = vec![parse(workspace, MODEL)?];
     for part in MODEL_PARTS {
         files.push(parse(workspace, part)?);
@@ -218,7 +256,7 @@ fn typescript(ty: &Type) -> Result<String, String> {
         "u32" | "i32" | "usize" | "f64" => "number",
         "bool" => "boolean",
         "()" => "void",
-        "IfcModel" => "IfcModel",
+        "IfcModel" | "&IfcModel" => "IfcModel",
         "Vec<String>" => "string[]",
         "Option<String>" => "string | undefined",
         "Option<u32>" => "number | undefined",

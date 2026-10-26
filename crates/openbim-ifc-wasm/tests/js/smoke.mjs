@@ -6,9 +6,10 @@
 //
 // Usage: IFC_WASM_PKG=<package-dir> node --test smoke.mjs
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const pkg = path.resolve(process.env.IFC_WASM_PKG ?? "pkg");
@@ -1368,4 +1369,41 @@ test("exportTable and importTable round-trip, plan, apply and refuse as data", (
     // The npm package leaves the XLSX reader and writer out.
     throwsCode(() => model.exportTable("IfcWall", [], { format: "xlsx" }), "feature-disabled");
   }
+});
+
+// --- validation with EXPRESS rules (#538) ------------------------------------
+
+const LOOP_FILE = FILE.replace(
+  "#5=IFCWALL",
+  "#7=IFCCARTESIANPOINT((0.,0.,0.));\n#8=IFCCARTESIANPOINT((1.,0.));\n" +
+    "#9=IFCCARTESIANPOINT((1.,1.,0.));\n#10=IFCPOLYLOOP((#7,#8,#9));\n#5=IFCWALL",
+);
+
+test("EXPRESS text that does not fit the model is refused with its own codes", () => {
+  const model = parse();
+  throwsCode(() => model.validateExpress("SCHEMA IFC2X3; END_SCHEMA;"), "express-mismatch");
+  throwsCode(() => model.validateExpress("SCHEMA IFC4; END_SCHEMA;"), "express-mismatch");
+  throwsCode(() => model.validateExpress("SCHEMA IFC4; ENTITY ; END_SCHEMA;"), "invalid-express");
+  assert.equal(model.validate().indeterminate, 0);
+});
+
+test("the supplied EXPRESS rules decide what a plain validation leaves unsupported", () => {
+  // references/ifc-spec is CC BY-ND and never committed: skip without it,
+  // fail when the gate requires it.
+  const spec = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../../../../references/ifc-spec/ifc4-add2-tc1/IFC4.exp",
+  );
+  if (!existsSync(spec)) {
+    assert.ok(!process.env.IFC_SPEC_REQUIRED, `IFC_SPEC_REQUIRED is set but ${spec} was not found`);
+    return;
+  }
+  const model = IfcModel.parse(new TextEncoder().encode(LOOP_FILE));
+  const rule = "IfcPolyLoop.AllPointsSameDim";
+  const severity = (report) => report.findings.find((f) => f.rule === rule)?.severity;
+  assert.equal(severity(model.validate()), "unsupported");
+  const report = model.validateExpress(readFileSync(spec, "utf8"));
+  assert.equal(severity(report), "error");
+  assert.equal(report.conformant, false);
+  assert.equal(typeof report.indeterminate, "number");
 });

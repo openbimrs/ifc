@@ -141,6 +141,31 @@ static int capabilities(void) {
   CHECK(nodes[1].kind == OPENBIM_IFC_KIND_LIST && nodes[1].child_count == 7,
         "a finding has seven fields");
 
+  /* Validation with EXPRESS rules: the text must fit the declared release.
+   * The schemas are not bundled, so only the refusals run here. */
+  static const char WRONG_RELEASE[] = "SCHEMA IFC2X3; END_SCHEMA;";
+  static const char NOT_EXPRESS[] = "SCHEMA IFC4; ENTITY ; END_SCHEMA;";
+  OpenbimIfcExpressValidationSummary express_summary;
+  memset(&express_summary, 0, sizeof express_summary);
+  size_t express_need = 0;
+  char express_code[32];
+  CHECK(openbim_ifc_v0_1_model_validate_express(
+            model, (const uint8_t *)WRONG_RELEASE, strlen(WRONG_RELEASE), 0,
+            &express_summary, NULL, 0, &node_count, NULL, 0, &string_len) ==
+            OPENBIM_IFC_STATUS_EXPRESS_MISMATCH,
+        "EXPRESS text of another release is refused");
+  OK(openbim_ifc_v0_1_last_error_code(model, (uint8_t *)express_code,
+                                      sizeof express_code, &express_need));
+  CHECK(strcmp(express_code, "express-mismatch") == 0, "express-mismatch code");
+  CHECK(openbim_ifc_v0_1_model_validate_express(
+            model, (const uint8_t *)NOT_EXPRESS, strlen(NOT_EXPRESS), 0,
+            &express_summary, NULL, 0, &node_count, NULL, 0, &string_len) ==
+            OPENBIM_IFC_STATUS_INVALID_EXPRESS,
+        "EXPRESS text that does not parse is refused");
+  OK(openbim_ifc_v0_1_last_error_code(model, (uint8_t *)express_code,
+                                      sizeof express_code, &express_need));
+  CHECK(strcmp(express_code, "invalid-express") == 0, "invalid-express code");
+
   /* ifcXML: native layout out and back; an unknown profile is refused. */
   size_t need = 0;
   CHECK(openbim_ifc_v0_1_model_write_ifcxml(model, NULL, 0, NULL, 0, &need) ==

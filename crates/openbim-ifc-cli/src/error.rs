@@ -77,6 +77,12 @@ pub(crate) enum CliError {
     /// class or attribute the declared release does not declare; the
     /// detail names the byte span it refuses.
     InvalidSelector(String),
+    /// A `--express` file declares no schema the checked file declares, or
+    /// disagrees with that release's tables.
+    ExpressMismatch(String),
+    /// A `--express` file does not parse as EXPRESS, or a rule in it names
+    /// something that binds to nothing.
+    InvalidExpress(String),
 }
 
 impl CliError {
@@ -100,6 +106,8 @@ impl CliError {
             Self::BudgetExceeded(_) => "budget-exceeded",
             Self::Write(_) => "write",
             Self::InvalidSelector(_) => "invalid-selector",
+            Self::ExpressMismatch(_) => "express-mismatch",
+            Self::InvalidExpress(_) => "invalid-express",
         }
     }
 
@@ -128,7 +136,9 @@ impl fmt::Display for CliError {
             | Self::InvalidModel(detail)
             | Self::BudgetExceeded(detail)
             | Self::Write(detail)
-            | Self::InvalidSelector(detail) => f.write_str(detail),
+            | Self::InvalidSelector(detail)
+            | Self::ExpressMismatch(detail)
+            | Self::InvalidExpress(detail) => f.write_str(detail),
         }
     }
 }

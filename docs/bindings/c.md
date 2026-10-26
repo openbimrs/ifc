@@ -293,6 +293,21 @@ openbim_ifc_v0_1_model_destroy(model);
   severity, rule, entity (`REF` or `NULL`), attribute index, attribute
   name, path and message. A size query runs the validation, so pass
   buffers you expect to fit and retry on `BUFFER_TOO_SMALL`.
+- **Validation with EXPRESS rules.**
+  `openbim_ifc_v0_1_model_validate_express(model, express, express_len,
+  max_findings, &summary, ...)` evaluates every WHERE, type and global rule
+  of the declared release from `express`, the UTF-8 text of that release's
+  `.exp` file, which you supply: the schemas are CC BY-ND, so none is
+  bundled. It fills an `OpenbimIfcExpressValidationSummary` (the counts of
+  `OpenbimIfcValidationSummary` plus `indeterminate`, the rules that
+  evaluated to UNKNOWN) and the same findings tape, whose severities add
+  `indeterminate`. The text is parsed on every call, so a size query parses
+  and validates. Text that declares another schema than the model's, or
+  disagrees with the release's tables, is `EXPRESS_MISMATCH` (36), code
+  `express-mismatch`; text that does not parse is `INVALID_EXPRESS` (37),
+  code `invalid-express`; text that is not UTF-8 is `INVALID_ARGUMENT`. The
+  `v0_1` summary record and `_model_validate` are unchanged. This export
+  makes the ABI version 0.1.22.
 - **ifcXML.** `openbim_ifc_v0_1_model_write_ifcxml` and
   `_model_parse_ifcxml` take a profile name: `NULL, 0` for this library's
   lossless layout, `IFC4` or `IFC4X3_ADD2` for that release's XSD layout.

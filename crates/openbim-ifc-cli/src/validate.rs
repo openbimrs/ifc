@@ -7,10 +7,24 @@
 //! are counted, never a failure. A file that cannot be read or declares no
 //! bundled schema is reported and makes the run exit 2, after every other
 //! file has been checked.
+//!
+//! `--express FILE.exp` (#538) also evaluates every WHERE, type and global
+//! rule of the file's release from the EXPRESS text the caller supplies.
+//! The `.exp` files are read once, before any model; each model is checked
+//! with the one that declares its release, and refused with
+//! `express-mismatch` when none or several do. An `.exp` that cannot be read
+//! ends the run; one that does not parse refuses every file with
+//! `invalid-express`, whatever the order of the options. Rules that
+//! evaluate to UNKNOWN are `indeterminate` findings: reported and counted,
+//! never a failure.
 
+use std::collections::HashMap;
 use std::io::Write;
+use std::path::PathBuf;
 
-use ifc::validate::{validate_with, Budget, Path, Report, Severity};
+use ifc::validate::express::{ExpressError, ExpressRules};
+use ifc::validate::{validate_with_options, Budget, Path, Report, Severity, ValidateOptions};
+use ifc::Schema;
 
 use crate::cli::{ReportFormat, ValidateArgs};
 use crate::error::{CliError, CliResult, Outcome};
@@ -39,8 +53,98 @@ struct Checked {
     errors: usize,
     evaluation_errors: usize,
     warnings: usize,
+    indeterminate: usize,
     unsupported: usize,
     items: Vec<Item>,
+}
+
+/// The `--express` files, read once, and their parses per release.
+struct ExpressFiles {
+    /// Each file's path as given, and its text.
+    files: Vec<(PathBuf, String)>,
+    /// The outcome of parsing file `.0` against the tables named `.1`.
+    parsed: HashMap<(usize, String), Result<ExpressRules, ExpressError>>,
+}
+
+impl ExpressFiles {
+    /// Read every file; the first that cannot be read ends the run.
+    fn read(paths: &[PathBuf]) -> CliResult<Self> {
+        let files = paths
+            .iter()
+            .map(|path| {
+                let bytes = std::fs::read(path).map_err(|error| CliError::Io {
+                    path: path.display().to_string(),
+                    detail: error.to_string(),
+                })?;
+                // The normative files are ASCII, but some copies are
+                // Latin-1: one character per byte then.
+                let text = String::from_utf8(bytes).unwrap_or_else(|error| {
+                    error.into_bytes().iter().map(|&b| char::from(b)).collect()
+                });
+                Ok((path.clone(), text))
+            })
+            .collect::<CliResult<_>>()?;
+        Ok(Self {
+            files,
+            parsed: HashMap::new(),
+        })
+    }
+
+    /// The rules for a model whose header declares `schema`.
+    ///
+    /// Every file is tried, so the verdict never depends on `--express`
+    /// order: a file that does not parse refuses the model with
+    /// `invalid-express` (even if another file would serve), a file that
+    /// disagrees with the tables is `express-mismatch`, and exactly one file
+    /// must declare the release -- none or several is `express-mismatch`.
+    fn rules_for(&mut self, schema: &Schema) -> CliResult<ExpressRules> {
+        let mut declaring: Vec<(usize, ExpressRules)> = Vec::new();
+        let mut invalid = None;
+        let mut disagreeing = None;
+        for (index, (path, text)) in self.files.iter().enumerate() {
+            let outcome = self
+                .parsed
+                .entry((index, schema.name().to_owned()))
+                .or_insert_with(|| ExpressRules::parse(text, schema));
+            match outcome {
+                Ok(rules) => declaring.push((index, rules.clone())),
+                Err(ExpressError::SchemaMismatch { .. }) => {}
+                Err(error @ ExpressError::TableMismatch { .. }) => {
+                    disagreeing.get_or_insert_with(|| format!("{}: {error}", path.display()));
+                }
+                Err(error) => {
+                    invalid.get_or_insert_with(|| format!("{}: {error}", path.display()));
+                }
+            }
+        }
+        // Whatever the order: a file that does not parse outranks one that
+        // disagrees with the tables.
+        if let Some(detail) = invalid {
+            return Err(CliError::InvalidExpress(detail));
+        }
+        if let Some(detail) = disagreeing {
+            return Err(CliError::ExpressMismatch(detail));
+        }
+        let names = |indices: &mut dyn Iterator<Item = usize>| {
+            indices
+                .map(|index| self.files[index].0.display().to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        };
+        match declaring.len() {
+            1 => Ok(declaring.remove(0).1),
+            0 => Err(CliError::ExpressMismatch(format!(
+                "no --express file declares {} (given: {})",
+                schema.name(),
+                names(&mut (0..self.files.len()))
+            ))),
+            _ => Err(CliError::ExpressMismatch(format!(
+                "more than one --express file declares {}: {}",
+                schema.name(),
+                names(&mut declaring.iter().map(|(index, _)| *index))
+            ))),
+        }
+    }
 }
 
 /// Run `validate`.
@@ -53,17 +157,18 @@ pub(crate) fn run(args: &ValidateArgs, out: &mut impl Write) -> CliResult<Outcom
         .iter()
         .map(|file| file.display().to_string())
         .collect();
+    let mut express = ExpressFiles::read(&args.express)?;
     let results: Vec<CliResult<Checked>> = args
         .files
         .iter()
         .map(|file| {
             let loaded = input::read(file, args.input.input_layout)?;
-            check(&loaded, budget, args)
+            check(&loaded, budget, args, &mut express)
         })
         .collect();
 
     match args.format {
-        ReportFormat::Human => human(&files, &results, out),
+        ReportFormat::Human => human(&files, &results, !args.express.is_empty(), out),
         ReportFormat::Json => json(&files, &results, out),
         ReportFormat::Sarif => sarif(&files, &results, out),
     }
@@ -84,9 +189,23 @@ fn verdict(results: &[CliResult<Checked>]) -> Outcome {
     }
 }
 
-fn check(loaded: &Loaded, budget: Budget, args: &ValidateArgs) -> CliResult<Checked> {
+fn check(
+    loaded: &Loaded,
+    budget: Budget,
+    args: &ValidateArgs,
+    express: &mut ExpressFiles,
+) -> CliResult<Checked> {
     let schema = input::declared_schema(&loaded.model)?;
-    let report: Report = validate_with(&loaded.model, schema, budget);
+    let rules = if express.files.is_empty() {
+        None
+    } else {
+        Some(express.rules_for(schema)?)
+    };
+    let mut options = ValidateOptions::new().budget(budget);
+    if let Some(rules) = &rules {
+        options = options.express(rules);
+    }
+    let report: Report = validate_with_options(&loaded.model, schema, &options);
     let summary = report.summary();
     let line = |id: u64| loaded.lines.as_ref().and_then(|lines| lines.line(id));
     let items = report
@@ -132,6 +251,7 @@ fn check(loaded: &Loaded, budget: Budget, args: &ValidateArgs) -> CliResult<Chec
         errors: summary.errors,
         evaluation_errors: summary.evaluation_errors,
         warnings: summary.warnings,
+        indeterminate: summary.indeterminate,
         unsupported: summary.unsupported,
         items,
     })
@@ -144,6 +264,7 @@ fn plural(count: usize, one: &str, many: &str) -> String {
 fn human(
     files: &[String],
     results: &[CliResult<Checked>],
+    express: bool,
     out: &mut impl Write,
 ) -> std::io::Result<()> {
     for (file, result) in files.iter().zip(results) {
@@ -181,9 +302,15 @@ fn human(
         } else {
             ""
         };
+        // Only a run that evaluates EXPRESS rules can decide "indeterminate".
+        let indeterminate = if express {
+            format!(", {} indeterminate", checked.indeterminate)
+        } else {
+            String::new()
+        };
         writeln!(
             out,
-            "{file}: {}: {verdict}: {}, {}, {}; {} not evaluated{truncated}",
+            "{file}: {}: {verdict}: {}, {}, {}{indeterminate}; {} not evaluated{truncated}",
             checked.schema,
             plural(checked.errors, "error", "errors"),
             plural(
@@ -222,6 +349,7 @@ fn json(
                             Json::uint(checked.evaluation_errors as u64),
                         ),
                         ("warnings", Json::uint(checked.warnings as u64)),
+                        ("indeterminate", Json::uint(checked.indeterminate as u64)),
                         ("unsupported", Json::uint(checked.unsupported as u64)),
                     ]),
                 ),

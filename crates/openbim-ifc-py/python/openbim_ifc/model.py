@@ -61,7 +61,8 @@ class IfcModel(ModelAccess):
     named rather than numbered, ``unknown-attribute`` or
     ``derived-attribute``, or, from a plain value written by name,
     ``type-mismatch`` or ``ambiguous-value``, or, from authoring,
-    ``missing-attribute`` or ``still-referenced``.
+    ``missing-attribute`` or ``still-referenced``, or, from validation
+    with EXPRESS rules, ``express-mismatch`` or ``invalid-express``.
 
     A parsed model decodes each entity the first time it is read: parsing
     checks every record but builds nothing, so opening a large file is fast
@@ -181,6 +182,22 @@ class IfcModel(ModelAccess):
         ``truncated`` when reached.
         """
         return ValidationReport._from_wire(self._native.validate(max_findings))
+
+    def validate_express(
+        self, express: str, max_findings: Optional[int] = None
+    ) -> ValidationReport:
+        """Validate with the EXPRESS rules of the declared release.
+
+        ``express`` is the text of that release's ``.exp`` file, which the
+        caller supplies: the schemas are CC BY-ND and not bundled. Every
+        WHERE, type and global rule is evaluated, and INVERSE cardinality is
+        checked; ``indeterminate`` counts the rules that evaluated to
+        UNKNOWN. The text is parsed on every call. Raises ``express-mismatch``
+        for text that declares another schema than the model's or disagrees
+        with the release's tables, and ``invalid-express`` for text that does
+        not parse. ``max_findings`` is as for :meth:`validate`.
+        """
+        return ValidationReport._from_wire(self._native.validate_express(express, max_findings))
 
     def unreachable_products(self) -> List[UnreachableProduct]:
         """Products no viewer will draw, with a stable ``reason``, in id order."""

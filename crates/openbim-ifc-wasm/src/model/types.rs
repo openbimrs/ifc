@@ -64,7 +64,9 @@ export type IfcErrorCode =
   | "type-mismatch"
   | "ambiguous-value"
   | "invalid-selector"
-  | "inverse-attribute";
+  | "inverse-attribute"
+  | "express-mismatch"
+  | "invalid-express";
 
 /**
  * A value `IfcModel.getValue` reads by path (#464): a tagged value, a list
@@ -124,7 +126,12 @@ export interface IfcHeader {
 
 /** One validation finding. `entity` is `undefined` for the file as a whole. */
 export interface ValidationFinding {
-  severity: "error" | "evaluation-error" | "warning" | "unsupported";
+  severity:
+    | "error"
+    | "evaluation-error"
+    | "warning"
+    | "indeterminate"
+    | "unsupported";
   rule: string;
   entity: bigint | undefined;
   attributeIndex: number | undefined;
@@ -133,7 +140,7 @@ export interface ValidationFinding {
   message: string;
 }
 
-/** The result of `IfcModel.validate`. */
+/** The result of `IfcModel.validate` or `IfcModel.validateExpress`. */
 export interface ValidationReport {
   /** No errors and no evaluation errors; unsupported rules do not count. */
   conformant: boolean;
@@ -142,6 +149,8 @@ export interface ValidationReport {
   errors: number;
   evaluationErrors: number;
   warnings: number;
+  /** EXPRESS rules that evaluated to UNKNOWN; 0 without EXPRESS rules. */
+  indeterminate: number;
   unsupported: number;
   findings: ValidationFinding[];
 }

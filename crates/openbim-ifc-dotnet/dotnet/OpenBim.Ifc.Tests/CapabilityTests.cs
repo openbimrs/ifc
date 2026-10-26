@@ -1,6 +1,7 @@
 // The #244 surface: lenient reads, the header, validation, ifcXML and the
 // reachability lint, as smoke.c's `capabilities()` checks them.
 
+using System;
 using System.Linq;
 using Xunit;
 
@@ -73,6 +74,21 @@ public class CapabilityTests
         var capped = model.Validate(maxFindings: 1);
         Assert.Single(capped.Findings);
         Assert.Equal(new DanglingReference(3, 9), Assert.Single(model.DanglingReferences()));
+    }
+
+    [Fact]
+    public void ExpressValidationRefusesTextThatDoesNotFitTheModel()
+    {
+        using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.File));
+        var mismatch = Assert.Throws<IfcException>(() => model.ValidateExpress("SCHEMA IFC2X3; END_SCHEMA;"));
+        Assert.Equal("express-mismatch", mismatch.Code);
+        Assert.Equal(IfcStatus.ExpressMismatch, mismatch.Status);
+        var invalid = Assert.Throws<IfcException>(() => model.ValidateExpress("SCHEMA IFC4; ENTITY ; END_SCHEMA;"));
+        Assert.Equal("invalid-express", invalid.Code);
+        Assert.Equal(IfcStatus.InvalidExpress, invalid.Status);
+        Assert.Equal("invalid-express", Assert.Throws<IfcException>(() => model.ValidateExpress("")).Code);
+        Assert.Throws<ArgumentOutOfRangeException>(() => model.ValidateExpress("x", maxFindings: 0));
+        Assert.Equal(0, model.Validate().Indeterminate);
     }
 
     [Fact]

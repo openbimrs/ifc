@@ -26,6 +26,7 @@ mod selector;
 mod table;
 mod types;
 mod units;
+mod validation;
 
 /// An IFC model: entities keyed by their `#id`, in file order.
 ///
@@ -151,18 +152,6 @@ impl IfcModel {
         let header = records::header_from_js(header).map_err(js_error)?;
         self.0.set_header(header);
         Ok(())
-    }
-
-    /// Validate against the schema the header declares; findings are
-    /// sorted by severity, rule, entity and slot. `maxFindings` caps the
-    /// report (default 10,000) and sets `truncated` when reached.
-    #[wasm_bindgen(js_name = validate, unchecked_return_type = "ValidationReport")]
-    pub fn validate_js(
-        &self,
-        #[wasm_bindgen(js_name = maxFindings)] max_findings: Option<u32>,
-    ) -> Result<JsValue, JsValue> {
-        let report = self.0.validate(max_findings.map(index)).map_err(js_error)?;
-        Ok(records::report_to_js(&report))
     }
 
     /// Products no viewer will draw (outside the spatial structure, or with

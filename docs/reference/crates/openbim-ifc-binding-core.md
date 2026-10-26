@@ -57,6 +57,7 @@ view of `openbim-ifc`; if a binding needs more, the facade grows first.
 | `systems` | yes | `openbim-ifc/systems` |
 | `unreachable` | yes | `openbim-ifc/spatial`, `openbim-ifc/geometry-select` |
 | `validate` | yes | `openbim-ifc/validate` |
+| `validate-express` | yes | `validate`, `openbim-ifc/validate-express` |
 | `zip` | yes | `openbim-ifc/zip` |
 
 ## Depends on

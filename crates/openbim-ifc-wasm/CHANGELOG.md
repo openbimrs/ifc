@@ -8,6 +8,18 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#538, EXPRESS rules)
+
+- `IfcModel.validateExpress(express, maxFindings?)` validates with the
+  EXPRESS rules of the declared release from the `.exp` text the caller
+  supplies, behind the new `validate-express` cargo feature (default, so
+  the npm package carries it). `IfcErrorCode` gains `express-mismatch` and
+  `invalid-express`.
+- `ValidationReport.indeterminate`; findings gain the severity
+  `indeterminate`.
+
+Semver: additive: minor.
+
 ## [0.13.0] - 2026-10-20
 
 ### Added (#479, copy and append)

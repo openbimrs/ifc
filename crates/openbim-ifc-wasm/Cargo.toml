@@ -53,7 +53,7 @@ js-sys = "=0.3.105"
 # its methods, which throw `feature-disabled`.
 default = [
     "ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3",
-    "ifcxml", "zip", "validate", "unreachable",
+    "ifcxml", "zip", "validate", "validate-express", "unreachable",
     "properties", "properties-write", "property-catalog-runtime",
     "spatial", "classification", "material", "systems", "cost", "georef",
     "author", "placements",
@@ -69,6 +69,9 @@ ifcxml = ["openbim-ifc-binding-core/ifcxml"]
 zip = ["openbim-ifc-binding-core/zip"]
 # Schema validation; links only the enabled releases' tables (#306).
 validate = ["openbim-ifc-binding-core/validate"]
+# Validation with EXPRESS rules (#538): `validateExpress` evaluates the
+# rules of the `.exp` text the caller supplies; nothing is bundled.
+validate-express = ["openbim-ifc-binding-core/validate-express"]
 # The viewer reachability lint; links only the enabled releases' tables.
 unreachable = ["openbim-ifc-binding-core/unreachable"]
 # Domain views (#123), one per facade domain.

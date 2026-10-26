@@ -11,9 +11,11 @@ use crate::{BindingError, IfcModel};
 /// One finding: what is wrong, and where.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ValidationFinding {
-    /// `error`, `evaluation-error`, `warning` or `unsupported`, as the
-    /// validator spells them. `error` and `evaluation-error` make a file
-    /// non-conformant; `unsupported` is a rule this validator does not check.
+    /// `error`, `evaluation-error`, `warning`, `indeterminate` or
+    /// `unsupported`, as the validator spells them. `error` and
+    /// `evaluation-error` make a file non-conformant; `indeterminate` is an
+    /// EXPRESS rule that evaluated to UNKNOWN; `unsupported` is a rule this
+    /// validator does not check.
     pub severity: String,
     /// Stable id of the check, e.g. `structure.reference.dangling`.
     pub rule: String,
@@ -38,6 +40,9 @@ pub struct ValidationSummary {
     pub evaluation_errors: usize,
     /// Legal but suspicious conditions.
     pub warnings: usize,
+    /// EXPRESS rules that evaluated to UNKNOWN for an instance (#538); always
+    /// 0 without EXPRESS rules.
+    pub indeterminate: usize,
     /// Rules this validator does not evaluate.
     pub unsupported: usize,
 }
@@ -76,15 +81,75 @@ impl IfcModel {
             Err(BindingError::FeatureDisabled("validate"))
         }
     }
+
+    /// Validate with the EXPRESS rules of the declared release, read from
+    /// `express`, the text of that release's `.exp` file (#538).
+    ///
+    /// Every WHERE, type and global rule is evaluated, and INVERSE
+    /// cardinality is checked. The text is parsed on each call against the
+    /// declared release's tables; it is never bundled (the schemas are
+    /// CC BY-ND). Refused with `express-mismatch` when the text declares
+    /// another schema or disagrees with the tables, with `invalid-express`
+    /// when it does not parse, with `unsupported-schema` when the header
+    /// names no bundled schema, and with `feature-disabled` in a build
+    /// without the `validate-express` feature.
+    pub fn validate_express(
+        &self,
+        express: &str,
+        max_findings: Option<usize>,
+    ) -> Result<ValidationReport, BindingError> {
+        #[cfg(feature = "validate-express")]
+        {
+            run_express(self, express, max_findings)
+        }
+        #[cfg(not(feature = "validate-express"))]
+        {
+            let _ = (express, max_findings);
+            Err(BindingError::FeatureDisabled("validate-express"))
+        }
+    }
 }
 
 #[cfg(feature = "validate")]
 fn run(model: &IfcModel, max_findings: Option<usize>) -> Result<ValidationReport, BindingError> {
-    use ifc::validate::{validate_with, Budget, Path};
+    use ifc::validate::{validate_with, Budget};
 
     let schema = model.declared_schema()?;
     let budget = max_findings.map_or(Budget::DEFAULT, |max_findings| Budget { max_findings });
-    let report = validate_with(&model.inner, schema, budget);
+    Ok(flatten(&validate_with(&model.inner, schema, budget)))
+}
+
+#[cfg(feature = "validate-express")]
+fn run_express(
+    model: &IfcModel,
+    express: &str,
+    max_findings: Option<usize>,
+) -> Result<ValidationReport, BindingError> {
+    use ifc::validate::express::{ExpressError, ExpressRules};
+    use ifc::validate::{validate_with_options, Budget, ValidateOptions};
+
+    let schema = model.declared_schema()?;
+    let rules = ExpressRules::parse(express, schema).map_err(|error| match error {
+        ExpressError::SchemaMismatch { .. } | ExpressError::TableMismatch { .. } => {
+            BindingError::ExpressMismatch(error.to_string())
+        }
+        // Syntax, Unresolved, and any error added after this binding.
+        _ => BindingError::InvalidExpress(error.to_string()),
+    })?;
+    let budget = max_findings.map_or(Budget::DEFAULT, |max_findings| Budget { max_findings });
+    let options = ValidateOptions::new().budget(budget).express(&rules);
+    Ok(flatten(&validate_with_options(
+        &model.inner,
+        schema,
+        &options,
+    )))
+}
+
+/// The validator's report as plain records.
+#[cfg(feature = "validate")]
+fn flatten(report: &ifc::validate::Report) -> ValidationReport {
+    use ifc::validate::Path;
+
     let summary = report.summary();
     let findings = report
         .sorted()
@@ -113,17 +178,18 @@ fn run(model: &IfcModel, max_findings: Option<usize>) -> Result<ValidationReport
             }
         })
         .collect();
-    Ok(ValidationReport {
+    ValidationReport {
         conformant: report.is_conformant(),
         truncated: report.is_truncated(),
         summary: ValidationSummary {
             errors: summary.errors,
             evaluation_errors: summary.evaluation_errors,
             warnings: summary.warnings,
+            indeterminate: summary.indeterminate,
             unsupported: summary.unsupported,
         },
         findings,
-    })
+    }
 }
 
 /// The report as one tagged `list` of findings, each a `list` of seven

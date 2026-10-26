@@ -96,6 +96,12 @@ pub enum OpenbimIfcStatus {
     /// A by-name attribute write named an `INVERSE` attribute, which holds
     /// no slot (`inverse-attribute`).
     InverseAttribute = 35,
+    /// EXPRESS rule text declares another schema than the model's, or
+    /// disagrees with the release's tables (`express-mismatch`).
+    ExpressMismatch = 36,
+    /// EXPRESS rule text does not parse, or names something that binds to
+    /// nothing (`invalid-express`).
+    InvalidExpress = 37,
     /// A Rust panic was contained at the boundary. Report it as a bug.
     Panic = 255,
 }
@@ -128,6 +134,8 @@ impl From<&BindingError> for OpenbimIfcStatus {
             BindingError::AmbiguousValue(_) => Self::AmbiguousValue,
             BindingError::InvalidSelector { .. } => Self::InvalidSelector,
             BindingError::InverseAttribute(_) => Self::InverseAttribute,
+            BindingError::ExpressMismatch(_) => Self::ExpressMismatch,
+            BindingError::InvalidExpress(_) => Self::InvalidExpress,
         }
     }
 }
@@ -261,6 +269,14 @@ mod tests {
             (
                 BindingError::InverseAttribute(String::new()),
                 OpenbimIfcStatus::InverseAttribute,
+            ),
+            (
+                BindingError::ExpressMismatch(String::new()),
+                OpenbimIfcStatus::ExpressMismatch,
+            ),
+            (
+                BindingError::InvalidExpress(String::new()),
+                OpenbimIfcStatus::InvalidExpress,
             ),
         ];
         for (error, status) in cases {
