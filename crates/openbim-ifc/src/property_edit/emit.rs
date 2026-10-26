@@ -414,7 +414,30 @@ impl Stage {
                 }
             }
         }
+        let mut seen: HashSet<&str> = HashSet::new();
         for (edit, global_id) in &self.derived {
+            // Two records of one batch must not share a `GlobalId`: refuse,
+            // naming the first entity the batch created with it.
+            if !seen.insert(global_id.as_str()) {
+                let first = self.tx.edits().iter().find_map(|staged| match staged {
+                    Edit::Create { id, entity }
+                        if matches!(entity.attributes.first(),
+                            Some(Value::Text(text)) if &**text == global_id.as_str()) =>
+                    {
+                        Some(*id)
+                    }
+                    _ => None,
+                });
+                if let Some(holder) = first {
+                    return Err(PropertyEditError::at(
+                        *edit,
+                        PropertyEditFailure::SeedReused {
+                            global_id: global_id.clone(),
+                            holder,
+                        },
+                    ));
+                }
+            }
             if let Some(&holder) = held.get(global_id.as_str()) {
                 return Err(PropertyEditError::at(
                     *edit,

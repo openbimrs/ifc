@@ -183,3 +183,56 @@ fn a_seed_may_edit_another_set() {
     set(&mut m, "Other", "A", 559);
     assert_eq!(identities(&m).len(), 4);
 }
+
+#[test]
+fn records_removed_in_the_same_batch_do_not_hold_the_seed() {
+    let mut m = model();
+    let created = set(&mut m, "Custom", "A", 559);
+    let id = property_set(&m, &created);
+    let mut tx = Transaction::new(&m);
+    tx.set_attribute(id, 2, Value::Text("Renamed".into()));
+    tx.commit(&mut m).expect("renames");
+    let outcome = apply_property_edits(
+        &mut m,
+        &[
+            PropertyEdit::remove(EntityId(7), "Renamed", "A"),
+            PropertyEdit::set(EntityId(7), "Custom", "A", label("b")),
+        ],
+        559,
+    )
+    .expect("the removed set does not hold the seed");
+    assert!(outcome.removed.contains(&id));
+}
+
+#[test]
+fn two_objects_sharing_a_global_id_get_distinct_record_ids() {
+    let mut m = model();
+    let mut proxy = m.get(EntityId(7)).expect("proxy").clone();
+    proxy.attributes[2] = Value::Text("Q".into());
+    let twin = m.push(proxy);
+    let outcome = apply_property_edits(
+        &mut m,
+        &[
+            PropertyEdit::set(EntityId(7), "Custom", "A", label("a")),
+            PropertyEdit::set(twin, "Custom", "A", label("a")),
+        ],
+        559,
+    )
+    .expect("applies");
+    assert_eq!(
+        outcome
+            .created
+            .iter()
+            .filter(|id| {
+                m.get(**id).is_some_and(|e| {
+                    matches!(
+                        &*e.type_name,
+                        "IFCPROPERTYSET" | "IFCRELDEFINESBYPROPERTIES"
+                    )
+                })
+            })
+            .count(),
+        4
+    );
+    assert_eq!(identities(&m).len(), 4);
+}
