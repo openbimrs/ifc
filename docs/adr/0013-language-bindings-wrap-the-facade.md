@@ -214,6 +214,22 @@ crate directly.
   request, refused per product with typed records;
   [ADR 0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes) records
   the decision and why the serialised neutral representation waits.
+- *Amended 2026-10-26 (#538, EXPRESS rules):* each host gains a separate
+  method that validates with the EXPRESS rules of the declared release
+  from `.exp` text the caller supplies (`validate_express`,
+  `validateExpress`, `ValidateExpress`,
+  `openbim_ifc_v0_1_model_validate_express`), parsed on every call with
+  `ExpressRules::parse` against the model's own tables. The text is never
+  bundled: the schemas are CC BY-ND. The existing `validate` signatures are
+  unchanged -- an optional parameter would break the .NET binary and the
+  frozen `v0_1` C symbol -- and there is no handle object and no hidden
+  cache. New codes `express-mismatch` (C 36), for text that declares
+  another schema or disagrees with the tables, and `invalid-express`
+  (C 37), for text that does not parse or names nothing in scope. Reports
+  carry an `indeterminate` count (rules that evaluated to UNKNOWN); the C
+  binding adds `OpenbimIfcExpressValidationSummary` for it, since the
+  `v0_1` summary is frozen. The `validate-express` feature is on by
+  default, so the npm package carries it.
 
 ## Alternatives considered
 

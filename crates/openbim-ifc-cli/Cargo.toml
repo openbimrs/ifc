@@ -58,6 +58,7 @@ openbim-ifc = { workspace = true, features = [
     "zip",
     "schema",
     "validate",
+    "validate-express",
     "spatial",
     "properties",
     "property-catalog",

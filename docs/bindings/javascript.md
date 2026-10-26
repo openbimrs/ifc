@@ -178,7 +178,14 @@ const fromXml = IfcModel.parseIfcXml(xml);
 - **Validation.** `validate(maxFindings?)` checks the model against the
   schema its header declares and returns a `ValidationReport`: counts by
   severity, `conformant`, `truncated`, and findings sorted by severity,
-  rule, entity and slot.
+  rule, entity and slot. `validateExpress(express, maxFindings?)` also
+  evaluates every WHERE, type and global rule of the declared release from
+  `express`, the text of that release's `.exp` file, which you supply (the
+  schemas are CC BY-ND, so none is bundled); `indeterminate` counts the
+  rules that evaluated to UNKNOWN. The text is parsed on every call. Text
+  that declares another schema than the model's, or disagrees with the
+  release's tables, throws `express-mismatch`; text that does not parse
+  throws `invalid-express`.
 - **ifcXML.** `writeIfcXml()` and `IfcModel.parseIfcXml(bytes)` use this
   library's lossless layout; pass `"IFC4"` or `"IFC4X3_ADD2"` for the
   buildingSMART XSD layout of that release, which refuses with `write`
@@ -196,7 +203,8 @@ const fromXml = IfcModel.parseIfcXml(xml);
   draw, each with a stable `reason`.
 
 Validation, ifcXML and the reachability lint are cargo features of
-`openbim-ifc-wasm` (`validate`, `ifcxml`, `unreachable`), on by default.
+`openbim-ifc-wasm` (`validate`, `validate-express`, `ifcxml`,
+`unreachable`), on by default.
 A size-trimmed browser build can leave them out, as it can leave out IFC
 releases; their methods then throw `feature-disabled`. Measured after
 `wasm-bindgen`, without `wasm-opt`, on an IFC4-only build: ifcXML adds
@@ -1097,6 +1105,23 @@ it is opt-in. Beside `mesh`, which links the lowering already, it adds
 286 KB (88 KB under `gzip -9`, 46 KB under brotli), so the mesh entry
 carries both.
 
+EXPRESS rules ([#538](https://github.com/openbimrs/ifc/issues/538)),
+measured on 2026-10-26 the same way (`gzip -9` from the `gzip` command,
+brotli 11 from `node:zlib`), at the commit that added `validate-express`:
+
+| Features | Raw | gzip -9 | brotli 11 |
+| --- | ---: | ---: | ---: |
+| default without `validate-express` | 4,057,299 | 1,387,141 | 936,472 |
+| default | 4,364,373 | 1,491,016 | 1,007,194 |
+| `ifc4,validate` | 1,458,404 | 562,413 | 434,546 |
+| `ifc4,validate,validate-express` | 1,765,081 | 665,314 | 507,062 |
+
+The EXPRESS evaluator adds 307 KB to the default module (104 KB under
+`gzip -9`, 71 KB under brotli), so the default carries it and a size-trimmed
+build can leave `validate-express` out; `validateExpress` then throws
+`feature-disabled`. The earlier tables were measured before later domains
+and geometry grew the default; compare rows within a table.
+
 ### Package size
 
 The npm package carries two entries ([#369](https://github.com/openbimrs/ifc/issues/369)),
@@ -1186,7 +1211,6 @@ class, interface and type the package's `.d.ts` declares.
 | `model.writeIfcZip(inner: string \| undefined, profile: string \| undefined): Uint8Array` | yes | Serialize as ifcZIP bytes: one Deflate entry holding STEP (`model.ifc`), or with `inner` `"ifcxml"` ifcXML (`model.ifcXML`) in the layout `profile` names, as for `writeIfcXml`. `parse` reads it back. |
 | `model.header(): IfcHeader` |  | The STEP file header: description, name, time stamp, author, organization, preprocessor, originating system, authorization and schema tokens. |
 | `model.setHeader(header: IfcHeader): void` | yes | Replace the STEP file header; every field is required. |
-| `model.validate(maxFindings: number \| undefined): ValidationReport` | yes | Validate against the schema the header declares; findings are sorted by severity, rule, entity and slot. `maxFindings` caps the report (default 10,000) and sets `truncated` when reached. |
 | `model.unreachableProducts(): UnreachableProduct[]` | yes | Products no viewer will draw (outside the spatial structure, or with geometry only in non-model contexts), with a stable `reason`. |
 | `model.productPlacements(ids: bigint[] \| BigUint64Array \| undefined): ProductPlacement[]` | yes | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or, without, for every product with a shape. A product that cannot be placed is a record with a typed `refusal`; the call itself throws only `unsupported-schema` or `feature-disabled` (feature `placements`). |
 | `model.productGeometry(ids: bigint[] \| BigUint64Array \| undefined, encoding: GeometryPayloadEncoding \| undefined): ProductGeometry[]` | yes | Each product's Body as Axiolid's neutral geometry graph (#367), exact (extrusions, sweeps, B-splines, unevaluated booleans), for `ids` or, without, every product with a shape, in Axiolid's versioned wire format: `{ format: "axiolid-geometry-graph", version: "1.0", graph: { nodes, roots } }` (the lowest version the content needs, `"1.0"` to `"1.4"`), in world coordinates, metres. `encoding` picks the `payload`: `"json"` (the default) the text, `"object"` the text parsed, `"cbor"` the CBOR bytes as a `Uint8Array`. A product that cannot be lowered has a typed `refusal`; the call itself throws only `unsupported-schema`, `feature-disabled` (feature `graph`) or `invalid-value` for an unknown encoding. |
@@ -1307,7 +1331,9 @@ export type IfcErrorCode =
   | "type-mismatch"
   | "ambiguous-value"
   | "invalid-selector"
-  | "inverse-attribute";
+  | "inverse-attribute"
+  | "express-mismatch"
+  | "invalid-express";
 
 /**
  * A value `IfcModel.getValue` reads by path (#464): a tagged value, a list
@@ -1367,7 +1393,12 @@ export interface IfcHeader {
 
 /** One validation finding. `entity` is `undefined` for the file as a whole. */
 export interface ValidationFinding {
-  severity: "error" | "evaluation-error" | "warning" | "unsupported";
+  severity:
+    | "error"
+    | "evaluation-error"
+    | "warning"
+    | "indeterminate"
+    | "unsupported";
   rule: string;
   entity: bigint | undefined;
   attributeIndex: number | undefined;
@@ -1376,7 +1407,7 @@ export interface ValidationFinding {
   message: string;
 }
 
-/** The result of `IfcModel.validate`. */
+/** The result of `IfcModel.validate` or `IfcModel.validateExpress`. */
 export interface ValidationReport {
   /** No errors and no evaluation errors; unsupported rules do not count. */
   conformant: boolean;
@@ -1385,6 +1416,8 @@ export interface ValidationReport {
   errors: number;
   evaluationErrors: number;
   warnings: number;
+  /** EXPRESS rules that evaluated to UNKNOWN; 0 without EXPRESS rules. */
+  indeterminate: number;
   unsupported: number;
   findings: ValidationFinding[];
 }

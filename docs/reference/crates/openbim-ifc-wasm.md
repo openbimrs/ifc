@@ -61,6 +61,7 @@ suites here cover only the JS conversion itself.
 | `systems` | yes | `openbim-ifc-binding-core/systems` |
 | `unreachable` | yes | `openbim-ifc-binding-core/unreachable` |
 | `validate` | yes | `openbim-ifc-binding-core/validate` |
+| `validate-express` | yes | `openbim-ifc-binding-core/validate-express` |
 | `zip` | yes | `openbim-ifc-binding-core/zip` |
 
 ## Depends on

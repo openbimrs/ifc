@@ -156,6 +156,11 @@ pub(crate) fn report_to_js(report: &ValidationReport) -> JsValue {
         &count(report.summary.evaluation_errors),
     );
     set(&object, "warnings", &count(report.summary.warnings));
+    set(
+        &object,
+        "indeterminate",
+        &count(report.summary.indeterminate),
+    );
     set(&object, "unsupported", &count(report.summary.unsupported));
     let findings: Array = report
         .findings

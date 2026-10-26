@@ -35,6 +35,20 @@ internal struct NativeValidationSummary
     public uint Truncated;
 }
 
+/// <summary>Counts from one validation run with EXPRESS rules (<c>OpenbimIfcExpressValidationSummary</c>).</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeExpressValidationSummary
+{
+    public nuint FindingCount;
+    public nuint Errors;
+    public nuint EvaluationErrors;
+    public nuint Warnings;
+    public nuint Indeterminate;
+    public nuint Unsupported;
+    public uint Conformant;
+    public uint Truncated;
+}
+
 /// <summary>ABI and crate versions (<c>OpenbimIfcVersion</c>).</summary>
 [StructLayout(LayoutKind.Sequential)]
 internal struct NativeVersion
@@ -350,6 +364,9 @@ internal static unsafe partial class NativeMethods
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_model_validate(ulong model, nuint max_findings, NativeValidationSummary* out_summary, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_model_validate_express(ulong model, byte* express, nuint express_len, nuint max_findings, NativeExpressValidationSummary* out_summary, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_model_write(ulong model, byte* buffer, nuint capacity, nuint* out_required);

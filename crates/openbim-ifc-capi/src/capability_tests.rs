@@ -250,6 +250,61 @@ fn validation_crosses_as_a_summary_and_a_tape_of_findings() {
 }
 
 #[test]
+fn express_validation_refuses_unfit_text_with_its_own_statuses() {
+    let model = parse(FILE);
+    let mut summary = OpenbimIfcExpressValidationSummary::default();
+    let summary_out: *mut OpenbimIfcExpressValidationSummary = &mut summary;
+    let run = |express: &[u8]| {
+        // SAFETY (closure): `express` and `summary` outlive the call; the
+        // size query passes null buffers with zero capacity.
+        unsafe {
+            openbim_ifc_v0_1_model_validate_express(
+                model,
+                express.as_ptr(),
+                express.len(),
+                0,
+                summary_out,
+                null_mut(),
+                0,
+                &mut 0,
+                null_mut(),
+                0,
+                &mut 0,
+            )
+        }
+    };
+    // A size query parses, so the refusal is the same without buffers.
+    let status = run(b"SCHEMA IFC2X3; END_SCHEMA;");
+    assert_eq!(status, OpenbimIfcStatus::ExpressMismatch);
+    assert_eq!(status as i32, 36);
+    assert_eq!(last_code(model), "express-mismatch");
+    let status = run(b"SCHEMA IFC4; ENTITY ; END_SCHEMA;");
+    assert_eq!(status, OpenbimIfcStatus::InvalidExpress);
+    assert_eq!(status as i32, 37);
+    assert_eq!(last_code(model), "invalid-express");
+    assert_eq!(run(&[0xff, 0xfe]), OpenbimIfcStatus::InvalidArgument);
+
+    // SAFETY: a null summary pointer is refused before anything is read.
+    let status = unsafe {
+        openbim_ifc_v0_1_model_validate_express(
+            model,
+            b"x".as_ptr(),
+            1,
+            0,
+            null_mut(),
+            null_mut(),
+            0,
+            null_mut(),
+            null_mut(),
+            0,
+            null_mut(),
+        )
+    };
+    assert_eq!(status, OpenbimIfcStatus::NullPointer);
+    assert_eq!(openbim_ifc_v0_1_model_destroy(model), OpenbimIfcStatus::Ok);
+}
+
+#[test]
 fn ifcxml_round_trips_and_an_unknown_profile_is_refused() {
     let model = parse(FILE);
     let mut need = 0;

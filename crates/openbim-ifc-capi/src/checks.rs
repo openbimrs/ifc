@@ -7,7 +7,7 @@
 
 use openbim_ifc_binding_core::{unreachable, validation};
 
-use crate::buffer::put;
+use crate::buffer::{put, text};
 use crate::model::{done, fill_tape, with_model, OpenbimIfcModel};
 use crate::status::{boundary, OpenbimIfcStatus};
 use crate::tape::{OpenbimIfcValueNode, Tape};
@@ -37,7 +37,8 @@ pub struct OpenbimIfcValidationSummary {
 /// `out_summary` gets the counts, also when the tape does not fit. The tape
 /// is a `LIST` of findings, sorted by severity, rule, entity and slot; each
 /// finding is a `LIST` of seven values: severity (`TEXT`: `error`,
-/// `evaluation-error`, `warning` or `unsupported`), rule id (`TEXT`),
+/// `evaluation-error`, `warning` or `unsupported`; also `indeterminate` from
+/// `openbim_ifc_v0_1_model_validate_express`), rule id (`TEXT`),
 /// entity (`REF`, or `NULL` for the file), attribute index (`INTEGER` or
 /// `NULL`), attribute name (`TEXT` or `NULL`), path (`TEXT`) and message
 /// (`TEXT`). `max_findings` 0 is the validator's default budget (10,000).
@@ -70,6 +71,106 @@ pub unsafe extern "C" fn openbim_ifc_v0_1_model_validate(
                 errors: report.summary.errors,
                 evaluation_errors: report.summary.evaluation_errors,
                 warnings: report.summary.warnings,
+                unsupported: report.summary.unsupported,
+                conformant: u32::from(report.conformant),
+                truncated: u32::from(report.truncated),
+            };
+            // SAFETY: checked non-null; caller contract above.
+            if let Err(status) = unsafe { put(out_summary, summary) } {
+                return done(status);
+            }
+            let tape = Tape::encode(&validation::findings_to_tagged(&report.findings));
+            // SAFETY: caller contract above.
+            done(unsafe {
+                fill_tape(
+                    &tape,
+                    nodes,
+                    node_capacity,
+                    out_nodes_required,
+                    strings,
+                    string_capacity,
+                    out_strings_required,
+                )
+            })
+        })
+    })
+}
+
+/// Counts from one validation run with EXPRESS rules (#538).
+///
+/// A separate record from [`OpenbimIfcValidationSummary`], which the frozen
+/// `v0_1` symbol `openbim_ifc_v0_1_model_validate` keeps: this one adds the
+/// `indeterminate` count.
+#[repr(C)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct OpenbimIfcExpressValidationSummary {
+    /// Number of findings on the tape.
+    pub finding_count: usize,
+    /// Schema violations.
+    pub errors: usize,
+    /// Implemented rules that could not be decided for an instance.
+    pub evaluation_errors: usize,
+    /// Legal but suspicious conditions.
+    pub warnings: usize,
+    /// EXPRESS rules that evaluated to UNKNOWN for an instance.
+    pub indeterminate: usize,
+    /// Rules this validator does not evaluate.
+    pub unsupported: usize,
+    /// 1 when there are no errors and no evaluation errors, else 0.
+    pub conformant: u32,
+    /// 1 when the run hit `max_findings`: the counts are lower bounds.
+    pub truncated: u32,
+}
+
+/// Validate with the EXPRESS rules of the declared release, read from
+/// `express`, the UTF-8 text of that release's `.exp` file (#538).
+///
+/// As `openbim_ifc_v0_1_model_validate` (the same findings tape and
+/// `max_findings` convention), with every WHERE, type and global rule
+/// evaluated and INVERSE cardinality checked; findings of severity
+/// `indeterminate` are rules that evaluated to UNKNOWN. The text is parsed on
+/// every call, so a size query parses and validates. `InvalidArgument` when
+/// `express` is not UTF-8; `ExpressMismatch` when it declares another schema
+/// than the model's or disagrees with the release's tables; `InvalidExpress`
+/// when it does not parse; `UnsupportedSchema` when the declared schema is
+/// not bundled; `FeatureDisabled` in a build without the `validate-express`
+/// feature. The schemas are CC BY-ND, so none is bundled.
+///
+/// # Safety
+/// `express` valid for reads of `express_len` bytes; `out_summary` valid for
+/// one write; otherwise as for `openbim_ifc_v0_1_entity_attribute`.
+#[no_mangle]
+pub unsafe extern "C" fn openbim_ifc_v0_1_model_validate_express(
+    model: OpenbimIfcModel,
+    express: *const u8,
+    express_len: usize,
+    max_findings: usize,
+    out_summary: *mut OpenbimIfcExpressValidationSummary,
+    nodes: *mut OpenbimIfcValueNode,
+    node_capacity: usize,
+    out_nodes_required: *mut usize,
+    strings: *mut u8,
+    string_capacity: usize,
+    out_strings_required: *mut usize,
+) -> OpenbimIfcStatus {
+    boundary(|| {
+        if out_summary.is_null() {
+            return OpenbimIfcStatus::NullPointer;
+        }
+        // SAFETY: caller contract above.
+        let express = match unsafe { text(express, express_len) } {
+            Ok(express) => express,
+            Err(status) => return status,
+        };
+        with_model(model, |m| {
+            let report =
+                m.validate_express(express, (max_findings != 0).then_some(max_findings))?;
+            let summary = OpenbimIfcExpressValidationSummary {
+                finding_count: report.findings.len(),
+                errors: report.summary.errors,
+                evaluation_errors: report.summary.evaluation_errors,
+                warnings: report.summary.warnings,
+                indeterminate: report.summary.indeterminate,
                 unsupported: report.summary.unsupported,
                 conformant: u32::from(report.conformant),
                 truncated: u32::from(report.truncated),

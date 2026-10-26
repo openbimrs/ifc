@@ -86,7 +86,8 @@ public sealed record ValidationFinding(
     string Message);
 
 /// <summary>
-/// The result of <see cref="IfcModel.Validate"/>. <see cref="Conformant"/>
+/// The result of <see cref="IfcModel.Validate"/> or
+/// <see cref="IfcModel.ValidateExpress"/>. <see cref="Conformant"/>
 /// means no errors and no evaluation errors; unsupported rules do not count
 /// against it. <see cref="Truncated"/> means the finding budget was reached,
 /// so the counts are lower bounds.
@@ -105,7 +106,11 @@ public sealed record ValidationReport(
     long EvaluationErrors,
     long Warnings,
     long Unsupported,
-    EquatableList<ValidationFinding> Findings);
+    EquatableList<ValidationFinding> Findings)
+{
+    /// <summary>EXPRESS rules that evaluated to UNKNOWN for an instance (<see cref="IfcModel.ValidateExpress"/>); always 0 from <see cref="IfcModel.Validate"/>.</summary>
+    public long Indeterminate { get; init; }
+}
 
 /// <summary>A product no viewer will draw.</summary>
 /// <param name="Id">The product.</param>

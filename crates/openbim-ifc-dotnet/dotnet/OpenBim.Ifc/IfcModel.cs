@@ -229,6 +229,43 @@ public sealed unsafe class IfcModel : IDisposable
             RecordDecoder.DecodeList<ValidationFinding>(findings));
     }
 
+    /// <summary>Validate with the EXPRESS rules of the declared release, read from <paramref name="express"/>, the text of that release's <c>.exp</c> file, which the caller supplies (the schemas are CC BY-ND and not bundled). Every WHERE, type and global rule is evaluated; <see cref="ValidationReport.Indeterminate"/> counts the rules that evaluated to UNKNOWN. The text is parsed on every call. Refuses with <c>express-mismatch</c> text that declares another schema than the model's or disagrees with the release's tables, and with <c>invalid-express</c> text that does not parse. <paramref name="maxFindings"/> caps the report (default 10,000).</summary>
+    public ValidationReport ValidateExpress(string express, int? maxFindings = null)
+    {
+        var text = Calls.Encode(express);
+        if (maxFindings is <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxFindings), "a finding budget is positive");
+        }
+        var max = (nuint)(maxFindings ?? 0);
+        var summary = new NativeExpressValidationSummary[1];
+        // An empty array pins to a null pointer, which the C ABI refuses as a
+        // null pointer; empty text should reach the parser and refuse there.
+        var pinned = text.Length == 0 ? new byte[1] : text;
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        var findings = Tape(m, (n, nc, nr, s, sc, sr) =>
+        {
+            fixed (byte* source = pinned)
+            fixed (NativeExpressValidationSummary* counts = summary)
+            {
+                return NativeMethods.openbim_ifc_v0_1_model_validate_express(m, source, (nuint)text.Length, max, counts, n, nc, nr, s, sc, sr);
+            }
+        }).One();
+        var c = summary[0];
+        return new ValidationReport(
+            c.Conformant != 0,
+            c.Truncated != 0,
+            (long)c.Errors,
+            (long)c.EvaluationErrors,
+            (long)c.Warnings,
+            (long)c.Unsupported,
+            RecordDecoder.DecodeList<ValidationFinding>(findings))
+        {
+            Indeterminate = (long)c.Indeterminate,
+        };
+    }
+
     /// <summary>Products no viewer will draw, with a stable reason, in id order.</summary>
     public IReadOnlyList<UnreachableProduct> UnreachableProducts()
     {

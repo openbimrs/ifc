@@ -2,34 +2,17 @@
 
 use openbim_ifc_binding_core::record::to_records;
 use openbim_ifc_binding_core::{
-    GeometryEncoding, IfcModel, LengthUnitOptions, ParseOptions, PurgeOptions,
-    RemoveProductOptions, ToRecord,
+    GeometryEncoding, IfcModel, LengthUnitOptions, PurgeOptions, RemoveProductOptions, ToRecord,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::{PyBool, PyBytes, PyDict, PyList, PyString};
+use pyo3::types::{PyBytes, PyDict, PyList, PyString};
 
 use crate::authoring;
 use crate::convert::{from_py, plain_from_py, selected_to_py, to_py};
 use crate::edits;
 use crate::error::py_err;
 use crate::records;
-
-/// Parse options from the native keywords; `None` flags are `False`.
-fn options(
-    py: Python<'_>,
-    on_malformed: &str,
-    check_references: Option<&Bound<'_, PyAny>>,
-    accept_real_without_point: Option<&Bound<'_, PyAny>>,
-) -> PyResult<ParseOptions> {
-    let off = PyBool::new(py, false).to_owned().into_any();
-    records::parse_options(
-        on_malformed,
-        check_references.unwrap_or(&off),
-        accept_real_without_point.unwrap_or(&off),
-    )
-    .map_err(py_err)
-}
 
 /// Native half of `openbim_ifc.IfcModel`; not part of the public API.
 ///
@@ -67,7 +50,7 @@ impl NativeModel {
         check_references: Option<&Bound<'_, PyAny>>,
         accept_real_without_point: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<Self> {
-        let options = options(
+        let options = records::native_parse_options(
             py,
             on_malformed,
             check_references,
@@ -104,7 +87,7 @@ impl NativeModel {
         check_references: Option<&Bound<'_, PyAny>>,
         accept_real_without_point: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<Self> {
-        let options = options(
+        let options = records::native_parse_options(
             py,
             on_malformed,
             check_references,
@@ -179,6 +162,22 @@ impl NativeModel {
     ) -> PyResult<Bound<'py, PyDict>> {
         let inner = &self.inner;
         let report = py.detach(|| inner.validate(max_findings)).map_err(py_err)?;
+        records::report_to_py(py, &report)
+    }
+
+    /// Validate with the EXPRESS rules in `express`, the text of the
+    /// declared release's `.exp` file (#538), releasing the GIL.
+    #[pyo3(signature = (express, max_findings = None))]
+    fn validate_express<'py>(
+        &self,
+        py: Python<'py>,
+        express: &str,
+        max_findings: Option<usize>,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let inner = &self.inner;
+        let report = py
+            .detach(|| inner.validate_express(express, max_findings))
+            .map_err(py_err)?;
         records::report_to_py(py, &report)
     }
 

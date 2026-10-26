@@ -167,6 +167,28 @@ reached, so the counts are lower bounds); with `--deny-warnings`, on a
 warning too. Rules this validator does not evaluate are counted in the
 summary and never fail a file; `--include-unsupported` lists them.
 
+#### EXPRESS rules
+
+```bash
+openbim-ifc validate --express IFC4.exp model.ifc
+openbim-ifc validate --express IFC2X3_TC1.exp --express IFC4.exp models/*.ifc
+```
+
+`--express FILE.exp` also evaluates every WHERE rule, type rule and global
+rule of the release, and checks INVERSE cardinality, from the EXPRESS schema
+text you supply: the schemas are CC BY-ND, so none is bundled (the
+[schema fetch script](https://github.com/openbimrs/ifc/blob/main/scripts/fetch-ifc-schemas.sh)
+downloads all five). Repeat the option to cover several releases, one file
+per release. Each model is checked with the first file that declares its
+release; when none does, that model is refused with `express-mismatch` and
+the run exits 2, after the other files are checked. A file that does not
+parse is `invalid-express`, with its path in the message. An `.exp` file
+that cannot be read ends the run before any model is checked. Files are read
+as UTF-8, or as Latin-1 when they are not.
+
+A rule that evaluates to UNKNOWN is an `indeterminate` finding: listed and
+counted (the human summary adds `N indeterminate`), never a failure.
+
 ### convert
 
 ```bash
@@ -395,6 +417,8 @@ is never turned into an empty or guessed answer:
 | `budget-exceeded` | A traversal hit its bound before it could answer, or an ifcZIP entry would inflate past its budget |
 | `write` | The output format refused the model |
 | `invalid-selector` | A selector, value path or column does not parse, or names a class or attribute the release does not declare; the detail names the byte span |
+| `express-mismatch` | No `--express` file declares the release of the file being validated, or one disagrees with the release's tables |
+| `invalid-express` | An `--express` file does not parse as EXPRESS, or a rule in it names something that binds to nothing |
 
 `edit` and `import-table` report each refused change on stderr as
 `openbim-ifc: refused: <where>: <kind>: <detail>`, where `<where>` is the
@@ -417,7 +441,7 @@ the others are still checked, and the run exits 2.
 `--format sarif` writes SARIF 2.1.0: one result per finding with the file,
 the line of the entity's record, and the entity or attribute (`#12`,
 `#12.Name`) as a logical location. Errors and evaluation errors are
-`error`, warnings `warning`, unevaluated rules `note`. On GitHub:
+`error`, warnings `warning`, unevaluated and indeterminate rules `note`. On GitHub:
 
 ```yaml
 - run: openbim-ifc validate --format sarif models/*.ifc > ifc.sarif
@@ -430,7 +454,7 @@ the line of the entity's record, and the entity or attribute (`#12`,
 `--format json` of `validate` is one document: `tool`, `version`, the
 run's `passed` verdict, and per file `file`, `schema`, `passed`,
 `conformant`, `truncated`, `summary` (`errors`, `evaluation_errors`,
-`warnings`, `unsupported`) and `findings`, each with `severity`, `rule`,
+`warnings`, `indeterminate`, `unsupported`) and `findings`, each with `severity`, `rule`,
 `path`, `entity`, `attribute_index`, `attribute_name`, `line` and `message`;
 a file that could not be checked has `error` (`kind`, `message`) instead.
 

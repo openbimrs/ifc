@@ -102,6 +102,13 @@ pub enum BindingError {
     /// A by-name attribute write (#462) named an `INVERSE` attribute of the
     /// entity's type: it holds no slot; write the referencing attribute.
     InverseAttribute(String),
+    /// EXPRESS rule text (#538) that does not fit the model's declared
+    /// release: it declares another schema, or disagrees with the release's
+    /// tables about an entity's attributes.
+    ExpressMismatch(String),
+    /// EXPRESS rule text (#538) that does not parse, or whose rules use a
+    /// name that binds to nothing.
+    InvalidExpress(String),
 }
 
 impl BindingError {
@@ -133,6 +140,8 @@ impl BindingError {
             Self::AmbiguousValue(_) => "ambiguous-value",
             Self::InverseAttribute(_) => "inverse-attribute",
             Self::InvalidSelector { .. } => "invalid-selector",
+            Self::ExpressMismatch(_) => "express-mismatch",
+            Self::InvalidExpress(_) => "invalid-express",
         }
     }
 
@@ -192,6 +201,8 @@ impl fmt::Display for BindingError {
                 span.0, span.1
             ),
             Self::InverseAttribute(detail) => write!(f, "inverse attribute: {detail}"),
+            Self::ExpressMismatch(detail) => write!(f, "EXPRESS mismatch: {detail}"),
+            Self::InvalidExpress(detail) => write!(f, "invalid EXPRESS: {detail}"),
         }
     }
 }
@@ -232,6 +243,8 @@ mod tests {
         "ambiguous-value",
         "invalid-selector",
         "inverse-attribute",
+        "express-mismatch",
+        "invalid-express",
     ];
 
     /// One value of every variant, in declaration order.
@@ -265,6 +278,8 @@ mod tests {
                 span: (0, 0),
             },
             BindingError::InverseAttribute(String::new()),
+            BindingError::ExpressMismatch(String::new()),
+            BindingError::InvalidExpress(String::new()),
         ];
         // Exhaustive on purpose: a new variant does not compile until it is
         // listed above, so its code cannot escape the snapshot.
@@ -294,7 +309,9 @@ mod tests {
                 | BindingError::TypeMismatch(_)
                 | BindingError::AmbiguousValue(_)
                 | BindingError::InvalidSelector { .. }
-                | BindingError::InverseAttribute(_) => {}
+                | BindingError::InverseAttribute(_)
+                | BindingError::ExpressMismatch(_)
+                | BindingError::InvalidExpress(_) => {}
             }
         }
         all
