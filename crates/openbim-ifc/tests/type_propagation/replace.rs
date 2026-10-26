@@ -252,7 +252,7 @@ fn door_one_is_retyped_and_wall_b_moved_in_the_cascade_fixtures() {
                 options: RelateOptions::new().replace(true),
             },
         ];
-        apply_authoring(&mut model, schema, &ops, 480)
+        apply_authoring(&mut model, schema, &ops, ifc::fresh_seed())
             .unwrap_or_else(|error| panic!("{name}: {error}"));
         assert_valid(name, &model, schema);
         for gone in [104, 105, 106, 107, 108] {

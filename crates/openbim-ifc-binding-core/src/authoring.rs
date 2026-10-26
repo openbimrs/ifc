@@ -29,7 +29,8 @@
 //! or a type it does not declare; `unknown-attribute`; `derived-attribute`;
 //! `missing-attribute` for a required attribute left unset; `invalid-value`
 //! for a value of the wrong type, form or cardinality, a duplicate
-//! `GlobalId`, a malformed operation or handle, or a placement the schema
+//! `GlobalId`, a seed reused for a second batch whose derived `GlobalId`s
+//! the model already holds, a malformed operation or handle, or a placement the schema
 //! cannot hold; `wrong-entity-type` for an abstract type, a type of the
 //! wrong kind for its builder, or a reference to an entity the attribute
 //! does not accept; `missing-entity` for an edited or removed entity that
@@ -154,8 +155,10 @@ impl IfcModel {
     }
 
     /// [`Self::author`] with the seed new `GlobalId`s derive from: a host
-    /// with entropy of its own (the browser) passes it, and a fixed seed
-    /// reproduces a file.
+    /// with entropy of its own (the browser) passes it. The seed names the
+    /// batch: a fixed seed reproduces its `GlobalId`s, also after a
+    /// write/read cycle; reusing it for another batch on the same model may
+    /// be refused (`invalid-value`).
     pub fn author_seeded(
         &mut self,
         ops: Vec<AuthorOp>,

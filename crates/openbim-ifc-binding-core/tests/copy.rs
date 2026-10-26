@@ -96,6 +96,24 @@ mod enabled {
     }
 
     #[test]
+    fn a_seeded_copy_collides_with_its_seed_and_not_with_another() {
+        for mut model in fixtures() {
+            model
+                .copy_product_seeded(20, CopyProductOptions::new(), 548)
+                .expect("copies");
+            let before = model.write().unwrap();
+            let error = model
+                .copy_product_seeded(20, CopyProductOptions::new(), 548)
+                .unwrap_err();
+            assert_eq!(error.code(), "invalid-value");
+            assert_eq!(model.write().unwrap(), before);
+            model
+                .copy_product_seeded(20, CopyProductOptions::new(), 549)
+                .expect("another seed copies");
+        }
+    }
+
+    #[test]
     fn copy_product_options_reach_the_facade() {
         for mut model in fixtures() {
             let mut options = CopyProductOptions::new();

@@ -476,8 +476,9 @@ impl Planner<'_, '_> {
                 }
             };
             if fresh {
+                let global_id = self.fresh_global_id(id, &entity.type_name)?;
                 if let Some(slot) = entity.attributes.first_mut() {
-                    *slot = Value::Text(self.global_id(id).into());
+                    *slot = Value::Text(global_id.into());
                 }
             }
         }

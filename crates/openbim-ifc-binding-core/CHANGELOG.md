@@ -8,6 +8,20 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#548)
+
+- `SeedReused` maps to `invalid-value`; `author_seeded` documents the seed as
+  the batch's identity; `author` is unchanged.
+
+### Added (#548)
+
+- `IfcModel::copy_product_seeded` and `IfcModel::append_seeded`, the seeded
+  forms of `copy_product` and `append` (which draw `fresh_seed()`), for hosts
+  with entropy of their own: `fresh_seed` has none on
+  `wasm32-unknown-unknown`.
+
+Semver: patch (internal crate, not published).
+
 ### Added (#538, EXPRESS rules)
 
 - `IfcModel::validate_express(express, max_findings)` validates with the

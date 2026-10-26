@@ -330,6 +330,7 @@ pub(super) fn error(error: AuthoringError) -> BindingError {
         F::IdRangeExhausted { .. } => BindingError::OutOfRange(detail),
         F::Cardinality { .. }
         | F::DuplicateGlobalId { .. }
+        | F::SeedReused { .. }
         | F::InvalidRelationship { .. }
         | F::InvalidHandle { .. }
         | F::InvalidPlacement { .. } => BindingError::InvalidValue(detail),

@@ -1,22 +1,27 @@
 //! Running a batch's operations against the overlay.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use ifc_model::{Entity, EntityId, Value};
 use ifc_schema::Schema;
 
 use super::check::{build, recheck, relations};
+use super::identity::{derived_global_id, Scope};
 use super::overlay::Overlay;
 use super::report::{CopyReport, RemovalReport};
 use super::{AssignTypeOptions, AuthorOp, AuthoringFailure as F, NamedValues};
-use crate::name_guid::name_based_guid;
 
 /// The batch's state: the overlay, and what each operation produced.
 pub(super) struct Planner<'m, 's> {
     pub(super) schema: &'s Schema,
     pub(super) view: Overlay<'m>,
     seed: u128,
+    /// Where `GlobalId`s are derived now: `run` sets the operation; an append
+    /// never calls `run`.
+    scope: Scope,
+    /// Per type (upper case), how many `GlobalId`s the current scope derived.
+    drawn: BTreeMap<String, u32>,
     /// Per operation run so far, the entity it produced.
     pub(super) ids: Vec<Option<EntityId>>,
     /// Per operation run so far, the report of a removal or purge.
@@ -42,6 +47,8 @@ impl<'m, 's> Planner<'m, 's> {
             schema,
             view,
             seed,
+            scope: Scope::Append,
+            drawn: BTreeMap::new(),
             ids: Vec::new(),
             reports: Vec::new(),
             report: None,
@@ -54,7 +61,9 @@ impl<'m, 's> Planner<'m, 's> {
 
     /// Run one operation, returning the entity it produced; its report,
     /// if it makes one, is pushed on [`Self::reports`].
-    pub(super) fn run(&mut self, op: AuthorOp) -> Result<Option<EntityId>, F> {
+    pub(super) fn run(&mut self, index: usize, op: AuthorOp) -> Result<Option<EntityId>, F> {
+        self.scope = Scope::Op(index);
+        self.drawn.clear();
         let produced = self.run_op(op)?;
         let report = self.report.take();
         self.reports.push(report);
@@ -209,7 +218,8 @@ impl<'m, 's> Planner<'m, 's> {
             .iter()
             .any(|(name, _)| name.eq_ignore_ascii_case(GLOBAL_ID));
         if !supplied && self.schema.is_a(type_name, "IfcRoot") {
-            attributes.push((GLOBAL_ID.to_owned(), Value::Text(self.global_id(id).into())));
+            let global_id = self.fresh_global_id(id, type_name)?;
+            attributes.push((GLOBAL_ID.to_owned(), Value::Text(global_id.into())));
         }
         let entity = build(self.schema, type_name, &attributes)?;
         relations(self.schema, &self.view, &entity, None)?;
@@ -365,16 +375,21 @@ impl<'m, 's> Planner<'m, 's> {
         self.create(type_name, attributes)
     }
 
-    /// A fresh `GlobalId` for entity `id`: name-based over the batch seed,
-    /// so a seed drawn per batch keeps it unique, and a given seed
-    /// reproduces the file.
-    pub(super) fn global_id(&self, id: EntityId) -> String {
-        name_based_guid(&[
-            "openbim-ifc/authoring",
-            &format!("{:032x}", self.seed),
-            &id.0.to_string(),
-        ])
-        .to_string()
+    /// A new `GlobalId` for `id`, an entity of `type_name` the running operation creates
+    /// (see `identity`), recorded as the batch's. Refused with `SeedReused` when an entity
+    /// the batch so far leaves in the model holds it.
+    pub(super) fn fresh_global_id(&mut self, id: EntityId, type_name: &str) -> Result<String, F> {
+        let key = type_name.to_ascii_uppercase();
+        let count = self.drawn.entry(key.clone()).or_insert(0);
+        let ordinal = *count;
+        *count += 1;
+        let global_id = derived_global_id(self.seed, self.scope, &key, ordinal);
+        if let Some(holder) = self.global_id_holder(&global_id) {
+            return Err(F::SeedReused { global_id, holder });
+        }
+        self.batch_global_ids
+            .insert(Arc::from(global_id.as_str()), id);
+        Ok(global_id)
     }
 
     /// Record the `GlobalId` of `entity`, refusing one another entity holds.
@@ -411,18 +426,18 @@ impl<'m, 's> Planner<'m, 's> {
     fn base_global_ids(&mut self) -> &HashMap<Arc<str>, EntityId> {
         let (schema, base) = (self.schema, self.view.base());
         self.base_global_ids.get_or_insert_with(|| {
-            let mut roots: HashMap<Arc<str>, bool> = HashMap::new();
-            base.iter()
-                .filter(|(_, entity)| {
-                    *roots
-                        .entry(entity.type_name.clone())
-                        .or_insert_with(|| schema.is_a(&entity.type_name, "IfcRoot"))
-                })
-                .filter_map(|(id, entity)| match entity.attributes.first() {
-                    Some(Value::Text(text)) => Some((text.clone(), id)),
-                    _ => None,
-                })
-                .collect()
+            let mut roots = HashMap::new();
+            for (type_name, _) in base.type_histogram() {
+                if !schema.is_a(type_name, "IfcRoot") {
+                    continue;
+                }
+                for (id, entity) in base.of_type(type_name) {
+                    if let Some(Value::Text(text)) = entity.attributes.first() {
+                        roots.insert(text.clone(), id);
+                    }
+                }
+            }
+            roots
         })
     }
 }

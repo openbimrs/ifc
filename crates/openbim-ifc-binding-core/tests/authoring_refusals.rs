@@ -359,3 +359,17 @@ fn handles_live_in_their_own_range() {
     assert_eq!(HANDLE_BASE, 1 << 62);
     assert_eq!(code(handle(HANDLE_BASE)), "out-of-range");
 }
+
+#[test]
+fn a_seed_reused_for_a_second_batch_is_an_invalid_value() {
+    let mut model = empty("IFC4");
+    model
+        .author_seeded(vec![create("IfcWall", &[])], 548)
+        .expect("the first batch");
+    let before = model.write().unwrap();
+    let error = model
+        .author_seeded(vec![create("IfcWall", &[])], 548)
+        .unwrap_err();
+    assert_eq!(error.code(), "invalid-value");
+    assert_eq!(model.write().unwrap(), before);
+}

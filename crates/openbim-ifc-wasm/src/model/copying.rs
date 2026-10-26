@@ -7,6 +7,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
 
 use super::IfcModel;
+use crate::authoring;
 use crate::error::js_error;
 use crate::{geometry, records};
 
@@ -35,7 +36,10 @@ impl IfcModel {
         #[wasm_bindgen(unchecked_param_type = "CopyProductOptions | undefined")] options: &JsValue,
     ) -> Result<JsValue, JsValue> {
         let parsed = copy_options(options).map_err(js_error)?;
-        let report = self.0.copy_product(id, parsed).map_err(js_error)?;
+        let report = self
+            .0
+            .copy_product_seeded(id, parsed, authoring::seed())
+            .map_err(js_error)?;
         Ok(records::record_to_js(&report.to_record()))
     }
 
@@ -64,7 +68,10 @@ impl IfcModel {
             .map_err(js_error)?
             .ok_or_else(|| js_error(BindingError::InvalidValue("append needs ids".into())))?;
         let parsed = append_options(options).map_err(js_error)?;
-        let report = self.0.append(&source.0, &ids, &parsed).map_err(js_error)?;
+        let report = self
+            .0
+            .append_seeded(&source.0, &ids, &parsed, authoring::seed())
+            .map_err(js_error)?;
         Ok(records::record_to_js(&report.to_record()))
     }
 }
