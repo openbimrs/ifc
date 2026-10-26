@@ -12,6 +12,16 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#537)
+
+- The XML importer trims `DataType@type` and `reftype`: about 100 IFC2X3
+  entries (`IfcBoolean `) and one IFC4X3 entry (`IfcDuration `) carried
+  trailing spaces and so named no type. The embedded container, the IFC2X3
+  and IFC4X3 snapshot pins and TSV exports are regenerated from the
+  pinned sources (source digests unchanged).
+
+Semver: patch.
+
 ## [0.4.0] - 2026-10-04
 
 ### Changed (#317)

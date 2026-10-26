@@ -7,7 +7,11 @@
 //! `validate_declared` and `validate_with_options` also check every
 //! `Pset_`/`Qto_` set name against the declared release's catalog (#511):
 //! a set using the reserved prefix that the catalog does not define is a
-//! warning, `property.reserved_set_name`. Without either
+//! warning, `property.reserved_set_name`. For a set the catalog defines, its
+//! members are checked against the catalog's template too (#537): a property
+//! or quantity the template does not declare is `property.undeclared_member`,
+//! and a set kind, entity form or value type that differs from it is
+//! `property.member_type`, both warnings. Without either
 //! feature, or with a runtime catalog whose edition is not installed, such
 //! names are reported once as unsupported -- not checked, never silently
 //! passed. `ifc-validate` itself links no catalog (ADR 0017): the facade
@@ -27,8 +31,14 @@ mod with_catalog {
     use ifc_model::Model;
     use ifc_schema::{Schema, SchemaVersion};
     use ifc_template_catalog::catalog::{Catalog, CatalogProfile};
-    use ifc_template_catalog::definition::CatalogEdition;
-    use ifc_validate::{Budget, PropertySetCatalog, Report, ValidateError, ValidateOptions};
+    use ifc_template_catalog::definition::{
+        CatalogEdition, PropertyDataType, PropertyKind, PropertyTemplate, QuantityKind,
+        QuantityTemplate, SetTemplateKind,
+    };
+    use ifc_validate::{
+        Budget, CatalogMember, CatalogMemberForm, CatalogQuantityKind, CatalogSet,
+        PropertySetCatalog, Report, ValidateError, ValidateOptions,
+    };
 
     /// The PSD/QTO catalog of each release this build carries.
     #[derive(Debug, Clone, Copy, Default)]
@@ -57,6 +67,89 @@ mod with_catalog {
         fn defines(&self, version: SchemaVersion, name: &str) -> Option<bool> {
             Self::catalog(version).map(|catalog| catalog.get(name).is_some())
         }
+
+        fn template(&self, version: SchemaVersion, name: &str) -> Option<CatalogSet> {
+            let catalog = Self::catalog(version)?;
+            match &catalog.get(name)?.kind {
+                SetTemplateKind::Property { properties, .. } => properties
+                    .iter()
+                    .map(property_member)
+                    .collect::<Option<_>>()
+                    .map(CatalogSet::property),
+                SetTemplateKind::Quantity { quantities, .. } => quantities
+                    .iter()
+                    .map(quantity_member)
+                    .collect::<Option<_>>()
+                    .map(CatalogSet::quantity),
+                // A kind this build does not know: no template, so the set
+                // is reported as not checked, never read as empty.
+                _ => None,
+            }
+        }
+    }
+
+    /// The declared value type, if the catalog names one.
+    fn data_type(data_type: &PropertyDataType) -> Option<String> {
+        data_type.type_name.clone()
+    }
+
+    /// One property template as a neutral member; `None` for a value form
+    /// this build does not know.
+    fn property_member(template: &PropertyTemplate) -> Option<CatalogMember> {
+        let form = match &template.kind {
+            PropertyKind::SingleValue { data_type: t } => CatalogMemberForm::SingleValue {
+                data_type: data_type(t),
+            },
+            PropertyKind::BoundedValue { data_type: t } => CatalogMemberForm::BoundedValue {
+                data_type: data_type(t),
+            },
+            PropertyKind::EnumeratedValue { data_type: t, .. } => {
+                CatalogMemberForm::EnumeratedValue {
+                    data_type: t.as_ref().and_then(data_type),
+                }
+            }
+            PropertyKind::ListValue { data_type: t } => CatalogMemberForm::ListValue {
+                data_type: data_type(t),
+            },
+            PropertyKind::ReferenceValue { reference_type } => CatalogMemberForm::ReferenceValue {
+                reference_type: reference_type.clone(),
+            },
+            PropertyKind::TableValue {
+                defining_type,
+                defined_type,
+                ..
+            } => CatalogMemberForm::TableValue {
+                defining_type: data_type(defining_type),
+                defined_type: data_type(defined_type),
+            },
+            PropertyKind::Complex { properties, .. } => CatalogMemberForm::Complex {
+                members: properties
+                    .iter()
+                    .map(property_member)
+                    .collect::<Option<_>>()?,
+            },
+            _ => return None,
+        };
+        Some(CatalogMember::new(template.name.clone(), form))
+    }
+
+    /// One quantity template as a neutral member; `None` for a kind this
+    /// build does not know.
+    fn quantity_member(template: &QuantityTemplate) -> Option<CatalogMember> {
+        let kind = match template.kind {
+            QuantityKind::Length => CatalogQuantityKind::Length,
+            QuantityKind::Area => CatalogQuantityKind::Area,
+            QuantityKind::Volume => CatalogQuantityKind::Volume,
+            QuantityKind::Weight => CatalogQuantityKind::Weight,
+            QuantityKind::Time => CatalogQuantityKind::Time,
+            QuantityKind::Count => CatalogQuantityKind::Count,
+            QuantityKind::Number => CatalogQuantityKind::Number,
+            _ => return None,
+        };
+        Some(CatalogMember::new(
+            template.name.clone(),
+            CatalogMemberForm::Quantity(kind),
+        ))
     }
 
     /// [`ifc_validate::validate`], with set names checked against the

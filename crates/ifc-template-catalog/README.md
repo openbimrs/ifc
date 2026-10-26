@@ -28,7 +28,7 @@ documentation lists and the PSD XML the snapshot is built from omits.
 ## Snapshot format
 
 All three editions live in one container, `data/catalog.bin` (format 3,
-module `snapshot`): 1,423,604 bytes, where the three bincode snapshots it
+module `snapshot`): 1,423,091 bytes, where the three bincode snapshots it
 replaced were 3,648,573. It is a lossless format shift, nothing is
 trimmed:
 
@@ -48,10 +48,10 @@ binary, and every channel the crate ships through compresses already.
 
 | Snapshot | Bytes | gzip -9 | brotli 11 |
 | --- | ---: | ---: | ---: |
-| IFC2X3 TC1 (`ifc2x3-tc1.bin`) | 325,739 | 105,577 | 87,767 |
+| IFC2X3 TC1 (`ifc2x3-tc1.bin`) | 325,279 | 105,382 | 87,630 |
 | IFC4 ADD2 TC1 (`ifc4-add2-tc1.bin`) | 1,015,315 | 368,172 | 280,574 |
-| IFC4X3 ADD2 (`ifc4x3-add2.bin`) | 1,086,526 | 401,730 | 308,355 |
-| the container, every edition | 1,423,604 | 547,657 | 394,150 |
+| IFC4X3 ADD2 (`ifc4x3-add2.bin`) | 1,086,514 | 401,727 | 308,335 |
+| the container, every edition | 1,423,091 | 547,404 | 394,022 |
 
 `snapshot::encode` writes a container or a per-edition file
 deterministically; the SHA-256 of each is pinned (`CONTAINER_SHA256`,

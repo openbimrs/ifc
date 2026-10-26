@@ -61,7 +61,7 @@ fn parse_kind(node: &Node, set_name: &str, property: &str) -> Result<PropertyKin
                         field: "TypePropertyReferenceValue@reftype".into(),
                     })?;
             Ok(PropertyKind::ReferenceValue {
-                reference_type: reference_type.to_owned(),
+                reference_type: reference_type.trim().to_owned(),
             })
         }
         "TypePropertyTableValue" => {

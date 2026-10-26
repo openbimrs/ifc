@@ -20,6 +20,14 @@ a release here does not imply a release of any other crate in the family.
 
 Semver: additive: minor.
 
+### Changed (#537)
+
+- `validate` also reports the `property.undeclared_member` and
+  `property.member_type` warnings for the members of a catalog set, when
+  the build carries the property catalog.
+
+Semver: no code change; patch when released.
+
 ## [0.13.0] - 2026-10-20
 
 ### Added (#479, copy and append)

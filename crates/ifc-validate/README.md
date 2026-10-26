@@ -11,7 +11,9 @@ cargo add ifc-validate
 
 The [`openbim-ifc`](https://crates.io/crates/openbim-ifc) facade also provides it behind its
 `validate` feature, with the PSD/QTO catalog composed in for the
-`Pset_`/`Qto_` name check.
+`Pset_`/`Qto_` name check, and a check of the properties and quantities
+inside catalog sets against the catalog's templates (member names, entity
+forms and value types; warnings, bSI PSE001).
 
 ## EXPRESS rules from the release's own text
 

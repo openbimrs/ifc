@@ -14,6 +14,8 @@ mod cases;
 mod fixtures;
 #[path = "../rule_inventory/forms.rs"]
 mod forms;
+#[path = "../rule_inventory/property.rs"]
+mod property;
 #[path = "../rule_inventory/rules.rs"]
 mod rules;
 #[path = "../rule_inventory/structure.rs"]

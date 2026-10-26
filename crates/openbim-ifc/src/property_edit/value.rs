@@ -92,6 +92,19 @@ pub(super) fn wrapper(value: &Value) -> Option<&str> {
 /// Whether `candidate` is `declared`, or a defined type whose alias chain
 /// reaches it (`IfcPositiveLengthMeasure` is an `IfcLengthMeasure`).
 pub(super) fn is_or_aliases(schema: &Schema, candidate: &str, declared: &str) -> bool {
+    if alias_chain_reaches(schema, candidate, declared) {
+        return true;
+    }
+    // A declared SELECT (`IfcValue`) takes any type its closure holds.
+    matches!(
+        schema.type_def(declared).map(|d| &d.kind),
+        Some(TypeKind::Select(_))
+    ) && select_members(schema, declared)
+        .iter()
+        .any(|member| alias_chain_reaches(schema, candidate, member))
+}
+
+fn alias_chain_reaches(schema: &Schema, candidate: &str, declared: &str) -> bool {
     let mut current = candidate.trim().to_owned();
     for _ in 0..MAX_DEPTH {
         if current.eq_ignore_ascii_case(declared) {
@@ -209,4 +222,30 @@ fn aggregate(schema: &Schema, declared: &str, payload: &Value, depth: usize) -> 
     items
         .iter()
         .try_for_each(|item| fits(schema, element, item, depth - 1))
+}
+
+#[cfg(all(test, feature = "ifc4"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_declared_select_takes_the_types_it_closes_over() {
+        let schema = ifc_schema::ifc4();
+        for candidate in ["IFCLENGTHMEASURE", "IFCPLANEANGLEMEASURE", "IFCLABEL"] {
+            assert!(is_or_aliases(schema, candidate, "IfcValue"), "{candidate}");
+        }
+        assert!(!is_or_aliases(schema, "IFCNOSUCHTYPE", "IfcValue"));
+        assert!(!is_or_aliases(schema, "IFCWALL", "IfcValue"));
+    }
+
+    #[test]
+    fn an_alias_still_reaches_a_plain_declared_type() {
+        let schema = ifc_schema::ifc4();
+        assert!(is_or_aliases(
+            schema,
+            "IfcPositiveLengthMeasure",
+            "IfcLengthMeasure"
+        ));
+        assert!(!is_or_aliases(schema, "IfcLabel", "IfcLengthMeasure"));
+    }
 }

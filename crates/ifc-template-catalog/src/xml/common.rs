@@ -60,7 +60,10 @@ pub(super) fn data_type(node: &Node, path: &str) -> Result<PropertyDataType, Xml
             path: path.to_owned(),
             field: "DataType".into(),
         })?;
-    let type_name = data_type.attribute("type").map(str::to_owned);
+    // Published names carry stray whitespace (`IfcBoolean `).
+    let type_name = data_type
+        .attribute("type")
+        .map(|name| name.trim().to_owned());
     Ok(PropertyDataType {
         type_name,
         unit_type: node

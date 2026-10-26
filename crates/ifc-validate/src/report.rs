@@ -16,8 +16,8 @@ mod path;
 mod summary;
 
 pub use detail::{
-    BudgetExceeded, FindingDetail, NotEvaluated, ReservedSetName, RuleDetail, RuleOutcome,
-    RuleScope,
+    BudgetExceeded, CatalogMemberDetail, CatalogMismatch, FindingDetail, NotEvaluated,
+    ReservedSetName, RuleDetail, RuleOutcome, RuleScope,
 };
 pub use finding::{Finding, Severity};
 pub use path::Path;
