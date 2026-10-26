@@ -454,9 +454,24 @@ fn a_cascade_sees_what_the_batch_did_before_it() {
         )
         .expect("applies");
         assert_eq!(model.len(), before, "{name}");
+        let report = outcome.reports[2].as_ref().unwrap();
+        assert_eq!(report.detached, vec![EntityId(67)], "{name}");
+        let typing = model.get(EntityId(67)).unwrap();
+        let slot = schema
+            .attributes(&typing.type_name)
+            .iter()
+            .position(|attribute| attribute.name == "RelatedObjects")
+            .unwrap();
         assert_eq!(
-            outcome.reports[2].as_ref().unwrap().removed.len(),
-            6,
+            typing.attributes[slot],
+            Value::List(vec![Value::Ref(EntityId(20)), Value::Ref(EntityId(40))]),
+            "{name}"
+        );
+        assert_eq!(
+            // The product joined the type's existing relationship (#534),
+            // so no typing relationship goes with it.
+            report.removed.len(),
+            5,
             "{name}"
         );
         assert_valid(name, &model, schema);

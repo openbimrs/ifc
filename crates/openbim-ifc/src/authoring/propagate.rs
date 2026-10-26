@@ -113,7 +113,12 @@ impl Planner<'_, '_> {
                     .any(|name| self.reference(entity, name) == Some(set))
             });
             if derived {
-                self.leave(relationship, "RelatedObjects", object)?;
+                self.leave(
+                    relationship,
+                    "IFCRELASSOCIATESMATERIAL",
+                    "RelatedObjects",
+                    object,
+                )?;
                 self.remove_owned(&[usage])?;
             }
         }

@@ -12,6 +12,17 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#534)
+
+- `AuthorOp::AssignType` on a type that already has an
+  `IfcRelDefinesByType` adds the objects to that relationship's
+  `RelatedObjects` instead of creating a second one, which broke
+  `IfcTypeObject.Types SET [0:1]` (`ObjectTypeOf` in IFC2X3). The op
+  produces the existing relationship's id, and `owner_history` applies
+  only to a relationship that is created. An object typed by another type
+  is still refused unless `replace`. A relationship whose `RelatedObjects`
+  is not a list is refused with `InvalidRelationship`, not rewritten.
+
 ### Changed (#539, tests)
 
 Semver: no release on its own. No code change.
