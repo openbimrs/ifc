@@ -56,6 +56,9 @@ unsafe fn removal_export(
 ) -> OpenbimIfcStatus {
     boundary(|| {
         with_model(model, |m| {
+            if let Err(status) = out.check() {
+                return Ok(status);
+            }
             let planned = run(m, true)?;
             let tape = Tape::encode(&planned.to_record().to_tagged());
             let fits =

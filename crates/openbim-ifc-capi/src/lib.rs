@@ -47,6 +47,7 @@ mod errors;
 mod geometry;
 mod graph;
 mod header;
+mod history;
 mod ifczip;
 mod inverse;
 mod model;
@@ -73,6 +74,7 @@ pub use errors::*;
 pub use geometry::*;
 pub use graph::*;
 pub use header::*;
+pub use history::*;
 pub use ifczip::*;
 pub use inverse::*;
 pub use model::*;
@@ -103,6 +105,8 @@ mod domain_tests;
 mod geometry_tests;
 #[cfg(test)]
 mod graph_tests;
+#[cfg(test)]
+mod history_tests;
 #[cfg(test)]
 mod inverse_tests;
 #[cfg(test)]

@@ -499,6 +499,16 @@ enum OpenbimIfcStatus
    */
   OPENBIM_IFC_STATUS_INVALID_EXPRESS = 37,
   /**
+   * An undo or redo with nothing to step through: history is off, or
+   * that stack is empty (`history-empty`).
+   */
+  OPENBIM_IFC_STATUS_HISTORY_EMPTY = 38,
+  /**
+   * An undo or redo after the model changed outside the history
+   * (`history-stale`); nothing was changed.
+   */
+  OPENBIM_IFC_STATUS_HISTORY_STALE = 39,
+  /**
    * A Rust panic was contained at the boundary. Report it as a bug.
    */
   OPENBIM_IFC_STATUS_PANIC = 255,
@@ -560,6 +570,24 @@ typedef uint64_t OpenbimIfcGraphs;
  * Opaque handle to a compiled mesh set. Zero is never a valid handle.
  */
 typedef uint64_t OpenbimIfcMeshes;
+
+/**
+ * How much history a model holds (`HistoryState`).
+ */
+typedef struct {
+  /**
+   * The bound on undo entries; 0 records nothing.
+   */
+  size_t limit;
+  /**
+   * Entries `openbim_ifc_v0_1_model_undo` can step back through.
+   */
+  size_t undo;
+  /**
+   * Entries `openbim_ifc_v0_1_model_redo` can step forward through.
+   */
+  size_t redo;
+} OpenbimIfcHistoryState;
 
 /**
  * Counts from one validation run.
@@ -1439,6 +1467,11 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_classifications(OpenbimIfcModel model,
                                                         size_t *out_strings_required);
 
 /**
+ * Drop every undo and redo entry, keeping the limit.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_clear_history(OpenbimIfcModel model);
+
+/**
  * Convert the model's length unit to the unit named `target`
  * (`target_len` UTF-8 bytes): an SI `METRE` with any prefix, or `inch`,
  * `foot`, `yard`, `mile`, `US survey foot`. Every length, area and volume
@@ -1713,6 +1746,15 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_header(OpenbimIfcModel model,
                                                uint8_t *strings,
                                                size_t string_capacity,
                                                size_t *out_strings_required);
+
+/**
+ * Write the history bound and how many entries each direction holds.
+ *
+ * # Safety
+ * `out_state` must be null or valid for one write.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_history(OpenbimIfcModel model,
+                                                OpenbimIfcHistoryState *out_state);
 
 /**
  * Every entity id, in file order.
@@ -2175,6 +2217,21 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_purge(OpenbimIfcModel model,
                                               size_t *out_strings_required);
 
 /**
+ * Reverse the last undo. The answer and the buffer protocol are those of
+ * `openbim_ifc_v0_1_model_undo`; `HistoryEmpty` with nothing to redo.
+ *
+ * # Safety
+ * As for `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_redo(OpenbimIfcModel model,
+                                             OpenbimIfcValueNode *nodes,
+                                             size_t node_capacity,
+                                             size_t *out_nodes_required,
+                                             uint8_t *strings,
+                                             size_t string_capacity,
+                                             size_t *out_strings_required);
+
+/**
  * Remove product (or type object) `product` with everything it solely
  * owns -- its placement, representation, own property and quantity sets,
  * material usage, openings and ports, and relationships left without an
@@ -2342,6 +2399,13 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_set_header(OpenbimIfcModel model,
                                                    size_t string_len);
 
 /**
+ * Bound the undo entries a model keeps. 0 turns history off and drops what
+ * is held; a lower limit drops the oldest entries. History is off (0) for a
+ * new model.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_set_history_limit(OpenbimIfcModel model, size_t limit);
+
+/**
  * Apply the edits on the tape as one checked transaction: all of them, in
  * order, or none, and the model unchanged.
  *
@@ -2434,6 +2498,27 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_systems(OpenbimIfcModel model,
                                                 uint8_t *strings,
                                                 size_t string_capacity,
                                                 size_t *out_strings_required);
+
+/**
+ * Restore the model to the state before the last recorded change: entities
+ * under their ids and at their file positions, the header included. The
+ * answer is a `HistoryChange` tape: created, removed and modified (`LIST`s
+ * of `REF`) and header (`BOOL`). A size query or a short buffer peeks the
+ * step and answers `BufferTooSmall` without applying it.
+ *
+ * `HistoryEmpty` with nothing to undo (history off, or the stack empty);
+ * `HistoryStale` when the model changed outside the history.
+ *
+ * # Safety
+ * As for `openbim_ifc_v0_1_entity_attribute`.
+ */
+OpenbimIfcStatus openbim_ifc_v0_1_model_undo(OpenbimIfcModel model,
+                                             OpenbimIfcValueNode *nodes,
+                                             size_t node_capacity,
+                                             size_t *out_nodes_required,
+                                             uint8_t *strings,
+                                             size_t string_capacity,
+                                             size_t *out_strings_required);
 
 /**
  * Products no viewer will draw, in id order, and how many.

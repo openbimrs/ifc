@@ -102,6 +102,12 @@ pub enum OpenbimIfcStatus {
     /// EXPRESS rule text does not parse, or names something that binds to
     /// nothing (`invalid-express`).
     InvalidExpress = 37,
+    /// An undo or redo with nothing to step through: history is off, or
+    /// that stack is empty (`history-empty`).
+    HistoryEmpty = 38,
+    /// An undo or redo after the model changed outside the history
+    /// (`history-stale`); nothing was changed.
+    HistoryStale = 39,
     /// A Rust panic was contained at the boundary. Report it as a bug.
     Panic = 255,
 }
@@ -136,6 +142,8 @@ impl From<&BindingError> for OpenbimIfcStatus {
             BindingError::InverseAttribute(_) => Self::InverseAttribute,
             BindingError::ExpressMismatch(_) => Self::ExpressMismatch,
             BindingError::InvalidExpress(_) => Self::InvalidExpress,
+            BindingError::HistoryEmpty(_) => Self::HistoryEmpty,
+            BindingError::HistoryStale(_) => Self::HistoryStale,
         }
     }
 }
@@ -277,6 +285,14 @@ mod tests {
             (
                 BindingError::InvalidExpress(String::new()),
                 OpenbimIfcStatus::InvalidExpress,
+            ),
+            (
+                BindingError::HistoryEmpty(String::new()),
+                OpenbimIfcStatus::HistoryEmpty,
+            ),
+            (
+                BindingError::HistoryStale(String::new()),
+                OpenbimIfcStatus::HistoryStale,
             ),
         ];
         for (error, status) in cases {

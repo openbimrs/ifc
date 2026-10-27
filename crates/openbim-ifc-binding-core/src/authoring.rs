@@ -145,7 +145,7 @@ impl IfcModel {
     pub fn author(&mut self, ops: Vec<AuthorOp>) -> Result<AuthoringResult, BindingError> {
         #[cfg(feature = "author")]
         {
-            self.author_seeded(ops, ifc::fresh_seed())
+            self.tracked(|this| this.author_seeded(ops, ifc::fresh_seed()))
         }
         #[cfg(not(feature = "author"))]
         {
@@ -168,7 +168,8 @@ impl IfcModel {
         {
             let schema = self.declared_schema()?;
             let ops: Vec<ifc::AuthorOp> = ops.into_iter().map(|AuthorOp(op)| op).collect();
-            let outcome = ifc::apply_authoring(&mut self.inner, schema, &ops, seed)
+            let outcome = self
+                .tracked(|this| ifc::apply_authoring(&mut this.inner, schema, &ops, seed))
                 .map_err(convert::error)?;
             let ids = |ids: Vec<ifc::EntityId>| ids.into_iter().map(|id| id.0).collect();
             Ok(AuthoringResult {
@@ -206,7 +207,7 @@ impl IfcModel {
             Tagged::Text("attributes".into()),
             Tagged::List(pairs),
         ]))?;
-        let result = self.author(vec![op])?;
+        let result = self.tracked(|this| this.author(vec![op]))?;
         result
             .ids
             .first()
@@ -225,7 +226,7 @@ impl IfcModel {
             Tagged::Text("entity".into()),
             Tagged::Ref(id),
         ]))?;
-        self.author(vec![op]).map(drop)
+        self.tracked(|this| this.author(vec![op])).map(drop)
     }
 }
 

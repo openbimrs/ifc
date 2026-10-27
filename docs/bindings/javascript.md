@@ -998,6 +998,21 @@ naming each. The
 [cookbook](/cookbook/javascript#convert-units-and-a-model-s-length-unit) has
 a recipe.
 
+## Undo and redo
+
+History is off until `model.setHistoryLimit(n)` bounds the undo entries (0
+turns it off and drops what is held); then every method that changes the model
+is one entry, `author` for its whole batch. `model.history()` returns a
+`HistoryState` (`limit`, `undo`, `redo`). `model.undo()` restores the model to
+the state before the last entry, entities under their ids and at their file
+positions, the header included, and returns a `HistoryChange` (`created`,
+`removed`, `modified`, `header`); `model.redo()` reverses an undo, and
+`model.clearHistory()` drops the entries. With nothing to step through, or
+while history is off, they throw `history-empty`; after a change made outside
+the history, `history-stale`, with the model unchanged. Undoing a creation
+frees its id again.
+
+
 ## Module size
 
 Size of the module after `wasm-bindgen` (0.2.128), without `wasm-opt`,
@@ -1262,6 +1277,11 @@ class, interface and type the package's `.d.ts` declares.
 | `model.danglingReferences(): [bigint, bigint][]` |  | Every `[from, to]` pair (`bigint`s) where `to` does not exist. |
 | `model.copyProduct(id: bigint, options: CopyProductOptions \| undefined): CopyReport` | yes | Copy product (or type object) `id` with everything it solely owns, as one checked transaction: what `removeProduct` would remove with it is copied (its placement, representation, own property sets, material usage, ports and, unless `openings` or `fillings` is `false`, its openings and the doors and windows filling them), what it would keep is shared, the copy joining the relationship (its type, shared property sets, classification and, unless `container` or `aggregate` is `false`, its container and whole). `offset` moves the copy in its parent placement's frame; `placement` places it by that `IfcObjectPlacement` instead. The report maps every original to its copy; with `dryRun` nothing changes. Refused with `wrong-entity-type` for neither a product nor a type object, `invalid-value` for both `offset` and `placement`, `unsupported` for an offset onto a placement that is not a local placement with a Cartesian location, or a moved copy whose openings are not placed relative to it. |
 | `model.append(source: IfcModel, ids: bigint[] \| BigUint64Array, options: AppendOptions \| undefined): CopyReport` | yes | Copy entities `ids` of `source` into this model with what belongs to them, as one checked transaction: what they reference, their property sets, type, material and classification, their openings, fillings and ports, and what attaches to their geometry. Units, contexts, the owner history, materials and styles equal to this model's are reused (`reuse` names the kinds; all by default). Relationships to objects not copied (a spatial container) are skipped and reported. `globalIds`: `keep` (the default; one this model holds is refused), `merge` (an `IfcRoot` this model holds by `GlobalId` and type is reused, its relationships joined), `regenerate` or `regenerate-colliding`. Refused with `unsupported` when the models' length or plane angle units differ, `unsupported-schema` for an entity this model's release cannot hold, `invalid-value` for a kept `GlobalId` this model holds. |
+| `model.setHistoryLimit(limit: number): void` | yes | Keep at most `limit` undo entries; `0` (the default) turns history off and drops what is held. While it is on, every method that changes the model is one entry (`author` is one entry for its whole batch). Refused with `invalid-value` for a `limit` that is not a whole number of at least 0 that fits the platform. |
+| `model.history(): HistoryState` |  | The history bound and how many entries each direction holds. |
+| `model.undo(): HistoryChange` | yes | Restore the model to the state before the last change: entities under their ids and at their file positions, the header included. Undoing a creation frees its id again. Refused with `history-empty` when there is nothing to undo (also while history is off) and `history-stale` when the model changed outside the history; the model is unchanged then. |
+| `model.redo(): HistoryChange` | yes | Reverse the last `undo`. Refused with `history-empty` when there is nothing to redo and `history-stale` as `undo` is. |
+| `model.clearHistory(): void` |  | Drop every undo and redo entry, keeping the limit. |
 | `model.inverseAttributeNames(id: bigint): InverseAttributeInfo[]` | yes | Every `INVERSE` attribute of entity `id`, inherited ones first, as the declared release defines them (#462). |
 | `model.inverseReferences(id: bigint): InverseReference[]` | yes | Every reference to entity `id`: the referencing entity and the attribute index it references through, in ascending order (#462). |
 | `model.totalInverses(id: bigint): number` | yes | How many distinct entities reference entity `id` (#462). |
@@ -1343,7 +1363,9 @@ export type IfcErrorCode =
   | "invalid-selector"
   | "inverse-attribute"
   | "express-mismatch"
-  | "invalid-express";
+  | "invalid-express"
+  | "history-empty"
+  | "history-stale";
 
 /**
  * A value `IfcModel.getValue` reads by path (#464): a tagged value, a list

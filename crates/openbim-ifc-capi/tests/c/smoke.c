@@ -1158,6 +1158,69 @@ static int geometry(void) {
   return failed;
 }
 
+/* Undo and redo (#465): off by default, one entry per mutating call, and a
+ * size query or a short buffer applies nothing. Returns 0 on success. */
+static int history(void) {
+  OpenbimIfcModel model = 0;
+  OK(openbim_ifc_v0_1_model_parse((const uint8_t *)FILE_TEXT,
+                                  strlen(FILE_TEXT), &model, NULL, 0));
+  size_t nodes = 0, strings = 0, count = 0;
+  char code[32];
+  size_t code_len = 0;
+  CHECK(openbim_ifc_v0_1_model_undo(model, NULL, 0, &nodes, NULL, 0,
+                                    &strings) ==
+            OPENBIM_IFC_STATUS_HISTORY_EMPTY,
+        "nothing to undo while history is off");
+  OK(openbim_ifc_v0_1_last_error_code(model, (uint8_t *)code, sizeof code,
+                                      &code_len));
+  CHECK(strcmp(code, "history-empty") == 0, "history-empty code");
+
+  OK(openbim_ifc_v0_1_model_set_history_limit(model, 4));
+  OpenbimIfcHistoryState state;
+  OK(openbim_ifc_v0_1_model_history(model, &state));
+  CHECK(state.limit == 4 && state.undo == 0 && state.redo == 0, "empty history");
+  OK(openbim_ifc_v0_1_entity_remove(model, 2));
+  OK(openbim_ifc_v0_1_model_len(model, &count));
+  CHECK(count == 1, "the entity is removed");
+  OK(openbim_ifc_v0_1_model_history(model, &state));
+  CHECK(state.undo == 1 && state.redo == 0, "one undo entry");
+
+  CHECK(openbim_ifc_v0_1_model_undo(model, NULL, 0, &nodes, NULL, 0,
+                                    &strings) ==
+            OPENBIM_IFC_STATUS_BUFFER_TOO_SMALL,
+        "a size query reports the change");
+  OK(openbim_ifc_v0_1_model_len(model, &count));
+  CHECK(count == 1, "a size query applies nothing");
+
+  OpenbimIfcValueNode *node_buffer =
+      (OpenbimIfcValueNode *)malloc(nodes * sizeof *node_buffer);
+  uint8_t *string_buffer = (uint8_t *)malloc(strings + 1);
+  CHECK(node_buffer != NULL && string_buffer != NULL, "allocation");
+  OK(openbim_ifc_v0_1_model_undo(model, node_buffer, nodes, &nodes,
+                                 string_buffer, strings, &strings));
+  free(node_buffer);
+  free(string_buffer);
+  OK(openbim_ifc_v0_1_model_len(model, &count));
+  CHECK(count == 2, "undo restores the entity");
+  OK(openbim_ifc_v0_1_model_history(model, &state));
+  CHECK(state.undo == 0 && state.redo == 1, "one redo entry");
+
+  node_buffer = (OpenbimIfcValueNode *)malloc(nodes * sizeof *node_buffer);
+  string_buffer = (uint8_t *)malloc(strings + 1);
+  CHECK(node_buffer != NULL && string_buffer != NULL, "allocation");
+  OK(openbim_ifc_v0_1_model_redo(model, node_buffer, nodes, &nodes,
+                                 string_buffer, strings, &strings));
+  free(node_buffer);
+  free(string_buffer);
+  OK(openbim_ifc_v0_1_model_len(model, &count));
+  CHECK(count == 1, "redo removes it again");
+  OK(openbim_ifc_v0_1_model_clear_history(model));
+  OK(openbim_ifc_v0_1_model_history(model, &state));
+  CHECK(state.limit == 4 && state.undo == 0 && state.redo == 0, "cleared");
+  OK(openbim_ifc_v0_1_model_destroy(model));
+  return 0;
+}
+
 int main(void) {
   OpenbimIfcVersion version;
   OK(openbim_ifc_v0_1_version(&version));
@@ -1308,6 +1371,7 @@ int main(void) {
   CHECK(property_edits() == 0, "property sets are written from C");
   CHECK(named_attributes() == 0, "attributes are read and written by name from C");
   CHECK(authoring() == 0, "a model is built from nothing from C");
+  CHECK(history() == 0, "changes are undone and redone from C");
 
   size_t live = 1;
   OK(openbim_ifc_v0_1_live_models(&live));

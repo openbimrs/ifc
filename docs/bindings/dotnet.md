@@ -776,6 +776,22 @@ each, and change nothing. The
 [cookbook](/cookbook/dotnet#convert-units-and-the-model-s-length-unit) has a
 recipe.
 
+## Undo and redo
+
+History is off until `model.SetHistoryLimit(n)` bounds the undo entries (0
+turns it off and drops what is held); then every method that changes the model
+is one entry, `Author` for its whole batch. `model.History` is a
+`HistoryState` (`Limit`, `Undo`, `Redo`). `model.Undo()` restores the model to
+the state before the last entry, entities under their ids and at their file
+positions, the header included, and returns a `HistoryChange` (`Created`,
+`Removed`, `Modified`, `Header`); `model.Redo()` reverses an undo, and
+`model.ClearHistory()` drops the entries. With nothing to step through, or
+while history is off, they throw `history-empty`
+(`IfcStatus.HistoryEmpty`); after a change made outside the history,
+`history-stale` (`IfcStatus.HistoryStale`), with the model unchanged.
+Undoing a creation frees its id again.
+
+
 ## How it is tested
 
 The package is tested as NuGet installs it: `check-dotnet.py` packs the
@@ -822,6 +838,11 @@ and `MeshedProduct` included, from its XML documentation comments.
 | `IReadOnlyList<ulong?> Author(IEnumerable<AuthorOp> ops)` | Apply authoring operations as one checked transaction against the release the header declares: every operation, in order, or none and the model unchanged. |
 | `ulong CreateEntity(string type, IEnumerable<KeyValuePair<string, Value>>? attributes = null)` | Create one entity of `type` from named attributes, checked against the declared release (`Author` with one `AuthorOp.Create`); returns its id. |
 | `void RemoveWithRelationships(ulong id)` | Remove entity `id` with the relationships that reference it, leaving nothing dangling; refused with `still-referenced` while an entity other than a relationship needs it. |
+| `void SetHistoryLimit(int limit)` | Keep at most `limit` undo entries; 0 (the default) turns history off and drops what is held (#465). While it is on, every method that changes the model is one entry (`Author` is one entry for its whole batch). |
+| `HistoryState History { get; }` | The history bound and how many entries each direction holds. |
+| `HistoryChange Undo()` | Restore the model to the state before the last change: entities under their ids and at their file positions, the header included. Undoing a creation frees its id again. A size query or a short buffer applies nothing, so the call is safe to retry. Refused with `history-empty` when there is nothing to undo (also while history is off) and `history-stale` when the model changed outside the history; the model is unchanged then. |
+| `HistoryChange Redo()` | Reverse the last `Undo`. Refused with `history-empty` when there is nothing to redo and `history-stale` as `Undo` is. |
+| `void ClearHistory()` | Drop every undo and redo entry, keeping the limit. |
 | `RemovalReport RemoveProduct(ulong id, bool rebasePlacements = false, bool untypeOccurrences = false, bool dryRun = false)` | Remove product (or type object) `id` with everything it solely owns -- its placement, representation, own property and quantity sets, material usage, openings and ports, and the relationships left without an end -- as one checked transaction, keeping what is shared (a property set another object uses, a type's representation maps). With `dryRun` nothing changes. |
 | `byte[] ExportTable(string query, IEnumerable<string> columns, string format = "csv", string? key = null, string @null = "")` | The entities selector `query` selects as a table (#474): the key column first (`GlobalId`, or `id` with `key`), then one column per value path of `columns` (`Name`, `type.Name`, `Pset_WallCommon.FireRating`), each cell the value the path reads as text. Refuses with `invalid-selector` a query or path that does not parse, `invalid-value` an unknown format or key, and `wrong-entity-type` an entity without a `GlobalId` in a table keyed by it. |
 | `TableImport ImportTable(byte[] data, string format = "csv", string? key = null, string @null = "", bool dryRun = false)` | Apply a table back to the model by its key column (#474), as one checked transaction: every other cell is written by its header's value path, typed by the attribute's declared type or the property's stated one; a cell that reads what the model holds changes nothing, so an exported table imported unchanged is a no-op. Any refusal means nothing was written, as does `dryRun`. |

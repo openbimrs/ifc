@@ -1027,6 +1027,26 @@ named in the last error message. These exports make the ABI version 0.1.19.
 The [cookbook](/cookbook/c#convert-units-and-the-model-s-length-unit) has a
 recipe.
 
+## Undo and redo
+
+History is off until `openbim_ifc_v0_1_model_set_history_limit(model, limit)`
+gives it a bound on undo entries (0 turns it off and drops what is held); then
+every mutating export is one entry, `author` for its whole batch.
+`openbim_ifc_v0_1_model_history(model, &state)` fills an
+`OpenbimIfcHistoryState` (`limit`, `undo`, `redo`), and
+`openbim_ifc_v0_1_model_clear_history` drops the entries.
+`openbim_ifc_v0_1_model_undo` restores the model to the state before the last
+entry, entities under their ids and at their file positions, the header
+included; `_model_redo` reverses an undo. Both answer with a `HistoryChange`
+tape: created, removed and modified (`LIST`s of `REF`) and header (`BOOL`). A
+size query or a short buffer peeks the step and answers `BUFFER_TOO_SMALL`
+without applying it. With nothing to step through, or while history is off,
+the status is `HISTORY_EMPTY` (38), code `history-empty`; after a change made
+outside the history it is `HISTORY_STALE` (39), code `history-stale`, and the
+model is unchanged. Undoing a creation frees its id again. These exports make
+the ABI version 0.1.23.
+
+
 ## API
 
 The [C API reference](/api/c) lists every type, constant, function and

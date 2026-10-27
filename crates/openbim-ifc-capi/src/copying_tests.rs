@@ -208,3 +208,35 @@ fn an_append_crosses_between_two_models() {
         assert_eq!(openbim_ifc_v0_1_model_destroy(model), OpenbimIfcStatus::Ok);
     }
 }
+
+#[test]
+fn a_null_output_pointer_is_refused_before_a_copy_applies() {
+    let model = fixture("cascade_ifc4.ifc");
+    let before = count(model);
+    let (mut nodes, mut strings) = (0usize, 0usize);
+    let mut node_buffer = [crate::tape::OpenbimIfcValueNode::default(); 256];
+    let mut string_buffer = [0u8; 1024];
+    for (a, b) in [
+        (null_mut(), &mut strings as *mut usize),
+        (&mut nodes as *mut usize, null_mut()),
+    ] {
+        // SAFETY: the null pointer is the case under test.
+        let status = unsafe {
+            openbim_ifc_v0_1_model_copy_product(
+                model,
+                20,
+                0,
+                null(),
+                0,
+                node_buffer.as_mut_ptr(),
+                256,
+                a,
+                string_buffer.as_mut_ptr(),
+                1024,
+                b,
+            )
+        };
+        assert_eq!(status, OpenbimIfcStatus::NullPointer);
+        assert_eq!(count(model), before, "a refused call copies nothing");
+    }
+}

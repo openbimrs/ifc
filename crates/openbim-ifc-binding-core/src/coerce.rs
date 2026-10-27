@@ -107,8 +107,10 @@ impl IfcModel {
         name: &str,
         value: Plain,
     ) -> Result<Tagged, BindingError> {
-        let value = self.coerce_attribute(id, name, value)?;
-        self.set_attribute_by_name(id, name, value)
+        self.tracked(|this| {
+            let value = this.coerce_attribute(id, name, value)?;
+            this.set_attribute_by_name(id, name, value)
+        })
     }
 }
 

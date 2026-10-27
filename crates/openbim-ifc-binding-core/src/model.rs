@@ -18,6 +18,8 @@ pub struct IfcModel {
     pub(crate) guid_index: crate::relations::GuidCache,
     /// The reverse index `INVERSE` reads build on first use (#462).
     pub(crate) reverse_index: crate::inverse::ReverseCache,
+    /// Undo and redo entries; off until a limit is set (#465).
+    pub(crate) history: ifc::History,
 }
 
 impl IfcModel {
@@ -124,6 +126,7 @@ impl IfcModel {
             Ok(inner) => Ok(Self {
                 inner,
                 guid_index: Default::default(),
+                history: Default::default(),
                 reverse_index: Default::default(),
             }),
             Err(ModelError::Io(detail)) => Err(BindingError::Io(detail)),
@@ -234,16 +237,18 @@ impl IfcModel {
         value: Tagged,
     ) -> Result<Tagged, BindingError> {
         let value = value.into_value()?;
-        self.inner
-            .set_attribute(EntityId(id), index, value)
-            .map(|previous| Tagged::from_value(&previous))
-            .ok_or(BindingError::MissingEntity(id))
+        self.tracked(|this| {
+            this.inner
+                .set_attribute(EntityId(id), index, value)
+                .map(|previous| Tagged::from_value(&previous))
+                .ok_or(BindingError::MissingEntity(id))
+        })
     }
 
     /// Append a new entity, returning its id.
     pub fn add(&mut self, type_name: &str, attributes: Vec<Tagged>) -> Result<u64, BindingError> {
         let entity = entity(type_name, attributes)?;
-        Ok(self.inner.push(entity).0)
+        Ok(self.tracked(|this| this.inner.push(entity)).0)
     }
 
     /// Remove entity `id`. References to it are left dangling, as in the
@@ -254,10 +259,12 @@ impl IfcModel {
     /// entity, or [`Self::remove_product`] for a product with what it
     /// solely owns. It keeps working.
     pub fn remove(&mut self, id: u64) -> Result<(), BindingError> {
-        self.inner
-            .remove(EntityId(id))
-            .map(drop)
-            .ok_or(BindingError::MissingEntity(id))
+        self.tracked(|this| {
+            this.inner
+                .remove(EntityId(id))
+                .map(drop)
+                .ok_or(BindingError::MissingEntity(id))
+        })
     }
 
     /// Every `(from, to)` pair where `from` references a missing `to`.

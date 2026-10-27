@@ -8,6 +8,17 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#465)
+
+- Undo and redo: `set_history_limit`, `history`, `peek_undo`, `peek_redo`,
+  `undo`, `redo` and `clear_history` on `IfcModel`, and the records
+  `HistoryState` and `HistoryChange`. History is off until a limit is set;
+  then every public mutator is one entry (a test lists them from the source).
+- Errors `history-empty` and `history-stale`; `BindingError` gains
+  `HistoryEmpty` and `HistoryStale`.
+
+Semver: additive (internal crate, not published).
+
 ### Added (#559)
 
 - `set_properties_seeded`, `set_property_seeded`, `remove_property_seeded`,

@@ -185,7 +185,7 @@ impl IfcModel {
     ) -> Result<CopyReport, BindingError> {
         #[cfg(feature = "author")]
         {
-            self.copy_product_seeded(id, options, ifc::fresh_seed())
+            self.tracked(|this| this.copy_product_seeded(id, options, ifc::fresh_seed()))
         }
         #[cfg(not(feature = "author"))]
         {
@@ -232,7 +232,8 @@ impl IfcModel {
                     .map_err(super::convert::error)?;
                 (staged.ids, staged.copies)
             } else {
-                let outcome = ifc::apply_authoring(&mut self.inner, schema, &ops, seed)
+                let outcome = self
+                    .tracked(|this| ifc::apply_authoring(&mut this.inner, schema, &ops, seed))
                     .map_err(super::convert::error)?;
                 (outcome.ids, outcome.copies)
             };
@@ -267,7 +268,7 @@ impl IfcModel {
     ) -> Result<CopyReport, BindingError> {
         #[cfg(feature = "author")]
         {
-            self.append_seeded(source, roots, options, ifc::fresh_seed())
+            self.tracked(|this| this.append_seeded(source, roots, options, ifc::fresh_seed()))
         }
         #[cfg(not(feature = "author"))]
         {
@@ -320,15 +321,17 @@ impl IfcModel {
                 .map_err(super::convert::error)?
                 .report
             } else {
-                ifc::apply_append(
-                    &mut self.inner,
-                    target_schema,
-                    &source.inner,
-                    source_schema,
-                    &roots,
-                    &facade,
-                    seed,
-                )
+                self.tracked(|this| {
+                    ifc::apply_append(
+                        &mut this.inner,
+                        target_schema,
+                        &source.inner,
+                        source_schema,
+                        &roots,
+                        &facade,
+                        seed,
+                    )
+                })
                 .map_err(super::convert::error)?
                 .report
             };

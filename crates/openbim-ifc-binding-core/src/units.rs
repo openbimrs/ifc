@@ -308,7 +308,7 @@ impl IfcModel {
     ) -> Result<LengthUnitReport, BindingError> {
         #[cfg(feature = "properties")]
         {
-            imp::convert_length_unit(self, target, options)
+            self.tracked(|this| imp::convert_length_unit(this, target, options))
         }
         #[cfg(not(feature = "properties"))]
         {

@@ -92,6 +92,34 @@ public class CapabilityTests
     }
 
     [Fact]
+    public void UndoAndRedoRestoreTheExactFileOnceALimitIsSet()
+    {
+        using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.File));
+        Assert.Equal(new HistoryState(0, 0, 0), model.History);
+        Assert.Equal("history-empty", Assert.Throws<IfcException>(() => model.Undo()).Code);
+
+        model.SetHistoryLimit(4);
+        var before = model.Write();
+        model.RemoveWithRelationships(2);
+        var after = model.Write();
+        Assert.NotEqual(before, after);
+        Assert.Equal(new HistoryState(4, 1, 0), model.History);
+
+        var undone = model.Undo();
+        Assert.Equal(new ulong[] { 2 }, undone.Created);
+        Assert.Equal(before, model.Write());
+        Assert.Equal(new HistoryState(4, 0, 1), model.History);
+        Assert.Equal(new ulong[] { 2 }, model.Redo().Removed);
+        Assert.Equal(after, model.Write());
+        var empty = Assert.Throws<IfcException>(() => model.Redo());
+        Assert.Equal(IfcStatus.HistoryEmpty, empty.Status);
+
+        model.ClearHistory();
+        Assert.Equal(new HistoryState(4, 0, 0), model.History);
+        Assert.Throws<ArgumentOutOfRangeException>(() => model.SetHistoryLimit(-1));
+    }
+
+    [Fact]
     public void IfcXmlRoundTripsAndRefusesAnUnknownProfile()
     {
         using var model = IfcModel.Parse(Fixtures.Bytes(Fixtures.File));

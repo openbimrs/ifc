@@ -135,8 +135,10 @@ impl IfcModel {
     ) -> Result<Tagged, BindingError> {
         let value = value.into_value()?;
         let schema = self.declared_schema()?;
-        ifc::set_attribute_by_name(&mut self.inner, schema, EntityId(id), name, value)
-            .map(|previous| Tagged::from_value(&previous))
-            .map_err(refused)
+        self.tracked(|this| {
+            ifc::set_attribute_by_name(&mut this.inner, schema, EntityId(id), name, value)
+                .map(|previous| Tagged::from_value(&previous))
+                .map_err(refused)
+        })
     }
 }

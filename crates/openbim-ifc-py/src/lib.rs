@@ -14,6 +14,7 @@ mod edits;
 mod error;
 mod model;
 mod records;
+mod reports;
 mod units;
 
 use pyo3::prelude::*;

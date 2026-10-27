@@ -6,7 +6,7 @@ namespace OpenBim.Ifc;
 /// </summary>
 /// <remarks>
 /// <see cref="Parse"/> to <see cref="FeatureDisabled"/>, <see cref="InvalidModel"/>
-/// and <see cref="MissingReference"/> to <see cref="InvalidExpress"/> are the
+/// and <see cref="MissingReference"/> to <see cref="HistoryStale"/> are the
 /// errors every binding shares, each with a stable <see cref="IfcException.Code"/>.
 /// The rest describe misuse of the C boundary, which this binding does not
 /// commit; <see cref="Panic"/> is a bug in the library, worth reporting.
@@ -79,6 +79,10 @@ public enum IfcStatus
     ExpressMismatch = 36,
     /// <summary>EXPRESS rule text does not parse, or names something that binds to nothing (<c>invalid-express</c>).</summary>
     InvalidExpress = 37,
+    /// <summary>An undo or redo with nothing to step through: history is off, or that stack is empty (<c>history-empty</c>).</summary>
+    HistoryEmpty = 38,
+    /// <summary>An undo or redo after the model changed outside the history (<c>history-stale</c>); nothing was changed.</summary>
+    HistoryStale = 39,
     /// <summary>A Rust panic was contained at the boundary.</summary>
     Panic = 255,
 }

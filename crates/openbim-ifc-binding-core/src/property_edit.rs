@@ -169,7 +169,7 @@ impl IfcModel {
         &mut self,
         edits: Vec<PropertyEdit>,
     ) -> Result<PropertyEditResult, BindingError> {
-        self.set_properties_seeded(edits, ifc::fresh_seed())
+        self.tracked(|this| this.set_properties_seeded(edits, ifc::fresh_seed()))
     }
 
     /// [`Self::set_properties`]
@@ -185,7 +185,7 @@ impl IfcModel {
     ) -> Result<PropertyEditResult, BindingError> {
         #[cfg(feature = "properties-write")]
         {
-            write::apply(self, edits, seed)
+            self.tracked(|this| write::apply(this, edits, seed))
         }
         #[cfg(not(feature = "properties-write"))]
         {
@@ -204,7 +204,9 @@ impl IfcModel {
         value: Tagged,
         set_type: Option<String>,
     ) -> Result<u64, BindingError> {
-        self.set_property_seeded(object, set, name, value, set_type, ifc::fresh_seed())
+        self.tracked(|this| {
+            this.set_property_seeded(object, set, name, value, set_type, ifc::fresh_seed())
+        })
     }
 
     /// [`Self::set_property`]
@@ -226,7 +228,7 @@ impl IfcModel {
         if let EditAction::Set { set_type: slot, .. } = &mut edit.action {
             *slot = set_type;
         }
-        let result = self.set_properties_seeded(vec![edit], seed)?;
+        let result = self.tracked(|this| this.set_properties_seeded(vec![edit], seed))?;
         result
             .properties
             .first()
@@ -242,7 +244,7 @@ impl IfcModel {
         set: &str,
         name: &str,
     ) -> Result<(), BindingError> {
-        self.remove_property_seeded(object, set, name, ifc::fresh_seed())
+        self.tracked(|this| this.remove_property_seeded(object, set, name, ifc::fresh_seed()))
     }
 
     /// [`Self::remove_property`]
@@ -258,8 +260,10 @@ impl IfcModel {
         name: &str,
         seed: u128,
     ) -> Result<(), BindingError> {
-        self.set_properties_seeded(vec![PropertyEdit::remove(object, set, name)], seed)
-            .map(drop)
+        self.tracked(|this| {
+            this.set_properties_seeded(vec![PropertyEdit::remove(object, set, name)], seed)
+        })
+        .map(drop)
     }
 }
 

@@ -66,7 +66,9 @@ export type IfcErrorCode =
   | "invalid-selector"
   | "inverse-attribute"
   | "express-mismatch"
-  | "invalid-express";
+  | "invalid-express"
+  | "history-empty"
+  | "history-stale";
 
 /**
  * A value `IfcModel.getValue` reads by path (#464): a tagged value, a list

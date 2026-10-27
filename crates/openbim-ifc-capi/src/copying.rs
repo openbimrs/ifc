@@ -79,6 +79,9 @@ unsafe fn copy_export(
     dry_run: bool,
     run: impl Fn(&mut IfcModel, bool) -> Result<CopyReport, BindingError>,
 ) -> Result<OpenbimIfcStatus, BindingError> {
+    if let Err(status) = out.check() {
+        return Ok(status);
+    }
     let planned = run(model, true)?;
     let tape = Tape::encode(&planned.to_record().to_tagged());
     let fits = tape.nodes.len() <= out.node_capacity && tape.strings.len() <= out.string_capacity;
