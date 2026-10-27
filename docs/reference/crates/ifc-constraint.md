@@ -11,7 +11,7 @@ Bounded IFC4 metric, objective, and constraint relationships.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.0 (2026-09-29) |
+| Latest release | 0.4.0 (2026-10-27) |
 | Registries | [crates.io `ifc-constraint`](https://crates.io/crates/ifc-constraint) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `constraint` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_constraint/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-constraint) |
@@ -32,72 +32,5 @@ formulas, references, tables, or time series.
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
-
-Latest release, 0.3.0 (2026-09-29):
-
-### Added
-
-- `DateTimeInput`: a creation time as IFC4/IFC4X3 `IfcDateTime` text or an
-  IFC2X3 `IfcDateTimeSelect` record (`From<&str>`, `From<EntityId>`).
-- `ConstraintError::NotInSchema`, `StructuredValue`, `EntityNotInSchema`,
-  `AuthoringNotInSchema` and `AuthoringValueType`, and projections'
-  `release()`. `SchemaVersion` is re-exported.
-
-### Changed (breaking)
-
-- The constraint views read every attribute by name in the model's
-  declared release (#212). They read IFC4 positions, types and SELECTs
-  from every file. `ConstraintView` binds the header (IFC2X3, IFC4 or
-  IFC4X3; none reads as IFC4) and a lookup refuses IFC4X1, IFC4X2, unknown
-  and multiple schemas. An attribute the release does not declare is
-  `NotInSchema`: IFC2X3 `IfcMetric.ReferencePath`, and IFC2X3
-  `IfcObjective.LogicalAggregator`, whose slot holds `ResultValues`, an
-  `IfcMetric`, which was reported as a malformed operator. An IFC2X3
-  `CreationTime` record is `StructuredValue` with the record id instead of
-  `InvalidValue`; IFC2X3's single `BenchmarkValues` metric is a one-element
-  list; `DataValue` is checked against the release's own
-  `IfcMetricValueSelect` and is required in IFC2X3. IFC4 and IFC4X3 answers
-  are unchanged.
-- `create_metric`, `create_objective`, `relate_resource_constraint` and
-  `create_reference` bind the declared release and lay their records out by
-  name (#212). In IFC2X3 a metric has ten attributes and requires
-  `DataValue`, `ReferencePath` is `AuthoringNotInSchema`, an objective takes
-  exactly one `IfcMetric` benchmark and no logical aggregator, text
-  `CreationTime` is `AuthoringValueType`, and
-  `IfcResourceConstraintRelationship` and `IfcReference` are
-  `EntityNotInSchema`. Enumeration tokens are checked against the release's
-  enumeration (IFC2X3 lacks, for example, `INCLUDES` and `MODELVIEW`). IFC4
-  and IFC4X3 records are unchanged.
-- `ConstraintBaseDraft::creation_time` is `Option<DateTimeInput>`; the
-  setter takes `impl Into<DateTimeInput>`, so `.creation_time("…")` still
-  compiles.
-- `Metric::try_new`, `Objective::try_new`,
-  `ResourceConstraintRelationship::try_new` and
-  `ConstraintAssignment::try_new` take the `SchemaVersion` to read against,
-  refusing IFC4X1, IFC4X2 and an entity the release does not declare.
-  `ConstraintView::new` is no longer `const`. A value for an attribute the
-  release does not declare, which `associate_constraint` could not hit, is
-  `AuthoringNotInSchema` rather than `AuthoringInvalid`.
-
-- Every public draft is `#[non_exhaustive]`, so struct literals no longer
-  compile outside the crate. Each gains a constructor taking its required
-  fields and one builder setter per other field, named after the field and
-  taking the unwrapped value (`.description("…")` sets `Some`):
-  - `ConstraintBaseDraft::new(name, grade)`
-  - `MetricDraft::new(base, benchmark)`
-  - `ObjectiveDraft::new(base, qualifier)`
-  - `ResourceConstraintDraft::new(relating_constraint, related_resources)`
-  - `ConstraintAssociationDraft::new(global_id, related_objects, relating_constraint)`
-  - `ReferenceDraft::new()`, which now also derives `Default`
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
 
 Full history: [`crates/ifc-constraint/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-constraint/CHANGELOG.md)

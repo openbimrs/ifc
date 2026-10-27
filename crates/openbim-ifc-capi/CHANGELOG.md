@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.17] - 2026-10-27
+
 ### Fixed (#465)
 
 - `openbim_ifc_v0_1_model_undo`, `_redo`, `_remove_product`, `_purge`,

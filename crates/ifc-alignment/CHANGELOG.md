@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-27
+
 ## [0.9.0] - 2026-10-13
 
 ### Fixed
@@ -444,7 +446,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-alignment-v0.9.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-alignment-v0.10.0...HEAD
+[0.10.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.10.0
 [0.9.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.9.0
 [0.8.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.8.1
 [0.8.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.8.0

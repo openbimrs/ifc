@@ -11,7 +11,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.13.0 (2026-10-20) |
+| Latest release | 0.14.0 (2026-10-27) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_wasm/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-wasm) |
@@ -70,55 +70,52 @@ suites here cover only the JS conversion itself.
 
 ## Changes
 
-Latest release, 0.13.0 (2026-10-20):
+Latest release, 0.14.0 (2026-10-27):
 
-### Added (#479, copy and append)
+### Added (#465)
 
-- `IfcModel.copyProduct(id, options?)` and `IfcModel.append(source, ids,
-  options?)`, returning a `CopyReport`; the `copyProduct` and `copyEntity`
-  batch operations. TypeScript: `CopyProductOptions`, `AppendOptions`,
-  `CopyReport`, `CopiedEntity`.
+- `IfcModel.setHistoryLimit`, `history`, `undo`, `redo` and `clearHistory`,
+  with the `HistoryState` and `HistoryChange` types and the error codes
+  `history-empty` and `history-stale`. History is off until a limit is set;
+  then every mutating method is one undo entry. `setHistoryLimit` refuses a
+  value that is not a whole number of at least 0 with `invalid-value`.
 
 Semver: additive: minor.
 
-### Added (#469, unit conversion)
+### Fixed (#559)
 
-- `IfcModel.convertUnit(value, from, to)` between units named as text (SI
-  with prefix, IFC4 Table 673 names with exact factors), and
-  `IfcModel.formatLength(value, unit, { style?, places?, displayUnit?,
-  suppressZeroInches? })` (decimal, feet-inches, inches with fractions).
-- `model.convertUnitValue(value, from, to)` between two unit entities of the
-  model.
-- `model.convertLengthUnit(target, { areaAndVolume?, removeReplacedUnits?,
-  dryRun? })`: rescales every length, area and volume value to a new
-  project length unit as one checked transaction, returning a
-  `LengthUnitReport` (`ConvertedValues`, `KeptValues`; `LengthUnitOptions`,
-  `LengthFormatOptions` in the declarations). Refusals use the existing
-  codes.
+- `setProperties`, `setProperty`, `removeProperty`, `setValue` and
+  `importTable` draw their `GlobalId` seed from `Math.random`, as `author`,
+  `copyProduct` and `append` do.
 
-### Added (#474, tables)
+Semver: patch (signatures unchanged).
 
-- `model.exportTable(query, columns, { format, key, null })` returns the
-  selected entities as a CSV or TSV `Uint8Array`, one column per value
-  path; `model.importTable(bytes, { format, key, null, dryRun })` applies
-  a table back by key as one checked transaction and returns a
-  `TableImport` (`applied`, `changes`, `refusals`); TypeScript types
-  `TableOptions`, `TableImportOptions`, `TableChange`, `TableRefusal`,
-  `TableImport`. XLSX throws `feature-disabled` in the npm package; the
-  crate's opt-in feature `sheet-xlsx` carries it.
+### Fixed (#548)
 
-Semver: additive, a minor release while 0.x.
+- `IfcModel.copyProduct` and `IfcModel.append` draw their `GlobalId` seed
+  from `Math.random`, as `author` does. The `GlobalId`s a batch derives now
+  depend on the seed alone, and the library's own seed has no entropy on
+  `wasm32-unknown-unknown` (a counter from 0 per page load), so without this
+  the n-th copy of every page load would collide.
 
-### Changed (#512)
+### Added (#538, EXPRESS rules)
 
-- `productCurves` gives the curves of a representation that also holds text or a
-  fill area: a dimension `IfcAnnotation` (its lines as `IfcPolyline`s,
-  its value as an `IfcTextLiteralWithExtent`) was an `unsupported`
-  refusal and now returns its lines. `ProductCurves.skipped` (`bigint[]`), the record's new last
-  field, lists each `IfcTextLiteral`, `IfcTextLiteralWithExtent` and
-  `IfcAnnotationFillArea` of the representation by entity id: not drawn,
-  not a refusal.
+- `IfcModel.validateExpress(express, maxFindings?)` validates with the
+  EXPRESS rules of the declared release from the `.exp` text the caller
+  supplies, behind the new `validate-express` cargo feature (default, so
+  the npm package carries it). `IfcErrorCode` gains `express-mismatch` and
+  `invalid-express`.
+- `ValidationReport.indeterminate`; findings gain the severity
+  `indeterminate`.
 
-Semver: minor.
+Semver: additive: minor.
+
+### Changed (#537)
+
+- `validate` also reports the `property.undeclared_member` and
+  `property.member_type` warnings for the members of a catalog set, when
+  the build carries the property catalog.
+
+Semver: no code change; patch when released.
 
 Full history: [`crates/openbim-ifc-wasm/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-wasm/CHANGELOG.md)

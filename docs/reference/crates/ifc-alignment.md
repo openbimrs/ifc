@@ -11,7 +11,7 @@ IFC4x3 linear positioning: alignments, referents, linear placement, spirals.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.9.0 (2026-10-13) |
+| Latest release | 0.10.0 (2026-10-27) |
 | Registries | [crates.io `ifc-alignment`](https://crates.io/crates/ifc-alignment) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `alignment` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_alignment/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-alignment) |
@@ -32,19 +32,5 @@ consumers should never compile spiral curve laws.
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
-
-Latest release, 0.9.0 (2026-10-13):
-
-### Fixed
-
-- The writers' GlobalId check is `ifc_model::guid::Guid::parse` (#492):
-  22 characters were counted, so a text outside the IFC base-64 alphabet
-  or with a leading digit above `3` was staged. Both are now refused with
-  `AlignmentError::Invalid` naming `GlobalId`, before anything is staged.
-- The `authoring::layout` docs no longer claim `ifc-author` owns an
-  `IfcRelNests` writer; they say how to stage the nesting (#492).
-
-Semver: minor. A writer now refuses GlobalIds it accepted; a well-formed
-GlobalId behaves as before.
 
 Full history: [`crates/ifc-alignment/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-alignment/CHANGELOG.md)

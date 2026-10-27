@@ -11,7 +11,7 @@ IFC spatial containment and objectified relationship traversal: project, site, b
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.5.1 (2026-10-13) |
+| Latest release | 0.6.0 (2026-10-27) |
 | Registries | [crates.io `ifc-spatial`](https://crates.io/crates/ifc-spatial) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `spatial` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_spatial/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-spatial) |
@@ -37,15 +37,5 @@ IFC spatial containment and objectified relationship traversal: project, site, b
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
-
-Latest release, 0.5.1 (2026-10-13):
-
-### Documentation
-
-- `contain`, `contain_with_owner_history`, `serve_buildings` and
-  `serve_buildings_with_owner_history` are documented as the canonical
-  writers; the `ifc-systems` duplicates are deprecated (#492).
-
-Semver: patch. Documentation only.
 
 Full history: [`crates/ifc-spatial/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-spatial/CHANGELOG.md)

@@ -11,7 +11,7 @@ Presentation: styles, colours, textures, layers, annotation.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.5.1 (2026-10-20) |
+| Latest release | 0.6.0 (2026-10-27) |
 | Registries | [crates.io `ifc-style`](https://crates.io/crates/ifc-style) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `style` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_style/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-style) |
@@ -33,20 +33,5 @@ IFC4, and IFC4X3 layout drift is explicit rather than guessed.
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
-
-Latest release, 0.5.1 (2026-10-20):
-
-### Fixed (#514)
-
-Semver: patch. No public item changes.
-
-- `FillAreaStyle::fill_styles` accepts a solid colour fill. It listed the
-  `IfcColour` select itself as a member of `IfcFillStyleSelect`, and a
-  select name never matches an instance's entity type, so every
-  `IfcColourRgb` (and `IfcDraughtingPreDefinedColour`) fill was refused
-  with `StyleError::ReferenceType`. It now lists `IfcColour`'s own members,
-  `IfcColourSpecification` and `IfcPreDefinedColour`, as every bundled
-  release declares them; the colour then reads through
-  `StyleView::colour_rgb`. A non-colour member is still refused.
 
 Full history: [`crates/ifc-style/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-style/CHANGELOG.md)

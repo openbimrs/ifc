@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-27
+
 ## [0.5.0] - 2026-10-13
 
 ### Deprecated
@@ -246,7 +248,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-systems-v0.5.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-systems-v0.6.0...HEAD
+[0.6.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-systems-v0.6.0
 [0.5.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-systems-v0.5.0
 [0.4.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-systems-v0.4.0
 [0.3.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-systems-v0.3.1

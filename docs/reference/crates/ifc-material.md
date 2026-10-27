@@ -11,7 +11,7 @@ Material definitions: layer sets, profile sets, constituents, usage.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.5.0 (2026-10-03) |
+| Latest release | 0.6.0 (2026-10-27) |
 | Registries | [crates.io `ifc-material`](https://crates.io/crates/ifc-material) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `material` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_material/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-material) |
@@ -51,22 +51,5 @@ another release's slot.
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
-
-Latest release, 0.5.0 (2026-10-03):
-
-### Changed (breaking)
-
-- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
-  default, forward to `ifc-schema`, which this crate now depends on without
-  its default features (#306). Each links one release's table, so a
-  single-release build carries only that table: an IFC4-only browser
-  module with materials shrinks from 1,445,151 to 852,448 bytes. The default
-  build links every release, as before.
-- A release the build leaves out is refused with `UnsupportedSchema`
-  instead of panicking; so is the IFC4 baseline of a model with no
-  header in a build without IFC4. A build without default features
-  therefore has to name the releases it reads.
-
-Under 0.x, a minor release.
 
 Full history: [`crates/ifc-material/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-material/CHANGELOG.md)

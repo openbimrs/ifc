@@ -11,7 +11,7 @@ Schema-checked IFC authoring: construct entities by attribute name with arity an
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.2 (2026-10-14) |
+| Latest release | 0.4.0 (2026-10-27) |
 | Registries | [crates.io `ifc-author`](https://crates.io/crates/ifc-author) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `authoring` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_author/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-author) |
@@ -28,17 +28,25 @@ Schema-checked IFC authoring: construct entities by attribute name with arity an
 
 ## Changes
 
-Latest release, 0.3.2 (2026-10-14):
+Latest release, 0.4.0 (2026-10-27):
 
-### Fixed (#481)
+### Fixed (#565)
 
-- `EntityBuilder` checks a nested aggregate (`LIST [1:?] OF LIST [3:3] OF
-  IfcLengthMeasure`, as `IfcCartesianPointList3D.CoordList` and
-  `IfcTriangulatedFaceSet.CoordIndex` declare) at its elements, level by
-  level, instead of refusing the inner lists as values of the element
-  type; a level that should hold aggregates and holds a scalar is
-  `AggregateMismatch`.
+- The declared-type check refuses an enumeration constant that is not a
+  member of the declared enumeration (through defined-type aliases and
+  SELECTs of enumerations), as the new `AuthorError::NotEnumerationMember`
+  naming the enumeration, the constant and the allowed members. `.PIERCAP.`
+  on an IFC4 `IfcBeam` was written; it is now refused, and still accepted on
+  IFC4X3. Members compare case-insensitively, as the reader upper-cases
+  constants. A typed parameter in a SELECT slot is checked against the
+  member it names (`IFCNULLSTYLE(.BOGUS.)`).
+- A record read from a file that already carries a non-member constant now
+  refuses edits to its other slots, fail-closed like `TypeMismatch`.
+- Semver: patch.
 
-Semver: patch.
+### Added (#565)
+
+- `AuthorError::NotEnumerationMember { entity, attribute, enumeration,
+  constant, allowed }`; the enum is `#[non_exhaustive]`.
 
 Full history: [`crates/ifc-author/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-author/CHANGELOG.md)

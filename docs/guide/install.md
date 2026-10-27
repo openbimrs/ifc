@@ -8,11 +8,11 @@ one reads the same in the others.
 
 | Language | Package | Latest release | Install | Requires | Reference |
 | --- | --- | --- | --- | --- | --- |
-| Rust | [`openbim-ifc`](https://crates.io/crates/openbim-ifc) | 0.37.0 (2026-10-20) | `cargo add openbim-ifc` | Rust `1.99.0` | [`openbim-ifc`](/reference/crates/openbim-ifc) |
-| JavaScript / TypeScript | [`@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) | 0.13.0 (2026-10-20) | `npm install @openbim/ifc` | Node `>=18` | [`openbim-ifc-wasm`](/reference/crates/openbim-ifc-wasm) |
-| Python | [`openbim-ifc`](https://pypi.org/project/openbim-ifc/) | 0.13.0 (2026-10-20) | `pip install openbim-ifc` | Python `>=3.9` | [`openbim-ifc-py`](/reference/crates/openbim-ifc-py) |
-| C / C++ | [`openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.16) (CMake, prebuilt archives) | 0.1.16 (2026-10-20) | `find_package(openbim_ifc)` | a C11 or C++17 compiler and CMake 3.21; Rust to build from source | [`openbim-ifc-capi`](/reference/crates/openbim-ifc-capi) |
-| C# / .NET | [`OpenBim.Ifc`](https://www.nuget.org/packages/OpenBim.Ifc) | 0.10.0 (2026-10-20) | `dotnet add package OpenBim.Ifc` | `netstandard2.0` or `net8.0` | [`openbim-ifc-dotnet`](/reference/crates/openbim-ifc-dotnet) |
+| Rust | [`openbim-ifc`](https://crates.io/crates/openbim-ifc) | 0.38.0 (2026-10-27) | `cargo add openbim-ifc` | Rust `1.99.0` | [`openbim-ifc`](/reference/crates/openbim-ifc) |
+| JavaScript / TypeScript | [`@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) | 0.14.0 (2026-10-27) | `npm install @openbim/ifc` | Node `>=18` | [`openbim-ifc-wasm`](/reference/crates/openbim-ifc-wasm) |
+| Python | [`openbim-ifc`](https://pypi.org/project/openbim-ifc/) | 0.14.0 (2026-10-27) | `pip install openbim-ifc` | Python `>=3.9` | [`openbim-ifc-py`](/reference/crates/openbim-ifc-py) |
+| C / C++ | [`openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.17) (CMake, prebuilt archives) | 0.1.17 (2026-10-27) | `find_package(openbim_ifc)` | a C11 or C++17 compiler and CMake 3.21; Rust to build from source | [`openbim-ifc-capi`](/reference/crates/openbim-ifc-capi) |
+| C# / .NET | [`OpenBim.Ifc`](https://www.nuget.org/packages/OpenBim.Ifc) | 0.11.0 (2026-10-27) | `dotnet add package OpenBim.Ifc` | `netstandard2.0` or `net8.0` | [`openbim-ifc-dotnet`](/reference/crates/openbim-ifc-dotnet) |
 
 <!-- INSTALL:TABLE:END -->
 

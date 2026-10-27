@@ -11,7 +11,7 @@ Classification systems, document references, libraries, external references.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.0 (2026-10-03) |
+| Latest release | 0.5.0 (2026-10-27) |
 | Registries | [crates.io `ifc-classification`](https://crates.io/crates/ifc-classification) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `classification` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_classification/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-classification) |
@@ -49,22 +49,5 @@ and entities the release cannot hold. No query performs external I/O.
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
-
-Latest release, 0.4.0 (2026-10-03):
-
-### Changed (breaking)
-
-- Release features `ifc2x3`, `ifc4`, `ifc4x1`, `ifc4x2` and `ifc4x3`, all
-  default, forward to `ifc-schema`, which this crate now depends on without
-  its default features (#306). Each links one release's table, so a
-  single-release build carries only that table: an IFC4-only browser
-  module with classification shrinks from 1,420,062 to 827,350 bytes. The default
-  build links every release, as before.
-- A release the build leaves out is refused with `UnsupportedSchema`
-  instead of panicking; so is the IFC4 baseline of a model with no
-  header in a build without IFC4. A build without default features
-  therefore has to name the releases it reads.
-
-Under 0.x, a minor release.
 
 Full history: [`crates/ifc-classification/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-classification/CHANGELOG.md)

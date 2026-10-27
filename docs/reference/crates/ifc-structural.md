@@ -11,7 +11,7 @@ Structural analysis model: members, connections, actions, reactions, loads.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.0 (2026-10-02) |
+| Latest release | 0.5.0 (2026-10-27) |
 | Registries | [crates.io `ifc-structural`](https://crates.io/crates/ifc-structural) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `structural` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_structural/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-structural) |
@@ -36,42 +36,5 @@ claim computed reaction/result authoring.
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
-
-Latest release, 0.4.0 (2026-10-02):
-
-### Changed (breaking)
-
-- `LoadKind` is `#[non_exhaustive]` and gains `SingleForceWarping`,
-  `SingleDisplacement` and `SingleDisplacementDistortion` (#228). An
-  exhaustive `match` on it no longer compiles; add a wildcard arm.
-
-### Added
-
-- IFC2X3 varying linear and planar actions (#229).
-  `StructuralAction::is_varying`, `varying_applied_load_location` and
-  `subsequent_applied_loads` read `IfcStructuralLinearActionVarying` and
-  `IfcStructuralPlanarActionVarying`; the loads come back in list order as
-  `StaticLoad`, the `LIST [1:?]` / `LIST [2:?]` minimums are enforced with
-  `InvalidCardinality`, and all three return `None`/`false` under IFC4 and
-  IFC4X3, which declare neither entity. `ActionDraft::varying` with the new
-  `VaryingActionDraft` stages either subtype from a `Linear` or `Planar`
-  kind; outside IFC2X3 it refuses with the new
-  `StructuralError::EntityNotInSchema`, and a short list, another kind or a
-  wrong reference refuses before anything is staged.
-- `StructuralView::surface_reinforcement_area` and the
-  `SurfaceReinforcementArea` projection for `IfcSurfaceReinforcementArea`
-  (IFC4, IFC4X3), which `stage_load` already authored (#228). It enforces
-  `SurfaceAndOrShearAreaSpecified`, `NonnegativeArea1..3` and the
-  `LIST [2:3]` bounds; an IFC2X3 view refuses it with `UnsupportedSchema`.
-
-### Fixed
-
-- `StructuralView::load` / `static_load` read
-  `IfcStructuralLoadSingleDisplacement`,
-  `IfcStructuralLoadSingleDisplacementDistortion` and
-  `IfcStructuralLoadSingleForceWarping` instead of refusing them with
-  `WrongType` (#228). Classification uses `Schema::is_a`, most specific
-  subtype first, and `components()` returns the displacement and rotation
-  slots, with `Distortion` or `WarpingMoment` appended for the subtypes.
 
 Full history: [`crates/ifc-structural/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-structural/CHANGELOG.md)

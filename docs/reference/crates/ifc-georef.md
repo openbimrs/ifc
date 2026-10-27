@@ -11,7 +11,7 @@ Georeferencing: map conversion, coordinate reference systems, site placement.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.7.0 (2026-10-13) |
+| Latest release | 0.8.0 (2026-10-27) |
 | Registries | [crates.io `ifc-georef`](https://crates.io/crates/ifc-georef) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `georef` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_georef/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-georef) |
@@ -50,40 +50,5 @@ buildingSMART geo-referencing guide
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
-
-Latest release, 0.7.0 (2026-10-13):
-
-### Added
-
-- IFC2X3 georeferencing through the `ePSet_MapConversion` and
-  `ePSet_ProjectedCRS` property sets (#451):
-  `resolve_property_set_georeferencing` resolves them into the same
-  `ProjectToMap` as IFC4's `IfcMapConversion` and `IfcProjectedCRS`, with
-  the project and map length units resolved, and
-  `has_property_set_georeferencing` tests for them cheaply. The source is
-  the buildingSMART Australasia "User Guide for Geo-referencing in IFC"
-  v2.0 (2020), §5.1 Tables 2 to 4: the property names and measure types,
-  and the sets on `IfcProject`. Where the guide is silent the reader
-  follows established practice, documented as such: set names match
-  ignoring case (`ePSet_`, `ePset_`, `EPset_`), `IfcSite` is a legacy host
-  read only when the project carries no set, and an optional `MapUnit`
-  text names an SI length unit. Precedence: the declared release decides,
-  IFC2X3 through the sets and IFC4/IFC4X3 through the entities, never
-  merged.
-- `OperationSource::PropertySet` (the host object), and the
-  `MAP_CONVERSION_PSET` and `PROJECTED_CRS_PSET` names.
-- Typed refusals for a malformed or incomplete set:
-  `GeorefError::IncompletePropertySets` (one set of the pair, never joined
-  across hosts), `AmbiguousPropertySets` (two sets of one name on a host),
-  `MissingProperty` (a required property without a value) and
-  `InvalidProperty` (not a single value of the guide's type, not finite,
-  or a length whose own unit is not the map unit). A repeated property
-  name is `RuleViolation` `WR32`.
-- Fixtures `test/fixtures/synthetic-georef/` from
-  `tools/gen_georef_fixtures.py`: an IFC2X3 file checked against its IFC4
-  twin, the site fallback, and refusal cases.
-
-Semver: minor. Additions only; the new enum variants are on
-`#[non_exhaustive]` enums.
 
 Full history: [`crates/ifc-georef/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-georef/CHANGELOG.md)

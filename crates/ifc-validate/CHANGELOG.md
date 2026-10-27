@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-27
+
 ### Added (#537)
 
 - `property.undeclared_member` and `property.member_type` warnings (bSI
@@ -356,7 +358,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-validate-v0.7.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-validate-v0.8.0...HEAD
+[0.8.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-validate-v0.8.0
 [0.7.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-validate-v0.7.0
 [0.6.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-validate-v0.6.0
 [0.5.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-validate-v0.5.0
