@@ -19,6 +19,7 @@
 
 use crate::entity::Entity;
 use crate::model::Model;
+use crate::mutation::Step;
 use crate::value::{EntityId, Value};
 
 impl Model {
@@ -50,11 +51,22 @@ impl Model {
     /// assert_eq!(coords[0].as_f64(), Some(10.0));
     /// ```
     pub fn set_attribute(&mut self, id: EntityId, index: usize, value: Value) -> Option<Value> {
+        let recording = self.is_recording();
         let entity = self.entity_mut(id)?;
-        if index >= entity.attributes.len() {
+        let len = entity.attributes.len();
+        if index >= len {
             entity.attributes.resize(index + 1, Value::Null);
         }
         let previous = std::mem::replace(&mut entity.attributes[index], value);
+        if recording {
+            let value = (index < len).then(|| previous.clone());
+            self.record(Step::Slot {
+                id,
+                slot: index,
+                value,
+                len,
+            });
+        }
         self.bump_revision();
         Some(previous)
     }
@@ -75,13 +87,28 @@ impl Model {
         id: EntityId,
         edits: impl IntoIterator<Item = (usize, Value)>,
     ) -> Option<Vec<Value>> {
+        let recording = self.is_recording();
         let entity = self.entity_mut(id)?;
         let mut previous = Vec::new();
+        let mut steps = Vec::new();
         for (index, value) in edits {
-            if index >= entity.attributes.len() {
+            let len = entity.attributes.len();
+            if index >= len {
                 entity.attributes.resize(index + 1, Value::Null);
             }
-            previous.push(std::mem::replace(&mut entity.attributes[index], value));
+            let old = std::mem::replace(&mut entity.attributes[index], value);
+            if recording {
+                steps.push(Step::Slot {
+                    id,
+                    slot: index,
+                    value: (index < len).then(|| old.clone()),
+                    len,
+                });
+            }
+            previous.push(old);
+        }
+        for step in steps {
+            self.record(step);
         }
         self.bump_revision();
         Some(previous)
@@ -101,6 +128,7 @@ impl Model {
         id: EntityId,
         type_name: impl Into<std::sync::Arc<str>>,
     ) -> Option<std::sync::Arc<str>> {
+        let recording = self.is_recording();
         let entity = self.entity_mut(id)?;
         let previous = entity.type_name.clone();
         let new_name = type_name.into();
@@ -108,6 +136,13 @@ impl Model {
         crate::authored_dump::record(&new_name, "retype");
         if previous.eq_ignore_ascii_case(&new_name) {
             entity.type_name = new_name;
+            if recording {
+                self.record(Step::Retype {
+                    id,
+                    type_name: previous.clone(),
+                    bucket: 0,
+                });
+            }
             self.bump_revision();
             return Some(previous);
         }
@@ -115,6 +150,14 @@ impl Model {
 
         let old_key = previous.to_ascii_uppercase();
         let new_key = new_name.to_ascii_uppercase();
+        if recording {
+            let bucket = self.bucket_position(&old_key, id);
+            self.record(Step::Retype {
+                id,
+                type_name: previous.clone(),
+                bucket,
+            });
+        }
         self.unindex(&old_key, id);
         self.by_type_mut().entry(new_key).or_default().push(id);
         self.bump_revision();
@@ -129,10 +172,26 @@ impl Model {
     /// with [`Model::dangling_references`] after a batch of removals, the
     /// same way a codec would detect them in a hand-edited file.
     pub fn remove(&mut self, id: EntityId) -> Option<Entity> {
+        let recording = self.is_recording();
         let entity = self.take_entity(id)?;
         let key = entity.type_name.to_ascii_uppercase();
+        let position = self.order_mut().iter().position(|existing| *existing == id);
+        if recording {
+            // `take_entity` already left storage, so the bucket and file
+            // positions are read from the indices, which still list `id`.
+            let bucket = self.bucket_position(&key, id);
+            let order = position.expect("an entity in storage is in file order");
+            self.record(Step::Insert {
+                id,
+                entity: entity.clone(),
+                order,
+                bucket,
+            });
+        }
         self.unindex(&key, id);
-        self.order_mut().retain(|existing| *existing != id);
+        if let Some(position) = position {
+            self.order_mut().remove(position);
+        }
         self.bump_revision();
         Some(entity)
     }

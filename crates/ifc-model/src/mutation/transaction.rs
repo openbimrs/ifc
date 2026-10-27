@@ -32,6 +32,14 @@
 //! right, and is the reason "delete a storey and re-parent its walls" is a
 //! single atomic edit rather than a sequence with a broken middle.
 //!
+//! # Undo
+//!
+//! [`Transaction::commit_reversible`] also returns an [`Inverse`] that
+//! restores the model exactly. The inverse is recorded by the model's own
+//! primitive writes, not derived from the staged edits, so file order,
+//! type-index order and the next free id come back too. See
+//! [`Inverse`] and [`History`](crate::History).
+//!
 //! ```
 //! use ifc_model::{Entity, Model, Transaction, Value};
 //!
@@ -58,9 +66,11 @@
 use ahash::{AHashMap, AHashSet};
 
 use crate::entity::Entity;
+use crate::header::Header;
 use crate::index::ReverseIndex;
 use crate::model::Model;
 use crate::mutation::conflict::Conflict;
+use crate::mutation::inverse::Inverse;
 use crate::value::{EntityId, Value};
 
 /// One staged change.
@@ -111,6 +121,9 @@ pub struct Transaction {
     revision: u64,
     next_id: u64,
     edits: Vec<Edit>,
+    /// A header replacement. Not an [`Edit`] variant: `Edit` is matched
+    /// exhaustively downstream.
+    header: Option<Header>,
 }
 
 impl Transaction {
@@ -121,6 +134,7 @@ impl Transaction {
             revision: model.revision(),
             next_id: model.next_id().0,
             edits: Vec::new(),
+            header: None,
         }
     }
 
@@ -139,7 +153,7 @@ impl Transaction {
     /// Whether anything is staged.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.edits.is_empty()
+        self.edits.is_empty() && self.header.is_none()
     }
 
     /// Number of staged edits.
@@ -199,6 +213,18 @@ impl Transaction {
     pub fn remove(&mut self, id: EntityId) -> &mut Self {
         self.edits.push(Edit::Remove { id });
         self
+    }
+
+    /// Stage a replacement of the file header, applied after the edits.
+    pub fn set_header(&mut self, header: Header) -> &mut Self {
+        self.header = Some(header);
+        self
+    }
+
+    /// The staged header replacement, if any.
+    #[must_use]
+    pub fn header(&self) -> Option<&Header> {
+        self.header.as_ref()
     }
 
     /// Check every edit without touching the model.
@@ -387,8 +413,20 @@ impl Transaction {
             }
         }
 
+        if let Some(header) = self.header {
+            *model.header_mut() = header;
+        }
+
         applied.revision = model.revision();
         Ok(applied)
+    }
+
+    /// [`Transaction::commit`], also returning the [`Inverse`] that restores
+    /// the model exactly. A refused commit changes nothing and returns the
+    /// conflicts only.
+    pub fn commit_reversible(self, model: &mut Model) -> Result<(Applied, Inverse), Vec<Conflict>> {
+        let (result, inverse) = Inverse::record(model, |model| self.commit(model));
+        result.map(|applied| (applied, inverse))
     }
 }
 

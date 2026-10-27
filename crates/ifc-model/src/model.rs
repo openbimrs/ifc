@@ -26,6 +26,7 @@ use crate::diagnostic::Diagnostic;
 use crate::entity::Entity;
 use crate::header::Header;
 use crate::lazy::{EntitySource, Slot};
+use crate::mutation::{Segment, Step};
 use crate::value::EntityId;
 use ahash::AHashMap;
 
@@ -58,6 +59,9 @@ pub struct Model {
     /// Decodes lazily registered entities; `None` for a model built only
     /// from decoded entities. Shared by clones.
     source: Option<Arc<dyn EntitySource>>,
+    /// Open recordings, innermost last; empty unless a caller is capturing
+    /// an [`Inverse`](crate::Inverse). See `mutation::record`.
+    recording: Vec<Segment>,
 }
 
 impl Model {
@@ -81,7 +85,15 @@ impl Model {
     }
 
     /// Mutable access to the header, for writers and editors.
+    ///
+    /// Counts as a structural change: it bumps [`Model::revision`], and an
+    /// active recording keeps the header it replaces.
     pub fn header_mut(&mut self) -> &mut Header {
+        if self.is_recording() {
+            let prior = Box::new(self.header.clone());
+            self.record(Step::Header(prior));
+        }
+        self.revision += 1;
         &mut self.header
     }
 
@@ -154,8 +166,14 @@ impl Model {
         } else {
             type_name
         };
+        let recording = self.is_recording();
         match self.entities.insert(id, slot) {
-            None => self.order.push(id),
+            None => {
+                self.order.push(id);
+                if recording {
+                    self.record(Step::Remove { id });
+                }
+            }
             // Replacing an occupant: drop its old type-index entry, otherwise
             // `ids_of_type` reports the id twice for the same type, or keeps
             // reporting it under a type the entity no longer has. Both make an
@@ -163,6 +181,14 @@ impl Model {
             Some(previous) => {
                 let previous = previous.into_entity(self.source.as_deref());
                 let previous_key = previous.type_name.to_ascii_uppercase();
+                if recording {
+                    let bucket = self.bucket_position(&previous_key, id);
+                    self.record(Step::Replace {
+                        id,
+                        entity: previous,
+                        bucket,
+                    });
+                }
                 if previous_key != key {
                     self.unindex(&previous_key, id);
                 } else {
@@ -385,5 +411,56 @@ impl Model {
 
     pub(crate) fn order_mut(&mut self) -> &mut Vec<EntityId> {
         &mut self.order
+    }
+
+    // --- crate-internal seams for `mutation::{record, step, inverse}` ----
+
+    pub(crate) fn recording_is_empty(&self) -> bool {
+        self.recording.is_empty()
+    }
+
+    /// Keeps `step` in the innermost open recording.
+    pub(crate) fn record(&mut self, step: Step) {
+        if let Some(segment) = self.recording.last_mut() {
+            segment.steps.push(step);
+        }
+    }
+
+    pub(crate) fn recording_mut(&mut self) -> &mut Vec<Segment> {
+        &mut self.recording
+    }
+
+    pub(crate) fn max_id(&self) -> u64 {
+        self.max_id
+    }
+
+    pub(crate) fn set_max_id(&mut self, max_id: u64) {
+        self.max_id = max_id;
+    }
+
+    pub(crate) fn entities_mut(&mut self) -> &mut AHashMap<EntityId, Slot> {
+        &mut self.entities
+    }
+
+    /// The header without the revision bump or the recording of
+    /// [`Model::header_mut`]; steps apply through it.
+    pub(crate) fn header_raw(&mut self) -> &mut Header {
+        &mut self.header
+    }
+
+    /// Where `id` sits in file order.
+    pub(crate) fn order_position(&self, id: EntityId) -> usize {
+        self.order
+            .iter()
+            .position(|existing| *existing == id)
+            .expect("an entity in storage is in file order")
+    }
+
+    /// Where `id` sits in the type-index bucket `key` (already upper-cased).
+    pub(crate) fn bucket_position(&self, key: &str, id: EntityId) -> usize {
+        self.by_type
+            .get(key)
+            .and_then(|ids| ids.iter().position(|existing| *existing == id))
+            .expect("an entity in storage is in its type bucket")
     }
 }

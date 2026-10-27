@@ -12,6 +12,23 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#465)
+
+- `Inverse`, `Restored`, `InverseError`: the recorded inverse of a run of
+  model writes (`Inverse::record`, `Model::begin_recording` and
+  `end_recording`). Applying one restores the model exactly (file order,
+  type-index order, attribute counts, header, next free id) and returns the
+  redo.
+- `History` and `HistoryError`: a bounded undo and redo stack of inverses;
+  `History::track` records any change as one entry.
+- `Transaction::commit_reversible`, `Transaction::set_header` and
+  `Transaction::header`.
+
+### Changed (#465)
+
+- `Model::header_mut` bumps the revision, so a transaction opened before a
+  header edit is refused.
+
 ## [0.3.1] - 2026-10-02
 
 ### Fixed

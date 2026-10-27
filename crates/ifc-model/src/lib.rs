@@ -38,7 +38,7 @@
 //! | [`guid`] | IFC's base-64 GlobalId encoding |
 //! | [`diagnostic`] | Non-fatal findings a codec attaches after a recovered read |
 //! | `index` | Derived indices: inverse references |
-//! | [`mutation`] | Transactional authoring: staged edits, preflight, commit |
+//! | [`mutation`] | Transactional authoring: staged edits, preflight, commit, undo and redo |
 //! | `traverse` | Graph walks over references |
 //! | [`error`] | Failure modes |
 
@@ -65,6 +65,8 @@ pub use header::Header;
 pub use index::{Referrer, ReverseIndex};
 pub use lazy::EntitySource;
 pub use model::Model;
-pub use mutation::{Applied, Conflict, Edit, Transaction};
+pub use mutation::{
+    Applied, Conflict, Edit, History, HistoryError, Inverse, InverseError, Restored, Transaction,
+};
 pub use traverse::{breadth_first, depth_first, find_cycle, Budget, Stop, Walk};
 pub use value::{EntityId, Value};
