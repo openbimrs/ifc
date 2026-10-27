@@ -8,6 +8,19 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#465, undo and redo)
+
+- `openbim_ifc_v0_1_model_set_history_limit`, `_model_history` (new
+  `OpenbimIfcHistoryState`), `_model_undo`, `_model_redo` and
+  `_model_clear_history`. History is off until a limit is set; then every
+  mutating export is one undo entry. `undo` and `redo` answer with a
+  `HistoryChange` tape; a size query or a short buffer applies nothing.
+- Statuses `HISTORY_EMPTY` (38, `history-empty`) and `HISTORY_STALE` (39,
+  `history-stale`).
+- ABI version 0.1.23; no `v0_1` symbol changed.
+
+Semver: additive, released on the 0.1 line.
+
 ### Changed (#559)
 
 - `openbim_ifc_v0_1_model_set_properties`, `_set_property`, `_remove_property`, `openbim_ifc_v0_1_entity_set_value`, `openbim_ifc_v0_1_model_import_table`: draw a seed per call for the `GlobalId`s of the sets and
