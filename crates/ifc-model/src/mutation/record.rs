@@ -26,6 +26,17 @@ pub(crate) struct Segment {
     pub(crate) revision: u64,
 }
 
+/// The open recordings of a model. A clone is not recording: its writes are
+/// not the original's to capture.
+#[derive(Debug, Default)]
+pub(crate) struct Recording(pub(crate) Vec<Segment>);
+
+impl Clone for Recording {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
+}
+
 impl Model {
     /// Start capturing the inverse of every write that follows.
     ///
@@ -56,6 +67,22 @@ impl Model {
             segment.revision,
             self.revision(),
         ))
+    }
+
+    /// How many recordings are open.
+    pub(crate) fn recording_depth(&self) -> usize {
+        self.recording_len()
+    }
+
+    /// Ends recordings opened inside a change that did not end them, down to
+    /// `depth`, keeping their steps in the one below.
+    pub(crate) fn unwind_recording(&mut self, depth: usize) {
+        while self.recording_len() > depth {
+            let segment = self.recording_mut().pop().expect("depth checked");
+            if let Some(outer) = self.recording_mut().last_mut() {
+                outer.steps.extend(segment.steps);
+            }
+        }
     }
 
     /// Whether a recording is open.

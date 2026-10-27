@@ -343,3 +343,66 @@ fn a_lazy_model_round_trips() {
     redo.apply(&mut model).unwrap();
     assert!(!model.contains(EntityId(1)));
 }
+
+#[test]
+fn an_inverse_is_refused_by_another_model() {
+    let (mut a, [a0, ..]) = seeded();
+    let (mut b, _) = seeded();
+    let (_, inverse) = Inverse::record(&mut a, |m| m.remove(a0));
+    let before = state(&b);
+    // Both models took the same number of writes; per-model counters would
+    // have matched here.
+    let err = inverse.apply(&mut b).unwrap_err();
+    assert!(matches!(err, InverseError::StaleRevision { .. }));
+    assert_eq!(state(&b), before);
+}
+
+#[test]
+fn a_clone_accepts_an_inverse_until_it_diverges() {
+    let (mut a, [a0, ..]) = seeded();
+    let (_, inverse) = Inverse::record(&mut a, |m| m.set_attribute(a0, 0, Value::Integer(9)));
+    let mut same = a.clone();
+    let mut diverged = a.clone();
+    diverged.push(wall(50));
+    assert!(inverse.clone().apply(&mut diverged).is_err());
+    assert!(inverse.clone().apply(&mut same).is_ok());
+    // The original diverges the other way.
+    a.push(wall(60));
+    assert!(inverse.apply(&mut a).is_err());
+}
+
+#[test]
+fn an_empty_set_attributes_changes_nothing() {
+    let (mut model, [a, ..]) = seeded();
+    let revision = model.revision();
+    assert_eq!(model.set_attributes(a, []), Some(vec![]));
+    assert_eq!(model.revision(), revision);
+    assert_eq!(model.set_attributes(EntityId(99), []), None);
+}
+
+#[test]
+fn a_clone_taken_while_recording_is_not_recording() {
+    let (mut model, _) = seeded();
+    let (clone, inverse) = Inverse::record(&mut model, |m| {
+        m.push(wall(5));
+        m.clone()
+    });
+    assert!(!clone.is_recording());
+    assert_eq!(inverse.len(), 1);
+    assert!(model.end_recording().is_none());
+}
+
+#[test]
+fn an_unbalanced_begin_inside_record_still_returns_its_own_inverse() {
+    let (mut model, [a, ..]) = seeded();
+    let before = state(&model);
+    let (_, inverse) = Inverse::record(&mut model, |m| {
+        m.set_attribute(a, 0, Value::Integer(5));
+        m.begin_recording();
+        m.push(wall(6));
+    });
+    assert!(!model.is_recording());
+    assert_eq!(inverse.len(), 2);
+    inverse.apply(&mut model).unwrap();
+    assert_eq!(state(&model), before);
+}

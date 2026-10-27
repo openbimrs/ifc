@@ -146,3 +146,18 @@ fn replaying_after_undo_reuses_the_ids() {
     let again = history.track(&mut model, |m| m.push(wall(1)));
     assert_eq!(first, again);
 }
+
+#[test]
+fn a_history_does_not_undo_on_another_model() {
+    let mut a = Model::new();
+    let mut b = Model::new();
+    let mut history = History::new(4);
+    history.track(&mut a, |m| m.push(wall(1)));
+    b.push(wall(1));
+    let err = history.undo(&mut b).unwrap_err();
+    assert!(matches!(err, HistoryError::StaleRevision { .. }));
+    assert_eq!(b.len(), 1);
+    assert_eq!(history.undo_len(), 1);
+    history.undo(&mut a).unwrap();
+    assert!(a.is_empty());
+}

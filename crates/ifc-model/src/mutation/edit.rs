@@ -81,7 +81,8 @@ impl Model {
     /// (there is nothing to roll back: slot writes cannot themselves fail).
     ///
     /// Returns the previous values in `edits` order, or `None` if `id` does
-    /// not name an entity.
+    /// not name an entity. An empty `edits` changes nothing, revision
+    /// included.
     pub fn set_attributes(
         &mut self,
         id: EntityId,
@@ -106,6 +107,10 @@ impl Model {
                 });
             }
             previous.push(old);
+        }
+        if previous.is_empty() {
+            // Nothing written: no change to count or to undo.
+            return Some(previous);
         }
         for step in steps {
             self.record(step);

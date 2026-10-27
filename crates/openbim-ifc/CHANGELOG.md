@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking) (#465)
+
+- Through the re-exported `Model`: `header_mut` bumps the revision, so a
+  `Transaction` opened before a header edit is refused at commit with
+  `Conflict::StaleRevision`; revisions are process-unique rather than
+  per-model counters, so a transaction or inverse made against another model
+  is refused (`ifc-model` 0.4.0).
+
 ### Added (#465)
 
 - Re-exports `History`, `HistoryError`, `Inverse`, `InverseError` and

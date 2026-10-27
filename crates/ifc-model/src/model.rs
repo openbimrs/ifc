@@ -20,13 +20,14 @@
 //! The rule to preserve: **no `if type_name == "IFCWALL"` in this crate.**
 
 use std::ops::Range;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use crate::diagnostic::Diagnostic;
 use crate::entity::Entity;
 use crate::header::Header;
 use crate::lazy::{EntitySource, Slot};
-use crate::mutation::{Segment, Step};
+use crate::mutation::{Recording, Step};
 use crate::value::EntityId;
 use ahash::AHashMap;
 
@@ -45,6 +46,11 @@ pub struct Model {
     /// IfcWall" is the most common query in any consumer.
     by_type: AHashMap<String, Vec<EntityId>>,
     max_id: u64,
+    /// Replaced by a fresh, process-unique value on every structural change,
+    /// so a revision names one state of one model lineage: an inverse or a
+    /// transaction recorded against another model is refused, not applied.
+    /// A clone shares its source's revision until either side changes.
+    ///
     /// Bumped by every structural change. A transaction opened against one
     /// revision refuses to commit against another, so an editor working from
     /// a stale view is told rather than silently overwriting.
@@ -61,7 +67,15 @@ pub struct Model {
     source: Option<Arc<dyn EntitySource>>,
     /// Open recordings, innermost last; empty unless a caller is capturing
     /// an [`Inverse`](crate::Inverse). See `mutation::record`.
-    recording: Vec<Segment>,
+    recording: Recording,
+}
+
+/// The last revision handed out, process-wide.
+static LAST_REVISION: AtomicU64 = AtomicU64::new(0);
+
+/// A revision no model has had before.
+fn next_revision() -> u64 {
+    LAST_REVISION.fetch_add(1, Ordering::Relaxed) + 1
 }
 
 impl Model {
@@ -93,7 +107,7 @@ impl Model {
             let prior = Box::new(self.header.clone());
             self.record(Step::Header(prior));
         }
-        self.revision += 1;
+        self.revision = next_revision();
         &mut self.header
     }
 
@@ -195,7 +209,7 @@ impl Model {
                     // Same type: the entry is still correct, so re-adding it
                     // below would duplicate it.
                     self.max_id = self.max_id.max(id.0);
-                    self.revision += 1;
+                    self.revision = next_revision();
                     return;
                 }
             }
@@ -207,7 +221,7 @@ impl Model {
             }
         }
         self.max_id = self.max_id.max(id.0);
-        self.revision += 1;
+        self.revision = next_revision();
     }
 
     /// Append an entity, allocating the next free id.
@@ -219,15 +233,17 @@ impl Model {
 
     /// How many structural changes this model has seen.
     ///
-    /// Starts at zero and increases; the absolute value carries no meaning
-    /// beyond comparison. See [`Transaction`](crate::Transaction).
+    /// Starts at zero for a model nothing was written to. Every change draws
+    /// a new value that is greater than any handed out before, in any model of
+    /// the process, and not necessarily one more than the last; the absolute
+    /// value carries no meaning beyond comparison. See [`Transaction`](crate::Transaction).
     pub fn revision(&self) -> u64 {
         self.revision
     }
 
     /// Record a structural change made through a sibling mutation module.
     pub(crate) fn bump_revision(&mut self) {
-        self.revision += 1;
+        self.revision = next_revision();
     }
 
     /// The id [`Model::push`] would allocate next.
@@ -415,19 +431,23 @@ impl Model {
 
     // --- crate-internal seams for `mutation::{record, step, inverse}` ----
 
+    pub(crate) fn recording_len(&self) -> usize {
+        self.recording.0.len()
+    }
+
     pub(crate) fn recording_is_empty(&self) -> bool {
-        self.recording.is_empty()
+        self.recording.0.is_empty()
     }
 
     /// Keeps `step` in the innermost open recording.
     pub(crate) fn record(&mut self, step: Step) {
-        if let Some(segment) = self.recording.last_mut() {
+        if let Some(segment) = self.recording.0.last_mut() {
             segment.steps.push(step);
         }
     }
 
-    pub(crate) fn recording_mut(&mut self) -> &mut Vec<Segment> {
-        &mut self.recording
+    pub(crate) fn recording_mut(&mut self) -> &mut Vec<crate::mutation::Segment> {
+        &mut self.recording.0
     }
 
     pub(crate) fn max_id(&self) -> u64 {

@@ -59,8 +59,10 @@ impl Step {
     /// Applies the step and returns the step that undoes it.
     ///
     /// A step applied to a state it was not recorded against is an invariant
-    /// violation and panics; `Inverse::apply` checks the revision first, so
-    /// that cannot happen through the public API.
+    /// violation and panics. `Inverse::apply` checks the revision first, and
+    /// revisions are process-unique, so a model other than the recorded one
+    /// (or a diverged clone) is refused before any step runs; that cannot
+    /// happen through the public API.
     pub(crate) fn apply(self, model: &mut Model) -> Step {
         match self {
             Step::Remove { id } => {

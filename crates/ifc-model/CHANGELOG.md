@@ -24,10 +24,23 @@ everything released before per-crate changelogs began.
 - `Transaction::commit_reversible`, `Transaction::set_header` and
   `Transaction::header`.
 
-### Changed (#465)
+### Changed (breaking) (#465)
 
-- `Model::header_mut` bumps the revision, so a transaction opened before a
-  header edit is refused.
+- `Model::header_mut` bumps the revision. A `Transaction` opened before a
+  `header_mut` edit is now refused at commit with
+  `Conflict::StaleRevision`; set the header first, or stage it with
+  `Transaction::set_header`.
+- Revisions are process-unique: every change draws a new value from one
+  process-wide counter, so values are increasing but no longer consecutive,
+  and two models never share a revision once either was written. A
+  `Transaction` or `Inverse` made against one model is refused by another.
+  A clone keeps its source's revision until either side changes.
+- `Model::set_attributes` with an empty edit list changes nothing and no
+  longer bumps the revision.
+- `Model::clone` does not copy an open recording.
+
+Semver: the revision changes can refuse code that committed before, so this
+release is 0.4.0, not a patch.
 
 ## [0.3.1] - 2026-10-02
 

@@ -27,6 +27,6 @@ mod transaction;
 pub use conflict::Conflict;
 pub use history::{History, HistoryError};
 pub use inverse::{Inverse, InverseError, Restored};
-pub(crate) use record::Segment;
+pub(crate) use record::{Recording, Segment};
 pub(crate) use step::Step;
 pub use transaction::{Applied, Edit, Transaction};

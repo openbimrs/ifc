@@ -57,6 +57,12 @@ redo are built on that.
 - The revision is never restored. An undo is a new change and bumps it, or a
   transaction opened before the undo could commit against different state.
   An `Inverse` therefore applies only at the revision it was recorded up to.
+- Revisions are process-unique: every change draws a new value from one
+  process-wide counter. An inverse or history recorded on one model is
+  refused by another (`StaleRevision`), where per-model counters would have
+  let it delete an unrelated entity or panic. A clone taken at revision R
+  accepts an inverse recorded up to R until either side changes. Revisions
+  are no longer consecutive; nothing relied on that.
 - Ids are reused after undoing a create (the next free id is restored). An
   outside reference to an undone id may later name a different entity.
 - `Model::header_mut` now bumps the revision.

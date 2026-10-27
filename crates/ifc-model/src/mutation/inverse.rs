@@ -15,6 +15,11 @@
 //! transaction opened before the undo could commit against different state.
 //! An inverse therefore applies only to the revision it was recorded up to,
 //! and applying it returns the inverse of the application (redo).
+//!
+//! Revisions are process-unique (see `Model::revision`), so an inverse is
+//! also refused by a model that is not the one it was recorded on, or a clone
+//! of it that has since diverged. A clone taken at the recorded revision
+//! accepts it, which is correct: it holds the same state.
 
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 
@@ -80,8 +85,16 @@ impl Inverse {
     ///
     /// If `change` panics the recording is closed before the panic resumes.
     pub fn record<T>(model: &mut Model, change: impl FnOnce(&mut Model) -> T) -> (T, Inverse) {
+        let depth = model.recording_depth();
         model.begin_recording();
         let outcome = catch_unwind(AssertUnwindSafe(|| change(model)));
+        // A change that began a recording and did not end it must not make
+        // this call return the wrong inverse.
+        model.unwind_recording(depth + 1);
+        assert!(
+            model.recording_depth() == depth + 1,
+            "the change ended a recording it did not begin"
+        );
         let inverse = model
             .end_recording()
             .expect("the recording opened above is still open");
