@@ -152,7 +152,7 @@ impl IfcModel {
     /// stated property types), `ambiguous-value`, and the property edit's
     /// refusals.
     pub fn set_value(&mut self, id: u64, path: &str, value: Plain) -> Result<(), BindingError> {
-        self.set_value_seeded(id, path, value, ifc::fresh_seed())
+        self.tracked(|this| this.set_value_seeded(id, path, value, ifc::fresh_seed()))
     }
 
     /// [`Self::set_value`]
@@ -179,12 +179,13 @@ impl IfcModel {
                 let transaction = SelectorIndex::new(&self.inner, schema)
                     .stage_attributes(&targets, &value)
                     .map_err(selector_error)?;
-                transaction
-                    .commit(&mut self.inner)
+                self.tracked(|this| transaction.commit(&mut this.inner))
                     .map(|_| ())
                     .map_err(|conflicts| BindingError::InvalidModel(format!("{conflicts:?}")))
             }
-            Some(_) => write_properties(self, &targets, plain_tagged(value)?.into_value()?, seed),
+            Some(_) => self.tracked(|this| {
+                write_properties(this, &targets, plain_tagged(value)?.into_value()?, seed)
+            }),
             None => Err(BindingError::InvalidValue(format!(
                 "{path} names no value to write"
             ))),

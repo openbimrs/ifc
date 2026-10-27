@@ -213,7 +213,9 @@ impl IfcModel {
         null: &str,
         dry_run: bool,
     ) -> Result<TableImport, BindingError> {
-        self.import_table_seeded(data, format_name, key, null, dry_run, ifc::fresh_seed())
+        self.tracked(|this| {
+            this.import_table_seeded(data, format_name, key, null, dry_run, ifc::fresh_seed())
+        })
     }
 
     /// [`Self::import_table`]
@@ -296,7 +298,7 @@ impl IfcModel {
                 refusals: Vec::new(),
             });
         }
-        match plan.commit(&mut self.inner) {
+        match self.tracked(|this| plan.commit(&mut this.inner)) {
             Ok(_) => Ok(TableImport {
                 applied: true,
                 changes,

@@ -28,7 +28,7 @@ impl IfcModel {
     /// Replace the file header. Every field is written back as given; the
     /// schema tokens decide which tables subtype queries and validation use.
     pub fn set_header(&mut self, header: Header) {
-        *self.inner.header_mut() = header;
+        self.tracked(|this| *this.inner.header_mut() = header);
     }
 }
 

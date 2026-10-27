@@ -109,6 +109,12 @@ pub enum BindingError {
     /// EXPRESS rule text (#538) that does not parse, or whose rules use a
     /// name that binds to nothing.
     InvalidExpress(String),
+    /// An undo or redo (#465) with nothing to step through: history is off
+    /// (limit `0`), or that stack is empty.
+    HistoryEmpty(String),
+    /// An undo or redo (#465) after the model changed outside the history;
+    /// the held entries no longer describe it, so nothing was changed.
+    HistoryStale(String),
 }
 
 impl BindingError {
@@ -142,6 +148,8 @@ impl BindingError {
             Self::InvalidSelector { .. } => "invalid-selector",
             Self::ExpressMismatch(_) => "express-mismatch",
             Self::InvalidExpress(_) => "invalid-express",
+            Self::HistoryEmpty(_) => "history-empty",
+            Self::HistoryStale(_) => "history-stale",
         }
     }
 
@@ -203,6 +211,8 @@ impl fmt::Display for BindingError {
             Self::InverseAttribute(detail) => write!(f, "inverse attribute: {detail}"),
             Self::ExpressMismatch(detail) => write!(f, "EXPRESS mismatch: {detail}"),
             Self::InvalidExpress(detail) => write!(f, "invalid EXPRESS: {detail}"),
+            Self::HistoryEmpty(detail) => write!(f, "history empty: {detail}"),
+            Self::HistoryStale(detail) => write!(f, "history stale: {detail}"),
         }
     }
 }
@@ -245,6 +255,8 @@ mod tests {
         "inverse-attribute",
         "express-mismatch",
         "invalid-express",
+        "history-empty",
+        "history-stale",
     ];
 
     /// One value of every variant, in declaration order.
@@ -280,6 +292,8 @@ mod tests {
             BindingError::InverseAttribute(String::new()),
             BindingError::ExpressMismatch(String::new()),
             BindingError::InvalidExpress(String::new()),
+            BindingError::HistoryEmpty(String::new()),
+            BindingError::HistoryStale(String::new()),
         ];
         // Exhaustive on purpose: a new variant does not compile until it is
         // listed above, so its code cannot escape the snapshot.
@@ -311,7 +325,9 @@ mod tests {
                 | BindingError::InvalidSelector { .. }
                 | BindingError::InverseAttribute(_)
                 | BindingError::ExpressMismatch(_)
-                | BindingError::InvalidExpress(_) => {}
+                | BindingError::InvalidExpress(_)
+                | BindingError::HistoryEmpty(_)
+                | BindingError::HistoryStale(_) => {}
             }
         }
         all

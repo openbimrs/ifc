@@ -97,6 +97,7 @@ mod error;
 pub mod geometry;
 pub mod georef;
 pub mod header;
+pub mod history;
 pub mod ifczip;
 pub mod inverse;
 pub mod material;
@@ -130,6 +131,7 @@ pub use geometry::graph::{
 pub use geometry::{
     GeometryRefusal, ProductMesh, ProductPlacement, SelectedRepresentation, SurfaceColour,
 };
+pub use history::{HistoryChange, HistoryState};
 pub use inverse::{InverseAttributeInfo, InverseReference};
 pub use model::IfcModel;
 pub use options::{OnMalformed, ParseOptions};

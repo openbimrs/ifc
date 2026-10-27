@@ -237,7 +237,7 @@ impl IfcModel {
                 .map_err(super::convert::error)?
                 .reports
         } else {
-            ifc::apply_authoring(&mut self.inner, schema, &ops, SEED)
+            self.tracked(|this| ifc::apply_authoring(&mut this.inner, schema, &ops, SEED))
                 .map_err(super::convert::error)?
                 .reports
         };

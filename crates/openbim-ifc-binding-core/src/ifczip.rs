@@ -31,6 +31,7 @@ pub(crate) fn load(bytes: &[u8], options: ParseOptions) -> Result<IfcModel, Bind
             .map(|inner| IfcModel {
                 inner,
                 guid_index: Default::default(),
+                history: Default::default(),
                 reverse_index: Default::default(),
             })
             .map_err(refusal),
