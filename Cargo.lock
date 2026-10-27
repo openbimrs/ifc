@@ -1366,6 +1366,7 @@ dependencies = [
  "regex-lite",
  "rust_xlsxwriter",
  "serde_json",
+ "wasm-bindgen",
  "zip",
 ]
 

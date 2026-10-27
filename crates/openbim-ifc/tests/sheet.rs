@@ -162,13 +162,19 @@ fn an_unchanged_table_imports_as_a_no_op_in_every_format() {
                 &SelectorIndex::new(&model, schema),
                 &read_back,
                 &options,
-                ifc::fresh_seed(),
+                ifc::fresh_seed().unwrap(),
             )
             .unwrap_or_else(|refused| panic!("{name} {format:?}: {refused:?}"));
             assert!(plan.is_empty(), "{name} {format:?}: {:?}", plan.changes);
             assert!(plan.transaction.is_empty());
-            let changes =
-                import(&mut model, schema, &read_back, &options, ifc::fresh_seed()).unwrap();
+            let changes = import(
+                &mut model,
+                schema,
+                &read_back,
+                &options,
+                ifc::fresh_seed().unwrap(),
+            )
+            .unwrap();
             assert!(changes.is_empty());
             assert_eq!(model.revision(), revision, "{name}: no new revision");
             assert_eq!(bytes(&model), before, "{name} {format:?}");
@@ -181,11 +187,15 @@ fn an_unchanged_table_imports_as_a_no_op_in_every_format() {
             !sheet.header[1..].contains(&"id".to_owned()),
             "the key once"
         );
-        assert!(
-            import(&mut model, schema, &sheet, &by_id, ifc::fresh_seed())
-                .unwrap()
-                .is_empty()
-        );
+        assert!(import(
+            &mut model,
+            schema,
+            &sheet,
+            &by_id,
+            ifc::fresh_seed().unwrap()
+        )
+        .unwrap()
+        .is_empty());
     });
 }
 
@@ -207,7 +217,7 @@ fn edits_are_written_by_path_as_one_transaction() {
             &SelectorIndex::new(&model, schema),
             &sheet,
             &options,
-            ifc::fresh_seed(),
+            ifc::fresh_seed().unwrap(),
         )
         .unwrap_or_else(|refused| panic!("{name}: {refused:?}"));
         let changed: Vec<(usize, &str)> = plan
@@ -271,11 +281,15 @@ fn edits_are_written_by_path_as_one_transaction() {
         set(&mut sheet, 17, "Pset_WallCommon.IsExternal", "FALSE");
         assert_eq!(exported(&model, schema, &options), sheet, "{name}");
         let mut model = model;
-        assert!(
-            import(&mut model, schema, &sheet, &options, ifc::fresh_seed())
-                .unwrap()
-                .is_empty()
-        );
+        assert!(import(
+            &mut model,
+            schema,
+            &sheet,
+            &options,
+            ifc::fresh_seed().unwrap()
+        )
+        .unwrap()
+        .is_empty());
     });
 }
 
@@ -297,8 +311,14 @@ fn null_text_and_enumerations_are_typed_by_the_release() {
         if version != SchemaVersion::Ifc2x3 {
             set(&mut sheet, 19, "PredefinedType", "movable");
         }
-        import(&mut model, schema, &sheet, &options, ifc::fresh_seed())
-            .unwrap_or_else(|r| panic!("{name}: {r:?}"));
+        import(
+            &mut model,
+            schema,
+            &sheet,
+            &options,
+            ifc::fresh_seed().unwrap(),
+        )
+        .unwrap_or_else(|r| panic!("{name}: {r:?}"));
         assert_eq!(value(&model, schema, 17, "Description"), text(""), "{name}");
         assert_eq!(value(&model, schema, 18, "Name"), SelectedValue::Null);
         if version != SchemaVersion::Ifc2x3 {
@@ -319,8 +339,14 @@ fn a_property_no_object_states_needs_a_typed_value() {
             .to_vec();
         let row = |text: &str| vec!["19".to_owned(), text.to_owned()];
         let untyped = Sheet::new(header.clone(), vec![row("R50")]);
-        let refused =
-            import(&mut model, schema, &untyped, &options, ifc::fresh_seed()).unwrap_err();
+        let refused = import(
+            &mut model,
+            schema,
+            &untyped,
+            &options,
+            ifc::fresh_seed().unwrap(),
+        )
+        .unwrap_err();
         assert!(
             matches!(
                 &refused[..],
@@ -334,8 +360,14 @@ fn a_property_no_object_states_needs_a_typed_value() {
             "{name}: {refused:?}"
         );
         let typed = Sheet::new(header, vec![row("IFCLABEL(R50)")]);
-        import(&mut model, schema, &typed, &options, ifc::fresh_seed())
-            .unwrap_or_else(|r| panic!("{name}: {r:?}"));
+        import(
+            &mut model,
+            schema,
+            &typed,
+            &options,
+            ifc::fresh_seed().unwrap(),
+        )
+        .unwrap_or_else(|r| panic!("{name}: {r:?}"));
         assert_eq!(
             value(&model, schema, 19, "Pset_WallCommon.AcousticRating"),
             text("R50")
@@ -362,7 +394,7 @@ fn assert_refused(
 ) {
     let before = bytes(model);
     let revision = model.revision();
-    let refused = import(model, schema, sheet, options, ifc::fresh_seed()).unwrap_err();
+    let refused = import(model, schema, sheet, options, ifc::fresh_seed().unwrap()).unwrap_err();
     assert_eq!(refused.len(), expected.len(), "{name}: {refused:#?}");
     for (refusal, (row, column, reason)) in refused.iter().zip(expected) {
         assert_eq!(
@@ -525,7 +557,7 @@ fn a_plan_for_a_model_that_changed_since_is_refused_at_commit() {
         &SelectorIndex::new(&model, schema),
         &sheet,
         &options,
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .unwrap();
     ifc::selector::set_value(
@@ -534,7 +566,7 @@ fn a_plan_for_a_model_that_changed_since_is_refused_at_commit() {
         EntityId(18),
         &ValuePath::parse("Name").unwrap(),
         &ifc::Value::Text("Wall B1".into()),
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .unwrap();
     let before = bytes(&model);
@@ -558,7 +590,7 @@ fn text_edits_write_every_selected_entity_in_one_transaction() {
             .iter()
             .map(|id| TextEdit::new(*id, path.clone(), "Load-bearing"))
             .collect();
-        let changes = apply_text_edits(&mut model, schema, &edits, "", ifc::fresh_seed())
+        let changes = apply_text_edits(&mut model, schema, &edits, "", ifc::fresh_seed().unwrap())
             .unwrap_or_else(|refused| panic!("{name}: {refused:?}"));
         assert_eq!(changes.len(), 3, "{name}");
         for id in [17, 18, 19] {
@@ -569,7 +601,7 @@ fn text_edits_write_every_selected_entity_in_one_transaction() {
         }
         // Again: nothing to change.
         assert!(
-            apply_text_edits(&mut model, schema, &edits, "", ifc::fresh_seed())
+            apply_text_edits(&mut model, schema, &edits, "", ifc::fresh_seed().unwrap())
                 .unwrap()
                 .is_empty()
         );
@@ -584,8 +616,8 @@ fn text_edits_write_every_selected_entity_in_one_transaction() {
             ValuePath::parse("Qto_WallBaseQuantities.Length").unwrap(),
             "long",
         ));
-        let refused =
-            apply_text_edits(&mut model, schema, &edits, "", ifc::fresh_seed()).unwrap_err();
+        let refused = apply_text_edits(&mut model, schema, &edits, "", ifc::fresh_seed().unwrap())
+            .unwrap_err();
         assert_eq!(refused.len(), 1, "{name}: {refused:?}");
         assert_eq!(refused[0].edit, Some(3));
         assert_eq!(bytes(&model), before, "{name}");
@@ -617,8 +649,13 @@ fn documented_example() {
         csv.replace("17,Wall A,", "17,Wall A1,").as_bytes(),
         SheetFormat::Csv,
     );
-    let plan =
-        plan_import(&index, &edited.unwrap(), &options, ifc::fresh_seed()).expect("no refusal");
+    let plan = plan_import(
+        &index,
+        &edited.unwrap(),
+        &options,
+        ifc::fresh_seed().unwrap(),
+    )
+    .expect("no refusal");
     for cell in &plan.changes {
         let (before, after) = (&cell.change.before, &cell.change.after);
         println!("row {} {}: {before:?} -> {after:?}", cell.row, cell.path);

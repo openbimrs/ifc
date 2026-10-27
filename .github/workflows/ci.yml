@@ -71,8 +71,9 @@ jobs:
         with:
           node-version: "20"
       - name: Install wasm-bindgen CLI
-        # Must equal the `wasm-bindgen` pin in crates/openbim-ifc-wasm/Cargo.toml;
-        # build-npm-pkg.sh refuses a mismatch.
+        # Must equal both `wasm-bindgen` pins: crates/openbim-ifc-wasm/Cargo.toml
+        # and the dev-dependency in crates/openbim-ifc/Cargo.toml; build-npm-pkg.sh
+        # and check-wasm-seed.sh refuse a mismatch.
         if: matrix.section == 'bindings'
         uses: taiki-e/install-action@ab6895351a88b908e96a4697860d4ffea5e57dbe # v2.87.27
         with:

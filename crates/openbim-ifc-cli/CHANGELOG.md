@@ -11,6 +11,13 @@ documents) is this crate's public interface.
 
 ## [Unreleased]
 
+### Changed (#573)
+
+- `edit` and `import-table` draw their seed from the operating system's
+  generator and exit with kind `unsupported` if it refuses.
+
+Semver: patch.
+
 ### Changed (#559)
 
 - `edit` and `import-table` derive the `GlobalId`s of the sets and

@@ -47,6 +47,7 @@ pub(crate) fn run(args: &EditArgs, out: &mut impl Write) -> CliResult<Outcome> {
         refusals: Vec::new(),
     };
     let mut edits = Vec::new();
+    let seed = ifc::fresh_seed().map_err(|error| CliError::Unsupported(error.to_string()))?;
     let planned = {
         let index = SelectorIndex::new(&loaded.model, schema);
         let selected = index
@@ -58,7 +59,7 @@ pub(crate) fn run(args: &EditArgs, out: &mut impl Write) -> CliResult<Outcome> {
                 edits.push(TextEdit::new(*id, path.clone(), value.clone()));
             }
         }
-        index.plan_text_edits(&edits, &args.null, ifc::fresh_seed())
+        index.plan_text_edits(&edits, &args.null, seed)
     };
     let plan = match planned {
         Ok(plan) => plan,

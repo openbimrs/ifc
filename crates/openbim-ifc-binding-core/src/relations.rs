@@ -158,6 +158,14 @@ pub fn new_guid() -> Result<String, BindingError> {
         .map_err(|error: GuidError| BindingError::Unsupported(error.to_string()))
 }
 
+/// A fresh seed for one unseeded batch.
+///
+/// Refused with `unsupported` when the build or host has no random source,
+/// as [`new_guid`] is.
+pub(crate) fn fresh_seed() -> Result<u128, BindingError> {
+    ifc::fresh_seed().map_err(|error: GuidError| BindingError::Unsupported(error.to_string()))
+}
+
 /// The `GlobalId` named by `parts` (RFC 9562 version 8): the same parts
 /// give the same `GlobalId` in every host and release.
 pub fn name_based_guid<S: AsRef<str>>(parts: &[S]) -> String {

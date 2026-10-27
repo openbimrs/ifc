@@ -8,9 +8,11 @@
 //! directions arrays of three numbers, attributes a plain object of
 //! `IfcValue`s by name. `undefined` and `null` are an absent field.
 //!
-//! JavaScript has entropy the WebAssembly module lacks, so the seed fresh
-//! `GlobalId`s derive from is drawn here, from `Math.random`: for authoring,
-//! copies and appends, and for every property, value and table write (#559).
+//! The module has entropy through `js-random` (`crypto.getRandomValues`,
+//! used by `newGuid`), but the seed fresh `GlobalId`s derive from is still
+//! drawn here, from `Math.random`: the package supports Node 18, which lacks
+//! `crypto.getRandomValues` (`newGuid` needs Node 19). It covers authoring,
+//! copies and appends, and every property, value and table write (#559).
 
 use js_sys::{Array, Math, Object, Reflect};
 use openbim_ifc_binding_core::authoring::{op_spec, FieldKind};

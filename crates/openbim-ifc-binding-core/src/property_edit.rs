@@ -157,7 +157,8 @@ impl IfcModel {
     /// catalog or the property's enumeration does not, `missing-property`
     /// for a removal of a property the object does not state (also one it
     /// only inherits), `unsupported` for a value form this writer does not
-    /// write, `invalid-model` when the file's records prevent the edit, and
+    /// write or when the build or host has no random source for the seed
+    /// (as [`crate::relations::new_guid`]), `invalid-model` when the file's records prevent the edit, and
     /// `feature-disabled` without the `properties-write` feature, or without
     /// a catalog feature for a `Pset_` or `Qto_` set, and
     /// `catalog-not-loaded` for such a set in a `property-catalog-runtime`
@@ -169,7 +170,16 @@ impl IfcModel {
         &mut self,
         edits: Vec<PropertyEdit>,
     ) -> Result<PropertyEditResult, BindingError> {
-        self.tracked(|this| this.set_properties_seeded(edits, ifc::fresh_seed()))
+        #[cfg(feature = "properties-write")]
+        {
+            let seed = crate::relations::fresh_seed()?;
+            self.tracked(|this| this.set_properties_seeded(edits, seed))
+        }
+        #[cfg(not(feature = "properties-write"))]
+        {
+            let _ = edits;
+            Err(BindingError::FeatureDisabled("properties-write"))
+        }
     }
 
     /// [`Self::set_properties`]
@@ -194,8 +204,9 @@ impl IfcModel {
         }
     }
 
-    /// Write one value; [`Self::set_properties`] with one edit. Returns the
-    /// entity that holds the property afterwards.
+    /// Write one value; [`Self::set_properties`] with one edit, with its
+    /// refusals, `unsupported` for a missing random source among them.
+    /// Returns the entity that holds the property afterwards.
     pub fn set_property(
         &mut self,
         object: u64,
@@ -204,9 +215,16 @@ impl IfcModel {
         value: Tagged,
         set_type: Option<String>,
     ) -> Result<u64, BindingError> {
-        self.tracked(|this| {
-            this.set_property_seeded(object, set, name, value, set_type, ifc::fresh_seed())
-        })
+        #[cfg(feature = "properties-write")]
+        {
+            let seed = crate::relations::fresh_seed()?;
+            self.tracked(|this| this.set_property_seeded(object, set, name, value, set_type, seed))
+        }
+        #[cfg(not(feature = "properties-write"))]
+        {
+            let _ = (object, set, name, value, set_type);
+            Err(BindingError::FeatureDisabled("properties-write"))
+        }
     }
 
     /// [`Self::set_property`]
@@ -237,14 +255,24 @@ impl IfcModel {
             .ok_or_else(|| BindingError::InvalidModel("the edit left no property".into()))
     }
 
-    /// Remove one property; [`Self::set_properties`] with one edit.
+    /// Remove one property; [`Self::set_properties`] with one edit, with its
+    /// refusals, `unsupported` for a missing random source among them.
     pub fn remove_property(
         &mut self,
         object: u64,
         set: &str,
         name: &str,
     ) -> Result<(), BindingError> {
-        self.tracked(|this| this.remove_property_seeded(object, set, name, ifc::fresh_seed()))
+        #[cfg(feature = "properties-write")]
+        {
+            let seed = crate::relations::fresh_seed()?;
+            self.tracked(|this| this.remove_property_seeded(object, set, name, seed))
+        }
+        #[cfg(not(feature = "properties-write"))]
+        {
+            let _ = (object, set, name);
+            Err(BindingError::FeatureDisabled("properties-write"))
+        }
     }
 
     /// [`Self::remove_property`]

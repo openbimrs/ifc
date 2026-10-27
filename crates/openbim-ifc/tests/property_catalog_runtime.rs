@@ -57,7 +57,7 @@ fn a_catalog_set_waits_for_its_edition_then_is_checked() {
     let error = apply_property_edits(
         &mut model,
         std::slice::from_ref(&fire_rating),
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .expect_err("refused before loading");
     assert_eq!(
@@ -81,7 +81,7 @@ fn a_catalog_set_waits_for_its_edition_then_is_checked() {
         apply_property_edits(
             &mut model,
             std::slice::from_ref(&fire_rating),
-            ifc::fresh_seed()
+            ifc::fresh_seed().unwrap()
         )
         .unwrap_err()
         .failure,
@@ -96,7 +96,7 @@ fn a_catalog_set_waits_for_its_edition_then_is_checked() {
             "Pset_WallCommon",
             "IsExternal",
         )],
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .expect("removal needs no template");
     apply_property_edits(
@@ -107,7 +107,7 @@ fn a_catalog_set_waits_for_its_edition_then_is_checked() {
             "Note",
             typed("IFCLABEL", Value::Text("x".into())),
         )],
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .expect("an application set needs no template");
 
@@ -115,7 +115,7 @@ fn a_catalog_set_waits_for_its_edition_then_is_checked() {
     apply_property_edits(
         &mut model,
         std::slice::from_ref(&fire_rating),
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .expect("checked and written");
     // The template applies: FireRating is an IfcLabel, never a boolean.
@@ -127,7 +127,7 @@ fn a_catalog_set_waits_for_its_edition_then_is_checked() {
             "FireRating",
             typed("IFCBOOLEAN", Value::Bool(true)),
         )],
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .expect_err("the template refuses");
     assert!(

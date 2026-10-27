@@ -47,7 +47,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `ifc4x2` |  | The schema API with the bundled IFC4X2 FINAL table. |
 | `ifc4x3` |  | The schema API with the bundled IFC4X3 ADD2 table. |
 | `ifcxml` |  | [`ifc-xml`](./ifc-xml): ifcXML (ISO 10303-28) codec for the IFC model. |
-| `js-random` |  | Random `GlobalId`s (`new_guid`) on `wasm32-unknown-unknown` from the JavaScript host's `crypto.getRandomValues`; native targets always have them. |
+| `js-random` |  | Random `GlobalId`s (`new_guid`) and batch seeds (`fresh_seed`) on `wasm32-unknown-unknown` from the JavaScript host's `crypto.getRandomValues`; without it both refuse there; native targets always have them. |
 | `material` |  | [`ifc-material`](./ifc-material): Material definitions: layer sets, profile sets, constituents, usage. |
 | `material-templates` |  | Material views together with the property template catalogue. |
 | `mesh` |  | Triangle meshes per product (`product_meshes`, `product_meshes_for` a representation purpose, with solid or surface closure) and polylines of curve representations (`product_curves`: Axis, FootPrint, annotation curves, each with a certified chord bound) through `ifc-geometry`'s reference compile backend: positions relative to each product's world placement, its surface colour (`colour`), a typed refusal per product. Opt-in; links an execution provider (ADR 0004, ADR 0012). |

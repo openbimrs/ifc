@@ -47,7 +47,7 @@ use ifc_model::guid::Guid;
 const FNV_OFFSET: u128 = 0x6c62_272e_07bb_0142_62b8_2175_6295_c58d;
 const FNV_PRIME: u128 = 0x0000_0000_0100_0000_0000_0000_0000_013b;
 
-/// Why [`new_guid`] drew no `GlobalId`.
+/// Why [`new_guid`] or [`fresh_seed`](crate::fresh_seed) drew nothing.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum GuidError {
@@ -90,7 +90,7 @@ pub fn new_guid() -> Result<Guid, GuidError> {
     not(all(target_arch = "wasm32", target_os = "unknown")),
     feature = "js-random"
 ))]
-fn random_bytes() -> Result<[u8; 16], GuidError> {
+pub(crate) fn random_bytes() -> Result<[u8; 16], GuidError> {
     let mut bytes = [0u8; 16];
     getrandom::fill(&mut bytes)
         .map_err(|error| GuidError::RandomSourceFailed(error.to_string()))?;
@@ -101,7 +101,7 @@ fn random_bytes() -> Result<[u8; 16], GuidError> {
     not(all(target_arch = "wasm32", target_os = "unknown")),
     feature = "js-random"
 )))]
-fn random_bytes() -> Result<[u8; 16], GuidError> {
+pub(crate) fn random_bytes() -> Result<[u8; 16], GuidError> {
     Err(GuidError::NoRandomSource)
 }
 

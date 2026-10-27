@@ -188,7 +188,7 @@ set_value(
     EntityId(17),
     &type_name,
     &renamed,
-    ifc::fresh_seed(),
+    ifc::fresh_seed()?,
 )?;
 ```
 

@@ -72,7 +72,8 @@ fn read(
 
 fn failure(model: &mut Model, edits: &[PropertyEdit]) -> (Option<usize>, PropertyEditFailure) {
     let before = bytes(model);
-    let error = apply_property_edits(model, edits, ifc::fresh_seed()).expect_err("refused");
+    let error =
+        apply_property_edits(model, edits, ifc::fresh_seed().unwrap()).expect_err("refused");
     assert_eq!(bytes(model), before, "a refused batch changed the model");
     (error.edit, error.failure)
 }
@@ -89,7 +90,7 @@ fn an_own_value_changes_in_place() {
             "IsExternal",
             typed("IFCBOOLEAN", Value::Bool(true)),
         )],
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .expect("applies");
     assert_eq!(outcome.properties, vec![Some(EntityId(37))]);
@@ -119,7 +120,7 @@ fn an_inherited_value_is_overridden_on_the_occurrence_never_on_the_type() {
             PropertyEdit::set(EntityId(30), "Pset_WallCommon", "FireRating", label("F90")),
             PropertyEdit::set(EntityId(31), "Pset_WallCommon", "FireRating", label("F60")),
         ],
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .expect("applies");
     assert_eq!(
@@ -166,7 +167,7 @@ fn addressing_the_type_object_edits_its_own_set() {
             "FireRating",
             label("F120"),
         )],
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .expect("applies");
     assert_eq!(
@@ -203,7 +204,7 @@ fn quantities_are_written_bare_in_their_declared_measure() {
                 typed("IFCLENGTHMEASURE", Value::Real(5.0)),
             ),
         ],
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .expect("applies");
     assert_eq!(outcome.properties[0], Some(EntityId(53)));
@@ -245,7 +246,7 @@ fn removing_the_last_property_removes_the_set_and_its_relationship() {
             "Pset_WallCommon",
             "IsExternal",
         )],
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .expect("applies");
     assert_eq!(outcome.properties, vec![None]);
@@ -297,7 +298,7 @@ fn an_enumerated_value_stays_in_its_enumeration() {
             "Colour",
             green.clone(),
         )],
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .expect("green is in #40");
     assert_eq!(model.get(EntityId(42)).unwrap().attributes[2], green);
@@ -367,7 +368,7 @@ fn values_the_release_does_not_admit_are_refused() {
             "Flow",
             typed("IFCVOLUMETRICFLOWRATEMEASURE", Value::Real(0.1)),
         )],
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .expect("the stated unit's measure");
 }
@@ -457,7 +458,7 @@ fn a_later_edit_sees_the_earlier_ones() {
             PropertyEdit::set(EntityId(31), "Custom", "A", label("a2")),
             PropertyEdit::remove(EntityId(31), "Custom", "B"),
         ],
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .expect("applies");
     assert!(outcome.properties[0].is_some());
@@ -499,7 +500,7 @@ fn a_shared_set_or_property_is_copied_before_it_changes() {
             PropertyEdit::set(EntityId(1), "Custom", "Note", label("one")),
             PropertyEdit::set(EntityId(3), "Custom", "Note", label("three")),
         ],
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .expect("applies");
     assert_eq!(
@@ -560,7 +561,7 @@ fn ifc2x3_and_ifc4x3_round_trip_through_step() {
                 )
                 .with_set_type(SetType::ElementQuantity),
             ],
-            ifc::fresh_seed(),
+            ifc::fresh_seed().unwrap(),
         )
         .unwrap_or_else(|error| panic!("{token}: {error}"));
         let text = StepCodec.write_bytes(&model).unwrap();
@@ -677,7 +678,7 @@ fn a_catalog_set_is_checked_against_its_template() {
             "Status",
             Value::List(vec![label("NEW")]),
         )],
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .expect("NEW is an element status");
     let status = model.get(outcome.properties[0].unwrap()).unwrap();
@@ -734,7 +735,7 @@ fn a_catalog_set_is_refused_without_the_catalog() {
             "Pset_WallCommon",
             "IsExternal",
         )],
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .expect("removes");
 }

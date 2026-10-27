@@ -302,8 +302,9 @@ gate_features() {
     # wasm32-unknown-unknown with its default and widest pure-Rust feature
     # sets; a native-only dependency (getrandom via ahash was the first)
     # breaks every JS consumer silently.
-    # `js-random` links getrandom's JavaScript backend for `new_guid`
-    # (#463); without it the facade links no random source there.
+    # `js-random` links getrandom's JavaScript backend for `new_guid` and
+    # `fresh_seed` (#463, #573); without it the facade links no random
+    # source there.
     for features in "" "--features schema,ifcxml,zip,author,domains,spatial" "--no-default-features --features step,ifc4" "--features js-random"; do
         # shellcheck disable=SC2086
         cargo build -p openbim-ifc --target wasm32-unknown-unknown $features
@@ -326,6 +327,10 @@ gate_bindings() {
         # Both entries, the default and the mesh entry (#328, #369), whose
         # Node suite also runs the browser example's scene code.
         crates/openbim-ifc-wasm/scripts/build-npm-pkg.sh
+
+        # The facade's `fresh_seed` under Node (#573): two processes draw
+        # different seeds with `js-random`, and a build without it refuses.
+        crates/openbim-ifc/scripts/check-wasm-seed.sh
 
         # The docs site's TypeScript reference and browser playground (#331)
         # are built from this package. With the docs toolchain installed and
