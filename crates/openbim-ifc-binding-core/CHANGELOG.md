@@ -8,6 +8,13 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#566)
+
+- The catalog edition of a release is read from `openbim-ifc`'s
+  `release_edition`, the one copy of that table; behaviour is unchanged.
+
+Semver: patch (internal).
+
 ### Added (#465)
 
 - Undo and redo: `set_history_limit`, `history`, `peek_undo`, `peek_redo`,

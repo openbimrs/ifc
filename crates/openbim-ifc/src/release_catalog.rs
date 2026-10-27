@@ -18,4 +18,4 @@ mod policy;
     feature = "schema-api",
     any(feature = "property-catalog", feature = "property-catalog-runtime")
 ))]
-pub use policy::{release_catalog, ReleaseCatalogError};
+pub use policy::{release_catalog, release_edition, ReleaseCatalogError};

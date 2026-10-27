@@ -86,12 +86,15 @@ pub use ifc_step::{OnMalformed, ParseOptions, StepReader};
 #[cfg(feature = "ifcxml")]
 pub use ifc_xml::{SchemaReading, XmlCodec, XmlLayout, XmlProfile};
 
-/// The IFC schema as queryable data; `schema` is the whole schema crate,
-/// including the bundled schemas (`schema::ifc4()`,
-/// `schema::for_version(..)`) that [`ids_of_type_including_subtypes`] needs
-/// as input.
+/// The IFC schema as queryable data.
 #[cfg(feature = "schema-api")]
-pub use ifc_schema::{self as schema, Schema, SchemaVersion};
+pub use ifc_schema::{Schema, SchemaVersion};
+
+/// The whole schema crate, including the bundled schemas
+/// (`schema::ifc4()`, `schema::for_version(..)`) that
+/// [`ids_of_type_including_subtypes`] needs as input.
+#[cfg(feature = "schema-api")]
+pub use ifc_schema as schema;
 
 // Needs the model's type index and the schema's subtype tree, which ADR 0003
 // keeps in separate crates, so the join lives in this orchestration layer.
@@ -310,7 +313,6 @@ pub use ifc_alignment as alignment;
 // Answering "will a viewer draw this" needs containment AND representation
 // contexts -- two sibling domain crates that ADR 0003 forbids from depending on
 // each other, so the check lives in this orchestration layer.
-#[cfg(all(feature = "spatial", feature = "geometry-select"))]
 mod unreachable;
 #[cfg(all(feature = "spatial", feature = "geometry-select"))]
 pub use unreachable::{unreachable_products, Unreachable};

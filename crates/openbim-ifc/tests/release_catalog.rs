@@ -35,3 +35,34 @@ fn releases_without_a_catalog_are_refused() {
         assert!(error.to_string().contains("no PSD/QTO catalog"));
     }
 }
+
+#[test]
+fn release_edition_pins_the_table() {
+    use ifc::release_edition;
+    assert_eq!(
+        release_edition(SchemaVersion::Ifc2x3),
+        Some(CatalogEdition::Ifc2x3Tc1)
+    );
+    assert_eq!(
+        release_edition(SchemaVersion::Ifc4),
+        Some(CatalogEdition::Ifc4Add2Tc1)
+    );
+    assert_eq!(
+        release_edition(SchemaVersion::Ifc4x3),
+        Some(CatalogEdition::Ifc4x3Add2)
+    );
+    assert_eq!(release_edition(SchemaVersion::Ifc4x1), None);
+    assert_eq!(release_edition(SchemaVersion::Ifc4x2), None);
+}
+
+#[test]
+fn unreadable_names_its_edition() {
+    let error = ReleaseCatalogError::Unreadable {
+        edition: CatalogEdition::Ifc4Add2Tc1,
+        reason: "damaged".into(),
+    };
+    assert_eq!(
+        error.to_string(),
+        "the Ifc4Add2Tc1 catalog cannot be read: damaged"
+    );
+}
