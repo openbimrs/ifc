@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#465)
+
+- Re-exports `History`, `HistoryError`, `Inverse`, `InverseError` and
+  `Restored` from `ifc-model`: `History::track` around `apply_authoring`
+  (or any change) makes it undoable with byte-identical restoration.
+
 ### Changed (#559)
 
 - The `GlobalId`s a property edit derives for the sets and relationships it

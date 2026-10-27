@@ -65,6 +65,9 @@ pub use ifc_model::{codec, Codec, Entity, EntityId, Header, Model, ModelError, V
 // these a facade user could build an editor but never apply it.
 // `Budget` bounds the domain views' traversals (a classification hierarchy).
 pub use ifc_model::{Applied, Budget, Conflict, Transaction};
+// Undo and redo: record the exact inverse of a change, or keep a bounded
+// history of them (`History::track` around `apply_authoring`) (#465).
+pub use ifc_model::{History, HistoryError, Inverse, InverseError, Restored};
 // Who references an entity, and through which slot: the index `INVERSE`
 // attributes resolve through (#462).
 pub use ifc_model::{Referrer, ReverseIndex};
