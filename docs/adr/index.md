@@ -37,5 +37,6 @@ for new records.
 | [0019](/adr/0019-planned-work-is-an-issue-not-a-file) | Planned work is an issue, not a placeholder file | Accepted |
 | [0020](/adr/0020-ifc5-is-a-separate-family) | IFC5 is a separate family; no IFC-JSON codec | Accepted |
 | [0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes) | Bindings carry placements by default and meshes on request | Accepted |
+| [0022](/adr/0022-undo-records-exact-inverses-in-the-model) | Undo records exact inverses in the model | Accepted |
 
 <!-- ADR:INDEX:END -->
