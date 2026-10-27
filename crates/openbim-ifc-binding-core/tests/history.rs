@@ -267,34 +267,137 @@ fn sources(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// Every `pub fn` of `src/` whose first parameter is `&mut self`.
-fn mutators() -> BTreeSet<String> {
+/// Whether the first parameter is `&mut self`, `&'a mut self` or
+/// `self: &mut Self`.
+fn is_mut_receiver(first: &str) -> bool {
+    let spaced = first.replace('&', " & ").replace(':', " : ");
+    let tokens: Vec<&str> = spaced.split_whitespace().collect();
+    match tokens.as_slice() {
+        ["&", "mut", "self"] | ["self", ":", "&", "mut", "Self"] => true,
+        ["&", lifetime, "mut", "self"] | ["self", ":", "&", lifetime, "mut", "Self"] => {
+            lifetime.starts_with('\'')
+        }
+        _ => false,
+    }
+}
+
+/// `(name, first parameter)` of every `fn` whose text follows one of the
+/// `marker` prefixes.
+fn functions(code: &str, marker: &str) -> Vec<(String, String)> {
+    let mut found = Vec::new();
+    for part in code.split(marker).skip(1) {
+        let name: String = part
+            .chars()
+            .take_while(|c| c.is_alphanumeric() || *c == '_')
+            .collect();
+        let mut rest = &part[name.len()..];
+        if rest.starts_with('<') {
+            let mut depth = 0;
+            let end = rest
+                .char_indices()
+                .find(|(_, c)| {
+                    depth += i32::from(*c == '<') - i32::from(*c == '>');
+                    depth == 0
+                })
+                .map_or(rest.len(), |(at, _)| at + 1);
+            rest = &rest[end..];
+        }
+        let Some(open) = rest.trim_start().strip_prefix('(') else {
+            continue;
+        };
+        let first = open.split([',', ')']).next().unwrap_or_default();
+        found.push((name, first.to_owned()));
+    }
+    found
+}
+
+fn source_files() -> Vec<String> {
     let mut files = Vec::new();
     sources(
         &Path::new(env!("CARGO_MANIFEST_DIR")).join("src"),
         &mut files,
     );
-    let mut found = BTreeSet::new();
-    for file in files {
-        let source = std::fs::read_to_string(&file).expect("reads");
-        let code: String = source
-            .lines()
-            .filter(|line| !line.trim_start().starts_with("//"))
-            .collect::<Vec<_>>()
-            .join("\n");
-        for part in code.split("pub fn ").skip(1) {
-            let name: String = part
-                .chars()
-                .take_while(|c| c.is_alphanumeric() || *c == '_')
-                .collect();
-            let rest = &part[name.len()..];
-            let Some(open) = rest.find('(') else { continue };
-            if rest[open + 1..].trim_start().starts_with("&mut self") {
-                found.insert(name);
-            }
+    files
+        .iter()
+        .map(|file| {
+            let source = std::fs::read_to_string(file).expect("reads");
+            source
+                .lines()
+                .filter(|line| !line.trim_start().starts_with("//"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        })
+        .collect()
+}
+
+/// Every `pub fn` of `src/` whose first parameter is a `&mut self` receiver.
+fn mutators() -> BTreeSet<String> {
+    source_files()
+        .iter()
+        .flat_map(|code| functions(code, "pub fn "))
+        .filter(|(_, first)| is_mut_receiver(first))
+        .map(|(name, _)| name)
+        .collect()
+}
+
+/// The `&mut self` functions of every `impl ... for IfcModel` block: a trait
+/// impl is a mutator the `pub fn` scan cannot see.
+fn trait_impl_mutators() -> Vec<String> {
+    let mut found = Vec::new();
+    for code in source_files() {
+        let mut from = 0;
+        while let Some(at) = code[from..].find(" for IfcModel") {
+            let start = from + at;
+            from = start + 1;
+            let Some(open) = code[start..].find('{') else {
+                continue;
+            };
+            let body = &code[start + open..];
+            let mut depth = 0;
+            let end = body
+                .char_indices()
+                .find(|(_, c)| {
+                    depth += i32::from(*c == '{') - i32::from(*c == '}');
+                    depth == 0
+                })
+                .map_or(body.len(), |(at, _)| at);
+            found.extend(
+                functions(&body[..end], "fn ")
+                    .into_iter()
+                    .filter(|(_, first)| is_mut_receiver(first))
+                    .map(|(name, _)| name),
+            );
         }
     }
     found
+}
+
+#[test]
+fn receivers_are_recognised_in_every_spelling() {
+    for yes in [
+        "&mut self",
+        "& mut  self",
+        "&'a mut self",
+        "self: &mut Self",
+        "self : &'a mut Self",
+    ] {
+        assert!(is_mut_receiver(yes), "{yes}");
+    }
+    for no in [
+        "&self",
+        "self",
+        "mut self",
+        "&'a self",
+        "x: &mut IfcModel",
+        "",
+    ] {
+        assert!(!is_mut_receiver(no), "{no}");
+    }
+}
+
+#[test]
+fn no_trait_impl_on_the_model_mutates_it() {
+    assert_eq!(trait_impl_mutators(), Vec::<String>::new());
 }
 
 #[test]
@@ -390,6 +493,41 @@ fn refusals_dry_runs_and_peeks_record_nothing() {
     assert_eq!(undone, peeked);
     assert_eq!(code(m.peek_undo()), "history-empty");
     assert_eq!(m.peek_redo().unwrap().removed, [80]);
+
+    // A refused call after an undo leaves the redo entry alone.
+    assert_eq!(m.history().redo, 1);
+    assert_eq!(code(m.remove(9999)), "missing-entity");
+    assert_eq!((m.history().undo, m.history().redo), (0, 1));
+    m.redo().unwrap();
+}
+
+#[test]
+fn dry_runs_of_every_planning_mutator_record_nothing() {
+    let mut m = model(Fixture::Cascade);
+    m.set_history_limit(8);
+    let before = written(&m);
+    let mut copy = CopyProductOptions::new();
+    copy.dry_run = true;
+    assert!(!m.copy_product(20, copy).unwrap().applied);
+    let source = model(Fixture::Cascade);
+    assert!(!m.append(&source, &[20], &regenerate(true)).unwrap().applied);
+    assert_eq!(m.history().undo, 0);
+    assert_eq!(written(&m), before);
+
+    let mut selector = model(Fixture::Selector);
+    selector.set_history_limit(8);
+    let import = selector
+        .import_table(b"id,Name\r\n17,Renamed\r\n", "csv", Some("id"), "", true)
+        .unwrap();
+    assert!(!import.applied && !import.changes.is_empty());
+    assert_eq!(selector.history().undo, 0);
+
+    let mut units = model(Fixture::Units);
+    units.set_history_limit(8);
+    let mut dry = LengthUnitOptions::new();
+    dry.dry_run = true;
+    assert!(!units.convert_length_unit("METRE", dry).unwrap().applied);
+    assert_eq!(units.history().undo, 0);
 }
 
 #[test]
