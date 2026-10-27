@@ -145,7 +145,8 @@ impl IfcModel {
     pub fn author(&mut self, ops: Vec<AuthorOp>) -> Result<AuthoringResult, BindingError> {
         #[cfg(feature = "author")]
         {
-            self.tracked(|this| this.author_seeded(ops, ifc::fresh_seed()))
+            let seed = crate::relations::fresh_seed()?;
+            self.tracked(|this| this.author_seeded(ops, seed))
         }
         #[cfg(not(feature = "author"))]
         {

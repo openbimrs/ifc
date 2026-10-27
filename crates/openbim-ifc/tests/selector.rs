@@ -327,7 +327,7 @@ fn writes_by_path_go_through_one_checked_transaction() {
             EntityId(17),
             &path("Name"),
             &label,
-            ifc::fresh_seed(),
+            ifc::fresh_seed().unwrap(),
         )
         .unwrap();
         assert_eq!(value(&model, schema, 17, "Name"), text("Wall A2"), "{name}");
@@ -340,7 +340,7 @@ fn writes_by_path_go_through_one_checked_transaction() {
             EntityId(17),
             &path("type.Name"),
             &renamed,
-            ifc::fresh_seed(),
+            ifc::fresh_seed().unwrap(),
         )
         .unwrap();
         assert_eq!(value(&model, schema, 16, "Name"), text("WT-300"), "{name}");
@@ -358,7 +358,7 @@ fn writes_by_path_go_through_one_checked_transaction() {
             EntityId(17),
             &path("materials.Name"),
             &concrete,
-            ifc::fresh_seed(),
+            ifc::fresh_seed().unwrap(),
         )
         .unwrap();
         assert_eq!(value(&model, schema, 52, "Name"), text("Beton"), "{name}");
@@ -370,7 +370,7 @@ fn writes_by_path_go_through_one_checked_transaction() {
             EntityId(17),
             &path("Description"),
             &Value::Null,
-            ifc::fresh_seed(),
+            ifc::fresh_seed().unwrap(),
         )
         .unwrap();
         let before = model.revision();
@@ -380,7 +380,7 @@ fn writes_by_path_go_through_one_checked_transaction() {
             EntityId(17),
             &path("GlobalId"),
             &Value::Null,
-            ifc::fresh_seed(),
+            ifc::fresh_seed().unwrap(),
         );
         assert!(
             matches!(refused, Err(SelectorError::TypeMismatch { .. })),
@@ -392,7 +392,7 @@ fn writes_by_path_go_through_one_checked_transaction() {
             EntityId(17),
             &path("Name"),
             &Value::Integer(3),
-            ifc::fresh_seed(),
+            ifc::fresh_seed().unwrap(),
         );
         assert!(
             matches!(refused, Err(SelectorError::TypeMismatch { .. })),
@@ -404,7 +404,7 @@ fn writes_by_path_go_through_one_checked_transaction() {
             EntityId(17),
             &path("Flavour"),
             &label,
-            ifc::fresh_seed(),
+            ifc::fresh_seed().unwrap(),
         );
         assert!(
             matches!(
@@ -435,7 +435,7 @@ fn enumerations_and_selects_are_checked_against_the_release() {
         EntityId(17),
         &path("PredefinedType"),
         &item,
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .unwrap();
     assert_eq!(
@@ -448,7 +448,7 @@ fn enumerations_and_selects_are_checked_against_the_release() {
         EntityId(17),
         &path("PredefinedType"),
         &Value::Enum("NOPE".into()),
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     );
     assert!(
         matches!(refused, Err(SelectorError::TypeMismatch { .. })),
@@ -462,7 +462,7 @@ fn enumerations_and_selects_are_checked_against_the_release() {
         EntityId(17),
         &path("OwnerHistory"),
         &wrong,
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     );
     assert!(
         matches!(refused, Err(SelectorError::TypeMismatch { .. })),
@@ -474,7 +474,7 @@ fn enumerations_and_selects_are_checked_against_the_release() {
         EntityId(17),
         &path("OwnerHistory"),
         &Value::Ref(EntityId(5)),
-        ifc::fresh_seed(),
+        ifc::fresh_seed().unwrap(),
     )
     .unwrap();
 }
@@ -485,8 +485,12 @@ fn paths_that_name_no_value_are_not_settable() {
         let index = SelectorIndex::new(model, schema);
         let label = Value::Text("x".into());
         for text in ["count", "type", "/Na.*/", "type.count", "type.Name.x"] {
-            let refused =
-                index.stage_set_value(EntityId(19), &path(text), &label, ifc::fresh_seed());
+            let refused = index.stage_set_value(
+                EntityId(19),
+                &path(text),
+                &label,
+                ifc::fresh_seed().unwrap(),
+            );
             assert!(
                 matches!(refused, Err(SelectorError::NotSettable { .. })),
                 "{name} {text:?}: {refused:?}"
@@ -529,7 +533,7 @@ fn property_writes_take_the_stated_type_or_a_typed_value() {
             EntityId(19),
             &path("Custom_Notes.Note"),
             &note,
-            ifc::fresh_seed(),
+            ifc::fresh_seed().unwrap(),
         )
         .unwrap();
         assert_eq!(
@@ -545,7 +549,7 @@ fn property_writes_take_the_stated_type_or_a_typed_value() {
             EntityId(19),
             &path("Custom_Notes.Note"),
             &bare,
-            ifc::fresh_seed(),
+            ifc::fresh_seed().unwrap(),
         )
         .unwrap();
         assert_eq!(
@@ -560,7 +564,7 @@ fn property_writes_take_the_stated_type_or_a_typed_value() {
             EntityId(19),
             &path("Custom_Notes.Other"),
             &bare,
-            ifc::fresh_seed(),
+            ifc::fresh_seed().unwrap(),
         );
         assert!(
             matches!(refused, Err(SelectorError::UntypedValue { .. })),
@@ -582,7 +586,7 @@ fn catalog_property_writes_override_the_type_s_value() {
             EntityId(17),
             &at,
             &rating,
-            ifc::fresh_seed(),
+            ifc::fresh_seed().unwrap(),
         )
         .unwrap();
         assert_eq!(
@@ -602,7 +606,7 @@ fn catalog_property_writes_override_the_type_s_value() {
             EntityId(17),
             &external,
             &Value::Bool(false),
-            ifc::fresh_seed(),
+            ifc::fresh_seed().unwrap(),
         )
         .unwrap();
         assert_eq!(
@@ -643,7 +647,7 @@ fn the_guide_example_runs() -> Result<(), Box<dyn std::error::Error>> {
         EntityId(17),
         &type_name,
         &renamed,
-        ifc::fresh_seed(),
+        ifc::fresh_seed()?,
     )?;
     // docs:end
     assert_eq!(

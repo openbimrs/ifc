@@ -152,11 +152,12 @@ pub(crate) fn run_import(args: &ImportTableArgs, out: &mut impl Write) -> CliRes
         changes: Vec::new(),
         refusals: Vec::new(),
     };
+    let seed = ifc::fresh_seed().map_err(|error| CliError::Unsupported(error.to_string()))?;
     let planned = sheet::plan_import(
         &SelectorIndex::new(&loaded.model, schema),
         &table,
         &options,
-        ifc::fresh_seed(),
+        seed,
     );
     let plan = match planned {
         Ok(plan) => plan,

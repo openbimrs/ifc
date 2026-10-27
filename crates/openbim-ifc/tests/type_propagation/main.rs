@@ -317,7 +317,7 @@ fn fixture(release: SchemaVersion, token: &str) -> Fixture {
             owner_history: Some(owner),
         })
     };
-    let outcome = apply_authoring(&mut model, schema, &b.ops, ifc::fresh_seed())
+    let outcome = apply_authoring(&mut model, schema, &b.ops, ifc::fresh_seed().unwrap())
         .expect("the base model builds");
     let real =
         |handle: EntityId| outcome.ids[usize::try_from(handle.0 - HANDLE_BASE).unwrap()].unwrap();
@@ -358,8 +358,13 @@ impl Fixture {
 
     /// Apply `ops`, validate, and return the id each produced.
     fn apply(&mut self, ops: Vec<AuthorOp>) -> Vec<Option<EntityId>> {
-        let outcome = apply_authoring(&mut self.model, self.schema, &ops, ifc::fresh_seed())
-            .unwrap_or_else(|error| panic!("{}: {error}", self.name()));
+        let outcome = apply_authoring(
+            &mut self.model,
+            self.schema,
+            &ops,
+            ifc::fresh_seed().unwrap(),
+        )
+        .unwrap_or_else(|error| panic!("{}: {error}", self.name()));
         assert_valid(&self.name(), &self.model, self.schema);
         outcome.ids
     }
@@ -368,8 +373,13 @@ impl Fixture {
     fn refuse(&mut self, ops: Vec<AuthorOp>) -> AuthoringFailure {
         let before = self.model.revision();
         let count = self.model.ids().count();
-        let error = apply_authoring(&mut self.model, self.schema, &ops, ifc::fresh_seed())
-            .expect_err("the batch is refused");
+        let error = apply_authoring(
+            &mut self.model,
+            self.schema,
+            &ops,
+            ifc::fresh_seed().unwrap(),
+        )
+        .expect_err("the batch is refused");
         assert_eq!(self.model.revision(), before, "a refusal changes nothing");
         assert_eq!(self.model.ids().count(), count);
         *error.failure
@@ -390,7 +400,7 @@ impl Fixture {
                 location: [0.0; 3],
                 axes: None,
             }],
-            ifc::fresh_seed(),
+            ifc::fresh_seed().unwrap(),
         )
         .unwrap_or_else(|error| panic!("{}: {error}", self.name()))
         .ids[0]

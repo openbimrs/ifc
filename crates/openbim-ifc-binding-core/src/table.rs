@@ -202,7 +202,9 @@ impl IfcModel {
     ///
     /// Refused with `invalid-value` for an unknown format or key name,
     /// `parse` for bytes that are no table of the format,
-    /// `feature-disabled` for XLSX in a build without `sheet-xlsx`, and
+    /// `feature-disabled` for XLSX in a build without `sheet-xlsx`,
+    /// `unsupported` when the build or host has no random source for the
+    /// seed (as [`crate::relations::new_guid`]; checked first), and
     /// `unsupported-schema`; every refusal of the table's header, rows and
     /// cells is in [`TableImport::refusals`].
     pub fn import_table(
@@ -213,9 +215,8 @@ impl IfcModel {
         null: &str,
         dry_run: bool,
     ) -> Result<TableImport, BindingError> {
-        self.tracked(|this| {
-            this.import_table_seeded(data, format_name, key, null, dry_run, ifc::fresh_seed())
-        })
+        let seed = crate::relations::fresh_seed()?;
+        self.tracked(|this| this.import_table_seeded(data, format_name, key, null, dry_run, seed))
     }
 
     /// [`Self::import_table`]

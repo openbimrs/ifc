@@ -790,8 +790,10 @@ than a relationship still needs is `still-referenced`.
 An `IfcRoot` created without a `GlobalId` gets a fresh one. `OwnerHistory`
 is never invented: a builder writes the one it is given on every record it
 creates, and IFC2X3, which requires it, refuses a record without
-(`missing-attribute`). The module has no entropy of its own, so the seed
-fresh `GlobalId`s derive from is drawn from `Math.random`; the TypeScript
+(`missing-attribute`). The module has entropy through `js-random`
+(`crypto.getRandomValues`, used by `newGuid`), but the seed fresh `GlobalId`s
+derive from is still drawn from `Math.random`, because the package supports
+Node 18, which lacks it (`newGuid` needs Node 19); the TypeScript
 declarations type every operation as `AuthorOp`.
 
 ## Assigning types

@@ -150,9 +150,12 @@ impl IfcModel {
     /// (a pattern, `count`, a prefix reaching no entity), `unknown-attribute`,
     /// `derived-attribute`, `type-mismatch` (also for a plain value no
     /// stated property types), `ambiguous-value`, and the property edit's
-    /// refusals.
+    /// refusals. Also `unsupported` when the build or host has no random
+    /// source for the seed (as [`crate::relations::new_guid`]); that is
+    /// checked first, before `feature-disabled` for a property write.
     pub fn set_value(&mut self, id: u64, path: &str, value: Plain) -> Result<(), BindingError> {
-        self.tracked(|this| this.set_value_seeded(id, path, value, ifc::fresh_seed()))
+        let seed = crate::relations::fresh_seed()?;
+        self.tracked(|this| this.set_value_seeded(id, path, value, seed))
     }
 
     /// [`Self::set_value`]

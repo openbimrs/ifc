@@ -131,11 +131,12 @@ graph = ["placements", "openbim-ifc/geometry-wire"]
 # links an execution provider (ADR 0004, ADR 0012): +2.1 MB (+0.76 MB
 # gzip) to the default browser build.
 mesh = ["placements", "openbim-ifc/mesh"]
-# Random `GlobalId`s (`new_guid`, #463) on `wasm32-unknown-unknown` from
-# the JavaScript host's `crypto.getRandomValues` (the facade's
-# `js-random`). Natively they are always available and this changes
-# nothing; a WebAssembly build without it refuses `new_guid` with
-# `unsupported`. The JavaScript binding turns it on.
+# Random `GlobalId`s (`new_guid`, #463) and batch seeds (#573) on
+# `wasm32-unknown-unknown` from the JavaScript host's
+# `crypto.getRandomValues` (the facade's `js-random`). Natively they are
+# always available and this changes nothing; a WebAssembly build without it
+# refuses `new_guid` and every unseeded write with `unsupported`. The
+# JavaScript binding turns it on.
 js-random = ["openbim-ifc/js-random"]
 # XLSX tables (#474): `export_table` and `import_table` read and write
 # workbooks through the pure-Rust `rust_xlsxwriter` and `calamine` crates.

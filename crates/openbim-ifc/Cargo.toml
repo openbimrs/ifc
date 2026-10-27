@@ -49,7 +49,7 @@ ifc4 = "The schema API with the bundled IFC4 ADD2 TC1 table."
 ifc4x1 = "The schema API with the bundled IFC4X1 FINAL table."
 ifc4x2 = "The schema API with the bundled IFC4X2 FINAL table."
 ifc4x3 = "The schema API with the bundled IFC4X3 ADD2 table."
-js-random = "Random `GlobalId`s (`new_guid`) on `wasm32-unknown-unknown` from the JavaScript host's `crypto.getRandomValues`; native targets always have them."
+js-random = "Random `GlobalId`s (`new_guid`) and batch seeds (`fresh_seed`) on `wasm32-unknown-unknown` from the JavaScript host's `crypto.getRandomValues`; without it both refuse there; native targets always have them."
 sheet = "Tables of values by path (`ifc::sheet`, #474): export selected entities by attribute, property, quantity and relation paths as CSV or TSV, and import a table back by `GlobalId` or id as one checked transaction, with a planned diff and typed refusals by row and column."
 sheet-xlsx = "`sheet` with XLSX workbooks too, through the pure-Rust `rust_xlsxwriter` (write) and `calamine` (read) crates."
 selector = "The selector query language (`ifc::selector`, grammar 1.0): filter elements by class, `GlobalId`, attribute, property, type, material, classification, location and group, with typed parse errors carrying byte spans; read and write values by path (`type.Name`, `Pset_WallCommon.FireRating`) through a checked transaction. Property facets need `properties` too."
@@ -118,13 +118,13 @@ ifc-geometry = { workspace = true, optional = true, default-features = false }
 ifc-georef = { workspace = true, optional = true, features = ["transform"] }
 ifc-alignment = { workspace = true, optional = true }
 
-# Random version-4 `GlobalId`s (`new_guid`, #463) from the operating
-# system's generator. Natively it is always linked (ahash already links
-# it). `wasm32-unknown-unknown` has no generator of its own: there it is
-# linked only by `js-random`, which draws from the JavaScript host's
-# `crypto.getRandomValues`; without it `new_guid` refuses with
-# `GuidError::NoRandomSource`. getrandom 0.3.4 needs no `RUSTFLAGS` for that
-# backend, only the feature.
+# Random version-4 `GlobalId`s (`new_guid`, #463) and batch seeds
+# (`fresh_seed`, #573) from the operating system's generator. Natively it
+# is always linked (ahash already links it). `wasm32-unknown-unknown` has
+# no generator of its own: there it is linked only by `js-random`, which
+# draws from the JavaScript host's `crypto.getRandomValues`; without it
+# `new_guid` and `fresh_seed` refuse with `GuidError::NoRandomSource`.
+# getrandom 0.3.4 needs no `RUSTFLAGS` for that backend, only the feature.
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
 getrandom = "0.3.4"
 
@@ -244,8 +244,10 @@ selector = ["schema-api", "dep:regex-lite"]
 sheet = ["selector"]
 # XLSX workbooks for `ifc::sheet`, through `rust_xlsxwriter` and `calamine`.
 sheet-xlsx = ["sheet", "dep:rust_xlsxwriter", "dep:calamine"]
-# Random `GlobalId`s on `wasm32-unknown-unknown` through the JavaScript
-# host's `crypto.getRandomValues` (browsers, Node 19 and later). Only a
+# Random `GlobalId`s and batch seeds (`new_guid`, `fresh_seed`) on
+# `wasm32-unknown-unknown` through the JavaScript host's
+# `crypto.getRandomValues` (browsers, Node 19 and later); without it both
+# refuse there. Only a
 # build that runs under JavaScript should name it, as the npm package does;
 # it changes nothing on any other target.
 js-random = ["dep:getrandom"]
@@ -285,6 +287,16 @@ serde_json = "1.0"
 # Deflate backend for builds that leave the `zip` feature out.
 zip = { version = "9.0", default-features = false, features = ["deflate-flate2"] }
 flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
+
+# The Node check of `fresh_seed` (#573), scripts/check-wasm-seed.sh, binds
+# the `wasm_fresh_seed` example with the same wasm-bindgen CLI the npm
+# package uses, so the crate is pinned to the same version.
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
+wasm-bindgen = "=0.2.128"
+
+[[example]]
+name = "wasm_fresh_seed"
+crate-type = ["cdylib"]
 
 [lints]
 workspace = true

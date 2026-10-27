@@ -12,6 +12,22 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking) (#573)
+
+- `fresh_seed()` returns `Result<u128, GuidError>`, drawn from `new_guid`'s
+  source: the operating system natively, `crypto.getRandomValues` on
+  `wasm32-unknown-unknown` with `js-random`. Without `js-random` there it
+  refuses with `GuidError::NoRandomSource`; a host without a generator
+  (Node 18) gives `GuidError::RandomSourceFailed`.
+
+### Fixed (#573)
+
+- On `wasm32-unknown-unknown` `fresh_seed` was a counter from 0 per page
+  load, so a model reopened in a new session drew seeds it already held and
+  its first edit was refused with `SeedReused`.
+
+Semver: breaking (minor while 0.x), released in 0.38.0 with #548 and #559.
+
 ### Added (#566)
 
 - `release_catalog(SchemaVersion) -> Result<Catalog, ReleaseCatalogError>`

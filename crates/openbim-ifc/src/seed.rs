@@ -2,52 +2,28 @@
 //! batch, or a property edit (and the selector and sheet writes built on it).
 //!
 //! A `GlobalId` must be unique across files, not only within one, so the
-//! seed must differ between batches and processes. Native targets draw it
-//! from the standard library's per-process random hash keys (seeded from
-//! the operating system), the clock and a counter. `wasm32-unknown-unknown`
-//! has none of those without a global build flag, so there the seed is only
-//! a counter, and a browser host passes entropy of its own instead (the
-//! JavaScript binding draws it from `Math.random`).
+//! seed must differ between batches and processes. It comes from the same
+//! random source as [`new_guid`](crate::new_guid): the operating system's
+//! generator natively, and on `wasm32-unknown-unknown` the host's
+//! `crypto.getRandomValues` with the `js-random` feature. Without a source
+//! the call refuses rather than return a seed that repeats across sessions.
 //!
 //! A seed names one batch: the `GlobalId`s a batch derives are a function of
 //! the seed, so reusing it on a model that holds them is refused.
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
-use crate::name_guid::avalanche;
+use crate::name_guid::{random_bytes, GuidError};
 
 /// A fresh seed for one batch: of `apply_authoring` or `apply_append`, or of a
 /// property edit (`apply_property_edits` and the selector and sheet writes
 /// built on it).
 ///
-/// On `wasm32-unknown-unknown` it carries no entropy (see the module
-/// documentation); pass a seed drawn by the host there.
-pub fn fresh_seed() -> u128 {
-    static COUNTER: AtomicU64 = AtomicU64::new(0);
-    let count = COUNTER.fetch_add(1, Ordering::Relaxed);
-    avalanche(entropy(count) ^ u128::from(count))
-}
-
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-fn entropy(count: u64) -> u128 {
-    use std::collections::hash_map::RandomState;
-    use std::hash::{BuildHasher, Hasher};
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |elapsed| elapsed.as_nanos());
-    let draw = |salt: u64| {
-        let mut hasher = RandomState::new().build_hasher();
-        hasher.write_u64(salt);
-        hasher.write_u64(count);
-        hasher.write_u128(nanos);
-        hasher.finish()
-    };
-    (u128::from(draw(1)) << 64) | u128::from(draw(2))
-}
-
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-fn entropy(count: u64) -> u128 {
-    u128::from(count) << 64
+/// # Errors
+///
+/// [`GuidError::NoRandomSource`] on `wasm32-unknown-unknown` without the
+/// `js-random` feature; [`GuidError::RandomSourceFailed`] when the
+/// operating system (or the JavaScript host, for example Node 18) refuses.
+pub fn fresh_seed() -> Result<u128, GuidError> {
+    random_bytes().map(u128::from_le_bytes)
 }
 
 #[cfg(test)]
@@ -56,7 +32,9 @@ mod tests {
 
     #[test]
     fn seeds_differ() {
-        let seeds: std::collections::HashSet<u128> = (0..64).map(|_| fresh_seed()).collect();
+        let seeds: std::collections::HashSet<u128> = (0..64)
+            .map(|_| fresh_seed().expect("a random source"))
+            .collect();
         assert_eq!(seeds.len(), 64);
     }
 }

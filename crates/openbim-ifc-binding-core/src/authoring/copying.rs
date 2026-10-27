@@ -185,7 +185,8 @@ impl IfcModel {
     ) -> Result<CopyReport, BindingError> {
         #[cfg(feature = "author")]
         {
-            self.tracked(|this| this.copy_product_seeded(id, options, ifc::fresh_seed()))
+            let seed = crate::relations::fresh_seed()?;
+            self.tracked(|this| this.copy_product_seeded(id, options, seed))
         }
         #[cfg(not(feature = "author"))]
         {
@@ -268,7 +269,8 @@ impl IfcModel {
     ) -> Result<CopyReport, BindingError> {
         #[cfg(feature = "author")]
         {
-            self.tracked(|this| this.append_seeded(source, roots, options, ifc::fresh_seed()))
+            let seed = crate::relations::fresh_seed()?;
+            self.tracked(|this| this.append_seeded(source, roots, options, seed))
         }
         #[cfg(not(feature = "author"))]
         {

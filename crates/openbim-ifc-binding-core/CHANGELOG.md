@@ -8,6 +8,16 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#573)
+
+- The unseeded `author`, `copy_product`, `append`, `set_properties`,
+  `set_property`, `remove_property`, `set_value` and `import_table` refuse
+  with `unsupported` when the build or host has no random source for their
+  seed, as `new_guid` does; natively the seed comes from the operating
+  system's generator.
+
+Semver: patch (internal crate, not published).
+
 ### Changed (#566)
 
 - The catalog edition of a release is read from `openbim-ifc`'s
@@ -49,8 +59,7 @@ Semver: patch (internal crate, not published).
 
 - `IfcModel::copy_product_seeded` and `IfcModel::append_seeded`, the seeded
   forms of `copy_product` and `append` (which draw `fresh_seed()`), for hosts
-  with entropy of their own: `fresh_seed` has none on
-  `wasm32-unknown-unknown`.
+  with entropy of their own and for journal replay.
 
 Semver: patch (internal crate, not published).
 
