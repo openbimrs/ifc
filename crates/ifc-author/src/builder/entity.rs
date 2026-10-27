@@ -278,11 +278,16 @@ pub(crate) fn check_value(
             found: describe_value(value),
         });
     }
-    if let Some((_, Value::Enum(constant))) = verdicts
+    if let Some((Verdict::NotMember { enumeration }, offending)) = verdicts
         .iter()
-        .find(|(verdict, _)| *verdict == Verdict::NotMember)
+        .find(|(verdict, _)| matches!(verdict, Verdict::NotMember { .. }))
     {
-        let enumerations = enumerations_of(schema, element_type, 16);
+        let enumerations = enumerations_of(schema, enumeration, 16);
+        // A typed parameter (`IFCNULLSTYLE(.BOGUS.)`) wraps the constant.
+        let mut constant = *offending;
+        while let Value::Typed { value, .. } = constant {
+            constant = value;
+        }
         return Err(AuthorError::NotEnumerationMember {
             entity: entity.to_owned(),
             attribute: attribute.name.clone(),
@@ -291,7 +296,10 @@ pub(crate) fn check_value(
                 .map(|(name, _)| *name)
                 .collect::<Vec<_>>()
                 .join(" | "),
-            constant: constant.to_string(),
+            constant: match constant {
+                Value::Enum(text) => text.to_string(),
+                other => describe_value(other),
+            },
             allowed: enumerations
                 .iter()
                 .flat_map(|(_, members)| members.iter().cloned())

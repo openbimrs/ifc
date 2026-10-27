@@ -20,7 +20,16 @@ everything released before per-crate changelogs began.
   naming the enumeration, the constant and the allowed members. `.PIERCAP.`
   on an IFC4 `IfcBeam` was written; it is now refused, and still accepted on
   IFC4X3. Members compare case-insensitively, as the reader upper-cases
-  constants.
+  constants. A typed parameter in a SELECT slot is checked against the
+  member it names (`IFCNULLSTYLE(.BOGUS.)`).
+- A record read from a file that already carries a non-member constant now
+  refuses edits to its other slots, fail-closed like `TypeMismatch`.
+- Semver: patch.
+
+### Added (#565)
+
+- `AuthorError::NotEnumerationMember { entity, attribute, enumeration,
+  constant, allowed }`; the enum is `#[non_exhaustive]`.
 
 ## [0.3.2] - 2026-10-14
 

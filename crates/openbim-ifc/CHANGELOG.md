@@ -27,8 +27,9 @@ everything released before per-crate changelogs began.
 
 - Through the re-exported `AuthorError`: an enumeration constant that is not
   a member of the declared release's enumeration is refused with
-  `NotEnumerationMember` (`ifc-author`); the bindings report it as an
-  invalid value.
+  `NotEnumerationMember` (`ifc-author`). A cross-release append surfaces it
+  as `IncompatibleRelease` (bindings: unsupported-schema); build, set and
+  copy report an invalid value.
 
 ### Changed (breaking) (#465)
 

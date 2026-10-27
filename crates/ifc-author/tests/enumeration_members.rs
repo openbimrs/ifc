@@ -54,3 +54,67 @@ fn refusal_message_names_type_constant_and_members() {
     assert!(message.contains(".PIERCAP."), "{message}");
     assert!(message.contains("JOIST"), "{message}");
 }
+
+fn styles(
+    schema: &Schema,
+    entity: &str,
+    attribute: &str,
+    constant: &str,
+    required: &[(&str, Value)],
+) -> Result<(), AuthorError> {
+    let mut builder = EntityBuilder::new(schema, entity);
+    for (name, value) in required {
+        builder = builder.set(*name, value.clone());
+    }
+    builder
+        .set(
+            attribute,
+            Value::List(vec![Value::Typed {
+                type_name: "IFCNULLSTYLE".into(),
+                value: Box::new(Value::Enum(constant.into())),
+            }]),
+        )
+        .build()
+        .map(|_| ())
+}
+
+fn check_null_style(schema: &Schema, entity: &str, attribute: &str, required: &[(&str, Value)]) {
+    match styles(schema, entity, attribute, "BOGUS", required) {
+        Err(AuthorError::NotEnumerationMember {
+            enumeration,
+            constant,
+            allowed,
+            ..
+        }) => {
+            assert_eq!(enumeration, "IfcNullStyle");
+            assert_eq!(constant, "BOGUS");
+            assert_eq!(allowed, vec!["NULL".to_owned()]);
+        }
+        other => panic!("expected NotEnumerationMember, got {other:?}"),
+    }
+    if let Err(error) = styles(schema, entity, attribute, "NULL", required) {
+        panic!("`.NULL.` refused: {error}");
+    }
+}
+
+#[test]
+fn a_typed_select_member_enumeration_is_checked() {
+    check_null_style(
+        ifc_schema::ifc4(),
+        "IfcPresentationStyleAssignment",
+        "Styles",
+        &[],
+    );
+    check_null_style(
+        ifc_schema::ifc2x3(),
+        "IfcPresentationLayerWithStyle",
+        "LayerStyles",
+        &[
+            ("Name", Value::Text("L".into())),
+            ("LayerOn", Value::Bool(true)),
+            ("LayerFrozen", Value::Bool(false)),
+            ("LayerBlocked", Value::Bool(false)),
+            ("AssignedItems", Value::List(vec![])),
+        ],
+    );
+}

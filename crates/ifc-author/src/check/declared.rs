@@ -41,7 +41,7 @@ use ifc_schema::{Schema, TypeKind};
 use super::form::{aliases_to, form_of, select_lists, Form};
 
 /// What [`judge_value`] concludes about one value.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Verdict {
     /// Admissible, or not resolvable enough to refuse.
     Fits,
@@ -49,7 +49,11 @@ pub(crate) enum Verdict {
     WrongType,
     /// An enumeration constant that is not a member of the declared
     /// enumeration.
-    NotMember,
+    NotMember {
+        /// The declared type the constant was judged against: the enumeration,
+        /// an alias of it, or the SELECT member a typed parameter named.
+        enumeration: String,
+    },
     /// A value of the declared type in the wrong form: bare where the
     /// declared SELECT needs a typed parameter (`typed_required`), or a
     /// typed parameter where the declared type is not a SELECT.
@@ -220,7 +224,9 @@ fn shape_verdict(schema: &Schema, type_name: &str, value: &Value) -> Verdict {
         return if is_member {
             Verdict::Fits
         } else {
-            Verdict::NotMember
+            Verdict::NotMember {
+                enumeration: type_name.to_owned(),
+            }
         };
     }
     let fits = match shape {
