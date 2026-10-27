@@ -1,9 +1,7 @@
 //! The native model class, wrapped by `openbim_ifc.IfcModel` in Python.
 
 use openbim_ifc_binding_core::record::to_records;
-use openbim_ifc_binding_core::{
-    GeometryEncoding, IfcModel, LengthUnitOptions, PurgeOptions, RemoveProductOptions, ToRecord,
-};
+use openbim_ifc_binding_core::{GeometryEncoding, IfcModel, ToRecord};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict, PyList, PyString};
@@ -13,6 +11,7 @@ use crate::convert::{from_py, plain_from_py, selected_to_py, to_py};
 use crate::edits;
 use crate::error::py_err;
 use crate::records;
+use crate::reports;
 
 /// Native half of `openbim_ifc.IfcModel`; not part of the public API.
 ///
@@ -638,6 +637,31 @@ impl NativeModel {
         self.inner.remove_with_relationships(id).map_err(py_err)
     }
 
+    /// Bound the undo entries kept; 0 turns history off (#465).
+    fn set_history_limit(&mut self, limit: usize) {
+        self.inner.set_history_limit(limit);
+    }
+
+    /// The history bound and the entries each direction holds.
+    fn history<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
+        reports::history(py, &self.inner)
+    }
+
+    /// Undo the last recorded change; what it restored.
+    fn undo<'py>(&mut self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
+        reports::step(py, &mut self.inner, false)
+    }
+
+    /// Redo the last undone change; what it restored.
+    fn redo<'py>(&mut self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
+        reports::step(py, &mut self.inner, true)
+    }
+
+    /// Drop every undo and redo entry.
+    fn clear_history(&mut self) {
+        self.inner.clear_history();
+    }
+
     /// The entities a selector selects as table bytes (#474).
     #[pyo3(signature = (query, columns, format = "csv", key = None, null = ""))]
     fn export_table<'py>(
@@ -685,12 +709,8 @@ impl NativeModel {
         untype_occurrences: bool,
         dry_run: bool,
     ) -> PyResult<Bound<'py, PyDict>> {
-        let mut options = RemoveProductOptions::new();
-        options.rebase_placements = rebase_placements;
-        options.untype_occurrences = untype_occurrences;
-        options.dry_run = dry_run;
-        let report = self.inner.remove_product(id, options).map_err(py_err)?;
-        records::record_to_py(py, &report.to_record())
+        let flags = (rebase_placements, untype_occurrences, dry_run);
+        reports::remove_product(py, &mut self.inner, id, flags)
     }
 
     /// Purge unreferenced entities; the report.
@@ -703,13 +723,8 @@ impl NativeModel {
         include_owner_history: bool,
         dry_run: bool,
     ) -> PyResult<Bound<'py, PyDict>> {
-        let mut options = PurgeOptions::new();
-        options.classes = classes;
-        options.include_roots = include_roots;
-        options.include_owner_history = include_owner_history;
-        options.dry_run = dry_run;
-        let report = self.inner.purge(options).map_err(py_err)?;
-        records::record_to_py(py, &report.to_record())
+        let flags = (include_roots, include_owner_history, dry_run);
+        reports::purge(py, &mut self.inner, classes, flags)
     }
 
     /// Remove a shape representation with what only it uses; the report.
@@ -720,11 +735,7 @@ impl NativeModel {
         id: u64,
         dry_run: bool,
     ) -> PyResult<Bound<'py, PyDict>> {
-        let report = self
-            .inner
-            .remove_representation(id, dry_run)
-            .map_err(py_err)?;
-        records::record_to_py(py, &report.to_record())
+        reports::remove_representation(py, &mut self.inner, id, dry_run)
     }
 
     /// Copy a product with what it solely owns; the report (#479). Keyword
@@ -773,15 +784,8 @@ impl NativeModel {
         remove_replaced_units: bool,
         dry_run: bool,
     ) -> PyResult<Bound<'py, PyDict>> {
-        let mut options = LengthUnitOptions::new();
-        options.area_and_volume = area_and_volume;
-        options.remove_replaced_units = remove_replaced_units;
-        options.dry_run = dry_run;
-        let report = self
-            .inner
-            .convert_length_unit(target, options)
-            .map_err(py_err)?;
-        records::record_to_py(py, &report.to_record())
+        let flags = (area_and_volume, remove_replaced_units, dry_run);
+        reports::convert_length_unit(py, &mut self.inner, target, flags)
     }
 
     /// The handle of operation `index`'s entity.

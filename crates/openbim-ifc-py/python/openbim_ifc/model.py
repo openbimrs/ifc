@@ -15,6 +15,8 @@ from .domains import (
     AuthorOp,
     AuthoringResult,
     CopyReport,
+    HistoryChange,
+    HistoryState,
     RemovalReport,
     Classification,
     Cost,
@@ -661,6 +663,37 @@ class IfcModel(ModelAccess):
         :meth:`AuthorOp.remove`). Raises ``still-referenced`` while an
         entity other than a relationship needs it."""
         self._native.remove_with_relationships(id)
+
+    def set_history_limit(self, limit: int) -> None:
+        """Keep at most ``limit`` undo entries; ``0`` (the default) turns
+        history off and drops what is held. While it is on, every method
+        that changes the model is one entry (:meth:`author` is one entry
+        for its whole batch)."""
+        self._native.set_history_limit(limit)
+
+    def history(self) -> HistoryState:
+        """The history bound and how many entries each direction holds."""
+        return domains._from_wire(self._native.history())
+
+    def undo(self) -> HistoryChange:
+        """Restore the model to the state before the last change: entities
+        under their ids and at their file positions, the header included.
+        Undoing a creation frees its id again.
+
+        Raises ``history-empty`` with nothing to undo (also while history is
+        off) and ``history-stale`` when the model changed outside the
+        history; the model is unchanged then.
+        """
+        return domains._from_wire(self._native.undo())
+
+    def redo(self) -> HistoryChange:
+        """Reverse the last :meth:`undo`. Raises ``history-empty`` with
+        nothing to redo and ``history-stale`` as :meth:`undo` does."""
+        return domains._from_wire(self._native.redo())
+
+    def clear_history(self) -> None:
+        """Drop every undo and redo entry, keeping the limit."""
+        self._native.clear_history()
 
     def remove_product(
         self,

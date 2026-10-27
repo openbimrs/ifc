@@ -967,6 +967,30 @@ class RemovalReport:
 
 
 @dataclass(frozen=True)
+class HistoryState:
+    """How much history :meth:`IfcModel.history` reports: the bound on undo
+    entries (``limit``, 0 while history is off) and the entries
+    :meth:`IfcModel.undo` (``undo``) and :meth:`IfcModel.redo` (``redo``)
+    can step through."""
+
+    limit: int
+    undo: int
+    redo: int
+
+
+@dataclass(frozen=True)
+class HistoryChange:
+    """What :meth:`IfcModel.undo` or :meth:`IfcModel.redo` restored:
+    entities ``created`` (absent before, present after), ``removed`` and
+    ``modified``, and whether the file ``header`` changed."""
+
+    created: Tuple[int, ...]
+    removed: Tuple[int, ...]
+    modified: Tuple[int, ...]
+    header: bool
+
+
+@dataclass(frozen=True)
 class CopiedEntity:
     """An original and its copy (or, in :attr:`CopyReport.reused`, the
     target entity used for it)."""
@@ -1154,6 +1178,8 @@ _RECORDS = {
         RemovedEntity,
         KeptEntity,
         RemovalReport,
+        HistoryState,
+        HistoryChange,
         CopiedEntity,
         CopyReport,
         ConvertedValues,
