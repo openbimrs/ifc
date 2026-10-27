@@ -61,6 +61,20 @@ pub enum AuthorError {
         /// What the supplied value actually was.
         found: String,
     },
+    /// An enumeration constant that is not a member of the declared
+    /// enumeration, for example `.PIERCAP.` on an IFC4 `IfcBeam`.
+    NotEnumerationMember {
+        /// The entity being built or edited.
+        entity: String,
+        /// The attribute that was set.
+        attribute: String,
+        /// The enumeration(s) the declared type resolves to.
+        enumeration: String,
+        /// The rejected constant, without the surrounding dots.
+        constant: String,
+        /// The members the declared release allows.
+        allowed: Vec<String>,
+    },
     /// A scalar was supplied where the schema declares an aggregate, or vice
     /// versa.
     AggregateMismatch {
@@ -162,6 +176,18 @@ impl fmt::Display for AuthorError {
             } => write!(
                 f,
                 "`{entity}.{attribute}` expects {expected}, found {found}"
+            ),
+            Self::NotEnumerationMember {
+                entity,
+                attribute,
+                enumeration,
+                constant,
+                allowed,
+            } => write!(
+                f,
+                "`{entity}.{attribute}`: `.{constant}.` is not a member of {enumeration}; \
+                 allowed: {}",
+                allowed.join(", ")
             ),
             Self::ValueForm {
                 entity,

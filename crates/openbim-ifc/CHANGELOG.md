@@ -23,6 +23,13 @@ everything released before per-crate changelogs began.
   a product exists cannot disagree with them. `ReleaseCatalogError` is
   `NoCatalog`, `NotInstalled { edition }` or `Unreadable { edition, reason }`.
 
+### Fixed (#565)
+
+- Through the re-exported `AuthorError`: an enumeration constant that is not
+  a member of the declared release's enumeration is refused with
+  `NotEnumerationMember` (`ifc-author`); the bindings report it as an
+  invalid value.
+
 ### Changed (breaking) (#465)
 
 - Through the re-exported `Model`: `header_mut` bumps the revision, so a

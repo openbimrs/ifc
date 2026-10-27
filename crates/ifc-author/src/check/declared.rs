@@ -47,6 +47,9 @@ pub(crate) enum Verdict {
     Fits,
     /// A value of another type than the one declared.
     WrongType,
+    /// An enumeration constant that is not a member of the declared
+    /// enumeration.
+    NotMember,
     /// A value of the declared type in the wrong form: bare where the
     /// declared SELECT needs a typed parameter (`typed_required`), or a
     /// typed parameter where the declared type is not a SELECT.
@@ -204,7 +207,23 @@ pub(crate) fn judge_value(schema: &Schema, type_name: &str, value: &Value) -> Ve
 
 /// The value's shape against the primitive shape the declaration admits.
 fn shape_verdict(schema: &Schema, type_name: &str, value: &Value) -> Verdict {
-    let fits = match shape_of(schema, type_name, 16) {
+    let shape = shape_of(schema, type_name, 16);
+    if let (Shape::Enumeration, Value::Enum(constant)) = (shape, value) {
+        // A declaration the tables cannot expand to members accepts anything.
+        let enumerations = enumerations_of(schema, type_name, 16);
+        let is_member = enumerations.is_empty()
+            || enumerations.iter().any(|(_, members)| {
+                members
+                    .iter()
+                    .any(|member| member.eq_ignore_ascii_case(constant))
+            });
+        return if is_member {
+            Verdict::Fits
+        } else {
+            Verdict::NotMember
+        };
+    }
+    let fits = match shape {
         Shape::Unresolved => true,
         Shape::Number => matches!(value, Value::Integer(_) | Value::Real(_)),
         // IFC files are inconsistent about quoting, but a number where a label
@@ -219,6 +238,33 @@ fn shape_verdict(schema: &Schema, type_name: &str, value: &Value) -> Verdict {
         Verdict::Fits
     } else {
         Verdict::WrongType
+    }
+}
+
+/// The enumerations a declared type resolves to, as `(name, members)`.
+///
+/// One for an enumeration or an alias of one, several for a SELECT of
+/// enumerations; empty when the type reaches none. Follows aliases with the
+/// same bounded depth as [`shape_of`].
+pub(crate) fn enumerations_of<'s>(
+    schema: &'s Schema,
+    type_name: &str,
+    depth: u8,
+) -> Vec<(&'s str, &'s [String])> {
+    if depth == 0 {
+        return Vec::new();
+    }
+    let Some(def) = schema.type_def(type_name) else {
+        return Vec::new();
+    };
+    match &def.kind {
+        TypeKind::Enumeration(members) => vec![(def.name.as_str(), members.as_slice())],
+        TypeKind::Defined(alias) => enumerations_of(schema, alias, depth - 1),
+        TypeKind::Select(members) => members
+            .iter()
+            .flat_map(|m| enumerations_of(schema, m, depth - 1))
+            .collect(),
+        _ => Vec::new(),
     }
 }
 

@@ -19,7 +19,9 @@
 use ifc_model::{Entity, Value};
 use ifc_schema::Schema;
 
-use crate::check::{aggregate_element, describe_value, is_derived_slot, judge_value, Verdict};
+use crate::check::{
+    aggregate_element, describe_value, enumerations_of, is_derived_slot, judge_value, Verdict,
+};
 use crate::error::{AuthorError, AuthorResult};
 
 /// A partially-specified entity, checked against the schema on [`build`].
@@ -274,6 +276,26 @@ pub(crate) fn check_value(
             attribute: attribute.name.clone(),
             expected: attribute.type_name.clone(),
             found: describe_value(value),
+        });
+    }
+    if let Some((_, Value::Enum(constant))) = verdicts
+        .iter()
+        .find(|(verdict, _)| *verdict == Verdict::NotMember)
+    {
+        let enumerations = enumerations_of(schema, element_type, 16);
+        return Err(AuthorError::NotEnumerationMember {
+            entity: entity.to_owned(),
+            attribute: attribute.name.clone(),
+            enumeration: enumerations
+                .iter()
+                .map(|(name, _)| *name)
+                .collect::<Vec<_>>()
+                .join(" | "),
+            constant: constant.to_string(),
+            allowed: enumerations
+                .iter()
+                .flat_map(|(_, members)| members.iter().cloned())
+                .collect(),
         });
     }
     if let Some((Verdict::WrongForm { typed_required }, offending)) = verdicts

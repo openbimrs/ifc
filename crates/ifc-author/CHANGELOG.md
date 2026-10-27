@@ -12,6 +12,16 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#565)
+
+- The declared-type check refuses an enumeration constant that is not a
+  member of the declared enumeration (through defined-type aliases and
+  SELECTs of enumerations), as the new `AuthorError::NotEnumerationMember`
+  naming the enumeration, the constant and the allowed members. `.PIERCAP.`
+  on an IFC4 `IfcBeam` was written; it is now refused, and still accepted on
+  IFC4X3. Members compare case-insensitively, as the reader upper-cases
+  constants.
+
 ## [0.3.2] - 2026-10-14
 
 ### Fixed (#481)

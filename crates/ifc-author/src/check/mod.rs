@@ -10,5 +10,7 @@ mod declared;
 mod derived;
 mod form;
 
-pub(crate) use declared::{aggregate_element, describe_value, judge_value, Verdict};
+pub(crate) use declared::{
+    aggregate_element, describe_value, enumerations_of, judge_value, Verdict,
+};
 pub(crate) use derived::is_derived_slot;
