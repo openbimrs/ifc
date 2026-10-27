@@ -15,6 +15,8 @@ a release here does not imply a release of any other crate in the family.
   `history-empty` and `history-stale`. History is off until a limit is set;
   then every mutating method is one undo entry.
 
+Semver: additive: minor.
+
 ### Fixed (#559)
 
 - `setProperties`, `setProperty`, `removeProperty`, `setValue` and

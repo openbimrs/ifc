@@ -17,6 +17,8 @@ a release here does not imply a release of any other crate in the family.
 - Errors `history-empty` and `history-stale`; `BindingError` gains
   `HistoryEmpty` and `HistoryStale`.
 
+Semver: additive (internal crate, not published).
+
 ### Added (#559)
 
 - `set_properties_seeded`, `set_property_seeded`, `remove_property_seeded`,

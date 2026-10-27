@@ -15,6 +15,8 @@ a release here does not imply a release of any other crate in the family.
   History is off until a limit is set; then every mutating method is one
   undo entry. Errors `history-empty` and `history-stale`.
 
+Semver: additive: minor.
+
 ### Changed (#559)
 
 - `set_properties`, `set_property`, `remove_property`, `set_value`, `import_table`: draw a seed per call for the `GlobalId`s of the sets and

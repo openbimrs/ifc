@@ -18,6 +18,8 @@ a release here does not imply a release of any other crate in the family.
   undo entry.
 - Needs the C library of ABI 0.1.23.
 
+Semver: additive: minor.
+
 ### Changed (#559)
 
 - `SetProperties`, `SetProperty`, `RemoveProperty`, `SetValue`, `ImportTable`: draw a seed per call for the `GlobalId`s of the sets and
