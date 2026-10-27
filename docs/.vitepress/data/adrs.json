@@ -124,5 +124,11 @@
     "slug": "0021-bindings-carry-placements-and-opt-in-meshes",
     "status": "Accepted",
     "title": "Bindings carry placements by default and meshes on request"
+  },
+  {
+    "number": "0022",
+    "slug": "0022-undo-records-exact-inverses-in-the-model",
+    "status": "Accepted",
+    "title": "Undo records exact inverses in the model"
   }
 ]

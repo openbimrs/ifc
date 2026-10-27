@@ -20,12 +20,14 @@
 //! The rule to preserve: **no `if type_name == "IFCWALL"` in this crate.**
 
 use std::ops::Range;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use crate::diagnostic::Diagnostic;
 use crate::entity::Entity;
 use crate::header::Header;
 use crate::lazy::{EntitySource, Slot};
+use crate::mutation::{Recording, Step};
 use crate::value::EntityId;
 use ahash::AHashMap;
 
@@ -44,6 +46,11 @@ pub struct Model {
     /// IfcWall" is the most common query in any consumer.
     by_type: AHashMap<String, Vec<EntityId>>,
     max_id: u64,
+    /// Replaced by a fresh, process-unique value on every structural change,
+    /// so a revision names one state of one model lineage: an inverse or a
+    /// transaction recorded against another model is refused, not applied.
+    /// A clone shares its source's revision until either side changes.
+    ///
     /// Bumped by every structural change. A transaction opened against one
     /// revision refuses to commit against another, so an editor working from
     /// a stale view is told rather than silently overwriting.
@@ -58,6 +65,17 @@ pub struct Model {
     /// Decodes lazily registered entities; `None` for a model built only
     /// from decoded entities. Shared by clones.
     source: Option<Arc<dyn EntitySource>>,
+    /// Open recordings, innermost last; empty unless a caller is capturing
+    /// an [`Inverse`](crate::Inverse). See `mutation::record`.
+    recording: Recording,
+}
+
+/// The last revision handed out, process-wide.
+static LAST_REVISION: AtomicU64 = AtomicU64::new(0);
+
+/// A revision no model has had before.
+fn next_revision() -> u64 {
+    LAST_REVISION.fetch_add(1, Ordering::Relaxed) + 1
 }
 
 impl Model {
@@ -81,7 +99,15 @@ impl Model {
     }
 
     /// Mutable access to the header, for writers and editors.
+    ///
+    /// Counts as a structural change: it bumps [`Model::revision`], and an
+    /// active recording keeps the header it replaces.
     pub fn header_mut(&mut self) -> &mut Header {
+        if self.is_recording() {
+            let prior = Box::new(self.header.clone());
+            self.record(Step::Header(prior));
+        }
+        self.revision = next_revision();
         &mut self.header
     }
 
@@ -154,8 +180,14 @@ impl Model {
         } else {
             type_name
         };
+        let recording = self.is_recording();
         match self.entities.insert(id, slot) {
-            None => self.order.push(id),
+            None => {
+                self.order.push(id);
+                if recording {
+                    self.record(Step::Remove { id });
+                }
+            }
             // Replacing an occupant: drop its old type-index entry, otherwise
             // `ids_of_type` reports the id twice for the same type, or keeps
             // reporting it under a type the entity no longer has. Both make an
@@ -163,13 +195,21 @@ impl Model {
             Some(previous) => {
                 let previous = previous.into_entity(self.source.as_deref());
                 let previous_key = previous.type_name.to_ascii_uppercase();
+                if recording {
+                    let bucket = self.bucket_position(&previous_key, id);
+                    self.record(Step::Replace {
+                        id,
+                        entity: previous,
+                        bucket,
+                    });
+                }
                 if previous_key != key {
                     self.unindex(&previous_key, id);
                 } else {
                     // Same type: the entry is still correct, so re-adding it
                     // below would duplicate it.
                     self.max_id = self.max_id.max(id.0);
-                    self.revision += 1;
+                    self.revision = next_revision();
                     return;
                 }
             }
@@ -181,7 +221,7 @@ impl Model {
             }
         }
         self.max_id = self.max_id.max(id.0);
-        self.revision += 1;
+        self.revision = next_revision();
     }
 
     /// Append an entity, allocating the next free id.
@@ -193,15 +233,17 @@ impl Model {
 
     /// How many structural changes this model has seen.
     ///
-    /// Starts at zero and increases; the absolute value carries no meaning
-    /// beyond comparison. See [`Transaction`](crate::Transaction).
+    /// Starts at zero for a model nothing was written to. Every change draws
+    /// a new value that is greater than any handed out before, in any model of
+    /// the process, and not necessarily one more than the last; the absolute
+    /// value carries no meaning beyond comparison. See [`Transaction`](crate::Transaction).
     pub fn revision(&self) -> u64 {
         self.revision
     }
 
     /// Record a structural change made through a sibling mutation module.
     pub(crate) fn bump_revision(&mut self) {
-        self.revision += 1;
+        self.revision = next_revision();
     }
 
     /// The id [`Model::push`] would allocate next.
@@ -385,5 +427,60 @@ impl Model {
 
     pub(crate) fn order_mut(&mut self) -> &mut Vec<EntityId> {
         &mut self.order
+    }
+
+    // --- crate-internal seams for `mutation::{record, step, inverse}` ----
+
+    pub(crate) fn recording_len(&self) -> usize {
+        self.recording.0.len()
+    }
+
+    pub(crate) fn recording_is_empty(&self) -> bool {
+        self.recording.0.is_empty()
+    }
+
+    /// Keeps `step` in the innermost open recording.
+    pub(crate) fn record(&mut self, step: Step) {
+        if let Some(segment) = self.recording.0.last_mut() {
+            segment.steps.push(step);
+        }
+    }
+
+    pub(crate) fn recording_mut(&mut self) -> &mut Vec<crate::mutation::Segment> {
+        &mut self.recording.0
+    }
+
+    pub(crate) fn max_id(&self) -> u64 {
+        self.max_id
+    }
+
+    pub(crate) fn set_max_id(&mut self, max_id: u64) {
+        self.max_id = max_id;
+    }
+
+    pub(crate) fn entities_mut(&mut self) -> &mut AHashMap<EntityId, Slot> {
+        &mut self.entities
+    }
+
+    /// The header without the revision bump or the recording of
+    /// [`Model::header_mut`]; steps apply through it.
+    pub(crate) fn header_raw(&mut self) -> &mut Header {
+        &mut self.header
+    }
+
+    /// Where `id` sits in file order.
+    pub(crate) fn order_position(&self, id: EntityId) -> usize {
+        self.order
+            .iter()
+            .position(|existing| *existing == id)
+            .expect("an entity in storage is in file order")
+    }
+
+    /// Where `id` sits in the type-index bucket `key` (already upper-cased).
+    pub(crate) fn bucket_position(&self, key: &str, id: EntityId) -> usize {
+        self.by_type
+            .get(key)
+            .and_then(|ids| ids.iter().position(|existing| *existing == id))
+            .expect("an entity in storage is in its type bucket")
     }
 }

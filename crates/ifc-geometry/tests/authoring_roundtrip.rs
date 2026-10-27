@@ -100,14 +100,15 @@ fn an_authored_extrusion_survives_step_text_and_lowers() {
     use ifc_model::codec::Codec;
     use ifc_step::StepCodec;
 
-    let model = Model::default();
-    let mut tx = Transaction::new(&model);
-    let solid = wall(&mut tx);
-    let mut model = model;
+    // The header is set first: `header_mut` bumps the revision, which would
+    // refuse a transaction opened before it (#465).
+    let mut model = Model::default();
     *model.header_mut() = ifc_model::Header {
         schema: vec!["IFC4X3_ADD2".to_owned()],
         ..ifc_model::Header::default()
     };
+    let mut tx = Transaction::new(&model);
+    let solid = wall(&mut tx);
     tx.commit(&mut model).expect("commit");
 
     let mut bytes = Vec::new();

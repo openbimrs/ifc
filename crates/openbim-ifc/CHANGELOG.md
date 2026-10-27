@@ -12,6 +12,20 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (breaking) (#465)
+
+- Through the re-exported `Model`: `header_mut` bumps the revision, so a
+  `Transaction` opened before a header edit is refused at commit with
+  `Conflict::StaleRevision`; revisions are process-unique rather than
+  per-model counters, so a transaction or inverse made against another model
+  is refused (`ifc-model` 0.4.0).
+
+### Added (#465)
+
+- Re-exports `History`, `HistoryError`, `Inverse`, `InverseError` and
+  `Restored` from `ifc-model`: `History::track` around `apply_authoring`
+  (or any change) makes it undoable with byte-identical restoration.
+
 ### Changed (#559)
 
 - The `GlobalId`s a property edit derives for the sets and relationships it
