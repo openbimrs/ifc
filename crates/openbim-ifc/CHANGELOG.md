@@ -12,6 +12,17 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#566)
+
+- `release_catalog(SchemaVersion) -> Result<Catalog, ReleaseCatalogError>`
+  and `release_edition(SchemaVersion) -> Option<CatalogEdition>`, behind
+  `schema-api` (any release feature) and `property-catalog` or
+  `property-catalog-runtime`: the PSD/QTO catalog a release reads -- IFC2X3
+  TC1 as published, IFC4 ADD2 TC1 and IFC4X3 ADD2 corrected -- the policy
+  property edits and `validate` now share, so an authoring check made before
+  a product exists cannot disagree with them. `ReleaseCatalogError` is
+  `NoCatalog`, `NotInstalled { edition }` or `Unreadable { edition, reason }`.
+
 ### Changed (breaking) (#465)
 
 - Through the re-exported `Model`: `header_mut` bumps the revision, so a

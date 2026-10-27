@@ -107,65 +107,32 @@ fn lookup(_: SchemaVersion, set: &str) -> Result<Option<SetTemplate>, PropertyEd
     Err(PropertyEditFailure::CatalogUnavailable(set.to_owned()))
 }
 
-/// The release's catalog, from the embedded container.
-#[cfg(feature = "property-catalog")]
-fn catalog(
-    edition: ifc_template_catalog::definition::CatalogEdition,
-    profile: ifc_template_catalog::catalog::CatalogProfile,
-    _set: &str,
-) -> Result<ifc_template_catalog::catalog::Catalog, PropertyEditFailure> {
-    ifc_template_catalog::embedded::load_catalog(edition, profile).map_err(|error| {
-        PropertyEditFailure::InvalidModel(format!(
-            "the {edition:?} catalog cannot be read: {error}"
-        ))
-    })
-}
-
-/// The release's catalog, as the host installed it.
-#[cfg(all(
-    feature = "property-catalog-runtime",
-    not(feature = "property-catalog")
-))]
-fn catalog(
-    edition: ifc_template_catalog::definition::CatalogEdition,
-    profile: ifc_template_catalog::catalog::CatalogProfile,
-    set: &str,
-) -> Result<ifc_template_catalog::catalog::Catalog, PropertyEditFailure> {
-    use ifc_template_catalog::definition::CatalogEdition;
-    use ifc_template_catalog::runtime::{load_catalog, RuntimeCatalogError};
-    load_catalog(edition, profile).map_err(|error| match error {
-        RuntimeCatalogError::NotInstalled(_) => PropertyEditFailure::CatalogNotLoaded {
-            set: set.to_owned(),
-            edition: match edition {
-                CatalogEdition::Ifc2x3Tc1 => "IFC2X3 TC1",
-                CatalogEdition::Ifc4Add2Tc1 => "IFC4 ADD2 TC1",
-                _ => "IFC4X3 ADD2",
-            }
-            .to_owned(),
-        },
-        other => PropertyEditFailure::InvalidModel(format!(
-            "the {edition:?} catalog cannot be read: {other}"
-        )),
-    })
-}
-
 #[cfg(any(feature = "property-catalog", feature = "property-catalog-runtime"))]
 fn lookup(version: SchemaVersion, set: &str) -> Result<Option<SetTemplate>, PropertyEditFailure> {
-    use ifc_template_catalog::catalog::CatalogProfile;
+    use crate::{release_catalog, ReleaseCatalogError};
     use ifc_template_catalog::definition::{
         CatalogEdition, PropertyKind, PropertySetType, QuantityKind as Qto, QuantitySetType,
         SetTemplateKind,
     };
 
-    let (edition, profile) = match version {
-        SchemaVersion::Ifc2x3 => (CatalogEdition::Ifc2x3Tc1, CatalogProfile::Official),
-        SchemaVersion::Ifc4 => (CatalogEdition::Ifc4Add2Tc1, CatalogProfile::Corrected),
-        SchemaVersion::Ifc4x3 => (CatalogEdition::Ifc4x3Add2, CatalogProfile::Corrected),
+    let catalog = match release_catalog(version) {
+        Ok(catalog) => catalog,
         // The resolver binds no other release, so no edit reaches here
         // with one; refuse rather than read another edition's catalog.
-        _ => return Ok(None),
+        Err(ReleaseCatalogError::NoCatalog(_)) => return Ok(None),
+        Err(ReleaseCatalogError::NotInstalled { edition }) => {
+            return Err(PropertyEditFailure::CatalogNotLoaded {
+                set: set.to_owned(),
+                edition: match edition {
+                    CatalogEdition::Ifc2x3Tc1 => "IFC2X3 TC1",
+                    CatalogEdition::Ifc4Add2Tc1 => "IFC4 ADD2 TC1",
+                    _ => "IFC4X3 ADD2",
+                }
+                .to_owned(),
+            })
+        }
+        Err(other) => return Err(PropertyEditFailure::InvalidModel(other.to_string())),
     };
-    let catalog = catalog(edition, profile, set)?;
     let Some(found) = catalog.get(set) else {
         return Ok(None);
     };

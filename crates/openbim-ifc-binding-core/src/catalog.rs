@@ -31,15 +31,13 @@ pub const RELEASES: [&str; 3] = ["IFC2X3", "IFC4", "IFC4X3"];
 fn edition(
     release: &str,
 ) -> Result<ifc::property_catalog::definition::CatalogEdition, BindingError> {
-    use ifc::property_catalog::definition::CatalogEdition;
-    match ifc::SchemaVersion::from_header_token(release) {
-        Some(ifc::SchemaVersion::Ifc2x3) => Ok(CatalogEdition::Ifc2x3Tc1),
-        Some(ifc::SchemaVersion::Ifc4) => Ok(CatalogEdition::Ifc4Add2Tc1),
-        Some(ifc::SchemaVersion::Ifc4x3) => Ok(CatalogEdition::Ifc4x3Add2),
-        _ => Err(BindingError::UnsupportedSchema(format!(
-            "{release}: no PSD/QTO catalog edition (IFC2X3, IFC4 or IFC4X3)"
-        ))),
-    }
+    ifc::SchemaVersion::from_header_token(release)
+        .and_then(ifc::release_edition)
+        .ok_or_else(|| {
+            BindingError::UnsupportedSchema(format!(
+                "{release}: no PSD/QTO catalog edition (IFC2X3, IFC4 or IFC4X3)"
+            ))
+        })
 }
 
 /// The file name of `release`'s catalog snapshot, such as

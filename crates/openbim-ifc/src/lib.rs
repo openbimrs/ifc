@@ -313,7 +313,6 @@ pub use ifc_alignment as alignment;
 // Answering "will a viewer draw this" needs containment AND representation
 // contexts -- two sibling domain crates that ADR 0003 forbids from depending on
 // each other, so the check lives in this orchestration layer.
-#[cfg(all(feature = "spatial", feature = "geometry-select"))]
 mod unreachable;
 #[cfg(all(feature = "spatial", feature = "geometry-select"))]
 pub use unreachable::{unreachable_products, Unreachable};
@@ -372,6 +371,12 @@ mod length_unit;
 // on `properties` with an inner `#![cfg]`; the catalog checks need
 // `property-catalog` or `property-catalog-runtime` too.
 mod property_edit;
+
+// The release-to-catalog policy property edits and validation share (#566).
+// Its items gate on `schema-api` and a catalog feature; empty otherwise.
+mod release_catalog;
+#[allow(unused_imports)]
+pub use release_catalog::*;
 
 // New `GlobalId`s (#463): random version 4 through the OS generator, and
 // the name-based version 8 the property edit and authoring derive theirs

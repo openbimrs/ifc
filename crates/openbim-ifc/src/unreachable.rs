@@ -33,6 +33,8 @@
 //! virtual elements. A lint reporting 20 problems on a good reference file
 //! would be worthless.
 
+#![cfg(all(feature = "spatial", feature = "geometry-select"))]
+
 use std::collections::HashSet;
 
 use ifc_geometry::{context_of, geometric_products, TargetView};
