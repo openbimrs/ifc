@@ -238,6 +238,20 @@ crate directly.
   browser. binding-core adds `*_seeded` forms of the property, value and
   table writes; a `GlobalId` the model holds is refused with
   `invalid-value`.
+- *Amended 2026-10-27 (#465, undo and redo):* each host exposes the
+  model's history (ADR 0022): `set_history_limit`, `history`, `undo`,
+  `redo` and `clear_history` (`setHistoryLimit`, `SetHistoryLimit` and so
+  on; C `openbim_ifc_v0_1_model_set_history_limit`, `_model_history`,
+  `_model_undo`, `_model_redo`, `_model_clear_history`). History is off by
+  default (limit 0), because recording copies what a change replaces; with
+  a limit, every public mutator of binding-core is one entry, found by a
+  test that scans its source for `&mut self` methods, so a new mutator
+  cannot go unrecorded. New codes `history-empty` (C 38), for an undo or
+  redo with nothing to step through, and `history-stale` (C 39), for a
+  model changed outside the history; a refusal changes nothing. The C
+  `undo` and `redo` follow the removal buffer protocol: a size query or a
+  short buffer peeks and applies nothing. The C ABI becomes 0.1.23, with
+  `OpenbimIfcHistoryState`; no `v0_1` symbol changes.
 
 ## Alternatives considered
 

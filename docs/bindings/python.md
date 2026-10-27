@@ -1016,6 +1016,21 @@ the whole conversion with `unsupported`, naming each; the model is then
 unchanged. The [cookbook](/cookbook/python#convert-units-and-a-model-s-length-unit)
 has a recipe.
 
+## Undo and redo
+
+History is off until `model.set_history_limit(n)` bounds the undo entries
+(0 turns it off and drops what is held); then every method that changes the
+model is one entry, `author` for its whole batch. `model.history()` returns a
+`HistoryState` (`limit`, `undo`, `redo`). `model.undo()` restores the model to
+the state before the last entry, entities under their ids and at their file
+positions, the header included, and returns a `HistoryChange` (`created`,
+`removed`, `modified`, `header`); `model.redo()` reverses an undo, and
+`model.clear_history()` drops the entries. With nothing to step through, or
+while history is off, they raise `history-empty`; after a change made outside
+the history, `history-stale`, with the model unchanged. Undoing a creation
+frees its id again.
+
+
 ## API
 
 Generated from the `openbim_ifc` package source. The
@@ -1089,6 +1104,11 @@ class, record and function of the package with its docstring and types.
 | `model.author(ops: Iterable[AuthorOp]) -> AuthoringResult` | Apply authoring operations as one checked transaction against the release the header declares: every operation, in order, or none. |
 | `model.create_entity(type_name: str, attributes: Optional[Mapping[str, Value]] = None) -> int` | Create one entity of `type_name` from named attributes, checked against the declared release (:meth:`author` with one :meth:`AuthorOp.create`); returns its id. |
 | `model.remove_with_relationships(id: int) -> None` | Remove entity `id` with the relationships that reference it, leaving nothing dangling (:meth:`author` with one :meth:`AuthorOp.remove`). Raises `still-referenced` while an entity other than a relationship needs it. |
+| `model.set_history_limit(limit: int) -> None` | Keep at most `limit` undo entries; `0` (the default) turns history off and drops what is held. While it is on, every method that changes the model is one entry (:meth:`author` is one entry for its whole batch). |
+| `model.history() -> HistoryState` | The history bound and how many entries each direction holds. |
+| `model.undo() -> HistoryChange` | Restore the model to the state before the last change: entities under their ids and at their file positions, the header included. Undoing a creation frees its id again. |
+| `model.redo() -> HistoryChange` | Reverse the last :meth:`undo`. Raises `history-empty` with nothing to redo and `history-stale` as :meth:`undo` does. |
+| `model.clear_history() -> None` | Drop every undo and redo entry, keeping the limit. |
 | `model.remove_product(id: int, *, rebase_placements: bool = False, untype_occurrences: bool = False, dry_run: bool = False) -> RemovalReport` | Remove product (or type object) `id` with everything it solely owns -- its placement, representation, own property and quantity sets, material usage, openings and ports, and the relationships left without an end -- as one checked transaction. Shared data stays: a property set another object uses, a type's representation maps, a style used elsewhere. The report says what went and what stayed, and why; with `dry_run` nothing changes. |
 | `model.purge(classes: Sequence[str] = (), *, include_roots: bool = False, include_owner_history: bool = False, dry_run: bool = False) -> RemovalReport` | Remove unreferenced entities as one checked transaction; with `dry_run`, only report. |
 | `model.remove_representation(id: int, *, dry_run: bool = False) -> RemovalReport` | Remove shape representation `id` with what only it uses, as one checked transaction: it is taken off its product definition shape (which goes when left empty), representation map or shape aspects, then removed with its items down to what nothing else uses. Shared items, profiles, points and styles stay, and the report says why; with `dry_run` nothing changes. |

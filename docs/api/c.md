@@ -59,6 +59,16 @@ typedef uint64_t OpenbimIfcMeshes;
 
 Opaque handle to a compiled mesh set. Zero is never a valid handle.
 
+### `OpenbimIfcHistoryState`
+
+How much history a model holds (`HistoryState`).
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `limit` | `size_t` | The bound on undo entries; 0 records nothing. |
+| `undo` | `size_t` | Entries `openbim_ifc_v0_1_model_undo` can step back through. |
+| `redo` | `size_t` | Entries `openbim_ifc_v0_1_model_redo` can step forward through. |
+
 ### `OpenbimIfcValidationSummary`
 
 Counts from one validation run.
@@ -854,6 +864,14 @@ identification, name, location, notation (`LIST` of `TEXT`), parents
 **Safety.**
 As for `openbim_ifc_v0_1_model_property_sets`.
 
+### `openbim_ifc_v0_1_model_clear_history`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_clear_history(OpenbimIfcModel model);
+```
+
+Drop every undo and redo entry, keeping the limit.
+
 ### `openbim_ifc_v0_1_model_convert_length_unit`
 
 ```c
@@ -1096,6 +1114,17 @@ version, originating system, authorization, schema (`LIST`).
 As for `openbim_ifc_v0_1_entity_attribute`: each buffer null with
 capacity 0, or valid for its capacity; both `out_*_required` valid for
 one write.
+
+### `openbim_ifc_v0_1_model_history`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_history(OpenbimIfcModel model, OpenbimIfcHistoryState *out_state);
+```
+
+Write the history bound and how many entries each direction holds.
+
+**Safety.**
+`out_state` must be null or valid for one write.
 
 ### `openbim_ifc_v0_1_model_ids`
 
@@ -1501,6 +1530,18 @@ dry run). A size query or a short buffer plans the removal and answers
 `class_count` reads, each class valid for its length; the buffers as
 for `openbim_ifc_v0_1_entity_attribute`.
 
+### `openbim_ifc_v0_1_model_redo`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_redo(OpenbimIfcModel model, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+Reverse the last undo. The answer and the buffer protocol are those of
+`openbim_ifc_v0_1_model_undo`; `HistoryEmpty` with nothing to redo.
+
+**Safety.**
+As for `openbim_ifc_v0_1_entity_attribute`.
+
 ### `openbim_ifc_v0_1_model_remove_product`
 
 ```c
@@ -1643,6 +1684,16 @@ shape is `InvalidValue` and leaves the header unchanged.
 **Safety.**
 As for `openbim_ifc_v0_1_entity_set_attribute`.
 
+### `openbim_ifc_v0_1_model_set_history_limit`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_set_history_limit(OpenbimIfcModel model, size_t limit);
+```
+
+Bound the undo entries a model keeps. 0 turns history off and drops what
+is held; a lower limit drops the oldest entries. History is off (0) for a
+new model.
+
 ### `openbim_ifc_v0_1_model_set_properties`
 
 ```c
@@ -1714,6 +1765,24 @@ serviced buildings, serviced facilities) and anomalies (`LIST` of
 `kind, subject, other, message`).
 
 `UnsupportedSchema`, `FeatureDisabled`.
+
+**Safety.**
+As for `openbim_ifc_v0_1_entity_attribute`.
+
+### `openbim_ifc_v0_1_model_undo`
+
+```c
+OpenbimIfcStatus openbim_ifc_v0_1_model_undo(OpenbimIfcModel model, OpenbimIfcValueNode *nodes, size_t node_capacity, size_t *out_nodes_required, uint8_t *strings, size_t string_capacity, size_t *out_strings_required);
+```
+
+Restore the model to the state before the last recorded change: entities
+under their ids and at their file positions, the header included. The
+answer is a `HistoryChange` tape: created, removed and modified (`LIST`s
+of `REF`) and header (`BOOL`). A size query or a short buffer peeks the
+step and answers `BufferTooSmall` without applying it.
+
+`HistoryEmpty` with nothing to undo (history off, or the stack empty);
+`HistoryStale` when the model changed outside the history.
 
 **Safety.**
 As for `openbim_ifc_v0_1_entity_attribute`.
@@ -1910,6 +1979,8 @@ Write the ABI and crate versions.
 | `OPENBIM_IFC_STATUS_INVERSE_ATTRIBUTE` | 35 | A by-name attribute write named an `INVERSE` attribute, which holds no slot (`inverse-attribute`). |
 | `OPENBIM_IFC_STATUS_EXPRESS_MISMATCH` | 36 | EXPRESS rule text declares another schema than the model's, or disagrees with the release's tables (`express-mismatch`). |
 | `OPENBIM_IFC_STATUS_INVALID_EXPRESS` | 37 | EXPRESS rule text does not parse, or names something that binds to nothing (`invalid-express`). |
+| `OPENBIM_IFC_STATUS_HISTORY_EMPTY` | 38 | An undo or redo with nothing to step through: history is off, or that stack is empty (`history-empty`). |
+| `OPENBIM_IFC_STATUS_HISTORY_STALE` | 39 | An undo or redo after the model changed outside the history (`history-stale`); nothing was changed. |
 | `OPENBIM_IFC_STATUS_PANIC` | 255 | A Rust panic was contained at the boundary. Report it as a bug. |
 
 <!-- API:C:END -->
