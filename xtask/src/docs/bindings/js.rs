@@ -20,6 +20,7 @@ const TYPES: &str = "crates/openbim-ifc-wasm/src/model/types.rs";
 /// not listed, so a new part cannot silently drop its methods from the page.
 const MODEL_PARTS: &[&str] = &[
     "crates/openbim-ifc-wasm/src/model/copying.rs",
+    "crates/openbim-ifc-wasm/src/model/history.rs",
     "crates/openbim-ifc-wasm/src/model/inverse.rs",
     "crates/openbim-ifc-wasm/src/model/removal.rs",
     "crates/openbim-ifc-wasm/src/model/selector.rs",

@@ -8,6 +8,13 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#465)
+
+- `IfcModel.setHistoryLimit`, `history`, `undo`, `redo` and `clearHistory`,
+  with the `HistoryState` and `HistoryChange` types and the error codes
+  `history-empty` and `history-stale`. History is off until a limit is set;
+  then every mutating method is one undo entry.
+
 ### Fixed (#559)
 
 - `setProperties`, `setProperty`, `removeProperty`, `setValue` and

@@ -1407,3 +1407,30 @@ test("the supplied EXPRESS rules decide what a plain validation leaves unsupport
   assert.equal(report.conformant, false);
   assert.equal(typeof report.indeterminate, "number");
 });
+
+// --- undo and redo (#465) ----------------------------------------------------
+
+test("undo and redo restore the exact file, once a limit is set", () => {
+  const model = parse();
+  assert.deepEqual(model.history(), { limit: 0, undo: 0, redo: 0 });
+  model.remove(2n);
+  throwsCode(() => model.undo(), "history-empty");
+
+  const fresh = parse();
+  fresh.setHistoryLimit(4);
+  const before = fresh.write();
+  fresh.remove(2n);
+  const after = fresh.write();
+  assert.notDeepEqual(after, before);
+  assert.deepEqual(fresh.history(), { limit: 4, undo: 1, redo: 0 });
+
+  assert.deepEqual(fresh.undo(), { created: [2n], removed: [], modified: [], header: false });
+  assert.deepEqual(fresh.write(), before);
+  assert.deepEqual(fresh.history(), { limit: 4, undo: 0, redo: 1 });
+  assert.deepEqual(fresh.redo().removed, [2n]);
+  assert.deepEqual(fresh.write(), after);
+  throwsCode(() => fresh.redo(), "history-empty");
+
+  fresh.clearHistory();
+  assert.deepEqual(fresh.history(), { limit: 4, undo: 0, redo: 0 });
+});
