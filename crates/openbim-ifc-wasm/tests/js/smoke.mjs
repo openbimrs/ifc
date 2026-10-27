@@ -1416,6 +1416,11 @@ test("undo and redo restore the exact file, once a limit is set", () => {
   model.remove(2n);
   throwsCode(() => model.undo(), "history-empty");
 
+  for (const bad of [-1, 1.5, NaN, Infinity, 2 ** 53]) {
+    throwsCode(() => model.setHistoryLimit(bad), "invalid-value");
+  }
+  assert.equal(model.history().limit, 0);
+
   const fresh = parse();
   fresh.setHistoryLimit(4);
   const before = fresh.write();

@@ -13,7 +13,8 @@ a release here does not imply a release of any other crate in the family.
 - `IfcModel.setHistoryLimit`, `history`, `undo`, `redo` and `clearHistory`,
   with the `HistoryState` and `HistoryChange` types and the error codes
   `history-empty` and `history-stale`. History is off until a limit is set;
-  then every mutating method is one undo entry.
+  then every mutating method is one undo entry. `setHistoryLimit` refuses a
+  value that is not a whole number of at least 0 with `invalid-value`.
 
 Semver: additive: minor.
 

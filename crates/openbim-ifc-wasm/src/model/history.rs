@@ -2,7 +2,7 @@
 //! `clearHistory`. History is off until a limit is set; then every method
 //! that changes the model is one undo entry.
 
-use openbim_ifc_binding_core::ToRecord;
+use openbim_ifc_binding_core::{BindingError, ToRecord};
 use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
 
@@ -41,9 +41,25 @@ impl IfcModel {
     /// off and drops what is held. While it is on, every method that
     /// changes the model is one entry (`author` is one entry for its whole
     /// batch).
+    /// Refused with `invalid-value` for a `limit` that is not a whole
+    /// number of at least 0 that fits the platform.
     #[wasm_bindgen(js_name = setHistoryLimit)]
-    pub fn set_history_limit_js(&mut self, limit: u32) {
-        self.0.set_history_limit(limit as usize);
+    pub fn set_history_limit_js(&mut self, limit: f64) -> Result<(), JsValue> {
+        const MAX_SAFE: f64 = 9_007_199_254_740_991.0;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let limit =
+            if limit.is_finite() && (0.0..=MAX_SAFE).contains(&limit) && limit.fract() == 0.0 {
+                usize::try_from(limit as u64).ok()
+            } else {
+                None
+            };
+        let limit = limit.ok_or_else(|| {
+            js_error(BindingError::InvalidValue(
+                "`limit` must be a whole number of at least 0".into(),
+            ))
+        })?;
+        self.0.set_history_limit(limit);
+        Ok(())
     }
 
     /// The history bound and how many entries each direction holds.
