@@ -11,7 +11,7 @@ Bounded IFC control semantics: permits, project orders, action requests, and per
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.1 (2026-10-02) |
+| Latest release | 0.4.0 (2026-10-27) |
 | Registries | [crates.io `ifc-control`](https://crates.io/crates/ifc-control) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `control` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_control/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-control) |
@@ -57,22 +57,5 @@ supertype, so those entities do not move here.
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
-
-Latest release, 0.3.1 (2026-10-02):
-
-### Added
-
-- Borrowed read views for the four controls (#100): `read_control` and
-  `read_controls` return a `Control` with `GlobalId`, `OwnerHistory`,
-  `Name`, `Description`, `ObjectType`, `Identification` (IFC2X3
-  `PermitID`, `RequestID`, `ID`), `PredefinedType`, `Status`,
-  `LongDescription` and `LifeCyclePhase`, each found by name in the
-  model's declared release, plus `Control::declares` and
-  `Control::assignments` (`ControlAssignment` views of the
-  `IfcRelAssignsToControl` the crate writes). A record that does not fit
-  its release is refused with the new `ControlError::InvalidAttribute` or
-  `ControlError::ExtraAttributes`, or with `MissingAttribute`; a foreign
-  type with `ForeignControl`.
-- `ControlKind::from_type_name`.
 
 Full history: [`crates/ifc-control/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-control/CHANGELOG.md)

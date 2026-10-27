@@ -11,7 +11,7 @@ IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.0 (2026-10-02) |
+| Latest release | 0.5.0 (2026-10-27) |
 | Registries | [crates.io `ifc-schedule`](https://crates.io/crates/ifc-schedule) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `schedule` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_schedule/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-schedule) |
@@ -27,84 +27,5 @@ IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage.
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
-
-Latest release, 0.4.0 (2026-10-02):
-
-### Added
-
-- `read_work_calendars` and `read_events` bind the model's declared
-  release like `tasks` (#212) and return `Result<_, ScheduleReadError>`:
-  IFC4X1, IFC4X2 and several schemas are refused with `UnsupportedSchema`
-  or `MultipleSchemas`; IFC2X3, which declares neither entity, has none
-  (#234). `WorkCalendar` and `Event` expose `release()` and `global_id()`,
-  `Event` also `object_type()` and `user_defined_trigger_type()`
-  (`UserDefinedEventTriggerType`); `WorkTime` and `EventTime` carry
-  `data_origin` and `user_defined_data_origin`, and `EventTime` its
-  `name` (#234).
-- `TaskTime::is_recurring`, `TaskTime::recurrence_ref` and
-  `TaskTime::recurrence` expose an `IfcTaskTimeRecurring`'s pattern (#235).
-- `Task::schedule_time_controls` and the `ScheduleTimeControl` view read
-  the IFC2X3 `IfcScheduleTimeControl` that `IfcRelAssignsTasks.TimeForTask`
-  assigns to a task, every attribute by name from IFC2X3 TC1: dates as
-  `AuthoredDateTime` records, durations and floats as `IfcTimeMeasure`
-  numbers. A `TimeForTask` of another type is reported as the new
-  `TaskTimeAnomaly::NotAScheduleTimeControl` (#235).
-- `RecurrenceDraft::time_periods` places `IfcTimePeriod` records in a
-  pattern's `TimePeriods` (#233). `create_recurrence_pattern_in` and
-  `create_time_period_in` bind the model's declared release: IFC2X3,
-  which declares neither entity, is refused with `EntityNotInSchema`, and
-  the pattern writer refuses a period reference that is absent
-  (`MissingReference`) or not an `IfcTimePeriod` (`WrongReferenceType`).
-  Nothing is staged on a refusal.
-- `Recurrence` exposes `days` (`DayComponent`), `months`
-  (`MonthComponent`) and `time_periods`, read as the new `TimePeriod`
-  (`StartTime`, `EndTime` as authored); `recurrence_pattern(model, id)`
-  reads a pattern referenced from outside a work calendar, such as
-  `IfcTaskTimeRecurring.Recurrence`, by name in the declared release,
-  returning `Result<Option<Recurrence>, ScheduleReadError>` (#234); `recurrence_slot::TIME_PERIODS` and
-  `time_period_slot` name the slots (#233).
-- `Lag` exposes `duration_type` (`IfcLagTime.DurationType`) and `name`
-  (#236).
-- `process_execution_order`: every `IfcProcess` (task, procedure, event)
-  in a deterministic execution order (#236).
-- `ScheduleReadError::SequenceDepthExceeded { start, limit }` (#236).
-
-### Deprecated
-
-- `work_calendars` and `events`: use `read_work_calendars` and
-  `read_events`. They keep their signatures and now read by name in the
-  declared release too, but read a header the readers cannot bind as IFC4,
-  as before, instead of refusing it (#234).
-
-### Fixed
-
-- The calendar, event and recurrence readers find every attribute by name
-  in the declared release instead of reading fixed IFC4 positions; IFC4X3's
-  `IfcWorkTime.StartDate` and `FinishDate` were read only because they sit
-  where IFC4's `Start` and `Finish` do (#234).
-- `Task::time` accepts an `IfcTaskTimeRecurring` (IFC4, IFC4X3) through the
-  release's subtype table; it was reported as `NotATaskTime` and dropped
-  (#235).
-- `create_task_time_recurring` binds the model's declared release: IFC2X3,
-  which declares no `IfcTaskTimeRecurring`, is refused with
-  `EntityNotInSchema`, nothing staged (#235).
-- `tasks_of_schedule` reads every `IfcRelAssignsToControl` subtype in the
-  bound release, so an IFC2X3 task assigned with `IfcRelAssignsTasks` is
-  listed (#235).
-
-- `create_recurrence_pattern` writes all eight attributes IFC4 and IFC4X3
-  declare for `IfcRecurrencePattern`; it wrote seven, so every authored
-  pattern was a short record (#233).
-- A sequence walk that reaches `MAX_SEQUENCE_DEPTH` is refused with
-  `SequenceDepthExceeded` instead of returning a truncated result as if
-  complete: `downstream_of` and `find_cycle` report it (#236). The walk
-  uses an explicit stack, so the budget rather than the thread's stack
-  bounds it.
-- `find_cycle` walks from every `IfcProcess` in the declared release, not
-  only `IfcTask`, so a cycle through events or procedures is found (#236).
-- `execution_order` sorts over every `IfcProcess` and keeps the tasks, so a
-  constraint through an event or procedure (task A, event E, task B) orders
-  A before B, and a cycle through one is refused (#236). Its result is
-  still tasks only.
 
 Full history: [`crates/ifc-schedule/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-schedule/CHANGELOG.md)

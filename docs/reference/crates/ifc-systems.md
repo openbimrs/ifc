@@ -11,7 +11,7 @@ Distribution systems, ports, and connectivity between elements.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.5.0 (2026-10-13) |
+| Latest release | 0.6.0 (2026-10-27) |
 | Registries | [crates.io `ifc-systems`](https://crates.io/crates/ifc-systems) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `systems` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_systems/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-systems) |
@@ -41,21 +41,5 @@ that can be traced -- the basis of any MEP analysis.
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
-
-Latest release, 0.5.0 (2026-10-13):
-
-### Deprecated
-
-- `contain_in_spatial_structure` and
-  `contain_in_spatial_structure_with_owner_history` in favour of
-  `ifc_spatial::contain` and `ifc_spatial::contain_with_owner_history`,
-  and `serve_buildings` and `serve_buildings_with_owner_history` in favour
-  of the `ifc_spatial` functions of the same names (#492). Each pair wrote
-  the same relationship with the same rules; `ifc-spatial` keeps the
-  canonical writer. The deprecated functions keep their bodies (sibling
-  domain crates do not depend on one another) and behave as before.
-
-Semver: minor. A deprecation is a compatible change: callers get a
-warning, not an error.
 
 Full history: [`crates/ifc-systems/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-systems/CHANGELOG.md)

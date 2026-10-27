@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-27
+
 ### Added (#465)
 
 - `IfcModel.set_history_limit`, `history`, `undo`, `redo` and

@@ -11,7 +11,7 @@ Bounded IFC4 approval resource semantics.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.0 (2026-09-29) |
+| Latest release | 0.4.0 (2026-10-27) |
 | Registries | [crates.io `ifc-approval`](https://crates.io/crates/ifc-approval) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `approval` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_approval/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-approval) |
@@ -33,68 +33,5 @@ signatures, or policy decisions.
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
-
-Latest release, 0.3.0 (2026-09-29):
-
-### Added
-
-- `DateTimeInput`: an approval time as IFC4/IFC4X3 `IfcDateTime` text or
-  an IFC2X3 `IfcDateTimeSelect` record (`From<&str>`, `From<EntityId>`).
-- `ApprovalError::NotInSchema`, `StructuredValue`, `EntityNotInSchema`,
-  `AuthoringNotInSchema` and `AuthoringValueType`, and projections'
-  `release()`. `SchemaVersion` is re-exported.
-
-### Changed (breaking)
-
-- The approval views read every attribute by name in the model's declared
-  release (#212). They read the IFC4 positions from every file, so an
-  IFC2X3 `IfcApproval` answered its description as the identifier and its
-  date record as the name, and an IFC2X3 `IfcApprovalRelationship` swapped
-  its ends. `ApprovalView` binds the header (IFC2X3, IFC4 or IFC4X3; none
-  reads as IFC4) and a lookup refuses IFC4X1, IFC4X2, unknown and multiple
-  schemas. An attribute the release does not declare is `NotInSchema`
-  (IFC2X3 `IfcApproval` has no `RequestingApproval`, `GivingApproval`, or
-  `Status`, `Level` and `Qualifier` under those names, which are not
-  documented as its `ApprovalStatus`, `ApprovalLevel` and
-  `ApprovalQualifier`), and `time_of_approval` on IFC2X3's
-  `ApprovalDateTime` record is `StructuredValue` with the record id. IFC2X3
-  `RelatedApproval` is read as a one-element `related_approvals`. IFC4 and
-  IFC4X3 answers are unchanged.
-- `create_approval`, `relate_approvals` and `relate_resource_approval`
-  bind the declared release and lay their records out by name (#212). In
-  IFC2X3 an `IfcApproval` has seven attributes and requires `Identifier`,
-  `Name` and `ApprovalDateTime` (the IFC4 `TimeOfApproval`) as a date
-  record; an `IfcApprovalRelationship` takes exactly one related approval
-  and requires `Name`; `IfcResourceApprovalRelationship` does not exist
-  (`EntityNotInSchema`). A value the release does not declare is
-  `AuthoringNotInSchema` (formerly `AuthoringInvalid`) and one it cannot
-  hold `AuthoringValueType`. IFC4 and IFC4X3 records are unchanged.
-- `ApprovalDraft::time_of_approval` is `Option<DateTimeInput>`; the setter
-  takes `impl Into<DateTimeInput>`, so `.time_of_approval("…")` still
-  compiles.
-- `Approval::try_new`, `ApprovalRelationship::try_new`,
-  `ResourceApprovalRelationship::try_new` and `ApprovalAssignment::try_new`
-  take the `SchemaVersion` to read against, refusing IFC4X1, IFC4X2 and an
-  entity the release does not declare. `ApprovalView::new` is no longer
-  `const`.
-
-- `ApprovalDraft`, `ApprovalRelationshipDraft`, `ResourceApprovalDraft`
-  and `ApprovalAssociationDraft` are `#[non_exhaustive]` (#214). Struct
-  literals no longer compile outside the crate: build them with
-  `ApprovalDraft::new()`,
-  `ApprovalRelationshipDraft::new(relating_approval, related_approvals)`,
-  `ResourceApprovalDraft::new(related_resources, relating_approval)` and
-  `ApprovalAssociationDraft::new(global_id, related_objects,
-  relating_approval)` plus field-named setters. Fields stay public.
-
-### Changed
-
-- Depends on `ifc-schema` with its default features named explicitly
-  (every bundled release), now that the workspace dependency turns them
-  off for the facade's per-release features (#112).
-- A model whose header declares `IFC4X1` or `IFC4X2` is refused with the
-  existing unsupported-schema error. `ifc-schema` now bundles both
-  releases, but no layout here is verified against them, so they are
-  never read as IFC4 or IFC4X3.
 
 Full history: [`crates/ifc-approval/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-approval/CHANGELOG.md)

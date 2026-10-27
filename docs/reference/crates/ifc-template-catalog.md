@@ -11,7 +11,7 @@ Versioned IFC PSD/QTO catalog definitions and correction overlays
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.0 (2026-10-04) |
+| Latest release | 0.4.1 (2026-10-27) |
 | Registries | [crates.io `ifc-template-catalog`](https://crates.io/crates/ifc-template-catalog) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `property-catalog`, `property-catalog-runtime` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_template_catalog/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-template-catalog) |
@@ -40,46 +40,16 @@ and quantity instances remain in `ifc-properties`.
 
 ## Changes
 
-Latest release, 0.4.0 (2026-10-04):
+Latest release, 0.4.1 (2026-10-27):
 
-### Changed (#317)
+### Fixed (#537)
 
-- The embedded snapshots are one container, `data/catalog.bin` (snapshot
-  format 3), instead of three bincode files: 1,423,604 bytes instead of
-  3,648,573 (547,657 instead of 966,507 under `gzip -9`). Strings used more
-  than once are stored once in a table, strings used once stay inline, and
-  each distinct property, quantity and set record is stored once across
-  editions; each edition keeps its manifest, source digest and
-  per-template provenance. Lossless: every edition decodes, in the official
-  and the corrected profile, to exactly the catalogs format 2 did, which a
-  test asserted against the old files before they were removed; content
-  fingerprints taken from them stay pinned in `tests/snapshot.rs`.
-- The first lookup of an edition decodes that edition only.
-- The generator (`ifc-template-catalog-generate`) writes one edition into
-  the container and keeps the others; the hidden `generation` module and
-  the format-2 codec are gone.
+- The XML importer trims `DataType@type` and `reftype`: about 100 IFC2X3
+  entries (`IfcBoolean `) and one IFC4X3 entry (`IfcDuration `) carried
+  trailing spaces and so named no type. The embedded container, the IFC2X3
+  and IFC4X3 snapshot pins and TSV exports are regenerated from the
+  pinned sources (source digests unchanged).
 
-### Added (#317, #318)
-
-- Module `snapshot`: `encode` (a container or a per-edition file,
-  deterministic), `decode_edition`, `decode_all`, `editions`, `file_name`,
-  the pins `CONTAINER_SHA256` and `pinned_sha256`, `EDITIONS`,
-  `FORMAT_VERSION` and `EncodeError`. `ArchiveError` is public there and
-  gains `MissingEdition`.
-- Feature `runtime`, module `runtime`: `install` an edition from its
-  per-edition file or the container, checked against the pinned SHA-256
-  (`RuntimeCatalogError::DigestMismatch` otherwise), then `load_catalog`
-  in the official or corrected profile, `is_installed` and
-  `decode_verified`; an edition not installed is
-  `RuntimeCatalogError::NotInstalled`. Builds for wasm32; `embedded` stays
-  the default.
-- Example `export_snapshots` writes the per-edition files and checks each
-  pin; the npm package ships them.
-
-### Semver
-
-- A new public module, feature and error variant, and a changed data
-  layout under `data/`: a minor release (0.4.0). The API callers used
-  (`embedded::*`, `Catalog`, the definitions) is unchanged.
+Semver: patch.
 
 Full history: [`crates/ifc-template-catalog/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-template-catalog/CHANGELOG.md)

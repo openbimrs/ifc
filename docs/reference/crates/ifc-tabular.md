@@ -11,7 +11,7 @@ Structured IFC value containers indexed by position or time.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.0 (2026-09-29) |
+| Latest release | 0.4.0 (2026-10-27) |
 | Registries | [crates.io `ifc-tabular`](https://crates.io/crates/ifc-tabular) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `tabular` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_tabular/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-tabular) |
@@ -32,21 +32,5 @@ lists of `IfcValue`, and both appear side by side in the schema's own
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
-
-Latest release, 0.3.0 (2026-09-29):
-
-### Changed (breaking)
-
-- `SeriesDraft` and `ColumnDraft` are `#[non_exhaustive]` (#214). Struct
-  literals no longer compile outside the crate: build them with
-  `SeriesDraft::new(name, start_time, end_time, data_type, data_origin)`
-  and `ColumnDraft::new()` plus field-named setters. Fields stay public.
-
-### Changed
-
-- Links no bundled schema table itself: every entry point takes the
-  `Schema` from the caller. A consumer that used a table through this
-  crate's dependency (`ifc_schema::ifc4()`) enables it on its own
-  `ifc-schema` dependency (default features bundle every release).
 
 Full history: [`crates/ifc-tabular/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-tabular/CHANGELOG.md)

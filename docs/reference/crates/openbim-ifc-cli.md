@@ -11,7 +11,7 @@ The openbim-ifc command: validate, convert, inspect, query and edit IFC files (S
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.4.0 (2026-10-20) |
+| Latest release | 0.5.0 (2026-10-27) |
 | Registries | [crates.io `openbim-ifc-cli`](https://crates.io/crates/openbim-ifc-cli) |
 | API documentation | [docs.rs](https://docs.rs/openbim-ifc-cli) |
 | Source | [`crates/openbim-ifc-cli/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-cli) |
@@ -30,51 +30,45 @@ and formats the result. Nothing here interprets IFC on its own.
 
 ## Changes
 
-Latest release, 0.4.0 (2026-10-20):
+Latest release, 0.5.0 (2026-10-27):
 
-### Added (#469)
+### Changed (#573)
 
-- `convert-units INPUT OUTPUT --unit UNIT [--keep-area-volume]
-  [--keep-replaced-units] [--dry-run] [--format human|json] [--force]`:
-  the facade's `convert_length_unit` on a file, written as STEP. A value
-  the conversion cannot carry refuses the run (exit 2) with each one
-  named, and nothing is written.
+- `edit` and `import-table` draw their seed from the operating system's
+  generator and exit with kind `unsupported` if it refuses.
 
-Semver: minor (a new command).
+Semver: patch.
 
-### Added (#472, #474)
+### Changed (#559)
 
-- `edit FILE QUERY --set PATH VALUE... (-o FILE | --in-place | --dry-run)`
-  writes values by path on the entities a selector selects, as one
-  checked transaction, each value read as its target's type; `--dry-run`
-  lists the changes and writes nothing; the input is never changed
-  without `--in-place`, which keeps its format; `--null` names the text of
-  `$`; `--format json` reports changes and refusals as one document.
-- `export-table FILE QUERY [-c PATH]... [-o FILE] [--to csv|tsv|xlsx]
-  [--key global-id|id] [--null TEXT]` writes the selected entities as a
-  table, one column per value path.
-- `import-table FILE TABLE (-o FILE | --in-place | --dry-run) [--from
-  csv|tsv|xlsx] [--key ...] [--null TEXT]` applies a table back by key as
-  one checked transaction; an unchanged table writes an identical model.
-- Exit code 3: `edit` or `import-table` refused a planned change; every
-  refusal is printed with its entity and path or its row and column and a
-  kind (`invalid-text`, `type-mismatch`, `not-settable`,
-  `conflicting-write`, `property-edit`, `invalid-header` with its span,
-  `unknown-key`, `ragged-row`, ...), and nothing is written.
-- `relations FILE ENTITY [--traverse-up]` lists what one entity is related
-  to by kind (container, parent, type or occurrences, material and
-  materials, classification, groups, openings, fillings, voided element)
-  and every relationship naming it; `--traverse-up` the chain of parents.
-- `materials FILE [QUERY]` shows each selected entity's material
-  definition with its layers, profiles, constituents or list members.
-- `cost FILE [--depth N]` shows every cost schedule as a tree of cost items
-  with their values, direct total and rolled-up total; `schedule FILE
-  [--depth N]` every work schedule and work plan as a tree of tasks with
-  their scheduled times. All four write `--format human` or `json`.
-- The command now checks `Pset_` and `Qto_` writes against the embedded
-  PSD/QTO catalog (facade feature `property-catalog`), which grows the
-  binary.
+- `edit` and `import-table` derive the `GlobalId`s of the sets and
+  relationships they create from a seed drawn per run, no longer from the
+  file's next free id. Behaviour change: the output of `edit` and
+  `import-table` is no longer reproducible between runs; the same edit of
+  the same file gives new `GlobalId`s on each run.
 
-Semver: minor (additive; exit codes 0, 1 and 2 keep their meaning).
+Semver: patch (commands, flags, exit codes and documents unchanged; only
+the `GlobalId`s of newly created records differ per run).
+
+### Added (#538, EXPRESS rules)
+
+- `validate --express FILE.exp` (repeatable, one file per release)
+  evaluates every WHERE, type and global rule of each file's release from
+  the EXPRESS text you supply. A file with no matching `--express` is
+  refused with the new kind `express-mismatch`; a file that does not parse
+  is `invalid-express`. Both exit 2.
+- The JSON summary gains `indeterminate`, always present; the human summary
+  adds it when `--express` is given. An indeterminate rule never fails the
+  run.
+
+Semver: minor (additive; exit codes keep their meaning).
+
+### Changed (#537)
+
+- `validate` also reports the `property.undeclared_member` and
+  `property.member_type` warnings for the members of a catalog set, when
+  the build carries the property catalog.
+
+Semver: no code change; patch when released.
 
 Full history: [`crates/openbim-ifc-cli/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-cli/CHANGELOG.md)

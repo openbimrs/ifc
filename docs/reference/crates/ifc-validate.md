@@ -11,7 +11,7 @@ Schema conformance: WHERE rules, cardinality, GUID and reference integrity.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.7.0 (2026-10-20) |
+| Latest release | 0.8.0 (2026-10-27) |
 | Registries | [crates.io `ifc-validate`](https://crates.io/crates/ifc-validate) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `validate` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_validate/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-validate) |
@@ -43,81 +43,40 @@ so parsing is permissive and validation is an explicit, separate pass.
 
 ## Changes
 
-Latest release, 0.7.0 (2026-10-20):
+Latest release, 0.8.0 (2026-10-27):
 
-### Added (#461)
+### Added (#537)
 
-- `express`: an EXPRESS rule evaluator (feature `express`, default).
-  `ExpressRules::parse` reads a release's `.exp` text, which the caller
-  supplies (the schemas are CC BY-ND 4.0; nothing of their rule text is
-  bundled or generated), checks it against the bundled tables (same
-  schema, same slots for every entity) and resolves every name.
-  `validate_with_options` with `ValidateOptions::express` then evaluates
-  every entity WHERE rule (inherited ones on every subtype), every type
-  WHERE rule (wherever a value of the type appears: directly, in an
-  aggregate, through a defined type or wrapped in a SELECT) and every
-  global rule, with the FUNCTIONs they call, derived attributes and INVERSE
-  attributes, under ISO 10303-11 three-valued logic. Every declaration of
-  IFC2X3 TC1, IFC4 ADD2 TC1, IFC4X1, IFC4X2 and IFC4X3 ADD2 is evaluable
-  (`ExpressRules::coverage`; `data/express-coverage.tsv`): 339, 652, 658,
-  672 and 752 entity rules. A rule evaluating FALSE is an error under its
-  `Entity.Label` id (`Type.Label`, `global.Rule`); UNKNOWN or `?` is the
-  new `Severity::Indeterminate`; a construct the evaluator lacks is
-  reported once as unsupported, by name; data a rule cannot read is an
-  evaluation error. `EvalLimits` bounds steps per rule, nesting and the
-  whole run; each limit is a typed `BudgetExceeded`. Supplied rules replace
-  the hand-written ones with the same id; on the corpus and on every
-  hand-written rule's adversarial pair the two agree. On this repository's
-  fixtures, IfcOpenShell's rule and validation fixtures and the IFC4 annex E
-  examples, verdicts match IfcOpenShell's `express_rules` but for the
-  differences `docs/coverage.md` lists.
-- `structure::inverse_cardinality` (`structure.inverse.cardinality`): every
-  INVERSE clause's bounds, a single inverse meaning exactly one referrer.
-  Off by default (`ValidateOptions::inverse_cardinality`), on with EXPRESS
-  rules; it matches IfcOpenShell's findings on the corpus.
-- `ValidateOptions` and `validate_with_options`: budget, EXPRESS rules,
-  INVERSE cardinality and a property-set catalog in one run.
-- `Finding::detail` (`FindingDetail`): an EXPRESS result's release, scope
-  (`RuleScope`), label and `RuleOutcome`, or a `ReservedSetName`.
-  `Finding::indeterminate`, `Finding::with_detail`, `Summary::indeterminate`.
+- `property.undeclared_member` and `property.member_type` warnings (bSI
+  PSE001): for a `Pset_`/`Qto_` set the release's catalog defines, a
+  property or quantity the catalog's template does not declare, and a set
+  kind, entity form or value type that differs from it. A value type
+  passes when it is the declared one or a defined type aliasing it. Names
+  match exactly; a case-only difference is mentioned in the message.
+- `PropertySetCatalog::template`, a provided method returning the
+  neutral `CatalogSet` (`CatalogSetKind`, `CatalogMember`,
+  `CatalogMemberForm`, `CatalogQuantityKind`). The default returns `None`.
+- `FindingDetail::CatalogMember(CatalogMemberDetail)` with
+  `CatalogMismatch`.
 
-### Added (#511)
+### Changed (#537)
 
-- `property.reserved_set_name`: an `IfcPropertySet` or `IfcElementQuantity`
-  whose name starts with `Pset_` or `Qto_` (any case) but which the
-  release's PSD/QTO catalog does not define is a warning (bSI PSE001). The
-  catalog is supplied through the `PropertySetCatalog` trait
-  (`ValidateOptions::catalog`); this crate links none. Without one, such
-  names are reported once as unsupported.
+- A catalog whose `template` gives none for a set it defines gets one
+  unsupported finding per new rule id ("the members of N catalog sets were
+  not checked"); a declared value type the release's tables lack gets one
+  unsupported `property.member_type` finding. Neither is silent.
 
-### Changed
+- A declared SELECT type (`IfcValue`, as in `BendingParameters`) takes any
+  defined type its closure holds, and a single value declared with an
+  entity type (the IFC2X3 `*PHistory` sets: `IfcTimeSeries`) is written as
+  an `IfcPropertyReferenceValue` to that entity, which is checked against it.
 
-- `Summary` prints its indeterminate count: `0 errors, 0 evaluation
-  errors, 0 warnings, 0 indeterminate, 2 unsupported`.
-- `validate` reports a file using `Pset_`/`Qto_` names with one unsupported
-  `property.reserved_set_name` finding when no catalog is supplied.
-- `global.UniqueGlobalId` runs under IFC4X1 and IFC4X2 too.
+Known false-positive source: some catalog templates disagree with the
+schema or with each other (`Qto_BuildingElementProxyQuantities`, ProcessItem
+sets); those are catalog data issues tracked in #553, not fixed here.
 
-Semver: minor (0.7.0). `Severity`, `Finding` and `Summary` are
-`#[non_exhaustive]`, so their new variant and fields break no caller; the
-new findings and the summary text change what a report holds.
-
-### Changed (#467)
-
-Semver: minor. `ValidateError` is `#[non_exhaustive]` and gains a variant;
-a new finding id.
-
-- `validate_declared` refuses a file declaring `IFC4X3_TC1` or
-  `IFC4X3_ADD1` with the new `ValidateError::UnpublishedSchema(token)`
-  instead of `UnknownSchema`: a real IFC release, but one buildingSMART
-  publishes no EXPRESS schema for, so no tables exist and it is not
-  validated as IFC4X3 ADD2 by assumption.
-- The header check reports such a token as the warning
-  `header.schema.unpublished`, naming the release (IFC 4.3.0.1 or
-  4.3.1.0) and carrying `FindingDetail::UnpublishedSchema(release)`,
-  instead of `header.schema.unknown`. A caller that chooses to
-  validate such a file as ADD2 passes those tables to `validate` itself;
-  the report then carries this warning, so it never reads as a check
-  against the declared release.
+Semver: minor (0.8.0): runs with a template-giving catalog report new
+warnings, and `PropertySetCatalog`, `FindingDetail` and the new types grow
+the public API.
 
 Full history: [`crates/ifc-validate/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-validate/CHANGELOG.md)

@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.37.0 (2026-10-20) |
+| Latest release | 0.38.0 (2026-10-27) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -103,152 +103,144 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.37.0 (2026-10-20):
+Latest release, 0.38.0 (2026-10-27):
 
-### Added (#479, copy and append)
+### Changed (breaking) (#573)
 
-- `AuthorOp::CopyProduct { product, options }` copies an `IfcProduct` or
-  `IfcTypeObject` with what `RemoveProduct` would remove with it, by the
-  #478 cascade's own reference count, and shares what it would keep. Copied,
-  with new `GlobalId`s: the product; its `ObjectPlacement` (relative to the
-  same parent; `CopyPlacement::Offset` moves it in the parent's frame,
-  `CopyPlacement::At` replaces it); its representation by
-  `CopyRepresentation`'s rules (a type's representation maps with their
-  origins); the property and quantity sets only it is defined by; its
-  material usage; its ports; and, by `CopyProductOptions::openings` and
-  `fillings` (both on), its openings and their fillings, placed relative to
-  the copied placements. Shared, the copy joining the original's
-  relationship: its type assignment, shared property sets, classification,
-  document and library references, groups, layers and, by `container` and
-  `aggregate` (both on), its spatial container and its whole.
-  Relationships that would bind another object (connections, space
-  boundaries, parts, a type's occurrences) are skipped and reported.
-  Entities a `UNIQUE` rule binds (`IfcPropertyEnumeration`,
-  `IfcApplication`) are always shared.
-- `AuthorOp::CopyEntity { entity, policy }`: a deep copy along attributes by
-  an explicit `CopyPolicy` (classes always copied, always shared; other
-  `IfcRoot`s and definitions shared unless asked).
-- `CopyReport` (copied, reused, joined, skipped, regenerated, each original
-  with its copy) in `AuthoringOutcome::copies` and `StagedAuthoring::copies`.
-- `apply_append` and `stage_append` copy entities of another model with
-  their closure: what they reference, their property sets, type, material,
-  classification, openings, fillings and ports, and what attaches to their
-  geometry; relationships to objects not copied are skipped. Equal units,
-  contexts, owner history, materials and styles are reused
-  (`ReuseOptions`); `GlobalIdMode` keeps, merges by identity (joining the
-  target's relationships) or regenerates `GlobalId`s. Attributes move by
-  name between releases.
-- `AuthoringFailure::UnsupportedCopy`, `IncompatibleRelease` (a type,
-  attribute or enumeration constant the target release lacks; never
-  dropped) and `UnitMismatch` (differing length or plane angle units; the
-  message points at unit conversion, #469).
+- `fresh_seed()` returns `Result<u128, GuidError>`, drawn from `new_guid`'s
+  source: the operating system natively, `crypto.getRandomValues` on
+  `wasm32-unknown-unknown` with `js-random`. Without `js-random` there it
+  refuses with `GuidError::NoRandomSource`; a host without a generator
+  (Node 18) gives `GuidError::RandomSourceFailed`.
 
-### Changed (#479)
+### Fixed (#573)
 
-- The operation options moved from `authoring/op.rs` into their own module
-  under the 800-line cap; every public path is unchanged.
+- On `wasm32-unknown-unknown` `fresh_seed` was a counter from 0 per page
+  load, so a model reopened in a new session drew seeds it already held and
+  its first edit was refused with `SeedReused`.
 
-Semver: additive (`AuthorOp`, `AuthoringFailure`, `AuthoringOutcome` and
-`StagedAuthoring` are `#[non_exhaustive]`): minor.
+Semver: breaking (minor while 0.x), released in 0.38.0 with #548 and #559.
 
-### Added (#461, #511)
+### Added (#566)
 
-- Feature `validate-express`: `ifc::validate::express`, the EXPRESS rule
-  evaluator of `ifc-validate` (every WHERE rule, type rule and global rule
-  of a release, from the `.exp` text the caller supplies). In `full`.
-- `ifc::validate` is a module re-exporting `ifc-validate` whole. With
-  `property-catalog` or `property-catalog-runtime`, its `validate`,
-  `validate_with`, `validate_declared` and `validate_with_options` check
-  `Pset_`/`Qto_` set names against the declared release's catalog
-  (`ReleaseCatalog`): a set the catalog does not define is a
-  `property.reserved_set_name` warning. Without a catalog the names are
-  reported once as unsupported.
+- `release_catalog(SchemaVersion) -> Result<Catalog, ReleaseCatalogError>`
+  and `release_edition(SchemaVersion) -> Option<CatalogEdition>`, behind
+  `schema-api` (any release feature) and `property-catalog` or
+  `property-catalog-runtime`: the PSD/QTO catalog a release reads -- IFC2X3
+  TC1 as published, IFC4 ADD2 TC1 and IFC4X3 ADD2 corrected -- the policy
+  property edits and `validate` now share, so an authoring check made before
+  a product exists cannot disagree with them. `ReleaseCatalogError` is
+  `NoCatalog`, `NotInstalled { edition }` or `Unreadable { edition, reason }`.
 
-Semver: minor.
+### Fixed (#565)
 
-### Added (#469)
+- Through the re-exported `AuthorError`: an enumeration constant that is not
+  a member of the declared release's enumeration is refused with
+  `NotEnumerationMember` (`ifc-author`). A cross-release append surfaces it
+  as `IncompatibleRelease` (bindings: unsupported-schema); build, set and
+  copy report an invalid value.
 
-- `convert_length_unit` and `stage_length_unit_conversion`: rescale every
-  length-dimensioned value of a model to a new project length unit (an SI
-  `METRE` with any prefix, or `inch`, `foot`, `yard`, `mile`, `US survey
-  foot`) as one checked transaction. Which values are lengths, areas and
-  volumes comes from the declared release's tables (IFC2X3, IFC4, IFC4X3),
-  through every attribute, aggregate and typed `SELECT` value: geometry,
-  placements, profiles, quantities and property values. Values with a unit
-  of their own keep it. Every `REAL` and `IfcParameterValue` attribute of
-  the three releases is reviewed (a test fails on an unreviewed one):
-  `IfcGeometricRepresentationContext.Precision` rescales, light
-  attenuations rescale inversely, parameter values follow their curve or
-  surface (kept on lines, conics, polylines, B-splines, clothoids and
-  composite curves of those; rescaled on planes and along a cylinder's
-  axis). Georeferencing keeps map coordinates in a `MapUnit` and rescales
-  `Scale`; IFC2X3 `ePSet_MapConversion` likewise. Areas and volumes follow
-  the length unit by default (`LengthUnitOptions`). Refused, each by
-  name, with nothing written (`LengthUnitError::Refused`): parameter
-  values on curves whose parameter space IFC leaves undefined (other
-  spirals, `IfcCurveSegment`, `IfcOffsetCurveByDistances`), p-curves on
-  curved surfaces, `IfcPolynomialCurve` coefficients, texture generator
-  parameters, untyped numbers in a `SELECT`, contexts with their own
-  units. The `LengthUnitReport` lists what was rescaled and kept.
-  Verified over the fixture corpus: a millimetre-metre round trip restores
-  every value, compiled geometry agrees in metres after converting to
-  feet, and validation findings are unchanged.
+### Changed (breaking) (#465)
 
-Semver: minor (additions).
+- Through the re-exported `Model`: `header_mut` bumps the revision, so a
+  `Transaction` opened before a header edit is refused at commit with
+  `Conflict::StaleRevision`; revisions are process-unique rather than
+  per-model counters, so a transaction or inverse made against another model
+  is refused (`ifc-model` 0.4.0).
 
-### Added (#472, #474, values by path as text and tables)
+### Added (#465)
 
-- `ifc::selector::value_text` writes a `SelectedValue` as the text of one
-  cell (`TRUE`, the shortest decimal of a real, `#12`, a null text), and
-  `SelectorIndex::plan_text_edits` plans many `TextEdit`s (entity, path,
-  text) as one transaction: each text read as a value of its target's
-  declared type (attributes) or stated type (properties), `IFCLABEL(F90)`
-  naming one where nothing states it; a value already held left alone;
-  every refusal collected as an `EditRefusal` naming its edit. An
-  `EditPlan` lists each `PlannedChange` (target, before, after) and
-  commits as one transaction, refused if the model changed since.
-  `apply_text_edits` plans and commits.
-- `SelectorError::InvalidText` and `SelectorError::ConflictingWrite`
-  (the enum is `#[non_exhaustive]`).
-- `ifc::sheet` (feature `sheet`, implies `selector`): `export` writes
-  entities by value paths as a `Sheet` keyed by `GlobalId` or `id`
-  (`KeyColumn`, `SheetOptions` with a null text); `plan_import` reads a
-  sheet back by key into an `ImportPlan` of `CellChange`s, or every
-  `SheetRefusal` by row and column (header spans, missing, empty,
-  unknown, ambiguous and repeated keys, ragged rows, per-cell write
-  refusals); `import` commits it as one transaction. An unchanged sheet
-  plans no change and commits nothing. `Sheet::read` and `Sheet::write`
-  take CSV (RFC 4180) and TSV with escapes; XLSX with feature
-  `sheet-xlsx`, through `rust_xlsxwriter` 0.100 and `calamine` 0.37 (pure
-  Rust, on the `zip` 9 and `quick-xml` 0.42 already in the tree, no
-  default features), every cell written as text. `full` includes
-  `sheet-xlsx`.
+- Re-exports `History`, `HistoryError`, `Inverse`, `InverseError` and
+  `Restored` from `ifc-model`: `History::track` around `apply_authoring`
+  (or any change) makes it undoable with byte-identical restoration.
 
-Semver: minor (additive).
+### Changed (#559)
 
-### Changed (#512)
+- The `GlobalId`s a property edit derives for the sets and relationships it
+  creates derive from a caller seed, the object's `GlobalId`, the set name,
+  the record's role and its count among the batch's records of that object,
+  set and role, no longer from the model's next free id. The same edits
+  under the same seed give the same `GlobalId`s after a write/read cycle
+  that shifts the next id, so a journal of property edits replays to the
+  same identities.
+- `stage_property_edits` and `apply_property_edits` take that `seed`, and
+  so does every write that may create a set: `SelectorIndex::stage_set_value`,
+  `selector::set_value`, `SelectorIndex::plan_text_edits`,
+  `selector::apply_text_edits`, `sheet::plan_import` and `sheet::import`
+  (an attribute write ignores it).
+- `fresh_seed` is available in every build, no longer only with `authoring`.
 
-- `product_curves` reads a representation that also holds text or a fill
-  area. A dimension `IfcAnnotation` (its lines as `IfcPolyline`s, its
-  value as an `IfcTextLiteralWithExtent`) was refused as a whole; its
-  lines now come back as polylines, and each `IfcTextLiteral`,
-  `IfcTextLiteralWithExtent` and `IfcAnnotationFillArea` of the
-  representation is listed in the new `ProductCurves::skipped` (a
-  `SkippedItem`: the item and its `NonCurveItem` kind), not drawn and not
-  a refusal. Read those items with `ifc_style::StyleView`. Any other item
-  that cannot be lowered still refuses the product.
-- `SkippedItem` and `NonCurveItem` are re-exported from `ifc-geometry`.
+### Added (#559)
 
-Semver: minor. `ProductCurves` is `#[non_exhaustive]` and gains a field;
-products that were refused now return their curves.
+- `PropertyEditFailure::SeedReused`, raised when a derived `GlobalId` is
+  held by an entity the batch leaves in the model (the seed named an
+  earlier batch's records). A seed may edit other objects or sets, and may
+  be used again once its records are removed.
 
-### Changed (#467)
+Semver: breaking (minor while 0.x), released with #548 in 0.38.0: the
+property-edit, selector-write and sheet-import entry points take a seed,
+the same edit of the same file no longer gives the same `GlobalId`s, and
+`SeedReused` is a new variant of the `#[non_exhaustive]` `PropertyEditFailure`.
 
-- `validate::validate_declared` refuses a file declaring `IFC4X3_TC1` or
-  `IFC4X3_ADD1` as `ValidateError::UnpublishedSchema`, as
-  `ifc_validate::validate_declared` does: a release buildingSMART
-  publishes no EXPRESS for, never validated as IFC4X3 ADD2.
+### Changed (#548)
 
-Semver: minor, following `ifc-validate`.
+- The `GlobalId`s a batch derives (an `IfcRoot` created without one, every
+  relationship a builder writes, copies) derive from the seed, the
+  operation's position in the batch, the created entity's type and its
+  count among that type in the operation, no longer from the entity id; an
+  `apply_append` derives from the seed, the type and the count. The same
+  seed and operations give the same `GlobalId`s after a write/read cycle
+  that shifts the next id, so a journal of batches replays to the same
+  identities. An `AssignType` that joins an existing relationship derives
+  none.
+
+### Added (#548)
+
+- `AuthoringFailure::SeedReused`, raised when a derived `GlobalId` is held
+  by an entity of the model (the seed named an earlier batch). A seed whose
+  entities were all removed may be used again.
+
+Semver: breaking (minor while 0.x): a fixed seed gives other `GlobalId`s than
+0.37.0, and a batch that reuses a seed may now be refused; `SeedReused` is a
+new variant of the `#[non_exhaustive]` `AuthoringFailure`. The hosts draw a
+fresh seed per batch (the browser from `Math.random`).
+
+### Fixed (#534)
+
+- `AuthorOp::AssignType` on a type that already has an
+  `IfcRelDefinesByType` adds the objects to that relationship's
+  `RelatedObjects` instead of creating a second one, which broke
+  `IfcTypeObject.Types SET [0:1]` (`ObjectTypeOf` in IFC2X3). The op
+  produces the existing relationship's id, and `owner_history` applies
+  only to a relationship that is created. An object typed by another type
+  is still refused unless `replace`. A relationship whose `RelatedObjects`
+  is not a list is refused with `InvalidRelationship`, not rewritten.
+
+### Added (#537)
+
+- `ReleaseCatalog` gives `ifc-validate` the member templates of the
+  embedded or installed PSD/QTO catalog, so `validate` reports
+  `property.undeclared_member` and `property.member_type` warnings for
+  the members of a catalog set. A set kind the build does not know gives no
+  template, and its members are reported as not checked.
+
+Semver: minor; it re-exports `ifc-validate` 0.8.0 and its new findings.
+
+### Fixed (#537)
+
+- The property writer's template check accepts any type a declared SELECT
+  (`IfcValue`) closes over, as `validate` does; it refused them before.
+
+### Changed (#539, tests)
+
+Semver: no release on its own. No code change.
+
+- The #469 corpus test `length_unit_corpus.rs` sums mesh volumes about
+  each body's first vertex rather than the world origin, where triple
+  products at georeferenced coordinates cancelled catastrophically. The
+  29 products it skipped as ill-conditioned (blamed on booleans decided
+  by the last bit) were that measuring artefact: the skip list is
+  removed, and all 181 meshed products are compared and agree after
+  converting to feet.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

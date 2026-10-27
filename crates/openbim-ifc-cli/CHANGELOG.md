@@ -11,6 +11,8 @@ documents) is this crate's public interface.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-27
+
 ### Changed (#573)
 
 - `edit` and `import-table` draw their seed from the operating system's
@@ -199,7 +201,8 @@ Semver: patch.
 
 Semver: a new crate, first release 0.1.0.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-cli-v0.4.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-cli-v0.5.0...HEAD
+[0.5.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.5.0
 [0.4.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.4.0
 [0.3.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.3.0
 [0.2.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.2.0

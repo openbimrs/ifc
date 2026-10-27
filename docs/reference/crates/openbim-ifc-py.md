@@ -11,7 +11,7 @@ Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.13.0 (2026-10-20) |
+| Latest release | 0.14.0 (2026-10-27) |
 | Registries | [PyPI `openbim-ifc`](https://pypi.org/project/openbim-ifc/) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_py/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-py/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-py) |
@@ -42,55 +42,33 @@ This crate adds calling-convention glue only. IFC behaviour belongs in
 
 ## Changes
 
-Latest release, 0.13.0 (2026-10-20):
+Latest release, 0.14.0 (2026-10-27):
 
-### Added (#479, copy and append)
+### Added (#465)
 
-- `IfcModel.copy_product(id, *, offset, placement, openings, fillings,
-  container, aggregate, dry_run)` and `IfcModel.append(source, ids, *,
-  global_ids, reuse, dry_run)`, returning a `CopyReport` (with
-  `CopiedEntity` records); `AuthorOp.copy_product` and
-  `AuthorOp.copy_entity` for batches.
+- `IfcModel.set_history_limit`, `history`, `undo`, `redo` and
+  `clear_history`, with the records `HistoryState` and `HistoryChange`.
+  History is off until a limit is set; then every mutating method is one
+  undo entry. Errors `history-empty` and `history-stale`.
 
 Semver: additive: minor.
 
-### Added (#469, unit conversion)
+### Changed (#559)
 
-- `openbim_ifc.convert_unit(value, from_unit, to_unit)` between units named
-  as text (SI with prefix, IFC4 Table 673 names with exact factors), and
-  `openbim_ifc.format_length(value, unit, *, style, places, display_unit,
-  suppress_zero_inches)` (decimal, feet-inches, inches with fractions).
-- `model.convert_unit_value(value, from_unit, to_unit)` between two unit
-  entities of the model.
-- `model.convert_length_unit(target, *, area_and_volume=True,
-  remove_replaced_units=True, dry_run=False)`: rescales every length, area
-  and volume value to a new project length unit as one checked transaction,
-  returning a `LengthUnitReport` (`ConvertedValues`, `KeptValues`).
-  Refusals use the existing codes (`type-mismatch`, `unsupported`,
-  `invalid-value`, `invalid-model`).
+- `set_properties`, `set_property`, `remove_property`, `set_value`, `import_table`: draw a seed per call for the `GlobalId`s of the sets and
+  relationships they create; one the model already holds is refused with
+  `invalid-value`.
 
-### Added (#474, tables)
+Semver: patch (signatures unchanged).
 
-- `model.export_table(query, columns, *, format="csv", key=None,
-  null="")` returns the selected entities as CSV, TSV or XLSX bytes, one
-  column per value path; `model.import_table(data, *, format="csv",
-  key=None, null="", dry_run=False)` applies a table back by key as one
-  checked transaction and returns a `TableImport` (`applied`, `changes` of
-  `TableChange`, `refusals` of `TableRefusal`). Refusals are data, not
-  exceptions.
+### Added (#538, EXPRESS rules)
 
-Semver: additive, a minor release while 0.x.
+- `IfcModel.validate_express(express, max_findings=None)` validates with the
+  EXPRESS rules of the declared release from the `.exp` text the caller
+  supplies. `IfcError.code` gains `express-mismatch` and `invalid-express`.
+- `ValidationReport.indeterminate` (default 0): EXPRESS rules that evaluated
+  to UNKNOWN; findings gain the severity `indeterminate`.
 
-### Changed (#512)
-
-- `product_curves` gives the curves of a representation that also holds text or a
-  fill area: a dimension `IfcAnnotation` (its lines as `IfcPolyline`s,
-  its value as an `IfcTextLiteralWithExtent`) was an `unsupported`
-  refusal and now returns its lines. `ProductCurves.skipped` (a tuple of ids), the record's new last
-  field, lists each `IfcTextLiteral`, `IfcTextLiteralWithExtent` and
-  `IfcAnnotationFillArea` of the representation by entity id: not drawn,
-  not a refusal.
-
-Semver: minor.
+Semver: additive: minor.
 
 Full history: [`crates/openbim-ifc-py/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-py/CHANGELOG.md)

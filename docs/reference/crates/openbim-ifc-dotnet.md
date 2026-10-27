@@ -11,7 +11,7 @@ The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned 
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.10.0 (2026-10-20) |
+| Latest release | 0.11.0 (2026-10-27) |
 | Registries | [NuGet `OpenBim.Ifc`](https://www.nuget.org/packages/OpenBim.Ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_dotnet/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-dotnet/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-dotnet) |
@@ -44,56 +44,39 @@ The behaviour is tested from C# against the packed `.nupkg` by
 
 ## Changes
 
-Latest release, 0.10.0 (2026-10-20):
+Latest release, 0.11.0 (2026-10-27):
 
-### Added (#479, copy and append)
+### Added (#465)
 
-- `IfcModel.CopyProduct(id, offset, placement, openings, fillings,
-  container, aggregate, dryRun)` and `IfcModel.Append(source, ids,
-  globalIds, reuse, dryRun)`, returning a `CopyReport` (`CopiedEntity`
-  records); `GlobalIdMode`, `ReuseKinds`; `AuthorOp.CopyProduct` and
-  `AuthorOp.CopyEntity`. Needs the C library with ABI 0.1.21.
+- `IfcModel.SetHistoryLimit`, `History`, `Undo`, `Redo` and `ClearHistory`,
+  with the records `HistoryState` and `HistoryChange` and the statuses
+  `HistoryEmpty` and `HistoryStale` (`history-empty`, `history-stale`).
+  History is off until a limit is set; then every mutating method is one
+  undo entry.
+- Needs the C library of ABI 0.1.23.
 
 Semver: additive: minor.
 
-### Added (#469)
+### Changed (#559)
 
-- `Units.Convert(value, from, to)` converts between units named as text
-  (an SI unit with its prefix, or a named IFC4 Table 673 unit with exact
-  factors); `Units.FormatLength` writes a length as decimal text or feet
-  and inches with fractions (`LengthStyle`); `IfcModel.ConvertUnitValue`
-  converts between two unit entities of a model.
-- `IfcModel.ConvertLengthUnit(target, areaAndVolume, removeReplacedUnits,
-  dryRun)` rescales every length, area and volume value to a new project
-  length unit as one checked transaction and returns a `LengthUnitReport`
-  (`ConvertedValues`, `KeptValues`). Values it cannot carry, and offset
-  units (#110), throw `unsupported`. Needs the native library with C ABI
-  0.1.18.
+- `SetProperties`, `SetProperty`, `RemoveProperty`, `SetValue`, `ImportTable`: draw a seed per call for the `GlobalId`s of the sets and
+  relationships they create; one the model already holds is refused with
+  `invalid-value`.
 
-Semver: minor.
+Semver: patch (signatures unchanged).
 
-### Added (#474, tables)
+### Added (#538, EXPRESS rules)
 
-- `IfcModel.ExportTable(query, columns, format, key, null)` returns the
-  selected entities as CSV, TSV or XLSX bytes; `IfcModel.ImportTable(data,
-  format, key, null, dryRun)` applies a table back by key as one checked
-  transaction and returns a `TableImport` record (`Applied`,
-  `TableChange`s, `TableRefusal`s). Needs the C library with ABI 0.1.18.
+- `IfcModel.ValidateExpress(express, maxFindings)` validates with the
+  EXPRESS rules of the declared release from the `.exp` text the caller
+  supplies. `IfcStatus.ExpressMismatch` (36) and `IfcStatus.InvalidExpress`
+  (37), codes `express-mismatch` and `invalid-express`.
+- `ValidationReport.Indeterminate`: EXPRESS rules that evaluated to UNKNOWN
+  (0 from `Validate`).
+- `IfcStatus.InverseAttribute` (35) is now recorded as the model's last
+  error like the other shared binding errors.
+- Needs the C library of ABI 0.1.22.
 
-Semver: additive, a minor release while 0.x.
-
-### Changed (#512)
-
-- `ProductCurves` gives the curves of a representation that also holds text or a
-  fill area: a dimension `IfcAnnotation` (its lines as `IfcPolyline`s,
-  its value as an `IfcTextLiteralWithExtent`) was an `unsupported`
-  refusal and now returns its lines. `ProductCurves.Skipped` (`EquatableList<ulong>`), the record's new last
-  field, lists each `IfcTextLiteral`, `IfcTextLiteralWithExtent` and
-  `IfcAnnotationFillArea` of the representation by entity id: not drawn,
-  not a refusal.
-  The positional `ProductCurves` record gains that parameter. Needs the C
-  library with ABI 0.1.20.
-
-Semver: minor.
+Semver: additive: minor.
 
 Full history: [`crates/openbim-ifc-dotnet/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-dotnet/CHANGELOG.md)
