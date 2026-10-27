@@ -99,6 +99,9 @@ unsafe fn step_export(
 ) -> OpenbimIfcStatus {
     boundary(|| {
         with_model(model, |m| {
+            if let Err(status) = out.check() {
+                return done(status);
+            }
             let planned = peek(m)?;
             let tape = Tape::encode(&planned.to_record().to_tagged());
             let fits =

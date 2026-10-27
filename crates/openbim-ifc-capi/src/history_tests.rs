@@ -153,3 +153,60 @@ fn clear_and_a_null_state_pointer() {
     let status = unsafe { openbim_ifc_v0_1_model_history(model, null_mut()) };
     assert_eq!(status, OpenbimIfcStatus::NullPointer);
 }
+
+#[test]
+fn a_null_output_pointer_is_refused_before_anything_is_applied() {
+    let model = fixture();
+    openbim_ifc_v0_1_model_set_history_limit(model, 4);
+    let before = bytes(model);
+    openbim_ifc_v0_1_entity_remove(model, 80);
+    let after = bytes(model);
+    let mut node = [crate::tape::OpenbimIfcValueNode::default(); 64];
+    let mut string = [0u8; 256];
+    let (mut nodes, mut strings) = (0usize, 0usize);
+    for (required_nodes, required_strings, node_buffer, string_buffer) in [
+        (
+            null_mut(),
+            &mut strings as *mut usize,
+            node.as_mut_ptr(),
+            string.as_mut_ptr(),
+        ),
+        (
+            &mut nodes as *mut usize,
+            null_mut(),
+            node.as_mut_ptr(),
+            string.as_mut_ptr(),
+        ),
+        (
+            &mut nodes as *mut usize,
+            &mut strings as *mut usize,
+            null_mut(),
+            string.as_mut_ptr(),
+        ),
+        (
+            &mut nodes as *mut usize,
+            &mut strings as *mut usize,
+            node.as_mut_ptr(),
+            null_mut(),
+        ),
+    ] {
+        // SAFETY: the null pointers are the case under test; the capacities
+        // describe the buffers that are passed.
+        let status = unsafe {
+            openbim_ifc_v0_1_model_undo(
+                model,
+                node_buffer,
+                64,
+                required_nodes,
+                string_buffer,
+                256,
+                required_strings,
+            )
+        };
+        assert_eq!(status, OpenbimIfcStatus::NullPointer);
+        assert_eq!(bytes(model), after, "a refused call applies nothing");
+        assert_eq!((state(model).undo, state(model).redo), (1, 0));
+    }
+    assert!(undo(model).is_ok(), "the retry undoes once");
+    assert_eq!(bytes(model), before);
+}

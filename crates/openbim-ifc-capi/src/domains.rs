@@ -33,6 +33,20 @@ pub(crate) struct Out {
 }
 
 impl Out {
+    /// `NullPointer` when `write` would refuse these buffers. Checked
+    /// before an export applies a change, so a refusal never follows one.
+    pub(crate) fn check(&self) -> Result<(), OpenbimIfcStatus> {
+        let missing = self.out_nodes_required.is_null()
+            || self.out_strings_required.is_null()
+            || (self.node_capacity != 0 && self.nodes.is_null())
+            || (self.string_capacity != 0 && self.strings.is_null());
+        if missing {
+            Err(OpenbimIfcStatus::NullPointer)
+        } else {
+            Ok(())
+        }
+    }
+
     /// Write `value` as a tape.
     ///
     /// # Safety

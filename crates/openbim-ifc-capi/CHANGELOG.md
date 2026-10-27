@@ -8,6 +8,15 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Fixed (#465)
+
+- `openbim_ifc_v0_1_model_undo`, `_redo`, `_remove_product`, `_purge`,
+  `_remove_representation`, `_copy_product` and `_append` check their output
+  pointers before they change the model: a null `out_*_required`, or a null
+  buffer with a non-zero capacity, answers `NULL_POINTER` with the model
+  unchanged, where the change used to be applied first and a retry applied it
+  twice.
+
 ### Added (#465, undo and redo)
 
 - `openbim_ifc_v0_1_model_set_history_limit`, `_model_history` (new
