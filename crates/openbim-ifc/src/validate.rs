@@ -30,10 +30,10 @@ pub use ifc_validate::*;
 mod with_catalog {
     use ifc_model::Model;
     use ifc_schema::{Schema, SchemaVersion};
-    use ifc_template_catalog::catalog::{Catalog, CatalogProfile};
+    use ifc_template_catalog::catalog::Catalog;
     use ifc_template_catalog::definition::{
-        CatalogEdition, PropertyDataType, PropertyKind, PropertyTemplate, QuantityKind,
-        QuantityTemplate, SetTemplateKind,
+        PropertyDataType, PropertyKind, PropertyTemplate, QuantityKind, QuantityTemplate,
+        SetTemplateKind,
     };
     use ifc_validate::{
         Budget, CatalogMember, CatalogMemberForm, CatalogQuantityKind, CatalogSet,
@@ -46,20 +46,7 @@ mod with_catalog {
 
     impl ReleaseCatalog {
         fn catalog(version: SchemaVersion) -> Option<Catalog> {
-            let (edition, profile) = match version {
-                SchemaVersion::Ifc2x3 => (CatalogEdition::Ifc2x3Tc1, CatalogProfile::Official),
-                SchemaVersion::Ifc4 => (CatalogEdition::Ifc4Add2Tc1, CatalogProfile::Corrected),
-                SchemaVersion::Ifc4x3 => (CatalogEdition::Ifc4x3Add2, CatalogProfile::Corrected),
-                _ => return None,
-            };
-            #[cfg(feature = "property-catalog")]
-            {
-                ifc_template_catalog::embedded::load_catalog(edition, profile).ok()
-            }
-            #[cfg(not(feature = "property-catalog"))]
-            {
-                ifc_template_catalog::runtime::load_catalog(edition, profile).ok()
-            }
+            crate::release_catalog(version).ok()
         }
     }
 

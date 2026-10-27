@@ -223,10 +223,12 @@ gate_features() {
     # catalog when `property-catalog` is on; `--all-features` hides the
     # refusal a build without it gives.
     cargo test -p openbim-ifc --features step,schema,properties --test property_edit --test property_edit_identity
+    # The release-to-catalog accessor (#566), embedded column.
+    cargo test -p openbim-ifc --features schema,property-catalog --test release_catalog
     # With the catalog supplied at runtime (#318), a `Pset_`/`Qto_` edit
     # waits for its edition to be installed; `--all-features` embeds it.
     cargo test -p openbim-ifc --features step,schema,properties,property-catalog-runtime \
-        --test property_edit --test property_catalog_runtime
+        --test property_edit --test property_catalog_runtime --test release_catalog_runtime
     # The catalog crate on its own: the runtime column without the embedded
     # container, and its wasm32 build (sha2 for the pins must build there).
     cargo clippy -p ifc-template-catalog --no-default-features --features runtime --lib -- -D warnings

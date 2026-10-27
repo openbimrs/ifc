@@ -86,15 +86,12 @@ pub use ifc_step::{OnMalformed, ParseOptions, StepReader};
 #[cfg(feature = "ifcxml")]
 pub use ifc_xml::{SchemaReading, XmlCodec, XmlLayout, XmlProfile};
 
-/// The IFC schema as queryable data.
+/// The IFC schema as queryable data; `schema` is the whole schema crate,
+/// including the bundled schemas (`schema::ifc4()`,
+/// `schema::for_version(..)`) that [`ids_of_type_including_subtypes`] needs
+/// as input.
 #[cfg(feature = "schema-api")]
-pub use ifc_schema::{Schema, SchemaVersion};
-
-/// The whole schema crate, including the bundled schemas
-/// (`schema::ifc4()`, `schema::for_version(..)`) that
-/// [`ids_of_type_including_subtypes`] needs as input.
-#[cfg(feature = "schema-api")]
-pub use ifc_schema as schema;
+pub use ifc_schema::{self as schema, Schema, SchemaVersion};
 
 // Needs the model's type index and the schema's subtype tree, which ADR 0003
 // keeps in separate crates, so the join lives in this orchestration layer.
@@ -372,6 +369,12 @@ mod length_unit;
 // on `properties` with an inner `#![cfg]`; the catalog checks need
 // `property-catalog` or `property-catalog-runtime` too.
 mod property_edit;
+
+// The release-to-catalog policy property edits and validation share (#566).
+// Its items gate on `schema-api` and a catalog feature; empty otherwise.
+mod release_catalog;
+#[allow(unused_imports)]
+pub use release_catalog::*;
 
 // New `GlobalId`s (#463): random version 4 through the OS generator, and
 // the name-based version 8 the property edit and authoring derive theirs
