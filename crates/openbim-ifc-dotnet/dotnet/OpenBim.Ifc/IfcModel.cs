@@ -689,6 +689,56 @@ public sealed unsafe class IfcModel : IDisposable
         Calls.Check(lease.Model, NativeMethods.openbim_ifc_v0_1_entity_remove_with_relationships(lease.Model, id));
     }
 
+    /// <summary>Keep at most <paramref name="limit"/> undo entries; 0 (the default) turns history off and drops what is held (#465). While it is on, every method that changes the model is one entry (<see cref="Author"/> is one entry for its whole batch).</summary>
+    public void SetHistoryLimit(int limit)
+    {
+        if (limit < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(limit), "a history limit is not negative");
+        }
+        using var lease = handle.Acquire();
+        Calls.Check(lease.Model, NativeMethods.openbim_ifc_v0_1_model_set_history_limit(lease.Model, (nuint)limit));
+    }
+
+    /// <summary>The history bound and how many entries each direction holds.</summary>
+    public HistoryState History
+    {
+        get
+        {
+            var state = new NativeHistoryState[1];
+            using var lease = handle.Acquire();
+            fixed (NativeHistoryState* out_state = state)
+            {
+                Calls.Check(lease.Model, NativeMethods.openbim_ifc_v0_1_model_history(lease.Model, out_state));
+            }
+            var s = state[0];
+            return new HistoryState(checked((int)s.Limit), checked((int)s.Undo), checked((int)s.Redo));
+        }
+    }
+
+    /// <summary>Restore the model to the state before the last change: entities under their ids and at their file positions, the header included. Undoing a creation frees its id again. A size query or a short buffer applies nothing, so the call is safe to retry. Refused with <c>history-empty</c> when there is nothing to undo (also while history is off) and <c>history-stale</c> when the model changed outside the history; the model is unchanged then.</summary>
+    public HistoryChange Undo()
+    {
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return RecordDecoder.Decode<HistoryChange>(Tape(m, (n, nc, nr, s, sc, sr) => NativeMethods.openbim_ifc_v0_1_model_undo(m, n, nc, nr, s, sc, sr)).One());
+    }
+
+    /// <summary>Reverse the last <see cref="Undo"/>. Refused with <c>history-empty</c> when there is nothing to redo and <c>history-stale</c> as <see cref="Undo"/> is.</summary>
+    public HistoryChange Redo()
+    {
+        using var lease = handle.Acquire();
+        var m = lease.Model;
+        return RecordDecoder.Decode<HistoryChange>(Tape(m, (n, nc, nr, s, sc, sr) => NativeMethods.openbim_ifc_v0_1_model_redo(m, n, nc, nr, s, sc, sr)).One());
+    }
+
+    /// <summary>Drop every undo and redo entry, keeping the limit.</summary>
+    public void ClearHistory()
+    {
+        using var lease = handle.Acquire();
+        Calls.Check(lease.Model, NativeMethods.openbim_ifc_v0_1_model_clear_history(lease.Model));
+    }
+
     /// <summary>Remove product (or type object) <paramref name="id"/> with everything it solely owns -- its placement, representation, own property and quantity sets, material usage, openings and ports, and the relationships left without an end -- as one checked transaction, keeping what is shared (a property set another object uses, a type's representation maps). With <paramref name="dryRun"/> nothing changes.</summary>
     /// <param name="id">The <c>IfcProduct</c> or <c>IfcTypeObject</c>.</param>
     /// <param name="rebasePlacements">Re-base placements relative to a removed placement onto its parent, composing the transforms, instead of refusing with <c>still-referenced</c>.</param>

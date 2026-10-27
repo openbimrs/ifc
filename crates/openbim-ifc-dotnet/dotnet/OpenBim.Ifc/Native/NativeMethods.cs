@@ -35,6 +35,15 @@ internal struct NativeValidationSummary
     public uint Truncated;
 }
 
+/// <summary>How much history a model holds (<c>OpenbimIfcHistoryState</c>).</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct NativeHistoryState
+{
+    public nuint Limit;
+    public nuint Undo;
+    public nuint Redo;
+}
+
 /// <summary>Counts from one validation run with EXPRESS rules (<c>OpenbimIfcExpressValidationSummary</c>).</summary>
 [StructLayout(LayoutKind.Sequential)]
 internal struct NativeExpressValidationSummary
@@ -361,6 +370,21 @@ internal static unsafe partial class NativeMethods
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_model_unreachable_products(ulong model, nuint* out_count, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_model_set_history_limit(ulong model, nuint limit);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_model_history(ulong model, NativeHistoryState* out_state);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_model_clear_history(ulong model);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_model_undo(ulong model, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
+    internal static extern IfcStatus openbim_ifc_v0_1_model_redo(ulong model, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
     internal static extern IfcStatus openbim_ifc_v0_1_model_validate(ulong model, nuint max_findings, NativeValidationSummary* out_summary, ValueNode* nodes, nuint node_capacity, nuint* out_nodes_required, byte* strings, nuint string_capacity, nuint* out_strings_required);

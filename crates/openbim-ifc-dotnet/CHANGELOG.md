@@ -9,6 +9,15 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#465)
+
+- `IfcModel.SetHistoryLimit`, `History`, `Undo`, `Redo` and `ClearHistory`,
+  with the records `HistoryState` and `HistoryChange` and the statuses
+  `HistoryEmpty` and `HistoryStale` (`history-empty`, `history-stale`).
+  History is off until a limit is set; then every mutating method is one
+  undo entry.
+- Needs the C library of ABI 0.1.23.
+
 ### Changed (#559)
 
 - `SetProperties`, `SetProperty`, `RemoveProperty`, `SetValue`, `ImportTable`: draw a seed per call for the `GlobalId`s of the sets and
