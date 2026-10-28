@@ -8,6 +8,14 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#585)
+
+- A model without a declared, readable length unit now refuses each
+  product's placement or geometry with `invalid-model` instead of placing it
+  in metres.
+
+Semver: patch (behaviour fix; no signature changes).
+
 ## [0.1.19] - 2026-10-28
 
 ### Changed

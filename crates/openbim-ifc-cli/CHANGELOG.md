@@ -11,6 +11,14 @@ documents) is this crate's public interface.
 
 ## [Unreleased]
 
+### Changed (#585)
+
+- A model without a declared, readable length unit now refuses each
+  product's placement or geometry with `invalid-model` instead of placing it
+  in metres.
+
+Semver: patch (behaviour fix; no signature changes).
+
 ## [0.5.2] - 2026-10-28
 
 ### Changed
