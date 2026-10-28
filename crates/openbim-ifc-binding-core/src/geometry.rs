@@ -342,7 +342,11 @@ fn refusal(error: &ifc::geometry::GeometryError) -> GeometryRefusal {
         | E::WrongValueKind { .. }
         | E::WrongEntityType { .. }
         | E::Degenerate { .. }
-        | E::Units(_) => "invalid-model",
+        | E::Units(_)
+        | E::LengthUnitUndeclared { .. }
+        | E::AngleUnitUndeclared { .. }
+        | E::UnitUnreadable { .. }
+        | E::UnitsAmbiguous { .. } => "invalid-model",
         // A refusal added to the bridge after this binding, or one only an
         // evaluator raises: still typed, never dropped.
         other if other.is_unsupported() => "unsupported",

@@ -577,6 +577,46 @@ pub enum GeometryError {
     #[error("unit resolution failed: {0}")]
     Units(String),
 
+    /// The model declares no length unit, so no coordinate has a scale (#585).
+    #[error("the model declares no length unit (no IfcProject, no UnitsInContext, or no LENGTHUNIT in it), so its coordinates have no scale")]
+    LengthUnitUndeclared {
+        /// The `IfcProject`, when the model has one.
+        project: Option<EntityId>,
+        /// The `IfcUnitAssignment`, when the project names one.
+        assignment: Option<EntityId>,
+    },
+
+    /// A plane angle was read, and the project declares no `PLANEANGLEUNIT`
+    /// (#585).
+    #[error("{entity} holds a plane angle, and the project declares no PLANEANGLEUNIT")]
+    AngleUnitUndeclared {
+        /// The entity whose angle has no unit.
+        entity: EntityId,
+    },
+
+    /// A declared project unit cannot be read as an exact factor (#585).
+    #[error("{unit} ({unit_type}) cannot be read: {detail}")]
+    UnitUnreadable {
+        /// The unit entity.
+        unit: EntityId,
+        /// Its `IfcUnitEnum` value, `LENGTHUNIT` or `PLANEANGLEUNIT`.
+        unit_type: &'static str,
+        /// Why it cannot be read.
+        detail: String,
+    },
+
+    /// Two candidates for one project unit (#585).
+    #[error("{first} and {second} are both the model's {kind}; IFC allows one")]
+    UnitsAmbiguous {
+        /// The first candidate.
+        first: EntityId,
+        /// The second candidate.
+        second: EntityId,
+        /// What there should be one of: `IFCPROJECT`, `LENGTHUNIT` or
+        /// `PLANEANGLEUNIT`.
+        kind: &'static str,
+    },
+
     /// An authored value was rejected before anything was staged (ADR 0011).
     ///
     /// Distinct from [`Self::Degenerate`], which describes an entity that
@@ -665,6 +705,13 @@ impl GeometryError {
             }
             // The opening is what failed; `host` stays readable on the variant.
             Self::OpeningNotSubtracted { opening, .. } => Some(*opening),
+            Self::LengthUnitUndeclared {
+                project,
+                assignment,
+            } => assignment.or(*project),
+            Self::AngleUnitUndeclared { entity } => Some(*entity),
+            Self::UnitUnreadable { unit, .. } => Some(*unit),
+            Self::UnitsAmbiguous { second, .. } => Some(*second),
             Self::Units(_)
             | Self::InvalidAuthoredValue { .. }
             | Self::AuthoringSchemaUnbound { .. }
@@ -742,5 +789,43 @@ mod tests {
         };
         assert!(unsupported.is_unsupported());
         assert!(!broken.is_unsupported());
+    }
+
+    #[test]
+    fn unit_refusals_name_the_entity_and_are_not_unsupported() {
+        let undeclared = GeometryError::LengthUnitUndeclared {
+            project: Some(EntityId(1)),
+            assignment: Some(EntityId(2)),
+        };
+        assert_eq!(undeclared.entity(), Some(EntityId(2)));
+        let no_assignment = GeometryError::LengthUnitUndeclared {
+            project: Some(EntityId(1)),
+            assignment: None,
+        };
+        assert_eq!(no_assignment.entity(), Some(EntityId(1)));
+        let no_project = GeometryError::LengthUnitUndeclared {
+            project: None,
+            assignment: None,
+        };
+        assert_eq!(no_project.entity(), None);
+        let angle = GeometryError::AngleUnitUndeclared {
+            entity: EntityId(3),
+        };
+        assert_eq!(angle.entity(), Some(EntityId(3)));
+        let unreadable = GeometryError::UnitUnreadable {
+            unit: EntityId(4),
+            unit_type: "LENGTHUNIT",
+            detail: "x".into(),
+        };
+        assert_eq!(unreadable.entity(), Some(EntityId(4)));
+        let ambiguous = GeometryError::UnitsAmbiguous {
+            first: EntityId(5),
+            second: EntityId(6),
+            kind: "LENGTHUNIT",
+        };
+        assert_eq!(ambiguous.entity(), Some(EntityId(6)));
+        for e in [undeclared, angle, unreadable, ambiguous] {
+            assert!(!e.is_unsupported());
+        }
     }
 }
