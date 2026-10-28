@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.39.0 (2026-10-28) |
+| Latest release | 0.39.1 (2026-10-28) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -103,18 +103,21 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.39.0 (2026-10-28):
+Latest release, 0.39.1 (2026-10-28):
 
-### Changed (#585)
+### Changed (#587)
 
-- A model whose units do not resolve refuses every product of
-  `product_placements`, `product_meshes`, `product_meshes_for`,
-  `product_curves` and `product_graphs` with the unit error, instead of
-  placing it in metres; return shapes are unchanged. The re-exported
-  `geometry` module carries `ifc-geometry`'s breaking `units` change
-  (`units::resolve` is fallible, `UnitScale::angle_to_radians` is an
-  `Option`, `UnitScale::default()` is `UnitScale::SI`).
+- Staging a checked authoring batch costs the batch, not the model: the
+  planner reads the model's own reverse and GlobalId indexes (`ifc-model`),
+  indexes its own records, and appends the objects of a type assignment to
+  the relationship in place. The `authoring` bench measures it.
 
-Semver: breaking through the re-exported `geometry` module (0.x minor).
+### Fixed (#587)
+
+- A base `GlobalId` held by several `IfcRoot`s is refused while any of them
+  remains in the model, naming the lowest id; before, one holder chosen by
+  hash order was all the check saw.
+
+Semver: patch.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)
