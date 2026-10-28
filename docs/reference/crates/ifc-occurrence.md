@@ -11,7 +11,7 @@ Built element and distribution occurrence classes and their type pairing.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.0 (2026-10-27) |
+| Latest release | 0.4.1 (2026-10-28) |
 | Registries | [crates.io `ifc-occurrence`](https://crates.io/crates/ifc-occurrence) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `occurrence` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_occurrence/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-occurrence) |
@@ -40,5 +40,13 @@ IFC4X3 row.
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
+
+Latest release, 0.4.1 (2026-10-28):
+
+### Changed
+
+- Licence: `AGPL-3.0-or-later OR LicenseRef-Commercial` (was `AGPL-3.0-or-later`); a commercial licence is available from the copyright holder. See LICENSING.md.
+
+Semver: patch.
 
 Full history: [`crates/ifc-occurrence/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-occurrence/CHANGELOG.md)

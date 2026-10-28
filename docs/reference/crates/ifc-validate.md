@@ -11,7 +11,7 @@ Schema conformance: WHERE rules, cardinality, GUID and reference integrity.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.8.0 (2026-10-27) |
+| Latest release | 0.8.1 (2026-10-28) |
 | Registries | [crates.io `ifc-validate`](https://crates.io/crates/ifc-validate) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `validate` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_validate/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-validate) |
@@ -43,40 +43,12 @@ so parsing is permissive and validation is an explicit, separate pass.
 
 ## Changes
 
-Latest release, 0.8.0 (2026-10-27):
+Latest release, 0.8.1 (2026-10-28):
 
-### Added (#537)
+### Changed
 
-- `property.undeclared_member` and `property.member_type` warnings (bSI
-  PSE001): for a `Pset_`/`Qto_` set the release's catalog defines, a
-  property or quantity the catalog's template does not declare, and a set
-  kind, entity form or value type that differs from it. A value type
-  passes when it is the declared one or a defined type aliasing it. Names
-  match exactly; a case-only difference is mentioned in the message.
-- `PropertySetCatalog::template`, a provided method returning the
-  neutral `CatalogSet` (`CatalogSetKind`, `CatalogMember`,
-  `CatalogMemberForm`, `CatalogQuantityKind`). The default returns `None`.
-- `FindingDetail::CatalogMember(CatalogMemberDetail)` with
-  `CatalogMismatch`.
+- Licence: `AGPL-3.0-or-later OR LicenseRef-Commercial` (was `AGPL-3.0-or-later`); a commercial licence is available from the copyright holder. See LICENSING.md.
 
-### Changed (#537)
-
-- A catalog whose `template` gives none for a set it defines gets one
-  unsupported finding per new rule id ("the members of N catalog sets were
-  not checked"); a declared value type the release's tables lack gets one
-  unsupported `property.member_type` finding. Neither is silent.
-
-- A declared SELECT type (`IfcValue`, as in `BendingParameters`) takes any
-  defined type its closure holds, and a single value declared with an
-  entity type (the IFC2X3 `*PHistory` sets: `IfcTimeSeries`) is written as
-  an `IfcPropertyReferenceValue` to that entity, which is checked against it.
-
-Known false-positive source: some catalog templates disagree with the
-schema or with each other (`Qto_BuildingElementProxyQuantities`, ProcessItem
-sets); those are catalog data issues tracked in #553, not fixed here.
-
-Semver: minor (0.8.0): runs with a template-giving catalog report new
-warnings, and `PropertySetCatalog`, `FindingDetail` and the new types grow
-the public API.
+Semver: patch.
 
 Full history: [`crates/ifc-validate/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-validate/CHANGELOG.md)

@@ -11,7 +11,7 @@ Structured IFC value containers indexed by position or time.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.0 (2026-10-27) |
+| Latest release | 0.4.1 (2026-10-28) |
 | Registries | [crates.io `ifc-tabular`](https://crates.io/crates/ifc-tabular) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `tabular` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_tabular/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-tabular) |
@@ -32,5 +32,13 @@ lists of `IfcValue`, and both appear side by side in the schema's own
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
+
+Latest release, 0.4.1 (2026-10-28):
+
+### Changed
+
+- Licence: `AGPL-3.0-or-later OR LicenseRef-Commercial` (was `AGPL-3.0-or-later`); a commercial licence is available from the copyright holder. See LICENSING.md.
+
+Semver: patch.
 
 Full history: [`crates/ifc-tabular/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-tabular/CHANGELOG.md)

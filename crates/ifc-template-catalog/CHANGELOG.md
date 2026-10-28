@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-28
+
 ### Changed
 
 - Licence: `(AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0` (was `AGPL-3.0-or-later AND CC-BY-ND-4.0`); a commercial licence is available from the copyright holder. See LICENSING.md.
@@ -115,7 +117,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-template-catalog-v0.4.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-template-catalog-v0.4.2...HEAD
+[0.4.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-template-catalog-v0.4.2
 [0.4.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-template-catalog-v0.4.1
 [0.4.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-template-catalog-v0.4.0
 [0.3.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-template-catalog-v0.3.1

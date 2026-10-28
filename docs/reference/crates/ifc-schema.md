@@ -11,7 +11,7 @@ IFC schema as data: entity table, supertype chain, attribute names.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.3 (2026-10-20) |
+| Latest release | 0.3.4 (2026-10-28) |
 | Registries | [crates.io `ifc-schema`](https://crates.io/crates/ifc-schema) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties`, `schema-api` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_schema/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-schema) |
@@ -36,25 +36,12 @@ IFC schema as data: entity table, supertype chain, attribute names.
 
 ## Changes
 
-Latest release, 0.3.3 (2026-10-20):
+Latest release, 0.3.4 (2026-10-28):
 
-### Added (#467)
+### Changed
 
-Semver: patch (0.x: a new public type only, nothing changed). `SchemaVersion` and its header-token
-mapping are unchanged.
+- Licence: `AGPL-3.0-or-later OR LicenseRef-Commercial` (was `AGPL-3.0-or-later`); a commercial licence is available from the copyright holder. See LICENSING.md.
 
-- `UnpublishedRelease` (`Ifc4x3Tc1`, `Ifc4x3Add1`) names the IFC 4.3
-  releases whose identifiers files carry but whose normative EXPRESS
-  buildingSMART does not publish: `IFC4X3_TC1` (IFC 4.3.0.1) and
-  `IFC4X3_ADD1` (IFC 4.3.1.0), each with `identifier()`,
-  `version_number()`, `superseded_by()` (IFC4X3 ADD2, not a claim of
-  identity) and `from_header_token()`. The identifiers and numbers come
-  from the `SCHEMA_NAME` and documentation header of
-  buildingSMART/IFC4.x-development's generator; buildingSMART lists only
-  ADD2 (4.3.2.0) for IFC 4.3, so no tables can be fetched and checksummed
-  for TC1 or ADD1, and IfcOpenShell's own (non-normative) tables show TC1
-  lacks entities ADD2 has. `SchemaVersion::from_header_token` still
-  returns `None` for both: they are named for a precise refusal, never
-  read as ADD2 by assumption.
+Semver: patch.
 
 Full history: [`crates/ifc-schema/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-schema/CHANGELOG.md)

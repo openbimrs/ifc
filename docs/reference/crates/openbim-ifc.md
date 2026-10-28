@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.38.0 (2026-10-27) |
+| Latest release | 0.38.1 (2026-10-28) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -103,144 +103,12 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.38.0 (2026-10-27):
+Latest release, 0.38.1 (2026-10-28):
 
-### Changed (breaking) (#573)
+### Changed
 
-- `fresh_seed()` returns `Result<u128, GuidError>`, drawn from `new_guid`'s
-  source: the operating system natively, `crypto.getRandomValues` on
-  `wasm32-unknown-unknown` with `js-random`. Without `js-random` there it
-  refuses with `GuidError::NoRandomSource`; a host without a generator
-  (Node 18) gives `GuidError::RandomSourceFailed`.
+- Licence: `AGPL-3.0-or-later OR LicenseRef-Commercial` (was `AGPL-3.0-or-later`); a commercial licence is available from the copyright holder. See LICENSING.md.
 
-### Fixed (#573)
-
-- On `wasm32-unknown-unknown` `fresh_seed` was a counter from 0 per page
-  load, so a model reopened in a new session drew seeds it already held and
-  its first edit was refused with `SeedReused`.
-
-Semver: breaking (minor while 0.x), released in 0.38.0 with #548 and #559.
-
-### Added (#566)
-
-- `release_catalog(SchemaVersion) -> Result<Catalog, ReleaseCatalogError>`
-  and `release_edition(SchemaVersion) -> Option<CatalogEdition>`, behind
-  `schema-api` (any release feature) and `property-catalog` or
-  `property-catalog-runtime`: the PSD/QTO catalog a release reads -- IFC2X3
-  TC1 as published, IFC4 ADD2 TC1 and IFC4X3 ADD2 corrected -- the policy
-  property edits and `validate` now share, so an authoring check made before
-  a product exists cannot disagree with them. `ReleaseCatalogError` is
-  `NoCatalog`, `NotInstalled { edition }` or `Unreadable { edition, reason }`.
-
-### Fixed (#565)
-
-- Through the re-exported `AuthorError`: an enumeration constant that is not
-  a member of the declared release's enumeration is refused with
-  `NotEnumerationMember` (`ifc-author`). A cross-release append surfaces it
-  as `IncompatibleRelease` (bindings: unsupported-schema); build, set and
-  copy report an invalid value.
-
-### Changed (breaking) (#465)
-
-- Through the re-exported `Model`: `header_mut` bumps the revision, so a
-  `Transaction` opened before a header edit is refused at commit with
-  `Conflict::StaleRevision`; revisions are process-unique rather than
-  per-model counters, so a transaction or inverse made against another model
-  is refused (`ifc-model` 0.4.0).
-
-### Added (#465)
-
-- Re-exports `History`, `HistoryError`, `Inverse`, `InverseError` and
-  `Restored` from `ifc-model`: `History::track` around `apply_authoring`
-  (or any change) makes it undoable with byte-identical restoration.
-
-### Changed (#559)
-
-- The `GlobalId`s a property edit derives for the sets and relationships it
-  creates derive from a caller seed, the object's `GlobalId`, the set name,
-  the record's role and its count among the batch's records of that object,
-  set and role, no longer from the model's next free id. The same edits
-  under the same seed give the same `GlobalId`s after a write/read cycle
-  that shifts the next id, so a journal of property edits replays to the
-  same identities.
-- `stage_property_edits` and `apply_property_edits` take that `seed`, and
-  so does every write that may create a set: `SelectorIndex::stage_set_value`,
-  `selector::set_value`, `SelectorIndex::plan_text_edits`,
-  `selector::apply_text_edits`, `sheet::plan_import` and `sheet::import`
-  (an attribute write ignores it).
-- `fresh_seed` is available in every build, no longer only with `authoring`.
-
-### Added (#559)
-
-- `PropertyEditFailure::SeedReused`, raised when a derived `GlobalId` is
-  held by an entity the batch leaves in the model (the seed named an
-  earlier batch's records). A seed may edit other objects or sets, and may
-  be used again once its records are removed.
-
-Semver: breaking (minor while 0.x), released with #548 in 0.38.0: the
-property-edit, selector-write and sheet-import entry points take a seed,
-the same edit of the same file no longer gives the same `GlobalId`s, and
-`SeedReused` is a new variant of the `#[non_exhaustive]` `PropertyEditFailure`.
-
-### Changed (#548)
-
-- The `GlobalId`s a batch derives (an `IfcRoot` created without one, every
-  relationship a builder writes, copies) derive from the seed, the
-  operation's position in the batch, the created entity's type and its
-  count among that type in the operation, no longer from the entity id; an
-  `apply_append` derives from the seed, the type and the count. The same
-  seed and operations give the same `GlobalId`s after a write/read cycle
-  that shifts the next id, so a journal of batches replays to the same
-  identities. An `AssignType` that joins an existing relationship derives
-  none.
-
-### Added (#548)
-
-- `AuthoringFailure::SeedReused`, raised when a derived `GlobalId` is held
-  by an entity of the model (the seed named an earlier batch). A seed whose
-  entities were all removed may be used again.
-
-Semver: breaking (minor while 0.x): a fixed seed gives other `GlobalId`s than
-0.37.0, and a batch that reuses a seed may now be refused; `SeedReused` is a
-new variant of the `#[non_exhaustive]` `AuthoringFailure`. The hosts draw a
-fresh seed per batch (the browser from `Math.random`).
-
-### Fixed (#534)
-
-- `AuthorOp::AssignType` on a type that already has an
-  `IfcRelDefinesByType` adds the objects to that relationship's
-  `RelatedObjects` instead of creating a second one, which broke
-  `IfcTypeObject.Types SET [0:1]` (`ObjectTypeOf` in IFC2X3). The op
-  produces the existing relationship's id, and `owner_history` applies
-  only to a relationship that is created. An object typed by another type
-  is still refused unless `replace`. A relationship whose `RelatedObjects`
-  is not a list is refused with `InvalidRelationship`, not rewritten.
-
-### Added (#537)
-
-- `ReleaseCatalog` gives `ifc-validate` the member templates of the
-  embedded or installed PSD/QTO catalog, so `validate` reports
-  `property.undeclared_member` and `property.member_type` warnings for
-  the members of a catalog set. A set kind the build does not know gives no
-  template, and its members are reported as not checked.
-
-Semver: minor; it re-exports `ifc-validate` 0.8.0 and its new findings.
-
-### Fixed (#537)
-
-- The property writer's template check accepts any type a declared SELECT
-  (`IfcValue`) closes over, as `validate` does; it refused them before.
-
-### Changed (#539, tests)
-
-Semver: no release on its own. No code change.
-
-- The #469 corpus test `length_unit_corpus.rs` sums mesh volumes about
-  each body's first vertex rather than the world origin, where triple
-  products at georeferenced coordinates cancelled catastrophically. The
-  29 products it skipped as ill-conditioned (blamed on booleans decided
-  by the last bit) were that measuring artefact: the skip list is
-  removed, and all 181 meshed products are compared and agree after
-  converting to feet.
+Semver: patch.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

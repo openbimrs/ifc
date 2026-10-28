@@ -11,7 +11,7 @@ The openbim-ifc command: validate, convert, inspect, query and edit IFC files (S
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.5.0 (2026-10-27) |
+| Latest release | 0.5.1 (2026-10-28) |
 | Registries | [crates.io `openbim-ifc-cli`](https://crates.io/crates/openbim-ifc-cli) |
 | API documentation | [docs.rs](https://docs.rs/openbim-ifc-cli) |
 | Source | [`crates/openbim-ifc-cli/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-cli) |
@@ -30,45 +30,12 @@ and formats the result. Nothing here interprets IFC on its own.
 
 ## Changes
 
-Latest release, 0.5.0 (2026-10-27):
+Latest release, 0.5.1 (2026-10-28):
 
-### Changed (#573)
+### Changed
 
-- `edit` and `import-table` draw their seed from the operating system's
-  generator and exit with kind `unsupported` if it refuses.
+- Licence: `(AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0` (was `AGPL-3.0-or-later`; the embedded or shipped catalog stays `CC-BY-ND-4.0`); a commercial licence is available from the copyright holder. See LICENSING.md.
 
 Semver: patch.
-
-### Changed (#559)
-
-- `edit` and `import-table` derive the `GlobalId`s of the sets and
-  relationships they create from a seed drawn per run, no longer from the
-  file's next free id. Behaviour change: the output of `edit` and
-  `import-table` is no longer reproducible between runs; the same edit of
-  the same file gives new `GlobalId`s on each run.
-
-Semver: patch (commands, flags, exit codes and documents unchanged; only
-the `GlobalId`s of newly created records differ per run).
-
-### Added (#538, EXPRESS rules)
-
-- `validate --express FILE.exp` (repeatable, one file per release)
-  evaluates every WHERE, type and global rule of each file's release from
-  the EXPRESS text you supply. A file with no matching `--express` is
-  refused with the new kind `express-mismatch`; a file that does not parse
-  is `invalid-express`. Both exit 2.
-- The JSON summary gains `indeterminate`, always present; the human summary
-  adds it when `--express` is given. An indeterminate rule never fails the
-  run.
-
-Semver: minor (additive; exit codes keep their meaning).
-
-### Changed (#537)
-
-- `validate` also reports the `property.undeclared_member` and
-  `property.member_type` warnings for the members of a catalog set, when
-  the build carries the property catalog.
-
-Semver: no code change; patch when released.
 
 Full history: [`crates/openbim-ifc-cli/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-cli/CHANGELOG.md)

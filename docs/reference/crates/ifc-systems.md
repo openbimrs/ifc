@@ -11,7 +11,7 @@ Distribution systems, ports, and connectivity between elements.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.6.0 (2026-10-27) |
+| Latest release | 0.6.1 (2026-10-28) |
 | Registries | [crates.io `ifc-systems`](https://crates.io/crates/ifc-systems) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `systems` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_systems/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-systems) |
@@ -41,5 +41,13 @@ that can be traced -- the basis of any MEP analysis.
 - [`ifc-schema`](./ifc-schema)
 
 ## Changes
+
+Latest release, 0.6.1 (2026-10-28):
+
+### Changed
+
+- Licence: `AGPL-3.0-or-later OR LicenseRef-Commercial` (was `AGPL-3.0-or-later`); a commercial licence is available from the copyright holder. See LICENSING.md.
+
+Semver: patch.
 
 Full history: [`crates/ifc-systems/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-systems/CHANGELOG.md)

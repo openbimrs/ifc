@@ -11,6 +11,8 @@ documents) is this crate's public interface.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-28
+
 ### Changed
 
 - Licence: `(AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0` (was `AGPL-3.0-or-later`; the embedded or shipped catalog stays `CC-BY-ND-4.0`); a commercial licence is available from the copyright holder. See LICENSING.md.
@@ -207,7 +209,8 @@ Semver: patch.
 
 Semver: a new crate, first release 0.1.0.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-cli-v0.5.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-cli-v0.5.1...HEAD
+[0.5.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.5.1
 [0.5.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.5.0
 [0.4.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.4.0
 [0.3.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.3.0

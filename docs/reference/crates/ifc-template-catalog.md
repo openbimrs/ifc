@@ -11,7 +11,7 @@ Versioned IFC PSD/QTO catalog definitions and correction overlays
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.1 (2026-10-27) |
+| Latest release | 0.4.2 (2026-10-28) |
 | Registries | [crates.io `ifc-template-catalog`](https://crates.io/crates/ifc-template-catalog) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `property-catalog`, `property-catalog-runtime` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_template_catalog/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-template-catalog) |
@@ -40,15 +40,11 @@ and quantity instances remain in `ifc-properties`.
 
 ## Changes
 
-Latest release, 0.4.1 (2026-10-27):
+Latest release, 0.4.2 (2026-10-28):
 
-### Fixed (#537)
+### Changed
 
-- The XML importer trims `DataType@type` and `reftype`: about 100 IFC2X3
-  entries (`IfcBoolean `) and one IFC4X3 entry (`IfcDuration `) carried
-  trailing spaces and so named no type. The embedded container, the IFC2X3
-  and IFC4X3 snapshot pins and TSV exports are regenerated from the
-  pinned sources (source digests unchanged).
+- Licence: `(AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0` (was `AGPL-3.0-or-later AND CC-BY-ND-4.0`); a commercial licence is available from the copyright holder. See LICENSING.md.
 
 Semver: patch.
 
