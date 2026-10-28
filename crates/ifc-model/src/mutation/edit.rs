@@ -197,7 +197,12 @@ impl Model {
         let entity = self.take_entity(id)?;
         self.note_write(id, built.then(|| Footprint::of(&entity)), None);
         let key = entity.type_name.to_ascii_uppercase();
-        let position = self.order_mut().iter().position(|existing| *existing == id);
+        // From the end, like the undo of a batch: ids are unique, so the
+        // position is the same and the common one is near the end.
+        let position = self
+            .order_mut()
+            .iter()
+            .rposition(|existing| *existing == id);
         if recording {
             // `take_entity` already left storage, so the bucket and file
             // positions are read from the indices, which still list `id`.

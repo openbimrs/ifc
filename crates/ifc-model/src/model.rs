@@ -488,9 +488,11 @@ impl Model {
 
     /// Where `id` sits in file order.
     pub(crate) fn order_position(&self, id: EntityId) -> usize {
+        // From the end: undoing a batch removes what it appended, newest
+        // first, so the entry sits near the end.
         self.order
             .iter()
-            .position(|existing| *existing == id)
+            .rposition(|existing| *existing == id)
             .expect("an entity in storage is in file order")
     }
 
@@ -498,7 +500,7 @@ impl Model {
     pub(crate) fn bucket_position(&self, key: &str, id: EntityId) -> usize {
         self.by_type
             .get(key)
-            .and_then(|ids| ids.iter().position(|existing| *existing == id))
+            .and_then(|ids| ids.iter().rposition(|existing| *existing == id))
             .expect("an entity in storage is in its type bucket")
     }
 }
