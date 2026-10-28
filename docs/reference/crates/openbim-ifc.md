@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.38.2 (2026-10-28) |
+| Latest release | 0.39.0 (2026-10-28) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -103,10 +103,18 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.38.2 (2026-10-28):
+Latest release, 0.39.0 (2026-10-28):
 
-### Changed
+### Changed (#585)
 
-- Copyright holder in NOTICE and licence texts is rheonda.
+- A model whose units do not resolve refuses every product of
+  `product_placements`, `product_meshes`, `product_meshes_for`,
+  `product_curves` and `product_graphs` with the unit error, instead of
+  placing it in metres; return shapes are unchanged. The re-exported
+  `geometry` module carries `ifc-geometry`'s breaking `units` change
+  (`units::resolve` is fallible, `UnitScale::angle_to_radians` is an
+  `Option`, `UnitScale::default()` is `UnitScale::SI`).
+
+Semver: breaking through the re-exported `geometry` module (0.x minor).
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

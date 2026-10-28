@@ -11,7 +11,7 @@ Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.14.2 (2026-10-28) |
+| Latest release | 0.15.0 (2026-10-28) |
 | Registries | [PyPI `openbim-ifc`](https://pypi.org/project/openbim-ifc/) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_py/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-py/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-py) |
@@ -42,10 +42,14 @@ This crate adds calling-convention glue only. IFC behaviour belongs in
 
 ## Changes
 
-Latest release, 0.14.2 (2026-10-28):
+Latest release, 0.15.0 (2026-10-28):
 
-### Changed
+### Changed (#585)
 
-- Copyright holder in NOTICE and licence texts is rheonda.
+- A model without a declared, readable length unit now refuses each
+  product's placement or geometry with `invalid-model` instead of placing it
+  in metres.
+
+Semver: patch (behaviour fix; no signature changes).
 
 Full history: [`crates/openbim-ifc-py/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-py/CHANGELOG.md)

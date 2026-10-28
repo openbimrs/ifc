@@ -11,8 +11,8 @@ Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP file
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.1.19 (2026-10-28) |
-| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.19) |
+| Latest release | 0.1.20 (2026-10-28) |
+| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.20) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_capi/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-capi/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-capi) |
 
@@ -67,10 +67,14 @@ than altering a `v0_1_` one.
 
 ## Changes
 
-Latest release, 0.1.19 (2026-10-28):
+Latest release, 0.1.20 (2026-10-28):
 
-### Changed
+### Changed (#585)
 
-- Copyright holder in NOTICE and licence texts is rheonda.
+- A model without a declared, readable length unit now refuses each
+  product's placement or geometry with `invalid-model` instead of placing it
+  in metres.
+
+Semver: patch (behaviour fix; no signature changes).
 
 Full history: [`crates/openbim-ifc-capi/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-capi/CHANGELOG.md)

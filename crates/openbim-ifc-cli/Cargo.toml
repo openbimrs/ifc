@@ -1,6 +1,6 @@
 [package]
 name = "openbim-ifc-cli"
-version = "0.5.2"
+version = "0.6.0"
 edition = "2021"
 rust-version = "1.99"
 license = "(AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0"

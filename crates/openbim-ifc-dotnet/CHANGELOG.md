@@ -9,6 +9,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-28
+
 ### Changed (#585)
 
 - A model without a declared, readable length unit now refuses each

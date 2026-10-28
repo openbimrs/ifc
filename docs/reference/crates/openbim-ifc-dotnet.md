@@ -11,7 +11,7 @@ The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned 
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.11.2 (2026-10-28) |
+| Latest release | 0.12.0 (2026-10-28) |
 | Registries | [NuGet `OpenBim.Ifc`](https://www.nuget.org/packages/OpenBim.Ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_dotnet/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-dotnet/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-dotnet) |
@@ -44,10 +44,14 @@ The behaviour is tested from C# against the packed `.nupkg` by
 
 ## Changes
 
-Latest release, 0.11.2 (2026-10-28):
+Latest release, 0.12.0 (2026-10-28):
 
-### Changed
+### Changed (#585)
 
-- Copyright holder in NOTICE and licence texts is rheonda.
+- A model without a declared, readable length unit now refuses each
+  product's placement or geometry with `invalid-model` instead of placing it
+  in metres.
+
+Semver: patch (behaviour fix; no signature changes).
 
 Full history: [`crates/openbim-ifc-dotnet/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-dotnet/CHANGELOG.md)
