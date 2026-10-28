@@ -452,3 +452,22 @@ fn a_batch_may_remove_and_rewrite_what_it_created() {
     let held = [point(), axes(h(0)), AuthorOp::Remove { entity: h(0) }];
     assert!(!stage_both(&lab.model, lab.schema, &held, "held"));
 }
+
+/// A record the batch created and removed no longer holds what it
+/// referenced: the purge after it finds the point free.
+#[test]
+fn a_purge_after_removing_a_created_referrer_finds_its_target_free() {
+    let mut lab = Lab::new();
+    let h = authoring_handle;
+    let ops = [
+        create("IfcCartesianPoint", vec![("Coordinates", reals(&[1.0; 3]))]),
+        create("IfcAxis2Placement3D", vec![("Location", Value::Ref(h(0)))]),
+        AuthorOp::Remove { entity: h(1) },
+        AuthorOp::Purge(PurgeOptions::new().classes(["IfcCartesianPoint"])),
+    ];
+    assert!(stage_both(&lab.model, lab.schema, &ops, "purge"));
+    let before = lab.model.len();
+    lab.apply("purge", &ops);
+    // The point, created and purged in one batch, leaves nothing behind.
+    assert_eq!(lab.model.len(), before, "the point was purged");
+}

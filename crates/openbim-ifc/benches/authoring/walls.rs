@@ -257,7 +257,8 @@ pub(crate) fn typed_ops(s: &Scene, walls: usize) -> Vec<AuthorOp> {
 /// whole run for large models (every operation scans the model), so the
 /// model is built by replicating the thirteen entities one authored wall
 /// adds, with fresh GlobalIds, names and positions: the same entities as
-/// authoring them, which [`check_replication`] proves on small sizes.
+/// authoring them, which [`check_replication`] checks by count and type
+/// histogram on small sizes.
 pub(crate) fn model(walls: usize) -> (Model, Scene) {
     let mut model = Model::new();
     let s = scene(&mut model);

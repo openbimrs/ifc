@@ -162,7 +162,10 @@ impl<'m> Overlay<'m> {
             Some(record) => record,
             None => match self.changed.get_mut(&id) {
                 Some(record) => record,
-                None => return,
+                None => {
+                    debug_assert!(false, "append_refs on {id}: no such record");
+                    return;
+                }
             },
         };
         if record.attributes.len() <= slot {
@@ -290,8 +293,28 @@ impl<'m> Overlay<'m> {
         ids.into_iter().collect()
     }
 
+    /// The oracle for `batch_referrers`: a scan of the created and changed
+    /// records must find the same referrers the maintained index holds.
+    #[cfg(debug_assertions)]
+    fn check_batch_referrers(&self) {
+        let mut scanned: HashMap<EntityId, BTreeSet<EntityId>> = HashMap::new();
+        for (id, entity) in self.created.iter().chain(&self.changed) {
+            for attribute in &entity.attributes {
+                attribute.for_each_ref(&mut |target| {
+                    scanned.entry(target).or_default().insert(*id);
+                });
+            }
+        }
+        assert_eq!(
+            scanned, self.batch_referrers,
+            "the maintained batch referrers differ from a scan"
+        );
+    }
+
     /// One transaction holding every staged change.
     pub(super) fn into_transaction(self) -> Transaction {
+        #[cfg(debug_assertions)]
+        self.check_batch_referrers();
         let mut tx = Transaction::new(self.base);
         for (id, entity) in self.created {
             tx.stage(Edit::Create { id, entity });

@@ -76,13 +76,16 @@ Every public signature of the authoring API is unchanged.
 
 **Negative / costs**
 
-- Memory: roughly 40 bytes per entity once built (5 MB at 130,000 entities,
-  50 MB at 1.3 million), freed by `Model::drop_derived_indexes`.
+- Memory: 40 bytes per entity when built in one go (5 MB at 130,000
+  entities, 50 MB at 1.3 million); 110 to 126 bytes per entity (14 MB and
+  163 MB) once a batch has grown them insert by insert, as the tables keep
+  their slack. Freed by `Model::drop_derived_indexes`.
 - The first call pays the build: 57 ms at 130,000 entities, 1.1 s at 1.3
   million.
 - Every write pays a footprint, but only on a model whose indexes are built.
 - The undo of a batch scales a little worse than linearly at 1.3 million
-  entities (0.85 to 1.3 microseconds a step), which is memory traffic, not a
+  entities (0.95 microseconds a step at 130,000 entities, 1.7 at 1.3 million;
+  a step is one entity the batch created), which is memory traffic, not a
   term in the batch size.
 
 **Follow-ups / risks to watch**

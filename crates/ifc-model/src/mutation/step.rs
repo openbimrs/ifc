@@ -134,6 +134,8 @@ impl Step {
                     .expect("a Slot step names a stored entity");
                 let old_len = entity.attributes.len();
                 // The slot itself and any slots the restored length drops.
+                // The `len..old_len` part is defensive: LIFO undo through
+                // `Inverse`/`History` never restores a shorter list.
                 let slots: Vec<usize> = if built {
                     std::iter::once(slot).chain(len..old_len).collect()
                 } else {

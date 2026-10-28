@@ -451,7 +451,7 @@ are large enough that this does not change a verdict.
 - **before**: `52755cbb` (the bench commit, before any change to the model or
   the planner); the bench files of the final tree were copied in for the
   `one_wall` and `typed_walls` rows, which the script reports as dirty
-- **after**: the branch tip at the time, whose code is that of `8aa4a695` (the
+- **after**: the branch tip at the time, whose code is that of `c6a0afe5` (the
   run script recorded its parent as it had been rebased since)
 - plans: 3 processes a side, `batch.walls`, `undo.batch`, `typed_walls`
   1 warm-up + 5 samples, `one_wall` 2 + 15, `index.build` 2 + 10
@@ -482,13 +482,19 @@ the run medians separate).
 
 The `after` runs scale with the work: `one_wall` is flat from 1,000 to
 100,000 walls (100,000 over 1,000: 1.05); `batch.walls` takes 12.4 times as
-long for ten times the walls; `undo.batch` 18.2 times (per step 0.85
-microseconds at 10,000 walls, 1.3 at 100,000, at 600 MB of heap; the extra
-is memory traffic, not a term in the batch size).
+long for ten times the walls; `undo.batch` 18.2 times (per step, one step an
+entity the batch created: 0.38 microseconds at 1,000 walls, 0.95 at 10,000 and
+1.7 at 100,000, at 600 MB of heap; the growth is memory traffic, not a term in
+the batch size).
 
 Heap retained by `batch.walls`: 5.5 MB (1,000 walls), 60.6 MB (10,000),
 583 MB (100,000); before, 4.0 MB and 46.9 MB at 1,000 and 10,000. The
-difference is the indexes the batch's model now keeps.
+difference is the indexes the batch's model now keeps. Measured once more
+on the final tree, the same batch and then `drop_derived_indexes`: 63.5 MB
+before and 49.2 MB after at 10,000 walls, 612 MB and 448 MB at 100,000. The
+indexes a batch grows retain 14 MB (110 bytes an entity) and 163 MB (126
+bytes an entity); built in one go, as in the table below, they take 40 bytes
+an entity. The difference is the slack of tables that grew insert by insert.
 
 The one-off cost of building the indexes, `index.build` (the first
 `reverse_index` and `global_id_candidates` of a model):
