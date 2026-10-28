@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 use crate::entity::Entity;
 use crate::header::Header;
+use crate::index::Footprint;
 use crate::lazy::Slot;
 use crate::model::Model;
 use crate::value::{EntityId, Value};
@@ -68,9 +69,11 @@ impl Step {
             Step::Remove { id } => {
                 let order = model.order_position(id);
                 model.order_mut().remove(order);
+                let built = model.derived_is_built();
                 let entity = model
                     .take_entity(id)
                     .expect("a Remove step names a stored entity");
+                model.note_write(id, built.then(|| Footprint::of(&entity)), None);
                 let key = entity.type_name.to_ascii_uppercase();
                 let bucket = model.bucket_position(&key, id);
                 remove_from_bucket(model, &key, bucket);
@@ -88,6 +91,8 @@ impl Step {
                 bucket,
             } => {
                 let key = entity.type_name.to_ascii_uppercase();
+                let after = model.derived_is_built().then(|| Footprint::of(&entity));
+                model.note_write(id, None, after);
                 model.entities_mut().insert(id, Slot::decoded(entity));
                 model.order_mut().insert(order, id);
                 insert_into_bucket(model, key, bucket, id);
@@ -102,6 +107,10 @@ impl Step {
                     .expect("a Replace step names a stored entity");
                 let current_key = current.type_name.to_ascii_uppercase();
                 let current_bucket = model.bucket_position(&current_key, id);
+                if model.derived_is_built() {
+                    let (before, after) = (Footprint::of(&current), Footprint::of(&entity));
+                    model.note_write(id, Some(before), Some(after));
+                }
                 model.entities_mut().insert(id, Slot::decoded(entity));
                 if current_key != new_key {
                     remove_from_bucket(model, &current_key, current_bucket);
@@ -119,10 +128,18 @@ impl Step {
                 value,
                 len,
             } => {
+                let built = model.derived_is_built();
                 let entity = model
                     .entity_mut(id)
                     .expect("a Slot step names a stored entity");
                 let old_len = entity.attributes.len();
+                // The slot itself and any slots the restored length drops.
+                let slots: Vec<usize> = if built {
+                    std::iter::once(slot).chain(len..old_len).collect()
+                } else {
+                    Vec::new()
+                };
+                let before = built.then(|| Footprint::of_slots(entity, &slots));
                 let old = (slot < old_len)
                     .then(|| std::mem::replace(&mut entity.attributes[slot], Value::Null));
                 if let Some(value) = value {
@@ -132,6 +149,8 @@ impl Step {
                     entity.attributes[slot] = value;
                 }
                 entity.attributes.resize(len, Value::Null);
+                let after = built.then(|| Footprint::of_slots(entity, &slots));
+                model.note_write(id, before, after);
                 Step::Slot {
                     id,
                     slot,

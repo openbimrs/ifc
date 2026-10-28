@@ -15,6 +15,7 @@
 //! | `authoring.batch.walls` | `apply_authoring` of N walls (ten operations, thirteen entities each) in one batch on the scene |
 //! | `authoring.one_wall.into_n` | `Inverse::record` of `apply_authoring` of one wall into a model of N walls |
 //! | `authoring.undo.batch` | `Inverse::apply` of the inverse of the N-wall batch |
+//! | `authoring.index.build` | the first `reverse_index` and `global_id_candidates` of a model of N walls: the one-off cost of the indexes a model keeps, with the heap they retain |
 //!
 //! The model of N walls is replicated from one authored wall (see
 //! `walls.rs`); on the smallest scales it is checked against walls authored
@@ -46,6 +47,7 @@ static GLOBAL: alloc::Counting = alloc::Counting;
 const BATCH: &str = "authoring.batch.walls";
 const ONE_WALL: &str = "authoring.one_wall.into_n";
 const UNDO: &str = "authoring.undo.batch";
+const INDEX: &str = "authoring.index.build";
 
 /// 64-bit FNV-1a, as the codec harness's `checksum` module computes it.
 struct Fnv(u64);
@@ -275,6 +277,49 @@ fn main() {
             out.push(record(UNDO, expected_len, samples, None, scene_sum));
         }
         drop(after_batch);
+
+        if wanted(&options, INDEX) {
+            eprintln!("{workload}: index build");
+            let (model, _) = walls::model(walls);
+            let first_wall = model.ids_of_type("IfcWall")[0];
+            let probe = match model
+                .get(first_wall)
+                .and_then(|wall| wall.attributes.first())
+            {
+                Some(ifc::Value::Text(text)) => ifc::Guid::parse(text),
+                _ => None,
+            }
+            .expect("a wall holds a GlobalId");
+            let build = |mut m: Model| {
+                m.drop_derived_indexes();
+                let referrers = m.reverse_index().len();
+                let holders = m.global_id_candidates(&probe).len();
+                (m, referrers, holders)
+            };
+            let samples = stats::time(
+                out.plan,
+                || model.clone(),
+                build,
+                |(_, referrers, holders)| {
+                    assert!(*referrers > 0);
+                    assert_eq!(*holders, 1, "the probe wall holds its GlobalId");
+                },
+            );
+            let (memory, built) = alloc::measure(model.clone(), |mut m| {
+                m.drop_derived_indexes();
+                m.reverse_index();
+                m.global_id_candidates(&probe);
+                m
+            });
+            drop(built);
+            out.push(record(
+                INDEX,
+                expected_len,
+                samples,
+                Some(memory),
+                checksum(&model),
+            ));
+        }
 
         if wanted(&options, ONE_WALL) {
             eprintln!("{workload}: one wall");

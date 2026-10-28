@@ -7,9 +7,12 @@
 //! and writes it straight back never asks who references what, and paying for
 //! the index on every load would tax the common path to serve the rarer one.
 //!
-//! So it is built on demand, from a `&Model`, and handed back as a value the
-//! caller owns and can drop. A caller doing one lookup pays for one scan; a
-//! caller doing thousands builds it once.
+//! So it is built on first request, from a `&Model`. [`ReverseIndex::build`]
+//! hands back a value the caller owns and can drop: a caller doing one lookup
+//! pays for one scan; a caller doing thousands builds it once.
+//! [`Model::reverse_index`] builds one the model keeps, and from then on every
+//! write updates it (`maintained.rs`), so editing a large model does not
+//! rescan it for each edit (#587).
 //!
 //! # Slots are recorded, not just referrers
 //!
@@ -38,10 +41,11 @@ pub struct Referrer {
 
 /// Reverse-reference index over a model snapshot.
 ///
-/// Derived state: it reflects the model as it was when built. Mutating the
-/// model afterwards does not update it, and the borrow checker enforces that
-/// for the common `&Model` case.
-#[derive(Debug, Clone, Default)]
+/// A value from [`ReverseIndex::build`] reflects the model as it was when
+/// built: mutating the model afterwards does not update it, and the borrow
+/// checker enforces that for the common `&Model` case. The one behind
+/// [`Model::reverse_index`] is kept current by the model's writes.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ReverseIndex {
     /// Target to the entities referencing it, sorted and deduplicated so
     /// results are deterministic across runs.
@@ -74,6 +78,29 @@ impl ReverseIndex {
             referrers.dedup();
         }
         Self { incoming }
+    }
+
+    /// Records `referrer` of `target`, keeping the ascending order and the
+    /// one-pair-per-slot rule of [`ReverseIndex::build`].
+    pub(crate) fn link(&mut self, target: EntityId, referrer: Referrer) {
+        let referrers = self.incoming.entry(target).or_default();
+        if let Err(at) = referrers.binary_search(&referrer) {
+            referrers.insert(at, referrer);
+        }
+    }
+
+    /// Forgets `referrer` of `target`, and `target` once nothing refers to
+    /// it.
+    pub(crate) fn unlink(&mut self, target: EntityId, referrer: Referrer) {
+        let Some(referrers) = self.incoming.get_mut(&target) else {
+            return;
+        };
+        if let Ok(at) = referrers.binary_search(&referrer) {
+            referrers.remove(at);
+        }
+        if referrers.is_empty() {
+            self.incoming.remove(&target);
+        }
     }
 
     /// Every reference pointing at `target`, in ascending `(from, slot)` order.

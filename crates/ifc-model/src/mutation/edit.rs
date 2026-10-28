@@ -18,6 +18,7 @@
 //! `ifc-validate`'s job on audit. This is the primitive both build on.
 
 use crate::entity::Entity;
+use crate::index::Footprint;
 use crate::model::Model;
 use crate::mutation::Step;
 use crate::value::{EntityId, Value};
@@ -52,12 +53,16 @@ impl Model {
     /// ```
     pub fn set_attribute(&mut self, id: EntityId, index: usize, value: Value) -> Option<Value> {
         let recording = self.is_recording();
+        let built = self.derived_is_built();
         let entity = self.entity_mut(id)?;
+        let before = built.then(|| Footprint::of_slots(entity, &[index]));
         let len = entity.attributes.len();
         if index >= len {
             entity.attributes.resize(index + 1, Value::Null);
         }
         let previous = std::mem::replace(&mut entity.attributes[index], value);
+        let after = built.then(|| Footprint::of_slots(entity, &[index]));
+        self.note_write(id, before, after);
         if recording {
             let value = (index < len).then(|| previous.clone());
             self.record(Step::Slot {
@@ -89,7 +94,15 @@ impl Model {
         edits: impl IntoIterator<Item = (usize, Value)>,
     ) -> Option<Vec<Value>> {
         let recording = self.is_recording();
+        let built = self.derived_is_built();
+        let edits: Vec<(usize, Value)> = edits.into_iter().collect();
+        let slots: Vec<usize> = if built {
+            edits.iter().map(|(index, _)| *index).collect()
+        } else {
+            Vec::new()
+        };
         let entity = self.entity_mut(id)?;
+        let before = built.then(|| Footprint::of_slots(entity, &slots));
         let mut previous = Vec::new();
         let mut steps = Vec::new();
         for (index, value) in edits {
@@ -112,6 +125,8 @@ impl Model {
             // Nothing written: no change to count or to undo.
             return Some(previous);
         }
+        let after = built.then(|| Footprint::of_slots(entity, &slots));
+        self.note_write(id, before, after);
         for step in steps {
             self.record(step);
         }
@@ -178,7 +193,9 @@ impl Model {
     /// same way a codec would detect them in a hand-edited file.
     pub fn remove(&mut self, id: EntityId) -> Option<Entity> {
         let recording = self.is_recording();
+        let built = self.derived_is_built();
         let entity = self.take_entity(id)?;
+        self.note_write(id, built.then(|| Footprint::of(&entity)), None);
         let key = entity.type_name.to_ascii_uppercase();
         let position = self.order_mut().iter().position(|existing| *existing == id);
         if recording {

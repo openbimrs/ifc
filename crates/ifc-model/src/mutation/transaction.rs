@@ -339,9 +339,18 @@ impl Transaction {
         //
         // Built once for the whole batch rather than per removal: the index is
         // a single scan, and a batch deleting a hundred entities would
-        // otherwise rescan the model a hundred times.
+        // otherwise rescan the model a hundred times. A model that already
+        // keeps its index is not scanned at all.
         if self.edits.iter().any(|e| matches!(e, Edit::Remove { .. })) {
-            let index = ReverseIndex::build(model);
+            // The model's own index when something built it: no scan.
+            let temporary;
+            let index = match model.maintained_reverse_index() {
+                Some(index) => index,
+                None => {
+                    temporary = ReverseIndex::build(model);
+                    &temporary
+                }
+            };
             // Staging the same removal twice is one problem, not two: report
             // it against the first occurrence only.
             let mut reported: AHashSet<EntityId> = AHashSet::new();

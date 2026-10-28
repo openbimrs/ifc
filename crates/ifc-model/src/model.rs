@@ -26,6 +26,7 @@ use std::sync::Arc;
 use crate::diagnostic::Diagnostic;
 use crate::entity::Entity;
 use crate::header::Header;
+use crate::index::{Derived, Footprint};
 use crate::lazy::{EntitySource, Slot};
 use crate::mutation::{Recording, Step};
 use crate::value::EntityId;
@@ -68,6 +69,9 @@ pub struct Model {
     /// Open recordings, innermost last; empty unless a caller is capturing
     /// an [`Inverse`](crate::Inverse). See `mutation::record`.
     recording: Recording,
+    /// The reverse and GlobalId indexes, once something asked for them; every
+    /// write keeps them current. See `index::maintained`.
+    derived: Derived,
 }
 
 /// The last revision handed out, process-wide.
@@ -138,7 +142,8 @@ impl Model {
         #[cfg(feature = "authored-dump")]
         crate::authored_dump::record(&entity.type_name, "insert");
         let type_name = std::sync::Arc::clone(&entity.type_name);
-        self.place(id, &type_name, Slot::decoded(entity));
+        let after = self.derived.is_built().then(|| Footprint::of(&entity));
+        self.place(id, &type_name, Slot::decoded(entity), after);
     }
 
     /// Register the entity stored at `span` of this model's source under
@@ -159,7 +164,9 @@ impl Model {
         );
         #[cfg(feature = "authored-dump")]
         crate::authored_dump::record(type_name, "insert");
-        self.place(id, type_name, Slot::lazy(span));
+        // The span is not decoded here, so its footprint is unknown.
+        self.derived.clear();
+        self.place(id, type_name, Slot::lazy(span), None);
     }
 
     /// Reserve room for `additional` more entities; a codec that knows the
@@ -170,7 +177,7 @@ impl Model {
     }
 
     /// The shared tail of [`Model::insert`] and [`Model::insert_lazy`].
-    fn place(&mut self, id: EntityId, type_name: &str, slot: Slot) {
+    fn place(&mut self, id: EntityId, type_name: &str, slot: Slot, after: Option<Footprint>) {
         // Type names are ASCII upper case in practice, so the key is
         // usually `type_name` itself and nothing is allocated per entity.
         let upper;
@@ -187,6 +194,7 @@ impl Model {
                 if recording {
                     self.record(Step::Remove { id });
                 }
+                self.note_write(id, None, after);
             }
             // Replacing an occupant: drop its old type-index entry, otherwise
             // `ids_of_type` reports the id twice for the same type, or keeps
@@ -195,6 +203,8 @@ impl Model {
             Some(previous) => {
                 let previous = previous.into_entity(self.source.as_deref());
                 let previous_key = previous.type_name.to_ascii_uppercase();
+                let before = self.derived.is_built().then(|| Footprint::of(&previous));
+                self.note_write(id, before, after);
                 if recording {
                     let bucket = self.bucket_position(&previous_key, id);
                     self.record(Step::Replace {
@@ -427,6 +437,14 @@ impl Model {
 
     pub(crate) fn order_mut(&mut self) -> &mut Vec<EntityId> {
         &mut self.order
+    }
+
+    pub(crate) fn derived(&self) -> &Derived {
+        &self.derived
+    }
+
+    pub(crate) fn derived_mut(&mut self) -> &mut Derived {
+        &mut self.derived
     }
 
     // --- crate-internal seams for `mutation::{record, step, inverse}` ----

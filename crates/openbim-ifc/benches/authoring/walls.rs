@@ -59,10 +59,7 @@ pub(crate) fn scene(model: &mut Model) -> Scene {
             vec![("Units", Value::List(vec![Value::Ref(h(0))]))],
         ),
         create("IfcCartesianPoint", vec![("Coordinates", reals(&[0.0; 3]))]),
-        create(
-            "IfcAxis2Placement3D",
-            vec![("Location", Value::Ref(h(2)))],
-        ),
+        create("IfcAxis2Placement3D", vec![("Location", Value::Ref(h(2)))]),
         create(
             "IfcGeometricRepresentationContext",
             vec![
