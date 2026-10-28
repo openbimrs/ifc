@@ -10,6 +10,9 @@ readme = "README.md"
 description = "Facade for the openBIM IFC crates: pick codecs and domains as features."
 keywords = ["bim", "ifc", "openbim", "aec"]
 categories = ["parser-implementations", "data-structures"]
+# The authoring bench compiles in the `ifc-step` baseline harness by path,
+# which a published archive cannot reach; it is a workspace tool only.
+exclude = ["benches/"]
 
 # The lib target keeps the short name `ifc`: a facade should read as
 # `use ifc::...` at the call site even though the published crate is
@@ -293,6 +296,11 @@ flate2 = { version = "1.1", default-features = false, features = ["rust_backend"
 # package uses, so the crate is pinned to the same version.
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 wasm-bindgen = "=0.2.128"
+
+[[bench]]
+name = "authoring"
+harness = false
+required-features = ["authoring", "ifc4x3"]
 
 [[example]]
 name = "wasm_fresh_seed"

@@ -23,6 +23,8 @@
 #   PACKAGE=ifc-step, BENCH=baseline: the bench target to run; the property
 #   benchmarks (#352) are PACKAGE=ifc-properties BENCH=properties with
 #   SCALES="props-1k props-10k props-100k"
+#   FEATURES: cargo features for the bench build, e.g. authoring,ifc4x3
+#   (the authoring benchmarks, #587: SCALES="author-1k author-10k")
 #   BENCH_ARGS: further arguments for every run, e.g. "--bench-only NAME,..."
 #
 # Output: out-dir/run<R>-<scale>.{json,md}, out-dir/environment.txt and
@@ -45,7 +47,7 @@ max_waits="${MAX_WAITS:-120}"
 attempts="${ATTEMPTS:-3}"
 mkdir -p "$out" "$out/discarded" "$data"
 
-bin="$(cd "$root" && cargo bench -p "$package" --bench "$bench_name" --no-run --message-format=json |
+bin="$(cd "$root" && cargo bench -p "$package" ${FEATURES:+--features "$FEATURES"} --bench "$bench_name" --no-run --message-format=json |
     BENCH_NAME="$bench_name" python3 -c '
 import json, os, sys
 for line in sys.stdin:

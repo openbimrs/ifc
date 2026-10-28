@@ -12,6 +12,9 @@ Two sets of measurements, each with the machine and method it was taken on:
   every object's property sets from the binding core, one call per object
   against one batch call (#358). Measured comparison:
   [`baseline.md`](baseline.md#property-sets-through-the-bindings-358).
+- [Authoring](#authoring): a checked authoring batch and a single edit against
+  model size, and the undo of a batch (#587). Measured comparison:
+  [`baseline.md`](baseline.md#authoring-587).
 - [Cross-backend geometry comparison](#cross-backend-geometry-comparison):
   one fixture corpus compiled through the reference geometry backend and a
   caller-supplied one, agreement checked (#31). Sample output:
@@ -258,6 +261,38 @@ cargo test -p openbim-ifc-binding-core --bench property_sets   # the smoke run, 
 PACKAGE=openbim-ifc-binding-core BENCH=property_sets SCALES="props-1k props-10k" \
     BENCH_ARGS="--bench-only bindings.property_sets_many.every_object" \
     benchmarks/run-baseline.sh out-dir
+```
+
+## Authoring
+
+`crates/openbim-ifc/benches/authoring/`, run by `cargo bench -p openbim-ifc
+--features authoring,ifc4x3 --bench authoring` (#587): what a checked
+authoring batch costs as the model grows. It compiles in the harness
+modules of the codec bench by path; its method, output and JSON are theirs.
+
+| Benchmark | Measures |
+| --- | --- |
+| `authoring.batch.walls` | `apply_authoring` of N walls in one batch on the scene; heap growth reported |
+| `authoring.one_wall.into_n` | `Inverse::record` of `apply_authoring` of one wall into a model of N walls: what an editor pays per edit |
+| `authoring.undo.batch` | `Inverse::apply` of the inverse of the N-wall batch |
+
+A wall is ten operations creating thirteen entities (placement, profile,
+extruded solid, shape representation, the wall with its container,
+product definition shape, a property, its set and the two relationships).
+Scales: `author-smoke` (50 walls, the gate), `author-1k`, `author-10k`,
+`author-100k`. The model of N walls for `one_wall` is replicated from one
+authored wall, because authoring 100,000 walls through a quadratic
+implementation takes hours; up to 1,000 walls the replica is checked
+against walls authored through `apply_authoring` (entity count and type
+histogram). Before any timing the entity count (scene + 13 per wall) and a
+checksum of every type name and attribute are asserted; every sample of
+`one_wall` is undone, so the model stays the same.
+
+```sh
+cargo test -p openbim-ifc --features authoring,ifc4x3 --bench authoring   # the smoke run, in the gate
+PACKAGE=openbim-ifc BENCH=authoring FEATURES=authoring,ifc4x3 \
+    SCALES="author-1k author-10k author-100k" \
+    BENCH_ARGS="--bench-only authoring.one_wall.into_n" benchmarks/run-baseline.sh out-dir
 ```
 
 ## Cross-backend geometry comparison
