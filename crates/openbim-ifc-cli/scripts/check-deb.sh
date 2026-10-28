@@ -78,6 +78,9 @@ done
 dpkg-deb --contents "$deb" | tee "$work/contents"
 awk '$1 !~ /^d/ { print $1, $2, $NF }' "$work/contents" | sort > "$work/files"
 sort > "$work/expected" <<'EOF'
+-rw-r--r-- root/root ./usr/share/doc/openbim-ifc/LICENSES/CC-BY-ND-4.0.txt
+-rw-r--r-- root/root ./usr/share/doc/openbim-ifc/LICENSES/LicenseRef-Commercial.txt
+-rw-r--r-- root/root ./usr/share/doc/openbim-ifc/NOTICE
 -rw-r--r-- root/root ./usr/share/doc/openbim-ifc/README.md
 -rw-r--r-- root/root ./usr/share/doc/openbim-ifc/copyright
 -rwxr-xr-x root/root ./usr/bin/openbim-ifc
