@@ -17,7 +17,7 @@
 
     <PackageId>OpenBim.Ifc</PackageId>
     <Version>0.11.1</Version>
-    <Authors>point-grey</Authors>
+    <Authors>rheonda</Authors>
     <Description>Read, edit, validate and write IFC (STEP and ifcXML) files from .NET: the openbim-ifc Rust core over its versioned C ABI, with property sets, the spatial tree, materials, classification, systems, cost and georeferencing.</Description>
     <PackageTags>ifc;bim;openbim;step;ifcxml;buildingsmart</PackageTags>
     <!-- NuGet rejects LicenseRef- in a license expression, so the dual licence

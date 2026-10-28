@@ -7,7 +7,7 @@ version = "0.2.0"
 edition = "2021"
 rust-version = "1.99"
 license = "AGPL-3.0-or-later OR LicenseRef-Commercial"
-authors = ["point-grey"]
+authors = ["rheonda"]
 repository = "https://github.com/openbimrs/ifc"
 
 # Every public item carries a doc comment. Crates that already satisfy this
