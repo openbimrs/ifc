@@ -12,6 +12,21 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#587)
+
+- Staging a checked authoring batch costs the batch, not the model: the
+  planner reads the model's own reverse and GlobalId indexes (`ifc-model`),
+  indexes its own records, and appends the objects of a type assignment to
+  the relationship in place. The `authoring` bench measures it.
+
+### Fixed (#587)
+
+- A base `GlobalId` held by several `IfcRoot`s is refused while any of them
+  remains in the model, naming the lowest id; before, one holder chosen by
+  hash order was all the check saw.
+
+Semver: patch.
+
 ## [0.39.0] - 2026-10-28
 
 ### Changed (#585)
