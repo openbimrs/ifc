@@ -7,7 +7,7 @@ version = "0.2.0"
 edition = "2021"
 rust-version = "1.99"
 license = "AGPL-3.0-or-later OR LicenseRef-Commercial"
-authors = ["point-grey"]
+authors = ["rheonda"]
 repository = "https://github.com/openbimrs/ifc"
 
 # Every public item carries a doc comment. Crates that already satisfy this
@@ -54,7 +54,7 @@ ifc-alignment = { path = "crates/ifc-alignment", version = "0.10.0" }
 ifc-validate = { path = "crates/ifc-validate", version = "0.8.0", default-features = false }
 ifc-author = { path = "crates/ifc-author", version = "0.4.0" }
 ifc-spatial = { path = "crates/ifc-spatial", version = "0.6.0", default-features = false }
-openbim-step = "=0.11.0"
+openbim-step = "=0.11.2"
 
 # Format-neutral geometry contracts. IFC bridges select representations, never
 # concrete CPU/GPU execution providers.

@@ -10,61 +10,61 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.38.1 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
+| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.38.2 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
 
 ## Model, codecs, schema, authoring and validation
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`ifc-author`](./crates/ifc-author) | <span class="status-implemented">Implemented</span> | 0.4.1 | Schema-checked IFC authoring: construct entities by attribute name with arity and type validation. |
-| [`ifc-model`](./crates/ifc-model) | <span class="status-implemented">Implemented</span> | 0.4.1 | The IFC entity graph: storage and structural queries, free of domain semantics and serialization. |
-| [`ifc-schema`](./crates/ifc-schema) | <span class="status-implemented">Implemented</span> | 0.3.4 | IFC schema as data: entity table, supertype chain, attribute names. |
-| [`ifc-step`](./crates/ifc-step) | <span class="status-implemented">Implemented</span> | 0.6.1 | STEP physical file (ISO 10303-21) codec for the IFC model. |
-| [`ifc-validate`](./crates/ifc-validate) | <span class="status-implemented">Implemented</span> | 0.8.1 | Schema conformance: WHERE rules, cardinality, GUID and reference integrity. |
-| [`ifc-xml`](./crates/ifc-xml) | <span class="status-implemented">Implemented</span> | 0.5.1 | ifcXML (ISO 10303-28) codec for the IFC model. |
+| [`ifc-author`](./crates/ifc-author) | <span class="status-implemented">Implemented</span> | 0.4.2 | Schema-checked IFC authoring: construct entities by attribute name with arity and type validation. |
+| [`ifc-model`](./crates/ifc-model) | <span class="status-implemented">Implemented</span> | 0.4.2 | The IFC entity graph: storage and structural queries, free of domain semantics and serialization. |
+| [`ifc-schema`](./crates/ifc-schema) | <span class="status-implemented">Implemented</span> | 0.3.5 | IFC schema as data: entity table, supertype chain, attribute names. |
+| [`ifc-step`](./crates/ifc-step) | <span class="status-implemented">Implemented</span> | 0.6.2 | STEP physical file (ISO 10303-21) codec for the IFC model. |
+| [`ifc-validate`](./crates/ifc-validate) | <span class="status-implemented">Implemented</span> | 0.8.2 | Schema conformance: WHERE rules, cardinality, GUID and reference integrity. |
+| [`ifc-xml`](./crates/ifc-xml) | <span class="status-implemented">Implemented</span> | 0.5.2 | ifcXML (ISO 10303-28) codec for the IFC model. |
 
 ## Domain views
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`ifc-approval`](./crates/ifc-approval) | <span class="status-implemented">Implemented</span> | 0.4.1 | Bounded IFC4 approval resource semantics. |
-| [`ifc-classification`](./crates/ifc-classification) | <span class="status-implemented">Implemented</span> | 0.5.1 | Classification systems, document references, libraries, external references. |
-| [`ifc-constraint`](./crates/ifc-constraint) | <span class="status-implemented">Implemented</span> | 0.4.1 | Bounded IFC4 metric, objective, and constraint relationships. |
-| [`ifc-control`](./crates/ifc-control) | <span class="status-implemented">Implemented</span> | 0.4.1 | Bounded IFC control semantics: permits, project orders, action requests, and performance history. |
-| [`ifc-cost`](./crates/ifc-cost) | <span class="status-implemented">Implemented</span> | 0.5.1 | Cost semantics as a borrowed view over the IFC model. |
-| [`ifc-element-type`](./crates/ifc-element-type) | <span class="status-implemented">Implemented</span> | 0.4.1 | Element, resource, and process type definitions: the IfcTypeObject catalogue. |
-| [`ifc-material`](./crates/ifc-material) | <span class="status-implemented">Implemented</span> | 0.6.1 | Material definitions: layer sets, profile sets, constituents, usage. |
-| [`ifc-occurrence`](./crates/ifc-occurrence) | <span class="status-implemented">Implemented</span> | 0.4.1 | Built element and distribution occurrence classes and their type pairing. |
-| [`ifc-properties`](./crates/ifc-properties) | <span class="status-implemented">Implemented</span> | 0.10.1 | Property sets, quantities, and unit resolution. No geometry. |
-| [`ifc-resource`](./crates/ifc-resource) | <span class="status-implemented">Implemented</span> | 0.5.1 | Construction resources: labour, equipment, material, crew, subcontract. |
-| [`ifc-schedule`](./crates/ifc-schedule) | <span class="status-implemented">Implemented</span> | 0.5.1 | IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage. |
-| [`ifc-spatial`](./crates/ifc-spatial) | <span class="status-implemented">Implemented</span> | 0.6.1 | IFC spatial containment and objectified relationship traversal: project, site, building, storey, element. |
-| [`ifc-structural`](./crates/ifc-structural) | <span class="status-implemented">Implemented</span> | 0.5.1 | Structural analysis model: members, connections, actions, reactions, loads. |
-| [`ifc-style`](./crates/ifc-style) | <span class="status-implemented">Implemented</span> | 0.6.1 | Presentation: styles, colours, textures, layers, annotation. |
-| [`ifc-systems`](./crates/ifc-systems) | <span class="status-implemented">Implemented</span> | 0.6.1 | Distribution systems, ports, and connectivity between elements. |
-| [`ifc-tabular`](./crates/ifc-tabular) | <span class="status-implemented">Implemented</span> | 0.4.1 | Structured IFC value containers indexed by position or time. |
-| [`ifc-template-catalog`](./crates/ifc-template-catalog) | <span class="status-implemented">Implemented</span> | 0.4.2 | Versioned IFC PSD/QTO catalog definitions and correction overlays |
+| [`ifc-approval`](./crates/ifc-approval) | <span class="status-implemented">Implemented</span> | 0.4.2 | Bounded IFC4 approval resource semantics. |
+| [`ifc-classification`](./crates/ifc-classification) | <span class="status-implemented">Implemented</span> | 0.5.2 | Classification systems, document references, libraries, external references. |
+| [`ifc-constraint`](./crates/ifc-constraint) | <span class="status-implemented">Implemented</span> | 0.4.2 | Bounded IFC4 metric, objective, and constraint relationships. |
+| [`ifc-control`](./crates/ifc-control) | <span class="status-implemented">Implemented</span> | 0.4.2 | Bounded IFC control semantics: permits, project orders, action requests, and performance history. |
+| [`ifc-cost`](./crates/ifc-cost) | <span class="status-implemented">Implemented</span> | 0.5.2 | Cost semantics as a borrowed view over the IFC model. |
+| [`ifc-element-type`](./crates/ifc-element-type) | <span class="status-implemented">Implemented</span> | 0.4.2 | Element, resource, and process type definitions: the IfcTypeObject catalogue. |
+| [`ifc-material`](./crates/ifc-material) | <span class="status-implemented">Implemented</span> | 0.6.2 | Material definitions: layer sets, profile sets, constituents, usage. |
+| [`ifc-occurrence`](./crates/ifc-occurrence) | <span class="status-implemented">Implemented</span> | 0.4.2 | Built element and distribution occurrence classes and their type pairing. |
+| [`ifc-properties`](./crates/ifc-properties) | <span class="status-implemented">Implemented</span> | 0.10.2 | Property sets, quantities, and unit resolution. No geometry. |
+| [`ifc-resource`](./crates/ifc-resource) | <span class="status-implemented">Implemented</span> | 0.5.2 | Construction resources: labour, equipment, material, crew, subcontract. |
+| [`ifc-schedule`](./crates/ifc-schedule) | <span class="status-implemented">Implemented</span> | 0.5.2 | IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage. |
+| [`ifc-spatial`](./crates/ifc-spatial) | <span class="status-implemented">Implemented</span> | 0.6.2 | IFC spatial containment and objectified relationship traversal: project, site, building, storey, element. |
+| [`ifc-structural`](./crates/ifc-structural) | <span class="status-implemented">Implemented</span> | 0.5.2 | Structural analysis model: members, connections, actions, reactions, loads. |
+| [`ifc-style`](./crates/ifc-style) | <span class="status-implemented">Implemented</span> | 0.6.2 | Presentation: styles, colours, textures, layers, annotation. |
+| [`ifc-systems`](./crates/ifc-systems) | <span class="status-implemented">Implemented</span> | 0.6.2 | Distribution systems, ports, and connectivity between elements. |
+| [`ifc-tabular`](./crates/ifc-tabular) | <span class="status-implemented">Implemented</span> | 0.4.2 | Structured IFC value containers indexed by position or time. |
+| [`ifc-template-catalog`](./crates/ifc-template-catalog) | <span class="status-implemented">Implemented</span> | 0.4.3 | Versioned IFC PSD/QTO catalog definitions and correction overlays |
 
 ## Geometry, georeferencing and alignment
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`ifc-alignment`](./crates/ifc-alignment) | <span class="status-implemented">Implemented</span> | 0.10.1 | IFC4x3 linear positioning: alignments, referents, linear placement, spirals. |
-| [`ifc-geometry`](./crates/ifc-geometry) | <span class="status-partial">Partial</span> | 0.31.1 | IFC semantic views lowered into the format-neutral geometry DAG. |
-| [`ifc-georef`](./crates/ifc-georef) | <span class="status-implemented">Implemented</span> | 0.8.1 | Georeferencing: map conversion, coordinate reference systems, site placement. |
+| [`ifc-alignment`](./crates/ifc-alignment) | <span class="status-implemented">Implemented</span> | 0.10.2 | IFC4x3 linear positioning: alignments, referents, linear placement, spirals. |
+| [`ifc-geometry`](./crates/ifc-geometry) | <span class="status-partial">Partial</span> | 0.31.2 | IFC semantic views lowered into the format-neutral geometry DAG. |
+| [`ifc-georef`](./crates/ifc-georef) | <span class="status-implemented">Implemented</span> | 0.8.2 | Georeferencing: map conversion, coordinate reference systems, site placement. |
 
 ## Language bindings
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
 | [`openbim-ifc-binding-core`](./crates/openbim-ifc-binding-core) | <span class="status-implemented">Implemented</span> | not released | Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python). |
-| [`openbim-ifc-capi`](./crates/openbim-ifc-capi) | <span class="status-implemented">Implemented</span> | 0.1.18 | Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++. |
-| [`openbim-ifc-dotnet`](./crates/openbim-ifc-dotnet) | <span class="status-implemented">Implemented</span> | 0.11.1 | The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned C ABI. |
-| [`openbim-ifc-py`](./crates/openbim-ifc-py) | <span class="status-implemented">Implemented</span> | 0.14.1 | Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python. |
-| [`openbim-ifc-wasm`](./crates/openbim-ifc-wasm) | <span class="status-implemented">Implemented</span> | 0.14.1 | WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript. |
+| [`openbim-ifc-capi`](./crates/openbim-ifc-capi) | <span class="status-implemented">Implemented</span> | 0.1.19 | Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP files from C and C++. |
+| [`openbim-ifc-dotnet`](./crates/openbim-ifc-dotnet) | <span class="status-implemented">Implemented</span> | 0.11.2 | The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned C ABI. |
+| [`openbim-ifc-py`](./crates/openbim-ifc-py) | <span class="status-implemented">Implemented</span> | 0.14.2 | Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python. |
+| [`openbim-ifc-wasm`](./crates/openbim-ifc-wasm) | <span class="status-implemented">Implemented</span> | 0.14.2 | WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript. |
 
 ## Command-line tool
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`openbim-ifc-cli`](./crates/openbim-ifc-cli) | <span class="status-partial">Partial</span> | 0.5.1 | The openbim-ifc command: validate, convert, inspect, query and edit IFC files (STEP, ifcXML and ifcZIP), and exchange their values as CSV, TSV or XLSX tables, from a shell or CI. |
+| [`openbim-ifc-cli`](./crates/openbim-ifc-cli) | <span class="status-partial">Partial</span> | 0.5.2 | The openbim-ifc command: validate, convert, inspect, query and edit IFC files (STEP, ifcXML and ifcZIP), and exchange their values as CSV, TSV or XLSX tables, from a shell or CI. |

@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-10-28
+
+### Changed
+
+- Copyright holder in NOTICE and licence texts is rheonda.
+
 ## [0.8.1] - 2026-10-28
 
 ### Changed
@@ -366,7 +372,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-validate-v0.8.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-validate-v0.8.2...HEAD
+[0.8.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-validate-v0.8.2
 [0.8.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-validate-v0.8.1
 [0.8.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-validate-v0.8.0
 [0.7.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-validate-v0.7.0

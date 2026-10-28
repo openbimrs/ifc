@@ -137,7 +137,7 @@ def deb_copyright() -> str:
         "Source: https://github.com/openbimrs/ifc\n"
         "\n"
         "Files: *\n"
-        "Copyright: point-grey and the openbimrs/ifc contributors\n"
+        "Copyright: rheonda and the openbimrs/ifc contributors\n"
         "License: AGPL-3.0-or-later or LicenseRef-Commercial\n"
         " You may choose either licence. The AGPL-3.0-or-later text follows;\n"
         " the commercial option is the License: LicenseRef-Commercial paragraph.\n"

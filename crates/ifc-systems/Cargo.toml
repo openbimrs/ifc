@@ -1,10 +1,10 @@
 [package]
 name = "ifc-systems"
-version = "0.6.1"
+version = "0.6.2"
 edition = "2021"
 rust-version = "1.99"
 license = "AGPL-3.0-or-later OR LicenseRef-Commercial"
-authors = ["point-grey"]
+authors = ["rheonda"]
 repository = "https://github.com/openbimrs/ifc"
 description = "Distribution systems, ports, and connectivity between elements."
 readme = "README.md"
