@@ -97,7 +97,7 @@ fn tilted_frame() -> Transform {
 #[test]
 fn the_body_frame_composes_the_context_above_the_placement() {
     let model = model();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let frame =
         product_representation_frame(&model, &scale, EntityId(124), RepresentationPurpose::Body)
             .expect("resolves")
@@ -115,7 +115,7 @@ fn the_body_frame_composes_the_context_above_the_placement() {
 #[test]
 fn a_product_without_that_representation_has_no_frame() {
     let model = model();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let frame =
         product_representation_frame(&model, &scale, EntityId(125), RepresentationPurpose::Body)
             .expect("resolves");
@@ -136,7 +136,7 @@ mod lowering {
         model: &Model,
         lower: impl FnOnce(&mut LoweringSession<'_>) -> GeometryResult<axiolid_model::NodeId>,
     ) -> LoweredGeometry {
-        let scale = units::resolve(model);
+        let scale = units::resolve(model).expect("project units");
         let mut session = LoweringSession::new(model, &scale);
         let root = lower(&mut session).expect("lowers");
         session.finish(root).expect("finishes")
@@ -190,7 +190,7 @@ mod lowering {
     #[test]
     fn the_public_frame_reproduces_body_lowering() {
         let model = model();
-        let scale = units::resolve(&model);
+        let scale = units::resolve(&model).expect("project units");
         let frame = product_representation_frame(
             &model,
             &scale,

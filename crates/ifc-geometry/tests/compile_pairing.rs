@@ -12,6 +12,9 @@
 //! a silently empty mesh is the failure this catches.
 #![cfg(feature = "compile-reference-backend")]
 
+#[path = "support/assume_units.rs"]
+mod assume_units;
+
 use axiolid_core::Tolerance;
 use ifc_geometry::compile::compile_product_mesh;
 use ifc_geometry::lower::geometric_products;
@@ -24,9 +27,12 @@ fn fixture(subdir: &str, name: &str) -> Model {
         .join("../../test/fixtures")
         .join(subdir)
         .join(name);
-    StepCodec
+    let mut model = StepCodec
         .read_path(&path)
-        .unwrap_or_else(|e| panic!("fixture {} must parse: {e:?}", path.display()))
+        .unwrap_or_else(|e| panic!("fixture {} must parse: {e:?}", path.display()));
+    // Some committed fixtures declare no units; this test is about pairing.
+    assume_units::declare_if_missing(&mut model);
+    model
 }
 
 /// Fixtures chosen to span the compiler's hard paths, not the easy ones.

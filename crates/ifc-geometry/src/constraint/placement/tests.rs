@@ -59,7 +59,7 @@ fn nested_placement_composes_outermost_last() {
     local_placement(&mut model, 40, Some(30), 20);
     product(&mut model, 50, Some(40));
 
-    let world = product_world_transform(&model, &UnitScale::default(), EntityId(50)).unwrap();
+    let world = product_world_transform(&model, &UnitScale::SI, EntityId(50)).unwrap();
 
     assert_eq!(world.origin, [0.0, 0.0, 5.0]);
 }
@@ -79,7 +79,7 @@ fn unit_scale_applies_once_not_per_link() {
 
     let millimetres = UnitScale {
         length_to_metres: 0.001,
-        ..UnitScale::default()
+        ..UnitScale::SI
     };
     let world = product_world_transform(&model, &millimetres, EntityId(50)).unwrap();
 
@@ -92,7 +92,7 @@ fn missing_object_placement_is_identity() {
     let mut model = Model::new();
     product(&mut model, 50, None);
 
-    let world = product_world_transform(&model, &UnitScale::default(), EntityId(50)).unwrap();
+    let world = product_world_transform(&model, &UnitScale::SI, EntityId(50)).unwrap();
 
     assert!(world.is_identity(1e-12));
 }
@@ -106,7 +106,7 @@ fn cyclic_chain_is_reported() {
     local_placement(&mut model, 40, Some(30), 10);
     product(&mut model, 50, Some(40));
 
-    let err = product_world_transform(&model, &UnitScale::default(), EntityId(50)).unwrap_err();
+    let err = product_world_transform(&model, &UnitScale::SI, EntityId(50)).unwrap_err();
 
     assert!(
         matches!(err, GeometryError::CyclicChain { .. }),
@@ -120,7 +120,7 @@ fn cyclic_chain_is_reported() {
 fn missing_product_is_an_error() {
     let model = Model::new();
 
-    let err = product_world_transform(&model, &UnitScale::default(), EntityId(99)).unwrap_err();
+    let err = product_world_transform(&model, &UnitScale::SI, EntityId(99)).unwrap_err();
 
     assert!(matches!(err, GeometryError::MissingEntity { .. }));
 }
@@ -140,7 +140,7 @@ fn batch_matches_single_and_isolates_failures() {
     local_placement(&mut model, 80, Some(70), 60);
     product(&mut model, 90, Some(80));
 
-    let units = UnitScale::default();
+    let units = UnitScale::SI;
     let results = products_world_transforms(&model, &units, [EntityId(50), EntityId(90)]);
 
     assert_eq!(results.len(), 2);
@@ -170,7 +170,7 @@ fn shared_cache_agrees_with_independent_resolution() {
         product(&mut model, base + 3, Some(base + 2));
     }
 
-    let units = UnitScale::default();
+    let units = UnitScale::SI;
     let ids = [EntityId(103), EntityId(113), EntityId(123)];
     let batched = products_world_transforms(&model, &units, ids);
 

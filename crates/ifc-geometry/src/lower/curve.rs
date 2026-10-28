@@ -44,7 +44,7 @@ use crate::curve::offset::{
 };
 use crate::curve::polyline::Polyline;
 use crate::curve::trimmed::{TrimmedCurve, TrimmingPreference};
-use crate::error::GeometryResult;
+use crate::error::{GeometryError, GeometryResult};
 use crate::lower::session::LoweringSession;
 use crate::lower::station::offset::offset_curve_by_distances;
 use crate::lower::surface::lower_surface_node;
@@ -117,12 +117,14 @@ pub(crate) fn lower_sweep_directrix(
     } else {
         kind
     };
-    let converted = range.map(|(start, end)| {
-        (
-            scale_parameter(session, &parameter_kind, start),
-            scale_parameter(session, &parameter_kind, end),
-        )
-    });
+    let converted = range
+        .map(|(start, end)| {
+            Ok::<_, GeometryError>((
+                scale_parameter(session, sweep, &parameter_kind, start)?,
+                scale_parameter(session, sweep, &parameter_kind, end)?,
+            ))
+        })
+        .transpose()?;
     Ok((node, converted))
 }
 
@@ -451,8 +453,9 @@ fn trimmed(
     let spec = view.spec()?;
     let (t1, t2) = spec.endpoints();
 
-    let start = selectors(session, id, t1, &basis_kind, frame)?;
-    let end = selectors(session, id, t2, &basis_kind, frame)?;
+    let cartesian_preferred = matches!(preference, TrimmingPreference::Cartesian);
+    let start = selectors(session, id, t1, &basis_kind, frame, cartesian_preferred)?;
+    let end = selectors(session, id, t2, &basis_kind, frame, cartesian_preferred)?;
     if start.is_empty() || end.is_empty() {
         return Err(session.degenerate(
             id,
@@ -484,12 +487,19 @@ fn selectors(
     trim: crate::curve::trimmed::Trim,
     basis_kind: &str,
     frame: Transform,
+    cartesian_preferred: bool,
 ) -> GeometryResult<Vec<TrimSelector>> {
     let mut out = Vec::new();
     if let Some(raw) = trim.parameter {
-        out.push(TrimSelector::Parameter(scale_parameter(
-            session, basis_kind, raw,
-        )));
+        match scale_parameter(session, owner, basis_kind, raw) {
+            Ok(scaled) => out.push(TrimSelector::Parameter(scaled)),
+            // A conic's parameter is an angle. When the project declares no
+            // angle unit and the point is the preferred form, the point
+            // carries the trim and the angle is never read (#585).
+            Err(GeometryError::AngleUnitUndeclared { .. })
+                if cartesian_preferred && trim.cartesian.is_some() => {}
+            Err(error) => return Err(error),
+        }
     }
     if let Some(point_ref) = trim.cartesian {
         let placed = world_point(session, owner, point_ref, frame)?;
@@ -507,11 +517,28 @@ fn selectors(
 ///   dimensionless. A polyline parameter is a point/segment ordinal.
 /// - A composite curve parameter is cumulative path LENGTH and converts.
 /// - Other non-conic families parameterise by length and convert.
-pub(crate) fn scale_parameter(session: &LoweringSession<'_>, basis_kind: &str, raw: f64) -> f64 {
+pub(crate) fn scale_parameter(
+    session: &LoweringSession<'_>,
+    entity: EntityId,
+    basis_kind: &str,
+    raw: f64,
+) -> GeometryResult<f64> {
+    Ok(raw * parameter_factor(session, entity, basis_kind)?)
+}
+
+/// The factor [`scale_parameter`] applies for one basis curve kind.
+///
+/// `entity` names the refusal when a conic needs an angle unit the project
+/// does not declare.
+pub(crate) fn parameter_factor(
+    session: &LoweringSession<'_>,
+    entity: EntityId,
+    basis_kind: &str,
+) -> GeometryResult<f64> {
     match basis_kind {
-        "IFCCIRCLE" | "IFCELLIPSE" => session.units().angle(raw),
-        "IFCLINE" | "IFCPOLYLINE" => raw,
-        _ => session.units().length(raw),
+        "IFCCIRCLE" | "IFCELLIPSE" => session.units().radians_per_unit(entity),
+        "IFCLINE" | "IFCPOLYLINE" => Ok(1.0),
+        _ => Ok(session.units().length_to_metres),
     }
 }
 

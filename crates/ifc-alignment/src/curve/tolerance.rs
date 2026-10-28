@@ -184,7 +184,7 @@ mod tests {
     fn metres() -> AlignmentUnits {
         AlignmentUnits {
             length_to_metres: 1.0,
-            angle_to_radians: 1.0,
+            angle_to_radians: Some(1.0),
         }
     }
 
@@ -232,7 +232,7 @@ mod tests {
         context(&mut model, 1, 3, Value::Real(0.1));
         let millimetres = AlignmentUnits {
             length_to_metres: 0.001,
-            angle_to_radians: 1.0,
+            angle_to_radians: Some(1.0),
         };
         let tolerance = SeamTolerance::for_model(&model, millimetres).expect("tolerance");
         assert!((tolerance.length() - 1e-4).abs() < 1e-18);

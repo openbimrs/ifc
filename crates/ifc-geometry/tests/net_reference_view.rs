@@ -48,7 +48,7 @@ fn relation_of(model: &Model, opening: EntityId) -> EntityId {
 }
 
 fn net(model: &Model, wall: &str, options: NetOptions) -> GeometryResult<NetLowering> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let host = named(model, "IFCWALL", wall);
     Ok(lower_product_net_with(&mut session, host, options)?.expect("the wall has a Body"))
@@ -70,7 +70,7 @@ fn reference_view_openings_without_the_opt_in_refuse_the_host_as_before() {
     let model = fixture();
     let wall = named(&model, "IFCWALL", "W1");
     let opening = named(&model, "IFCOPENINGELEMENT", "O1-reference-only");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session = LoweringSession::new(&model, &scale);
     let error = lower_product_net(&mut session, wall).expect_err("no opt-in, no net body");
     assert_eq!(refused_opening(error), (wall, opening));

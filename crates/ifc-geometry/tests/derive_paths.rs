@@ -89,7 +89,7 @@ fn derived(
     expression: u64,
     evaluator: &dyn CurveEvaluator,
 ) -> Result<Transform, GeometryError> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let file_units = AlignmentUnits {
         length_to_metres: 1.0,
         angle_to_radians: scale.angle_to_radians,
@@ -101,7 +101,7 @@ fn derived(
 
 /// The lowered station of `expression`: the graph, its root and its basis.
 fn lowered(model: &Model, expression: u64) -> (GeometryGraph, NodeId, NodeId, SeamSide) {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let root =
         lower_point_by_distance_node(&mut session, EntityId(expression), Transform::identity())
@@ -196,7 +196,7 @@ fn path_deviation(ours: &CurvePath, theirs: &CurvePath) -> Option<f64> {
 #[test]
 fn the_derived_path_equals_the_reference_compilers() {
     let model = relations();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let evaluator = ReferenceCurveEvaluator::default();
     // A plain composite, a trimmed circle, the kerb placed at stations.
     for (expression, basis, pieces) in [(145, 29, 3), (1000, 19, 1), (130, 75, 2)] {
@@ -362,7 +362,7 @@ fn world(
 ) -> Result<Transform, GeometryError> {
     product_world_transform_with_evaluator(
         model,
-        &units::resolve(model),
+        &units::resolve(model).expect("project units"),
         product(model, name),
         evaluator,
         CachedPositionPolicy::Verify,
@@ -499,7 +499,7 @@ fn offsets() -> Model {
 #[test]
 fn an_offset_basis_reads_as_the_compilers_offset_path() {
     let model = offsets();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let evaluator = ReferenceCurveEvaluator::default();
     for (expression, basis, pieces) in [(59, 27, 2), (93, 32, 1), (113, 40, 2)] {
         let ours = basis_curve_path(

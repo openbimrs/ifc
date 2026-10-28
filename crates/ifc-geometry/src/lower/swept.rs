@@ -317,7 +317,7 @@ fn revolution_node(
     let slots = Slots::new(id, entity);
 
     let profile_ref = slots.req_ref(slot::SWEPT_AREA, "SweptArea")?;
-    let angle = units.angle(slots.req_f64(slot::ANGLE, "Angle")?);
+    let angle = units.angle(id, slots.req_f64(slot::ANGLE, "Angle")?)?;
     if angle <= 0.0 {
         return Err(slots.degenerate("revolution angle is not positive"));
     }
@@ -472,7 +472,7 @@ fn tapered_revolution_node(
     let end_ref = view.end_swept_area()?;
     // Angle is an IfcPlaneAngleMeasure in the file's declared unit, very often
     // degrees. units.angle applies that conversion exactly once.
-    let angle = units.angle(slots.req_f64(slot::ANGLE, "Angle")?);
+    let angle = units.angle(id, slots.req_f64(slot::ANGLE, "Angle")?)?;
     if angle <= 0.0 {
         return Err(slots.degenerate("revolution angle is not positive"));
     }

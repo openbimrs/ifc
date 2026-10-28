@@ -69,7 +69,11 @@ fn profile_id(model: &Model, name: &str) -> EntityId {
 }
 
 fn lowered(model: &Model, name: &str) -> GeometryResult<Profile> {
-    lower_profile(model, profile_id(model, name), &units::resolve(model))
+    lower_profile(
+        model,
+        profile_id(model, name),
+        &units::resolve(model).expect("project units"),
+    )
 }
 
 fn contour(model: &Model, name: &str) -> ContourProfile {

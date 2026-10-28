@@ -13,7 +13,7 @@ use ifc_model::{Entity, Model, Transaction, Value};
 fn metres() -> AlignmentUnits {
     AlignmentUnits {
         length_to_metres: 1.0,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     }
 }
 

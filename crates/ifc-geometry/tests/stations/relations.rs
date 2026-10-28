@@ -180,7 +180,7 @@ mod kernel {
             .ids_of_type("IFCAXIS2PLACEMENTLINEAR")
             .last()
             .expect("the corner frame");
-        let scale = units::resolve(&model);
+        let scale = units::resolve(&model).expect("project units");
         let mut session = LoweringSession::new(&model, &scale);
         let node = lower_axis2_placement_linear_node(&mut session, id, Transform::identity())
             .expect("the frame lowers");

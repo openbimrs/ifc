@@ -43,6 +43,11 @@ pub enum AlignmentError {
         /// What expectation failed.
         detail: &'static str,
     },
+    /// An angle attribute was read, and the project declares no `PLANEANGLEUNIT`.
+    AngleUnitUndeclared {
+        /// The entity holding the angle.
+        entity: EntityId,
+    },
     /// A horizontal, vertical, or cant segment carries internally inconsistent data.
     InvalidSegment {
         /// The segment entity.
@@ -212,6 +217,10 @@ impl std::fmt::Display for AlignmentError {
                 name,
             } => write!(f, "{entity} has invalid {name} at slot {index}"),
             Self::InvalidUnits { detail } => write!(f, "invalid alignment units: {detail}"),
+            Self::AngleUnitUndeclared { entity } => write!(
+                f,
+                "{entity} holds a plane angle, and the project declares no PLANEANGLEUNIT"
+            ),
             Self::InvalidSegment { entity, detail } => {
                 write!(f, "invalid alignment segment {entity}: {detail}")
             }

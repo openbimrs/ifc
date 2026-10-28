@@ -8,10 +8,14 @@
 //! Lowering its items without that chain stacks every product at
 //! the origin: the model renders, but it is a heap, not a building.
 
+#[path = "support/assume_units.rs"]
+mod assume_units;
+
 use ifc_geometry::lower::{
     lower_product_items, product_world_transform, select_shape_representation, LoweringSession,
 };
 use ifc_geometry::units;
+use ifc_geometry::UnitScale;
 use ifc_model::{Codec, Entity, EntityId, Model, Value};
 use std::path::PathBuf;
 
@@ -31,7 +35,7 @@ fn load(rel: &str) -> Model {
 
 /// Centroid of a lowered product, in metres.
 fn centroid(model: &Model, product: EntityId) -> [f64; 3] {
-    let scale = units::resolve(model);
+    let scale = assume_units::scale_or_si(model);
     let mut session = LoweringSession::new(model, &scale);
     let root = lower_product_items(&mut session, product)
         .expect("product lowers")
@@ -110,7 +114,7 @@ fn graph_centroid(graph: &axiolid_model::GeometryGraph, root: axiolid_model::Nod
 #[test]
 fn products_are_separated_by_their_placement_chains() {
     let model = load("ifclite-geometry/mapped_instances_multi_item.ifc");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     // Compare the PRODUCT frame directly. A blended centroid also averages
     // the per-proxy mapped-item targets, which differ, masking the placement.
     let xs: Vec<f64> = [40u64, 47, 54, 61]
@@ -247,7 +251,7 @@ fn a_millimetre_placement_chain_converts_exactly_once() {
             ],
         ),
     );
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     model.insert(
         EntityId(17),
         Entity::new(
@@ -315,7 +319,7 @@ fn an_unplaced_product_resolves_to_the_identity() {
             ],
         ),
     );
-    let scale = units::resolve(&model);
+    let scale = UnitScale::SI;
     // A product record that exists but omits ObjectPlacement.
     model.insert(
         EntityId(50),

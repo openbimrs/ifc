@@ -12,6 +12,30 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#585)
+
+- Breaking: `units::resolve` returns `GeometryResult<UnitScale>` and refuses
+  a model whose units have no usable scale instead of assuming metres and
+  radians. Four new `GeometryError` variants: `LengthUnitUndeclared` (no
+  project, no `UnitsInContext`, or no `LENGTHUNIT`), `AngleUnitUndeclared`,
+  `UnitUnreadable` and `UnitsAmbiguous` (two projects, or two units of one
+  type).
+- Breaking: `UnitScale::angle_to_radians` is `Option<f64>`; a missing
+  `PLANEANGLEUNIT` is refused only where an angle is read.
+  `UnitScale::angle(entity, value)` returns a `Result`, and the new
+  `UnitScale::radians_per_unit(entity)` is the factor.
+- Breaking: `impl Default for UnitScale` is removed; `UnitScale::SI` is the
+  factors of one, never a fallback for a model's missing units.
+- An `IfcConversionBasedUnit` applies its `UnitComponent`: an inch stated as
+  25.4 millimetres reads as 0.0254 metres, not 25.4. A conversion unit
+  defined through another conversion unit is `Unsupported`.
+- An unknown `IfcSIPrefix`, an `IfcSIUnit` not named `METRE` (length) or
+  `RADIAN` (angle), a context-dependent or offset unit, and a factor that is
+  not a positive finite number are `UnitUnreadable`, not a silent factor of
+  one.
+
+Semver: breaking (0.x minor).
+
 ## [0.31.2] - 2026-10-28
 
 ### Changed

@@ -100,7 +100,15 @@ pub fn product_meshes_for(
     purpose: RepresentationPurpose,
 ) -> Vec<(EntityId, GeometryResult<ProductMesh>)> {
     let products = products.map_or_else(|| geometric_products(model), <[EntityId]>::to_vec);
-    let scale = units::resolve(model);
+    let scale = match units::resolve(model) {
+        Ok(scale) => scale,
+        Err(error) => {
+            return products
+                .into_iter()
+                .map(|product| (product, Err(error.clone())))
+                .collect();
+        }
+    };
     let backend = default_backend();
     let resolver = ColourResolver::new(model);
     let colour = |product| match (&resolver, purpose) {

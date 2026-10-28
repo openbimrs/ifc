@@ -428,7 +428,7 @@ mod kernel {
         let placement = model.ids_of_type("IFCLINEARPLACEMENT")[0];
         let transform = derive_linear_placement_transform(
             &model,
-            &units::resolve(&model),
+            &units::resolve(&model).expect("project units"),
             placement,
             &ReferenceCurveEvaluator::default(),
         )

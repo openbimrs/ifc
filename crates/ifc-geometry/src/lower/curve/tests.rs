@@ -19,7 +19,7 @@ use crate::units::UnitScale;
 fn millimetres() -> UnitScale {
     UnitScale {
         length_to_metres: 0.001,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     }
 }
 
@@ -329,10 +329,22 @@ fn parameter_units_follow_curve_parameterisation() {
     let scale = millimetres();
     let session = LoweringSession::new(&model, &scale);
 
-    assert_eq!(scale_parameter(&session, "IFCLINE", 2_000.0), 2_000.0);
-    assert_eq!(scale_parameter(&session, "IFCPOLYLINE", 2.0), 2.0);
-    assert_eq!(scale_parameter(&session, "IFCCOMPOSITECURVE", 2_000.0), 2.0);
-    assert_eq!(scale_parameter(&session, "IFCCIRCLE", 0.5), 0.5);
+    assert_eq!(
+        scale_parameter(&session, EntityId(1), "IFCLINE", 2_000.0).unwrap(),
+        2_000.0
+    );
+    assert_eq!(
+        scale_parameter(&session, EntityId(1), "IFCPOLYLINE", 2.0).unwrap(),
+        2.0
+    );
+    assert_eq!(
+        scale_parameter(&session, EntityId(1), "IFCCOMPOSITECURVE", 2_000.0).unwrap(),
+        2.0
+    );
+    assert_eq!(
+        scale_parameter(&session, EntityId(1), "IFCCIRCLE", 0.5).unwrap(),
+        0.5
+    );
 }
 
 #[test]
@@ -524,7 +536,7 @@ fn indexed_arc_rejects_finite_points_when_derived_circle_values_overflow() {
     );
     let scale = UnitScale {
         length_to_metres: 1.0,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     };
     let mut session = LoweringSession::new(&model, &scale);
 

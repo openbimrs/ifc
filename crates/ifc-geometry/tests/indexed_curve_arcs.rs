@@ -74,7 +74,7 @@ fn axis_curve(model: &Model, name: &str) -> EntityId {
 }
 
 fn lower(model: &Model, name: &str) -> GeometryResult<LoweredGeometry> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let root =
         lower_representation_item(&mut session, axis_curve(model, name), Transform::identity())?;

@@ -150,7 +150,7 @@ fn untextured() -> Model {
 }
 
 fn lower(model: &Model) -> Result<TriMesh, GeometryError> {
-    let scale = UnitScale::default();
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(model, &scale);
     let node =
         lower_triangulated_face_set_node(&mut session, EntityId(FACE_SET), Transform::identity())?;
@@ -286,7 +286,7 @@ fn a_second_map_gets_its_own_channel() {
 #[test]
 fn the_frame_does_not_move_texture_coordinates() {
     let model = figure_415(Some(rows(&TEX_INDEX)), vec![]);
-    let scale = UnitScale::default();
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let frame = Transform::translation([10.0, 20.0, 30.0]);
     let node = lower_triangulated_face_set_node(&mut session, EntityId(FACE_SET), frame).unwrap();

@@ -12,8 +12,12 @@ use super::step::{close, metres, model};
 
 /// Describe entity `id` of `model` with the model's own units.
 fn describe(model: &Model, id: u64) -> ProfileDescription {
-    describe_profile(model, &units::resolve(model), EntityId(id))
-        .unwrap_or_else(|error| panic!("#{id} describes: {error}"))
+    describe_profile(
+        model,
+        &units::resolve(model).expect("project units"),
+        EntityId(id),
+    )
+    .unwrap_or_else(|error| panic!("#{id} describes: {error}"))
 }
 
 const DEG: f64 = std::f64::consts::PI / 180.0;
@@ -491,9 +495,12 @@ mod lowering_agreement {
              #103=IFCDIRECTION((0.,1.));",
             "",
         );
-        let Profile::Derived { basis, transform } =
-            lower_profile(&model, EntityId(100), &units::resolve(&model)).unwrap()
-        else {
+        let Profile::Derived { basis, transform } = lower_profile(
+            &model,
+            EntityId(100),
+            &units::resolve(&model).expect("project units"),
+        )
+        .unwrap() else {
             panic!("a positioned section lowers as Derived");
         };
         assert!(matches!(*basis, Profile::Section(SectionProfile::I { .. })));
@@ -505,9 +512,12 @@ mod lowering_agreement {
     #[test]
     fn a_derived_profile_lowers_its_translation_in_metres() {
         let model = profile_families();
-        let Profile::Derived { transform, .. } =
-            lower_profile(&model, EntityId(22), &units::resolve(&model)).unwrap()
-        else {
+        let Profile::Derived { transform, .. } = lower_profile(
+            &model,
+            EntityId(22),
+            &units::resolve(&model).expect("project units"),
+        )
+        .unwrap() else {
             panic!("derived");
         };
         assert!(

@@ -171,7 +171,7 @@ fn placed_wall() -> (Model, EntityId) {
 #[test]
 fn documented_world_transform_resolves() -> TestResult {
     let (model, wall) = placed_wall();
-    let units = ifc::geometry::units::resolve(&model);
+    let units = ifc::geometry::UnitScale::SI;
     // docs:snippet world-transform
     use ifc::product_world_transform; // feature = "geometry-select"
 
@@ -185,7 +185,7 @@ fn documented_world_transform_resolves() -> TestResult {
 #[test]
 fn documented_world_transforms_batch_resolves() {
     let (model, wall) = placed_wall();
-    let units = ifc::geometry::units::resolve(&model);
+    let units = ifc::geometry::UnitScale::SI;
     let ids = [wall];
     // docs:snippet world-transforms
     use ifc::products_world_transforms;

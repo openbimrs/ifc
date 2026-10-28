@@ -160,7 +160,7 @@ pub fn compile_product_mesh_with<B: MeshCompiler>(
     product: EntityId,
     tolerance: Tolerance,
 ) -> GeometryResult<Option<TriMesh>> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model)?;
     let mut session = LoweringSession::new(model, &scale);
     let Some(root) =
         lower_product_representation(&mut session, product, RepresentationPurpose::Body)?
@@ -251,7 +251,7 @@ pub fn compile_product_mesh_reported_with<B: MeshCompiler>(
     product: EntityId,
     tolerance: Tolerance,
 ) -> GeometryResult<Option<CompiledMesh>> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model)?;
     let mut session = LoweringSession::new(model, &scale);
     let Some(root) =
         lower_product_representation(&mut session, product, RepresentationPurpose::Body)?
@@ -327,7 +327,7 @@ pub fn compile_product_mesh_net_with<B: MeshCompiler>(
     product: EntityId,
     tolerance: Tolerance,
 ) -> GeometryResult<Option<NetMesh>> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model)?;
     let mut session = LoweringSession::new(model, &scale);
     let Some(net) = lower_product_net(&mut session, product)? else {
         return Ok(None);
@@ -450,7 +450,7 @@ pub fn product_bounds_with<B: MeshCompiler>(
     product: EntityId,
     tolerance: Tolerance,
 ) -> GeometryResult<Option<ProductBounds>> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model)?;
     let mut session = LoweringSession::new(model, &scale);
     let Some(root) =
         lower_product_representation(&mut session, product, RepresentationPurpose::Body)?

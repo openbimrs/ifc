@@ -12,12 +12,16 @@
 //! holds for all of them: either a node comes back, or a typed error naming
 //! the source entity does. Never a panic, never a silent substitute.
 
+#[path = "support/assume_units.rs"]
+mod assume_units;
+
 use axiolid_model::{CurveRelation, GeometryNode};
 use ifc_geometry::lower::dispatch::{IMPLEMENTED, PLANNED};
 use ifc_geometry::lower::{lower_representation_item, LoweringSession};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
 use ifc_geometry::GeometryError;
+use ifc_geometry::UnitScale;
 use ifc_model::Codec;
 use ifc_step::StepCodec;
 use std::collections::{BTreeMap, BTreeSet};
@@ -145,7 +149,7 @@ fn a_committed_standalone_composite_curve_on_surface_lowers_exactly() {
     let model = StepCodec.read_path(&path).expect("fixture parses");
     let ids = model.ids_of_type("IFCCOMPOSITECURVEONSURFACE");
     assert_eq!(ids.len(), 1, "fixture has one standalone curve-on-surface");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session = LoweringSession::new(&model, &scale);
     let root = lower_representation_item(&mut session, ids[0], Transform::identity())
         .expect("curve-on-surface lowers through the total dispatcher");
@@ -185,7 +189,7 @@ fn every_corpus_representation_item_lowers_or_reports_a_typed_reason() {
         let Ok(model) = StepCodec.read_path(path) else {
             continue;
         };
-        let scale = units::resolve(&model);
+        let scale = assume_units::scale_or_si(&model);
 
         for type_name in IMPLEMENTED.iter().chain(PLANNED.iter().map(|(n, _)| n)) {
             for id in model.ids_of_type(type_name) {
@@ -263,7 +267,7 @@ fn planned_families_report_their_documented_reason() {
         let Ok(model) = StepCodec.read_path(path) else {
             continue;
         };
-        let scale = units::resolve(&model);
+        let scale = assume_units::scale_or_si(&model);
 
         for (type_name, detail) in PLANNED {
             for id in model.ids_of_type(type_name) {
@@ -333,7 +337,7 @@ fn a_nested_failure_names_the_innermost_unlowerable_entity() {
         ),
     );
 
-    let scale = units::resolve(&model);
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let error = lower_representation_item(&mut session, outer, Transform::identity())
         .expect_err("the spine operand is not lowered yet");
@@ -403,7 +407,7 @@ fn implemented_families_lower_and_lowering_families_are_claimed() {
         let Ok(model) = StepCodec.read_path(path) else {
             continue;
         };
-        let scale = units::resolve(&model);
+        let scale = assume_units::scale_or_si(&model);
         for family in IMPLEMENTED {
             for id in model.ids_of_type(family) {
                 let mut session = LoweringSession::new(&model, &scale);
@@ -474,7 +478,7 @@ fn every_family_that_lowers_is_named_in_the_inventory() {
         let Ok(model) = StepCodec.read_path(path) else {
             continue;
         };
-        let scale = units::resolve(&model);
+        let scale = assume_units::scale_or_si(&model);
         for (id, entity) in model.iter() {
             let type_name = entity.type_name.to_ascii_uppercase();
             let claimed = IMPLEMENTED
@@ -760,7 +764,7 @@ fn declared_variant_support_matches_runtime_behaviour() {
                 )
             });
 
-        let scale = units::resolve(&model);
+        let scale = assume_units::scale_or_si(&model);
         let mut session = LoweringSession::new(&model, &scale);
         let outcome = lower_representation_item(&mut session, EntityId(9), Transform::identity());
 

@@ -38,7 +38,7 @@ fn fixture(name: &str) -> Model {
 }
 
 fn lower_one(model: &Model, id: EntityId) -> GeometryNode {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let node = lower_surface_node(&mut session, id, Transform::identity())
         .unwrap_or_else(|e| panic!("surface {id:?} must lower: {e}"));
@@ -47,7 +47,7 @@ fn lower_one(model: &Model, id: EntityId) -> GeometryNode {
 }
 
 fn lower_item(model: &Model, id: EntityId) -> ifc_geometry::lower::LoweredGeometry {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let root = lower_representation_item(&mut session, id, Transform::identity())
         .unwrap_or_else(|e| panic!("item {id:?} must lower: {e}"));
@@ -342,7 +342,7 @@ fn offset_intersection_and_seam_curve_semantics_survive_corpus_lowering() {
 #[test]
 fn the_curve_bounded_surface_corpus_keeps_parameter_curves() {
     let model = fixture("synthetic_conic_offset_bounded.ifc");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session = LoweringSession::new(&model, &scale);
     let root = lower_surface_node(&mut session, EntityId(25), Transform::identity())
         .expect("corpus surface lowers");

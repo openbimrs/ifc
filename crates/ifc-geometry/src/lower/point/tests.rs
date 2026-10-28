@@ -85,7 +85,7 @@ fn model_with_polyline_and_circle() -> (Model, EntityId, EntityId) {
 }
 
 fn scale() -> UnitScale {
-    UnitScale::default()
+    UnitScale::SI
 }
 
 fn session<'a>(model: &'a Model, scale: &'a UnitScale) -> LoweringSession<'a> {
@@ -153,7 +153,7 @@ fn point_on_curve_on_a_circle_converts_the_parameter_as_an_angle() {
 
     let units = UnitScale {
         length_to_metres: 1.0,
-        angle_to_radians: std::f64::consts::PI / 180.0,
+        angle_to_radians: Some(std::f64::consts::PI / 180.0),
     };
     let mut sess = LoweringSession::new(&model, &units);
     let node =
@@ -203,7 +203,7 @@ fn point_on_surface_preserves_basis_and_both_parameters() {
             vec![Value::Ref(EntityId(3)), Value::Real(2.0), Value::Real(3.0)],
         ),
     );
-    let scale = UnitScale::default();
+    let scale = UnitScale::SI;
     let mut sess = LoweringSession::new(&model, &scale);
     let node =
         lower_point_on_surface_node(&mut sess, EntityId(4), Transform::identity()).expect("lowers");
@@ -226,7 +226,7 @@ fn a_missing_basis_curve_reports_the_dangling_reference() {
             vec![Value::Ref(EntityId(99)), Value::Real(1.0)],
         ),
     );
-    let scale = UnitScale::default();
+    let scale = UnitScale::SI;
     let mut sess = LoweringSession::new(&model, &scale);
     let err = lower_point_on_curve_node(&mut sess, EntityId(1), Transform::identity()).unwrap_err();
     assert_eq!(err.entity(), Some(EntityId(99)));

@@ -668,10 +668,15 @@ fn basis_curve(
         )),
         "IFCALIGNMENT" => ifc_alignment::gradient_curve3(model, basis, alignment_units)
             .map(|curve| Basis::Curve(curve, DistanceConvention::PlanDistance))
-            .map_err(|_error| GeometryError::Unsupported {
-                entity: placement,
-                type_name: entity.type_name.to_string(),
-                detail: "basis curve does not compose an exact centreline",
+            .map_err(|error| match error {
+                ifc_alignment::AlignmentError::AngleUnitUndeclared { entity } => {
+                    GeometryError::AngleUnitUndeclared { entity }
+                }
+                _ => GeometryError::Unsupported {
+                    entity: placement,
+                    type_name: entity.type_name.to_string(),
+                    detail: "basis curve does not compose an exact centreline",
+                },
             }),
         "IFCPOLYLINE" => Ok(Basis::Curve(
             polyline::polyline(model, units, basis, entity)?,

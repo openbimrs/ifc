@@ -165,7 +165,7 @@ fn derived(
     expression: u64,
     evaluator: &dyn CurveEvaluator,
 ) -> Result<Transform, GeometryError> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let file_units = AlignmentUnits {
         length_to_metres: 1.0,
         angle_to_radians: scale.angle_to_radians,
@@ -179,7 +179,7 @@ fn derived(
 /// Each carries the precision as its window and reads the incoming side
 /// (#423): its basis's joints are quadratures.
 fn lowered(model: &Model, expression: u64) -> (GeometryGraph, NodeId, NodeId) {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let root =
         lower_point_by_distance_node(&mut session, EntityId(expression), Transform::identity())
@@ -293,7 +293,7 @@ fn assert_reads_as_compilers_path(
     basis: u64,
     bounded: &[bool],
 ) -> CurvePath {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let evaluator = ReferenceCurveEvaluator::default();
     let ours = basis_curve_path(
         model,
@@ -383,7 +383,7 @@ fn a_placement_on_an_ellipse_trimmed_at_interior_parameters_is_the_stations() {
     // The piece is the trim between its parameters, as given.
     let path = basis_curve_path(
         &model,
-        &units::resolve(&model),
+        &units::resolve(&model).expect("project units"),
         EntityId(ids[0]),
         EntityId(2010),
         &evaluator,
@@ -409,7 +409,7 @@ fn a_cubic_transition_trimmed_by_an_arc_length_is_the_stations() {
     assert!((theirs.pieces()[0].end - 30.0).abs() < 1e-10, "{theirs:?}");
     let path = basis_curve_path(
         &model,
-        &units::resolve(&model),
+        &units::resolve(&model).expect("project units"),
         EntityId(ids[0]),
         EntityId(2013),
         &ReferenceCurveEvaluator::default(),
@@ -479,7 +479,7 @@ fn a_b_spline_trimmed_by_points_is_the_stations() {
     let theirs = assert_reads_as_compilers_path(&model, ids[0], 2024, &[true]);
     let path = basis_curve_path(
         &model,
-        &units::resolve(&model),
+        &units::resolve(&model).expect("project units"),
         EntityId(ids[0]),
         EntityId(2024),
         &ReferenceCurveEvaluator::default(),
@@ -519,7 +519,7 @@ fn a_b_spline_trimmed_by_points_is_the_stations() {
 #[test]
 fn a_trim_of_a_relation_ending_in_an_ellipse_is_stated() {
     let (model, ids) = points(2056, &[3.0, 8.0, 8.000004, 10.0]);
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let evaluator = ReferenceCurveEvaluator::default();
     let ours = basis_curve_path(&model, &scale, EntityId(ids[0]), EntityId(2056), &evaluator)
         .expect("a path");

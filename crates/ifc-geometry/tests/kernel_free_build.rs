@@ -157,7 +157,7 @@ fn placement_resolution_survives_without_the_kernel() {
 
     // Exercise it, so the reference cannot be optimized into a no-op claim.
     let model = ifc_model::Model::new();
-    let units = ifc_geometry::units::UnitScale::default();
+    let units = ifc_geometry::units::UnitScale::SI;
     assert!(
         resolve(&model, &units, ifc_model::EntityId(1)).is_err(),
         "an absent product must report rather than silently resolve to origin"
@@ -221,7 +221,7 @@ fn body_description_survives_without_the_kernel() {
     let profile: Profile = ifc_geometry::describe_profile;
 
     let model = ifc_model::Model::new();
-    let units = ifc_geometry::units::UnitScale::default();
+    let units = ifc_geometry::units::UnitScale::SI;
     assert!(describe(&model, &units, ifc_model::EntityId(1)).is_err());
     assert!(profile(&model, &units, ifc_model::EntityId(1)).is_err());
 }

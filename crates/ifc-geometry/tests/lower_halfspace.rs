@@ -16,7 +16,7 @@
 use axiolid_model::GeometryNode;
 use ifc_geometry::lower::{lower_representation_item, LoweringSession};
 use ifc_geometry::transform::Transform;
-use ifc_geometry::units;
+use ifc_geometry::UnitScale;
 use ifc_model::{Codec, Model};
 use ifc_step::StepCodec;
 use std::path::PathBuf;
@@ -34,7 +34,7 @@ fn model_of(relative: &str) -> Model {
 #[test]
 fn the_flyaway_half_space_lowers_to_a_plane() {
     let model = model_of("ifclite-geometry/issue_1155_halfspace_flyaway.ifc");
-    let scale = units::resolve(&model);
+    let scale = UnitScale::SI;
     let id = *model
         .ids_of_type("IFCHALFSPACESOLID")
         .first()
@@ -74,7 +74,7 @@ fn the_flyaway_half_space_lowers_to_a_plane() {
 #[test]
 fn the_enclosing_clipping_result_resolves_now_that_its_operand_lowers() {
     let model = model_of("ifclite-geometry/issue_1155_halfspace_flyaway.ifc");
-    let scale = units::resolve(&model);
+    let scale = UnitScale::SI;
     let id = *model
         .ids_of_type("IFCBOOLEANCLIPPINGRESULT")
         .first()
@@ -110,7 +110,7 @@ fn every_corpus_half_space_lowers() {
         "ifclite-geometry/bath_csg_solid.ifc",
     ] {
         let model = model_of(name);
-        let scale = units::resolve(&model);
+        let scale = UnitScale::SI;
         for id in model.ids_of_type("IFCHALFSPACESOLID") {
             let mut session = LoweringSession::new(&model, &scale);
             let node = lower_representation_item(&mut session, *id, Transform::identity())

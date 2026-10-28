@@ -158,7 +158,7 @@ fn revolution(
 ) -> GeometryResult<SweepPath> {
     let view = RevolvedAreaSolid::new(id, entity);
     // Angle is an IfcPlaneAngleMeasure in the file's unit, very often degrees.
-    let angle = units.angle(view.angle_raw()?);
+    let angle = units.angle(id, view.angle_raw()?)?;
     if angle <= 0.0 {
         return Err(Slots::new(id, entity).degenerate("revolution angle is not positive"));
     }

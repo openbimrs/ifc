@@ -90,7 +90,7 @@ fn a_products_resolved_placement_composes_into_known_map_coordinates() {
 
     // Both halves take their unit from the same model, which is exactly the
     // agreement this layer is responsible for.
-    let units = ifc::geometry::units::resolve(&model);
+    let units = ifc::geometry::units::resolve(&model).expect("project units");
     assert_eq!(units.length_to_metres, 0.001);
 
     let project_frame = product_world_transform(&model, &units, WALL)

@@ -51,7 +51,7 @@ fn segment(kind: &str, start_radius: f64, end_radius: f64, length: f64) -> Model
 fn millimetres() -> AlignmentUnits {
     AlignmentUnits {
         length_to_metres: 0.001,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     }
 }
 
@@ -127,7 +127,7 @@ fn finite_arc_inputs_that_overflow_the_circle_frame_are_rejected() {
             EntityId(2),
             AlignmentUnits {
                 length_to_metres: 1.0,
-                angle_to_radians: 1.0,
+                angle_to_radians: Some(1.0),
             },
         ),
         Err(AlignmentError::InvalidSegment { .. })
@@ -149,7 +149,7 @@ fn finite_arc_inputs_that_overflow_the_trim_parameter_are_rejected() {
             EntityId(2),
             AlignmentUnits {
                 length_to_metres: 1.0,
-                angle_to_radians: 1.0,
+                angle_to_radians: Some(1.0),
             },
         ),
         Err(AlignmentError::InvalidSegment { .. })
@@ -165,7 +165,7 @@ fn large_global_coordinates_do_not_collapse_the_arc_frame_axes() {
         EntityId(2),
         AlignmentUnits {
             length_to_metres: 1.0,
-            angle_to_radians: 1.0,
+            angle_to_radians: Some(1.0),
         },
     )
     .expect("finite arc");
@@ -243,7 +243,7 @@ fn committed_ifc_fixture_lowers_line_and_arc_exactly() {
     let model = StepCodec.read_path(&path).expect("fixture parses");
     let units = AlignmentUnits {
         length_to_metres: 1.0,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     };
     let line = lower_horizontal_segment(&model, EntityId(61), units).expect("line");
     let arc = lower_horizontal_segment(&model, EntityId(62), units).expect("arc");

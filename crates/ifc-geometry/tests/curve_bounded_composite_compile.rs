@@ -116,7 +116,7 @@ fn a_one_segment_reversed_composite_compiles_like_its_polyline() {
 #[test]
 fn the_boundaries_keep_their_segments_and_senses() {
     let model = fixture();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let plane = model
         .of_type("IFCCURVEBOUNDEDPLANE")
         .map(|(id, _)| id)

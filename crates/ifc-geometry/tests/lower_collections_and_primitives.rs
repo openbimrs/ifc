@@ -30,7 +30,7 @@ fn only(model: &Model, kind: &str) -> EntityId {
 
 /// Lower one item and return the whole graph, so nested nodes stay reachable.
 fn lower(model: &Model, id: EntityId) -> ifc_geometry::lower::LoweredGeometry {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let node = lower_representation_item(&mut session, id, Transform::identity())
         .unwrap_or_else(|e| panic!("{id:?} must lower: {e}"));
@@ -131,7 +131,7 @@ fn a_rotated_bounding_box_grows_to_the_world_aligned_extent() {
     use std::f64::consts::FRAC_1_SQRT_2;
     let model = model("synthetic_primitives_and_bbox.ifc");
     let id = only(&model, "IFCBOUNDINGBOX");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session = LoweringSession::new(&model, &scale);
     // 45 degrees about z, applied as the caller's frame.
     let rotated = Transform::from_axes(

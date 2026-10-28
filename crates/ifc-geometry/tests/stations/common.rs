@@ -74,7 +74,7 @@ pub fn only(model: &Model, kind: &str) -> u64 {
 
 /// Lower representation item `id` under the identity frame.
 pub fn lower(model: &Model, id: u64) -> Result<LoweredGeometry, GeometryError> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let root = lower_representation_item(&mut session, EntityId(id), Transform::identity())?;
     Ok(session.finish(root).expect("a valid graph"))
@@ -142,7 +142,7 @@ pub fn assert_windowed(lowered: &LoweredGeometry, distance: f64, window: f64) {
 /// requires of a sweep along an unbounded curve.
 #[cfg(feature = "compile-reference-backend")]
 pub fn swept_along(model: &Model, item: u64, radius: f64) -> LoweredGeometry {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let curve = lower_representation_item(&mut session, EntityId(item), Transform::identity())
         .unwrap_or_else(|e| panic!("#{item} lowers: {e}"));

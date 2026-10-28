@@ -354,7 +354,7 @@ fn lower_split(
     purpose: RepresentationPurpose,
     leave_out_non_curves: bool,
 ) -> GeometryResult<Option<(Option<Split>, LeftOut)>> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model)?;
     let mut session = LoweringSession::new(model, &scale);
     let (root, left_out) = if leave_out_non_curves {
         let Some((root, left_out)) =

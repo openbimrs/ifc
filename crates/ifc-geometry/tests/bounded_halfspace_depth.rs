@@ -104,7 +104,7 @@ fn model() -> Model {
 #[test]
 fn the_exact_body_and_the_mesh_are_cut_to_the_top_of_the_wall() {
     let model = model();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session = LoweringSession::new(&model, &scale);
     let root = lower_product_representation(&mut session, WALL, RepresentationPurpose::Body)
         .expect("lowers")

@@ -329,7 +329,7 @@ fn volume(p: Pipe) -> f64 {
 
 /// The lowered sweep's `(directrix, parameter_range)`.
 fn lowered_range(model: &Model) -> Result<Option<(f64, f64)>, GeometryError> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let node = lower_representation_item(&mut session, SWEEP, Transform::identity())?;
     let lowered = session.finish(node)?;
@@ -687,7 +687,7 @@ fn the_crankbar_full_range_is_its_whole_directrix() {
         .join("../../test/fixtures/ifclite-geometry/swept_disk_composite_arc_crankbar.ifc");
     let model = StepCodec.read_path(&path).expect("fixture parses");
     let sweep = model.ids_of_type("IFCSWEPTDISKSOLID")[0];
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session = LoweringSession::new(&model, &scale);
     let node = lower_representation_item(&mut session, sweep, Transform::identity())
         .expect("the crankbar lowers");

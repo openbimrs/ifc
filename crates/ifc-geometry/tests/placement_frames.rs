@@ -127,7 +127,11 @@ fn assert_frame(world: &Transform, origin: [f64; 3], axes: [[f64; 3]; 3]) {
 }
 
 fn cache_only(model: &Model, name: &str) -> Result<Transform, GeometryError> {
-    product_world_transform(model, &units::resolve(model), product(model, name))
+    product_world_transform(
+        model,
+        &units::resolve(model).expect("project units"),
+        product(model, name),
+    )
 }
 
 /// Centre of the lowered block: the mean Instance translation, with
@@ -157,7 +161,7 @@ fn centre_of(lowered: &ifc_geometry::lower::LoweredGeometry) -> [f64; 3] {
 }
 
 fn lowered_centre_cache_only(model: &Model, name: &str) -> Result<[f64; 3], GeometryError> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let root = lower_product_items(&mut session, product(model, name))?.expect("a Body");
     Ok(centre_of(&session.finish(root)?))
@@ -296,7 +300,7 @@ mod derived {
     ) -> Result<Transform, GeometryError> {
         product_world_transform_with_evaluator(
             model,
-            &units::resolve(model),
+            &units::resolve(model).expect("project units"),
             product(model, name),
             &ReferenceCurveEvaluator::default(),
             cached,
@@ -305,7 +309,7 @@ mod derived {
 
     fn lowered_centre(model: &Model, name: &str) -> Result<[f64; 3], GeometryError> {
         let evaluator = ReferenceCurveEvaluator::default();
-        let scale = units::resolve(model);
+        let scale = units::resolve(model).expect("project units");
         let mut session = LoweringSession::new(model, &scale).with_curve_evaluator(&evaluator);
         let root = lower_product_items(&mut session, product(model, name))?.expect("a Body");
         Ok(centre_of(&session.finish(root)?))

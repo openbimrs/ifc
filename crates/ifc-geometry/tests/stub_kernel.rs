@@ -53,13 +53,9 @@ fn full_ifc_pipeline_emits_exact_neutral_nodes() {
     assert!(select::is_a("IFCEXTRUDEDAREASOLID", "IFCSOLIDMODEL"));
     assert!(rules::validate(&model, EntityId(3)).is_empty());
 
-    let lowered = lower_extruded_area_solid(
-        &model,
-        EntityId(3),
-        Transform::identity(),
-        &UnitScale::default(),
-    )
-    .expect("lowering succeeds without a backend");
+    let lowered =
+        lower_extruded_area_solid(&model, EntityId(3), Transform::identity(), &UnitScale::SI)
+            .expect("lowering succeeds without a backend");
 
     let operation = match lowered.graph.get(lowered.root).expect("root") {
         GeometryNode::Instance(instance) => instance.source,
@@ -102,7 +98,7 @@ fn units_are_resolved_before_the_neutral_graph() {
     );
     let scale = UnitScale {
         length_to_metres: 1e-3,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     };
     let lowered = lower_extruded_area_solid(&model, EntityId(3), Transform::identity(), &scale)
         .expect("lowers");

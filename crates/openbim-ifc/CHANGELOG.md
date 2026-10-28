@@ -12,6 +12,18 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#585)
+
+- A model whose units do not resolve refuses every product of
+  `product_placements`, `product_meshes`, `product_meshes_for`,
+  `product_curves` and `product_graphs` with the unit error, instead of
+  placing it in metres; return shapes are unchanged. The re-exported
+  `geometry` module carries `ifc-geometry`'s breaking `units` change
+  (`units::resolve` is fallible, `UnitScale::angle_to_radians` is an
+  `Option`, `UnitScale::default()` is `UnitScale::SI`).
+
+Semver: breaking through the re-exported `geometry` module (0.x minor).
+
 ## [0.38.2] - 2026-10-28
 
 ### Changed

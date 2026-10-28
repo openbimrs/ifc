@@ -28,7 +28,7 @@ fn only(model: &Model, kind: &str) -> EntityId {
 }
 
 fn lower(model: &Model, id: EntityId) -> ifc_geometry::lower::LoweredGeometry {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let node = lower_representation_item(&mut session, id, Transform::identity())
         .unwrap_or_else(|e| panic!("{id:?} must lower: {e}"));
@@ -173,7 +173,7 @@ fn a_polygonal_disk_carries_its_fillet_radius() {
     let ids = model.ids_of_type("IFCSWEPTDISKSOLIDPOLYGONAL");
     assert_eq!(ids.len(), 2, "the fixture has a sharp and a filleted disk");
 
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut fillets = Vec::new();
     for &id in ids {
         let mut session = LoweringSession::new(&model, &scale);

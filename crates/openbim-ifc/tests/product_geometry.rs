@@ -16,6 +16,50 @@ fn fixture() -> Model {
         .expect("parses")
 }
 
+/// A wall with a Body and a project that states no units (#585).
+const WITHOUT_UNITS: &str = "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n\
+FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;
+#1=IFCPROJECT('0000000000000000000001',$,'P',$,$,$,$,$,$);
+#2=IFCCARTESIANPOINT((1000.,0.,0.));
+#3=IFCAXIS2PLACEMENT3D(#2,$,$);
+#4=IFCLOCALPLACEMENT($,#3);
+#5=IFCSHAPEREPRESENTATION($,'Body','SweptSolid',());
+#6=IFCPRODUCTDEFINITIONSHAPE($,$,(#5));
+#10=IFCWALL('0000000000000000000010',$,'W',$,$,#4,#6,$,$);
+ENDSEC;\nEND-ISO-10303-21;\n";
+
+#[test]
+fn a_model_without_a_length_unit_refuses_every_product() {
+    let model = StepCodec
+        .read_bytes(WITHOUT_UNITS.as_bytes())
+        .expect("parses");
+    let placements = product_placements(&model, None);
+    assert_eq!(placements.len(), 1);
+    assert_eq!(placements[0].product, EntityId(10));
+    assert!(
+        matches!(
+            placements[0].world,
+            Err(ifc::geometry::GeometryError::LengthUnitUndeclared {
+                project: Some(EntityId(1)),
+                assignment: None
+            })
+        ),
+        "{:?}",
+        placements[0].world
+    );
+    assert!(matches!(placements[0].body, Ok(Some(_))));
+
+    #[cfg(feature = "mesh")]
+    {
+        let meshes = ifc::product_meshes(&model, None);
+        assert_eq!(meshes.len(), 1);
+        assert!(matches!(
+            meshes[0].1,
+            Err(ifc::geometry::GeometryError::LengthUnitUndeclared { .. })
+        ));
+    }
+}
+
 #[test]
 fn placements_and_the_selected_body_per_product() {
     let model = fixture();
@@ -189,6 +233,10 @@ FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;
 #24=IFCCIRCLE(#25,1.);
 #25=IFCAXIS2PLACEMENT2D(#26,$);
 #26=IFCCARTESIANPOINT((0.,0.));
+#90=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);
+#91=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);
+#92=IFCUNITASSIGNMENT((#90,#91));
+#93=IFCPROJECT('0000000000000000000093',$,'P',$,$,$,$,$,#92);
 ENDSEC;\nEND-ISO-10303-21;\n";
     let model = StepCodec.read_bytes(text.as_bytes()).expect("parses");
 
@@ -287,6 +335,10 @@ FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('IFC4X3_ADD2'));\nENDSEC;\nDA
 #21=IFCCARTESIANPOINT((2.,0.));
 #22=IFCCARTESIANPOINT((0.,-0.5));
 #23=IFCCARTESIANPOINT((1.,0.1));
+#90=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);
+#91=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);
+#92=IFCUNITASSIGNMENT((#90,#91));
+#93=IFCPROJECT('0000000000000000000093',$,'P',$,$,$,$,$,#92);
 ENDSEC;\nEND-ISO-10303-21;\n";
     let model = StepCodec.read_bytes(text.as_bytes()).expect("parses");
 
@@ -443,4 +495,37 @@ fn a_polygonal_bounded_clip_is_labelled_wire_format_1_4() {
     assert!(text.contains("\"BoundedHalfSpaceAlongZ\""), "{text}");
     let back = GeometryGraph::from_json(&text).expect("reads back");
     assert_eq!(back.to_json().unwrap(), text);
+}
+
+#[cfg(feature = "mesh")]
+#[test]
+fn a_model_without_units_refuses_every_product_curve() {
+    let model = StepCodec
+        .read_bytes(WITHOUT_UNITS.as_bytes())
+        .expect("parses");
+    let curves = ifc::product_curves(&model, None, ifc::RepresentationPurpose::Plan);
+    assert_eq!(curves.len(), 1);
+    assert_eq!(curves[0].0, EntityId(10));
+    assert!(
+        matches!(
+            curves[0].1,
+            Err(ifc::geometry::GeometryError::LengthUnitUndeclared { .. })
+        ),
+        "{:?}",
+        curves[0].1
+    );
+}
+
+#[cfg(feature = "geometry-wire")]
+#[test]
+fn a_model_without_units_refuses_every_product_graph() {
+    let model = StepCodec
+        .read_bytes(WITHOUT_UNITS.as_bytes())
+        .expect("parses");
+    let graphs = ifc::product_graphs(&model, None);
+    assert_eq!(graphs.len(), 1);
+    assert!(matches!(
+        graphs[0].1,
+        Err(ifc::geometry::GeometryError::LengthUnitUndeclared { .. })
+    ));
 }

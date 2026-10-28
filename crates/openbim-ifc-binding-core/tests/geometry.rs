@@ -39,6 +39,10 @@ DATA;
 #22=IFCWALL('1YvctVUKr0kugbFTf53O9L',$,'cyclic',$,$,#20,#4,$,$);
 #30=IFCLOCALPLACEMENT($,#1);
 #31=IFCWALL('2YvctVUKr0kugbFTf53O9L',$,'point',$,$,#30,#4,$,$);
+#90=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);
+#91=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);
+#92=IFCUNITASSIGNMENT((#90,#91));
+#93=IFCPROJECT('3YvctVUKr0kugbFTf53O9L',$,'P',$,$,$,$,$,#92);
 ENDSEC;
 END-ISO-10303-21;
 ";
@@ -155,6 +159,37 @@ mod placements {
         );
         // The Body is still reported beside a refused placement.
         assert_eq!(placements[0].representation.as_ref().unwrap().id, 3);
+    }
+
+    #[test]
+    fn a_model_without_a_length_unit_refuses_each_placement() {
+        let model = IfcModel::parse(
+            b"ISO-10303-21;
+HEADER;FILE_DESCRIPTION((''),'2;1');FILE_NAME('','',(''),(''),'','','');FILE_SCHEMA(('IFC4'));ENDSEC;
+DATA;
+#1=IFCPROJECT('3YvctVUKr0kugbFTf53O9L',$,'P',$,$,$,$,$,$);
+#2=IFCCARTESIANPOINT((1000.,0.,0.));
+#3=IFCAXIS2PLACEMENT3D(#2,$,$);
+#4=IFCLOCALPLACEMENT($,#3);
+#5=IFCBUILDINGELEMENTPROXY('1YvctVUKr0kugbFTf53O9L',$,'X',$,$,#4,#7,$,$);
+#6=IFCSHAPEREPRESENTATION($,'Body','SweptSolid',());
+#7=IFCPRODUCTDEFINITIONSHAPE($,$,(#6));
+ENDSEC;
+END-ISO-10303-21;
+",
+        )
+        .unwrap();
+        let placements = model.product_placements(None).unwrap();
+        assert_eq!(placements.len(), 1);
+        let refusal = placements[0].refusal.as_ref().expect("refused");
+        assert!(placements[0].transform.is_none());
+        assert_eq!(refusal.code, "invalid-model");
+        assert_eq!(refusal.entity, Some(1));
+        assert!(
+            refusal.message.contains("length unit"),
+            "{}",
+            refusal.message
+        );
     }
 
     #[test]
@@ -363,6 +398,10 @@ DATA;
 #32=IFCSHAPEREPRESENTATION(#1,'Axis','Curve2D',(#33));
 #33=IFCOFFSETCURVE2D(#34,0.1,.F.);
 #34=IFCOFFSETCURVE2D(#23,0.1,.F.);
+#90=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);
+#91=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);
+#92=IFCUNITASSIGNMENT((#90,#91));
+#93=IFCPROJECT('3YvctVUKr0kugbFTf53O9L',$,'P',$,$,$,$,$,#92);
 ENDSEC;
 END-ISO-10303-21;
 ",

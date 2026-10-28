@@ -180,8 +180,8 @@ pub enum SweepPath {
 /// ```no_run
 /// # use ifc_model::{EntityId, Model};
 /// # use ifc_geometry::{body_description, units, BodyKind, SweepPath};
-/// # fn demo(model: &Model, beam: EntityId) {
-/// let scale = units::resolve(model);
+/// # fn demo(model: &Model, beam: EntityId) -> ifc_geometry::GeometryResult<()> {
+/// let scale = units::resolve(model)?;
 /// let body = body_description(model, &scale, beam).unwrap().expect("a body");
 /// let item = body.sole_item().expect("one item");
 /// if item.kind == BodyKind::Extrusion {
@@ -190,6 +190,7 @@ pub enum SweepPath {
 ///         let _ = (swept.profile.type_name.as_str(), direction_world, depth);
 ///     }
 /// }
+/// # Ok(())
 /// # }
 /// ```
 pub fn body_description(

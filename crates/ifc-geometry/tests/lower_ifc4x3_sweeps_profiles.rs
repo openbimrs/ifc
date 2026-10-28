@@ -42,7 +42,7 @@ fn put(model: &mut Model, id: u64, type_name: &str, attributes: Vec<Value>) {
 /// Millimetres and degrees: a missed conversion of either quantity is visible.
 const MM_DEG: UnitScale = UnitScale {
     length_to_metres: 0.001,
-    angle_to_radians: std::f64::consts::PI / 180.0,
+    angle_to_radians: Some(std::f64::consts::PI / 180.0),
 };
 
 /// An `IfcOpenCrossProfileDef` at id 10, with `OffsetPoint` at id 9 when given.
@@ -144,8 +144,7 @@ fn an_open_cross_profile_with_slope_widths_lowers_to_its_exact_vertices() {
 #[test]
 fn an_open_cross_profile_is_not_an_area_profile() {
     let model = open_cross(true, &[1.0], &[0.0], None, None);
-    let error =
-        lower_profile(&model, EntityId(10), &UnitScale::default()).expect_err("open, no area");
+    let error = lower_profile(&model, EntityId(10), &UnitScale::SI).expect_err("open, no area");
     assert!(
         error.is_unsupported() && error.to_string().contains("use lower_open_profile_node"),
         "{error}"
@@ -175,7 +174,7 @@ fn malformed_open_cross_profiles_are_refused_as_degenerate() {
         ),
     ];
     for (model, needle) in cases {
-        let units = UnitScale::default();
+        let units = UnitScale::SI;
         let mut session = LoweringSession::new(&model, &units);
         let error =
             lower_open_profile_node(&mut session, EntityId(10)).expect_err("malformed profile");
@@ -244,7 +243,7 @@ fn lower_graph(
     model: &Model,
     id: u64,
 ) -> Result<(SolidOperation, Vec<GeometryNode>), GeometryError> {
-    let units = UnitScale::default();
+    let units = UnitScale::SI;
     let mut session = LoweringSession::new(model, &units);
     let root = lower_representation_item(&mut session, EntityId(id), Transform::identity())?;
     let lowered = session.finish(root).expect("valid graph");

@@ -76,7 +76,7 @@ fn outline(id: u64) -> Result<ProfileOutline, GeometryError> {
     let model: Model = StepCodec
         .read_bytes(FILE.as_bytes())
         .expect("fixture parses");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     profile_outline(&model, &scale, EntityId(id))
 }
 

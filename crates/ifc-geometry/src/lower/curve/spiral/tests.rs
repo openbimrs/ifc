@@ -15,7 +15,7 @@ use crate::units::UnitScale;
 
 const METRES: UnitScale = UnitScale {
     length_to_metres: 1.0,
-    angle_to_radians: 1.0,
+    angle_to_radians: Some(1.0),
 };
 
 /// A model whose `#1` is `kind` with the given term slots after `Position`.
@@ -92,7 +92,7 @@ fn a_clothoid_is_linear_curvature_with_the_sign_of_its_constant() {
 fn spiral_terms_convert_to_metres_before_the_law_is_formed() {
     let millimetres = UnitScale {
         length_to_metres: 0.001,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     };
     let law = law(
         &spiral("IFCCLOTHOID", &[Some(100_000.0)]),

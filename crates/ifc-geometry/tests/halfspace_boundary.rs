@@ -124,7 +124,7 @@ fn half_space(model: &Model, name: &str) -> EntityId {
 
 /// The lowered boundary node of the wall named `name`.
 fn boundary_node(model: &Model, name: &str) -> GeometryResult<GeometryNode> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let node = lower_half_space_node(&mut session, half_space(model, name), Transform::identity())?;
     let lowered = session.finish(node).expect("session finishes");
@@ -660,7 +660,7 @@ fn each_arc_bounded_wall_compiles_exactly_to_its_closed_form_volume() {
     use ifc_geometry::lower::{lower_product_representation, RepresentationPurpose};
 
     let model = parse(&text());
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     for name in ARC_WALLS {
         let mut session = LoweringSession::new(&model, &scale);
         let root = lower_product_representation(

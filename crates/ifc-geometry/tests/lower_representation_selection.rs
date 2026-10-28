@@ -100,7 +100,7 @@ fn plan_selection_lowers_curve_items_instead_of_the_body_path() {
 
     let units = UnitScale {
         length_to_metres: 1.0,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     };
     let mut session = LoweringSession::new(&model, &units);
     let root =

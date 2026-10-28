@@ -577,6 +577,46 @@ pub enum GeometryError {
     #[error("unit resolution failed: {0}")]
     Units(String),
 
+    /// The model declares no length unit, so no coordinate has a scale (#585).
+    #[error("the model declares no length unit (no IfcProject, no UnitsInContext, or no LENGTHUNIT in it), so its coordinates have no scale")]
+    LengthUnitUndeclared {
+        /// The `IfcProject`, when the model has one.
+        project: Option<EntityId>,
+        /// The `IfcUnitAssignment`, when the project names one.
+        assignment: Option<EntityId>,
+    },
+
+    /// A plane angle was read, and the project declares no `PLANEANGLEUNIT`
+    /// (#585).
+    #[error("{entity} holds a plane angle, and the project declares no PLANEANGLEUNIT")]
+    AngleUnitUndeclared {
+        /// The entity whose angle has no unit.
+        entity: EntityId,
+    },
+
+    /// A declared project unit cannot be read as an exact factor (#585).
+    #[error("{unit} ({unit_type}) cannot be read: {detail}")]
+    UnitUnreadable {
+        /// The unit entity.
+        unit: EntityId,
+        /// Its `IfcUnitEnum` value, `LENGTHUNIT` or `PLANEANGLEUNIT`.
+        unit_type: &'static str,
+        /// Why it cannot be read.
+        detail: String,
+    },
+
+    /// Two candidates for one project unit (#585).
+    #[error("{first} and {second} are both the model's {kind}; IFC allows one")]
+    UnitsAmbiguous {
+        /// The first candidate.
+        first: EntityId,
+        /// The second candidate.
+        second: EntityId,
+        /// What there should be one of: `IFCPROJECT`, `LENGTHUNIT` or
+        /// `PLANEANGLEUNIT`.
+        kind: &'static str,
+    },
+
     /// An authored value was rejected before anything was staged (ADR 0011).
     ///
     /// Distinct from [`Self::Degenerate`], which describes an entity that
@@ -665,6 +705,13 @@ impl GeometryError {
             }
             // The opening is what failed; `host` stays readable on the variant.
             Self::OpeningNotSubtracted { opening, .. } => Some(*opening),
+            Self::LengthUnitUndeclared {
+                project,
+                assignment,
+            } => assignment.or(*project),
+            Self::AngleUnitUndeclared { entity } => Some(*entity),
+            Self::UnitUnreadable { unit, .. } => Some(*unit),
+            Self::UnitsAmbiguous { second, .. } => Some(*second),
             Self::Units(_)
             | Self::InvalidAuthoredValue { .. }
             | Self::AuthoringSchemaUnbound { .. }
@@ -713,34 +760,4 @@ impl GeometryError {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn errors_name_the_entity_so_failures_are_locatable() {
-        let e = GeometryError::MissingAttribute {
-            entity: EntityId(42),
-            type_name: "IFCEXTRUDEDAREASOLID".into(),
-            attribute: "SweptArea",
-        };
-        assert_eq!(e.entity(), Some(EntityId(42)));
-        assert!(e.to_string().contains("#42"));
-        assert!(e.to_string().contains("SweptArea"));
-    }
-
-    #[test]
-    fn unsupported_is_distinguishable_from_corruption() {
-        let unsupported = GeometryError::Unsupported {
-            entity: EntityId(1),
-            type_name: "IFCSECTIONEDSPINE".into(),
-            detail: "spine interpolation",
-        };
-        let broken = GeometryError::Degenerate {
-            entity: EntityId(1),
-            type_name: "IFCCIRCLE".into(),
-            detail: "zero radius".into(),
-        };
-        assert!(unsupported.is_unsupported());
-        assert!(!broken.is_unsupported());
-    }
-}
+mod tests;

@@ -32,14 +32,14 @@ use ifc_step::StepCodec;
 fn millimetres_and_degrees() -> AlignmentUnits {
     AlignmentUnits {
         length_to_metres: 0.001,
-        angle_to_radians: PI / 180.0,
+        angle_to_radians: Some(PI / 180.0),
     }
 }
 
 fn metres() -> AlignmentUnits {
     AlignmentUnits {
         length_to_metres: 1.0,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     }
 }
 
@@ -317,11 +317,11 @@ fn refuses_unusable_horizontal_units() {
     for units in [
         AlignmentUnits {
             length_to_metres: 0.0,
-            angle_to_radians: 1.0,
+            angle_to_radians: Some(1.0),
         },
         AlignmentUnits {
             length_to_metres: 1.0,
-            angle_to_radians: f64::NAN,
+            angle_to_radians: Some(f64::NAN),
         },
     ] {
         assert!(matches!(
@@ -329,6 +329,18 @@ fn refuses_unusable_horizontal_units() {
             Err(AlignmentError::InvalidUnits { .. })
         ));
     }
+}
+
+#[test]
+fn a_horizontal_segment_without_an_angle_unit_refuses_naming_it() {
+    let units = AlignmentUnits {
+        length_to_metres: 1.0,
+        angle_to_radians: None,
+    };
+    assert!(matches!(
+        read_horizontal_segment(&fixture(), EntityId(2), units),
+        Err(AlignmentError::AngleUnitUndeclared { entity }) if entity == EntityId(2)
+    ));
 }
 
 // ------------------------------------------------------------------ vertical
@@ -456,7 +468,7 @@ fn refuses_an_unusable_vertical_length_unit() {
             EntityId(1),
             AlignmentUnits {
                 length_to_metres: -1.0,
-                angle_to_radians: 1.0,
+                angle_to_radians: Some(1.0),
             }
         ),
         Err(AlignmentError::InvalidUnits { .. })

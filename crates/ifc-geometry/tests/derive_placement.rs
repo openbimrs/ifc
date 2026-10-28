@@ -20,7 +20,7 @@ const TOL: f64 = 1e-6;
 fn metres() -> UnitScale {
     UnitScale {
         length_to_metres: 1.0,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     }
 }
 
@@ -407,7 +407,7 @@ fn a_distance_and_its_curve_are_measured_in_the_same_unit() {
     // now 0.1 m long and the station is 0.04 m along it.
     let millimetres = UnitScale {
         length_to_metres: 0.001,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     };
     let in_millimetres =
         derive_placement_transform(&model, &millimetres, EntityId(9_001), &at(40.0), &evaluator)

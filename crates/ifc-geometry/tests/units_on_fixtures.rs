@@ -4,7 +4,7 @@
 //! actual exporters write, where the unit assignment is buried in a real
 //! project structure.
 
-use ifc_geometry::units;
+use ifc_geometry::{units, GeometryError};
 use ifc_model::Codec;
 use ifc_step::StepCodec;
 use std::path::PathBuf;
@@ -15,12 +15,16 @@ fn fixture(rel: &str) -> PathBuf {
         .join(rel)
 }
 
-/// Every fixture must resolve units without panicking, and the factor must be
-/// physically plausible. A building is not 1e12 metres.
+/// Every fixture either resolves to a physically plausible scale (a building
+/// is not 1e12 metres) or is refused for declaring no length unit. None is
+/// unreadable or ambiguous.
 #[test]
 fn every_fixture_resolves_a_plausible_unit_scale() {
     let dir = fixture("");
     let mut checked = 0;
+    let mut resolved = 0;
+    let mut refused = 0;
+    let mut flyaway_refused = false;
 
     fn walk(dir: &std::path::Path, out: &mut Vec<PathBuf>) {
         let Ok(entries) = std::fs::read_dir(dir) else {
@@ -43,24 +47,46 @@ fn every_fixture_resolves_a_plausible_unit_scale() {
         let Ok(model) = StepCodec.read_path(&path) else {
             continue;
         };
-        let scale = units::resolve(&model);
         let name = path.file_name().unwrap().to_string_lossy();
-
-        assert!(
-            scale.length_to_metres > 1e-9 && scale.length_to_metres < 1e9,
-            "{name}: implausible length factor {}",
-            scale.length_to_metres
-        );
-        assert!(
-            scale.angle_to_radians > 0.0 && scale.angle_to_radians <= 1.0,
-            "{name}: implausible angle factor {}",
-            scale.angle_to_radians
-        );
+        match units::resolve(&model) {
+            Ok(scale) => {
+                assert!(
+                    scale.length_to_metres > 1e-9 && scale.length_to_metres < 1e9,
+                    "{name}: implausible length factor {}",
+                    scale.length_to_metres
+                );
+                if let Some(angle) = scale.angle_to_radians {
+                    assert!(
+                        angle > 0.0 && angle <= 1.0,
+                        "{name}: implausible angle factor {angle}"
+                    );
+                }
+                resolved += 1;
+            }
+            Err(GeometryError::LengthUnitUndeclared { .. }) => {
+                if &*name == "issue_1155_halfspace_flyaway.ifc" {
+                    flyaway_refused = true;
+                }
+                refused += 1;
+            }
+            Err(error) => panic!("{name}: units unreadable: {error}"),
+        }
         checked += 1;
     }
     assert!(
         checked >= 19,
         "expected the committed corpus, got {checked}"
+    );
+    // Lower bounds from the committed corpus (90 parsed: 76 resolved, 14
+    // refused); a resolver that refuses everything must not pass.
+    assert!(
+        resolved >= 76,
+        "expected 76 resolved fixtures, got {resolved}"
+    );
+    assert!(refused >= 14, "expected 14 refused fixtures, got {refused}");
+    assert!(
+        flyaway_refused,
+        "issue_1155_halfspace_flyaway.ifc declares no units and must be refused"
     );
 }
 
@@ -79,7 +105,7 @@ fn every_fixture_resolves_a_plausible_unit_scale() {
 fn reads_the_declared_length_unit_and_ignores_other_unit_types() {
     let path = fixture("ifclite-geometry/issue_098_wall_W.ifc");
     let model = StepCodec.read_path(&path).expect("fixture parses");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
 
     assert_eq!(
         scale.length_to_metres, 1.0,
@@ -95,13 +121,14 @@ fn reads_the_declared_length_unit_and_ignores_other_unit_types() {
     // but #45 is NOT referenced by the IfcUnitAssignment -- only the degree
     // unit is. Reading the assignment list rather than scanning every
     // IfcSIUnit in the file is what makes this come out right.
+    let angle = scale.angle_to_radians.expect("file declares an angle unit");
     assert!(
-        (scale.angle_to_radians - std::f64::consts::PI / 180.0).abs() < 1e-12,
-        "file assigns DEGREE, got {}",
-        scale.angle_to_radians
+        (angle - std::f64::consts::PI / 180.0).abs() < 1e-12,
+        "file assigns DEGREE, got {angle}"
     );
     assert!(
-        (scale.angle(90.0) - std::f64::consts::FRAC_PI_2).abs() < 1e-12,
+        (scale.angle(ifc_model::EntityId(1), 90.0).unwrap() - std::f64::consts::FRAC_PI_2).abs()
+            < 1e-12,
         "90 degrees is pi/2 radians"
     );
 }
@@ -138,7 +165,7 @@ fn millimetre_projects_scale_coordinates() {
     project[8] = Value::Ref(EntityId(2));
     model.insert(EntityId(3), Entity::new("IFCPROJECT", project));
 
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     assert_eq!(scale.length_to_metres, 1e-3);
     assert_eq!(scale.length(3000.0), 3.0, "a 3000 mm wall is 3 m");
 }

@@ -290,7 +290,7 @@ fn stations_ifc_and_axiolid_cannot_share_are_refused_by_name() {
     lower(&model, 46).expect("a line is unbounded");
 
     // A scaled frame changes the measure along the curve.
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session = LoweringSession::new(&model, &scale);
     let mut frame = Transform::identity();
     frame.basis = [[2.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 2.0]];

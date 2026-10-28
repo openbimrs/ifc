@@ -44,7 +44,7 @@ fn model(points: &[u64]) -> Model {
 #[test]
 fn arbitrary_open_profile_preserves_its_exact_open_path() {
     let model = model(&[1, 2]);
-    let units = UnitScale::default();
+    let units = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &units);
     let root = lower_open_profile_node(&mut session, EntityId(4)).expect("open profile lowers");
     let lowered = session.finish(root).expect("valid graph");
@@ -65,15 +65,15 @@ fn arbitrary_open_profile_preserves_its_exact_open_path() {
 #[test]
 fn area_profile_api_refuses_open_semantics() {
     let model = model(&[1, 2]);
-    let error = lower_profile(&model, EntityId(4), &UnitScale::default())
-        .expect_err("open path has no area");
+    let error =
+        lower_profile(&model, EntityId(4), &UnitScale::SI).expect_err("open path has no area");
     assert!(error.to_string().contains("use lower_open_profile_node"));
 }
 
 #[test]
 fn geometrically_closed_path_fails_closed() {
     let model = model(&[1, 2, 1]);
-    let units = UnitScale::default();
+    let units = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &units);
     let error = lower_open_profile_node(&mut session, EntityId(4))
         .expect_err("closed endpoints are not an open profile");
@@ -90,7 +90,7 @@ fn tiny_authored_gap_remains_open_without_an_invented_tolerance() {
             vec![Value::List(vec![n(1e-13), n(0.0)])],
         ),
     );
-    let units = UnitScale::default();
+    let units = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &units);
     let root = lower_open_profile_node(&mut session, EntityId(4))
         .expect("distinct authored endpoints remain open");

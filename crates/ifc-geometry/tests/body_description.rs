@@ -45,9 +45,13 @@ fn an_extrusion_reports_its_profile_direction_and_depth_in_si() {
          #104=IFCEXTRUDEDAREASOLID(#100,#102,#103,3000.);",
         "#104",
     );
-    let body = body_description(&model, &units::resolve(&model), PRODUCT)
-        .expect("describes")
-        .expect("has a body");
+    let body = body_description(
+        &model,
+        &units::resolve(&model).expect("project units"),
+        PRODUCT,
+    )
+    .expect("describes")
+    .expect("has a body");
     assert_eq!(body.representation, EntityId(20));
     let item = body.sole_item().expect("one item");
     assert_eq!(item.item, EntityId(104));
@@ -104,9 +108,13 @@ fn a_sheared_extrusion_in_rotated_frames_reports_its_world_direction() {
          #106=IFCEXTRUDEDAREASOLID(#100,#104,#105,500.);",
         "#106",
     );
-    let body = body_description(&model, &units::resolve(&model), PRODUCT)
-        .unwrap()
-        .unwrap();
+    let body = body_description(
+        &model,
+        &units::resolve(&model).expect("project units"),
+        PRODUCT,
+    )
+    .unwrap()
+    .unwrap();
     let swept = body.sole_item().unwrap().swept.as_ref().unwrap();
     let SweepPath::Extrusion {
         direction_world,
@@ -133,9 +141,13 @@ fn a_sheared_extrusion_in_rotated_frames_reports_its_world_direction() {
 #[test]
 fn every_item_of_the_profile_family_fixture_is_described_in_si() {
     let model = profile_families();
-    let body = body_description(&model, &units::resolve(&model), EntityId(89))
-        .unwrap()
-        .unwrap();
+    let body = body_description(
+        &model,
+        &units::resolve(&model).expect("project units"),
+        EntityId(89),
+    )
+    .unwrap()
+    .unwrap();
     let families: Vec<&str> = body
         .items
         .iter()
@@ -189,7 +201,12 @@ fn a_product_without_a_body_is_none_not_an_error() {
         ),
     );
     assert_eq!(
-        body_description(&model, &units::resolve(&model), PRODUCT).unwrap(),
+        body_description(
+            &model,
+            &units::resolve(&model).expect("project units"),
+            PRODUCT
+        )
+        .unwrap(),
         None
     );
 }
@@ -213,9 +230,13 @@ fn a_revolution_reports_its_world_axis_and_angle() {
          #104=IFCREVOLVEDAREASOLID(#100,$,#101,1.5);",
         "#104",
     );
-    let body = body_description(&model, &units::resolve(&model), PRODUCT)
-        .unwrap()
-        .unwrap();
+    let body = body_description(
+        &model,
+        &units::resolve(&model).expect("project units"),
+        PRODUCT,
+    )
+    .unwrap()
+    .unwrap();
     let item = body.sole_item().unwrap();
     assert_eq!(item.kind, BodyKind::Revolution);
     let SweepPath::Revolution {
@@ -248,9 +269,13 @@ fn tapered_and_directrix_sweeps_report_what_they_state() {
          #109=IFCFIXEDREFERENCESWEPTAREASOLID(#108,$,#106,$,$,#107);",
         "#103,#109",
     );
-    let body = body_description(&model, &units::resolve(&model), PRODUCT)
-        .unwrap()
-        .unwrap();
+    let body = body_description(
+        &model,
+        &units::resolve(&model).expect("project units"),
+        PRODUCT,
+    )
+    .unwrap()
+    .unwrap();
     let [tapered, directrix] = body.items.as_slice() else {
         panic!("two items");
     };
@@ -279,9 +304,13 @@ fn a_brep_body_reports_its_kind_only() {
          #102=IFCFACETEDBREP(#101);",
         "#102",
     );
-    let body = body_description(&model, &units::resolve(&model), PRODUCT)
-        .unwrap()
-        .unwrap();
+    let body = body_description(
+        &model,
+        &units::resolve(&model).expect("project units"),
+        PRODUCT,
+    )
+    .unwrap()
+    .unwrap();
     let item = body.sole_item().unwrap();
     assert_eq!(item.kind, BodyKind::Brep);
     assert_eq!(item.type_name, "IFCFACETEDBREP");
@@ -322,9 +351,13 @@ const MAPPED: &str = "#200=IFCRECTANGLEPROFILEDEF(.AREA.,$,$,0.2,0.1);
 #[test]
 fn a_mapped_item_describes_like_the_same_solid_authored_in_place() {
     let model = metres(MAPPED, "#215,#220");
-    let body = body_description(&model, &units::resolve(&model), PRODUCT)
-        .unwrap()
-        .unwrap();
+    let body = body_description(
+        &model,
+        &units::resolve(&model).expect("project units"),
+        PRODUCT,
+    )
+    .unwrap()
+    .unwrap();
     let [mapped, direct] = body.items.as_slice() else {
         panic!("the map resolves to one item beside the direct one");
     };
@@ -382,9 +415,13 @@ fn the_product_placement_moves_the_description() {
     let near = metres(MAPPED, "#215");
     let far = model("IFC4", "$", "0.,1.,0.", MAPPED, "#215");
     let direction = |model: &Model| {
-        let body = body_description(model, &units::resolve(model), PRODUCT)
-            .unwrap()
-            .unwrap();
+        let body = body_description(
+            model,
+            &units::resolve(model).expect("project units"),
+            PRODUCT,
+        )
+        .unwrap()
+        .unwrap();
         match body.sole_item().unwrap().swept.as_ref().unwrap().path {
             SweepPath::Extrusion {
                 direction_world, ..
@@ -427,9 +464,13 @@ fn the_context_world_coordinate_system_is_applied() {
             ],
         ),
     );
-    let body = body_description(&model, &units::resolve(&model), PRODUCT)
-        .unwrap()
-        .unwrap();
+    let body = body_description(
+        &model,
+        &units::resolve(&model).expect("project units"),
+        PRODUCT,
+    )
+    .unwrap()
+    .unwrap();
     let swept = body.sole_item().unwrap().swept.as_ref().unwrap();
     assert!(
         close(swept.placement_world.origin, [80.0, 110.0, 30.0]),
@@ -495,9 +536,13 @@ const MAPPED_KINDS: &str = "#300=IFCFACE(());
 
 fn mapped_item(records: &str, item: &str) -> ifc_geometry::BodyItem {
     let model = metres(&format!("{MAPPED_KINDS}\n     {records}"), item);
-    let body = body_description(&model, &units::resolve(&model), PRODUCT)
-        .expect("describes")
-        .expect("has a body");
+    let body = body_description(
+        &model,
+        &units::resolve(&model).expect("project units"),
+        PRODUCT,
+    )
+    .expect("describes")
+    .expect("has a body");
     body.sole_item().expect("one item").clone()
 }
 
@@ -562,9 +607,13 @@ fn a_scaled_mapping_scales_the_determinant() {
 #[test]
 fn a_direct_item_reports_the_product_frame() {
     let model = metres(MAPPED_KINDS, "#302");
-    let body = body_description(&model, &units::resolve(&model), PRODUCT)
-        .unwrap()
-        .unwrap();
+    let body = body_description(
+        &model,
+        &units::resolve(&model).expect("project units"),
+        PRODUCT,
+    )
+    .unwrap()
+    .unwrap();
     let item = body.sole_item().unwrap();
     assert!(item.mapped_by.is_empty());
     assert_eq!(item.is_mirrored(), Some(false));

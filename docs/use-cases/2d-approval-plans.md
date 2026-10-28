@@ -155,6 +155,7 @@ result; an application must still provide those layers.
 Unit resolution (`units.rs`) handles SI and conversion-based units, which
 matters because plan dimensions in millimetres versus metres is a classic
 silent-corruption bug in permit drawings.
+A model that declares no length unit is refused with a typed error, never read in metres (#585).
 
 ### Reading a product's representations
 

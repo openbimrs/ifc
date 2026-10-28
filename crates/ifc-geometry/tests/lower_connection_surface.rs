@@ -11,6 +11,9 @@
 //! connection helper routes every select member and refuses every
 //! non-surface connection kind with a typed error.
 
+#[path = "support/assume_units.rs"]
+mod assume_units;
+
 use axiolid_model::{GeometryNode, NodeId};
 use axiolid_surface::Surface;
 use axiolid_topology::{BRep, Orientation};
@@ -19,7 +22,8 @@ use ifc_geometry::lower::{
     lower_representation_item, DegenerateFacePolicy, LoweredGeometry, LoweringSession,
 };
 use ifc_geometry::transform::Transform;
-use ifc_geometry::{units, GeometryError, GeometryResult};
+use ifc_geometry::UnitScale;
+use ifc_geometry::{GeometryError, GeometryResult};
 use ifc_model::{Codec, EntityId, Model};
 use ifc_step::StepCodec;
 use std::path::PathBuf;
@@ -90,7 +94,7 @@ fn lowered(
     model: &Model,
     lower: impl FnOnce(&mut LoweringSession<'_>) -> GeometryResult<NodeId>,
 ) -> GeometryResult<LoweredGeometry> {
-    let scale = units::resolve(model);
+    let scale = assume_units::scale_or_si(model);
     let mut session = LoweringSession::new(model, &scale);
     let root = lower(&mut session)?;
     session.finish(root)
@@ -310,7 +314,7 @@ fn the_connection_helper_routes_every_select_member() {
 #[test]
 fn the_related_end_is_optional_and_independent() {
     let model = model();
-    let scale = units::resolve(&model);
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let related =
         lower_related_connection_surface(&mut session, EntityId(51), Transform::identity())
@@ -349,7 +353,7 @@ fn every_non_surface_connection_kind_is_a_typed_refusal() {
         (57, "IFCCONNECTIONPORTGEOMETRY"),
     ] {
         for related in [false, true] {
-            let scale = units::resolve(&model);
+            let scale = UnitScale::SI;
             let mut session = LoweringSession::new(&model, &scale);
             let error = if related {
                 lower_related_connection_surface(&mut session, EntityId(id), Transform::identity())
@@ -447,7 +451,7 @@ fn broken_connection_references_are_structural_errors() {
 #[test]
 fn a_collapsed_face_surface_is_degenerate_under_both_policies() {
     let model = model();
-    let scale = units::resolve(&model);
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let error = lower_face_surface_node(&mut session, EntityId(82), Transform::identity())
         .expect_err("two distinct edges bound no area");
@@ -590,7 +594,7 @@ mod meshing {
     #[test]
     fn committed_space_boundaries_mesh_in_the_space_frame() {
         let model = space_fixture();
-        let scale = units::resolve(&model);
+        let scale = ifc_geometry::units::resolve(&model).expect("project units");
         let frame = ifc_geometry::lower::product_world_transform(&model, &scale, EntityId(13))
             .expect("the space is placed");
         for (connection, m2, normal) in [

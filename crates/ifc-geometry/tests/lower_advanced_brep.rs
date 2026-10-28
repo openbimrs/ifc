@@ -32,7 +32,7 @@ fn model() -> Model {
 }
 
 fn brep(model: &Model) -> axiolid_topology::BRep<axiolid_model::NodeId> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let ids = model.ids_of_type("IFCADVANCEDBREP");
     assert_eq!(ids.len(), 1, "one advanced brep in the fixture");
     let mut session = LoweringSession::new(model, &scale);
@@ -178,7 +178,7 @@ fn the_lateral_face_surface_is_the_cylinder_in_metres() {
         1,
         "one cylindrical surface backs the lateral face"
     );
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let ids = model.ids_of_type("IFCADVANCEDBREP");
     let mut session = LoweringSession::new(&model, &scale);
     let node =

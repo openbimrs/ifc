@@ -89,10 +89,23 @@ pub struct SelectedContext {
 ///
 /// Placements share one resolver, so a storey's chain is walked once. An
 /// id the model lacks is reported with [`GeometryError::MissingEntity`] in
-/// both halves.
+/// both halves. A model whose units do not resolve refuses every product
+/// with that error (#585).
 pub fn product_placements(model: &Model, products: Option<&[EntityId]>) -> Vec<ProductPlacement> {
     let products = products.map_or_else(|| geometric_products(model), <[EntityId]>::to_vec);
-    let scale = units::resolve(model);
+    let scale = match units::resolve(model) {
+        Ok(scale) => scale,
+        Err(error) => {
+            return products
+                .into_iter()
+                .map(|product| ProductPlacement {
+                    product,
+                    world: Err(error.clone()),
+                    body: selected_body(model, product),
+                })
+                .collect();
+        }
+    };
     products_world_transforms(model, &scale, products)
         .into_iter()
         .map(|(product, world)| ProductPlacement {

@@ -11,6 +11,9 @@
 
 #![cfg(feature = "compile-reference-backend")]
 
+#[path = "support/assume_units.rs"]
+mod assume_units;
+
 use axiolid_contracts::ExecutionOptions;
 use axiolid_core::Tolerance;
 use axiolid_mesh::TriMesh;
@@ -21,8 +24,9 @@ use ifc_geometry::lower::{
     LoweringSession,
 };
 use ifc_geometry::transform::Transform;
+use ifc_geometry::GeometryError;
 use ifc_geometry::RepresentationPurpose;
-use ifc_geometry::{units, GeometryError};
+use ifc_geometry::UnitScale;
 use ifc_model::{Codec, EntityId, Model};
 use ifc_step::StepCodec;
 
@@ -104,7 +108,7 @@ fn parse(text: &str) -> Model {
 }
 
 fn lower(model: &Model, policy: DegenerateFacePolicy) -> Result<LoweredGeometry, GeometryError> {
-    let scale = units::resolve(model);
+    let scale = assume_units::scale_or_si(model);
     let mut session = LoweringSession::new(model, &scale).with_face_policy(policy);
     let root =
         lower_product_representation(&mut session, EntityId(1), RepresentationPurpose::Body)?
@@ -151,7 +155,7 @@ fn assert_volume(actual: f64, expected: f64, what: &str) {
 fn the_default_still_refuses_a_collapsed_face() {
     let model = parse(&box_with_sliver());
     assert_eq!(
-        LoweringSession::new(&model, &units::resolve(&model)).face_policy(),
+        LoweringSession::new(&model, &UnitScale::SI).face_policy(),
         DegenerateFacePolicy::Refuse
     );
     let error = lower(&model, DegenerateFacePolicy::default()).expect_err("must refuse");
@@ -290,7 +294,7 @@ ENDSEC;
 END-ISO-10303-21;
 ";
     let model = parse(text);
-    let scale = units::resolve(&model);
+    let scale = UnitScale::SI;
     let mut session =
         LoweringSession::new(&model, &scale).with_face_policy(DegenerateFacePolicy::DropAndReport);
     let error = lower_faceted_brep_node(&mut session, EntityId(60), Transform::identity())
@@ -307,7 +311,7 @@ END-ISO-10303-21;
 #[test]
 fn documented_face_policy_example_reports_dropped_faces() -> Result<(), GeometryError> {
     let model = parse(&box_with_sliver());
-    let scale = units::resolve(&model);
+    let scale = UnitScale::SI;
     let product = EntityId(1);
     // docs:snippet face-policy
     use ifc_geometry::lower::{DegenerateFacePolicy, LoweringSession};
