@@ -327,7 +327,7 @@ pub(crate) fn resolve_in_file_units(
 ) -> GeometryResult<LinearPlacement> {
     let file_units = AlignmentUnits {
         length_to_metres: 1.0,
-        angle_to_radians: units.angle_to_radians,
+        angle_to_radians: units.radians_per_unit(placement)?,
     };
     ifc_alignment::resolve_linear_placement(model, placement, file_units).map_err(|_error| {
         GeometryError::Unsupported {
@@ -554,7 +554,7 @@ fn model_precision(model: &Model, units: &UnitScale, placement: EntityId) -> Geo
         model,
         AlignmentUnits {
             length_to_metres: units.length_to_metres,
-            angle_to_radians: units.angle_to_radians,
+            angle_to_radians: units.radians_per_unit(placement)?,
         },
     )
     .map_err(|_| GeometryError::Degenerate {
@@ -645,7 +645,7 @@ fn basis_curve(
     })?;
     let alignment_units = AlignmentUnits {
         length_to_metres: units.length_to_metres,
-        angle_to_radians: units.angle_to_radians,
+        angle_to_radians: units.radians_per_unit(basis)?,
     };
     // IFC lets the BasisCurve be the alignment itself or its curve
     // representation. Both name the same centreline, so both resolve; a

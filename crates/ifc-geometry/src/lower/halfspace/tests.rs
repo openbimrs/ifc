@@ -68,7 +68,7 @@ fn half_space(agreement: bool, z_offset: f64) -> Model {
 }
 
 fn lower(model: &Model, frame: Transform) -> axiolid_primitive::HalfSpace {
-    let scale = UnitScale::default();
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(model, &scale);
     let node =
         lower_half_space_node(&mut session, EntityId(5), frame).expect("the half space must lower");
@@ -184,7 +184,7 @@ fn the_plane_origin_is_converted_to_metres() {
     let model = half_space(true, 2500.0);
     let scale = UnitScale {
         length_to_metres: 0.001,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     };
     let mut session = LoweringSession::new(&model, &scale);
     let node =
@@ -236,7 +236,7 @@ fn a_polygonal_bound_is_never_dropped() {
         ),
     );
 
-    let scale = UnitScale::default();
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let node =
         lower_half_space_node(&mut session, EntityId(5), Transform::identity()).expect("lowers");
@@ -334,7 +334,7 @@ fn boundary_points_convert_to_metres_and_drop_the_closing_duplicate() {
     ]);
     let scale = UnitScale {
         length_to_metres: 0.001,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     };
     let points = lower_boundary(&model, &scale).expect("lowers");
     assert_eq!(
@@ -354,7 +354,7 @@ fn a_boundary_point_with_zero_z_is_accepted() {
         point3(1.0, 1.0, 0.0),
         point3(0.0, 1.0, 0.0),
     ]);
-    let points = lower_boundary(&model, &UnitScale::default()).expect("lowers");
+    let points = lower_boundary(&model, &UnitScale::SI).expect("lowers");
     assert_eq!(points[2], [1.0, 1.0]);
 }
 
@@ -368,7 +368,7 @@ fn a_boundary_point_off_the_plane_is_refused_by_name() {
         point3(1.0, 1.0, 0.25),
         point3(0.0, 1.0, 0.0),
     ]);
-    let text = lower_boundary(&model, &UnitScale::default())
+    let text = lower_boundary(&model, &UnitScale::SI)
         .expect_err("an off-plane boundary point must not lower");
     assert!(text.contains("Degenerate"), "got {text}");
     assert!(
@@ -397,7 +397,7 @@ fn an_empty_composite_boundary_is_refused_as_degenerate() {
             vec![Value::List(vec![]), Value::Bool(false)],
         ),
     );
-    let text = lower_boundary(&model, &UnitScale::default())
+    let text = lower_boundary(&model, &UnitScale::SI)
         .expect_err("an empty composite boundary must not lower");
     assert!(text.contains("Degenerate"), "got {text}");
     assert!(text.contains("EntityId(6)"), "got {text}");
@@ -416,7 +416,7 @@ fn a_non_planar_base_surface_is_reported_as_unsupported() {
         entity("IFCCYLINDRICALSURFACE", vec![r(3), n(1.0)]),
     );
 
-    let scale = UnitScale::default();
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let error = lower_half_space_node(&mut session, EntityId(5), Transform::identity())
         .expect_err("a cylindrical base surface must not lower");
@@ -452,7 +452,7 @@ fn lower_bounded(
         EntityId(7),
         entity("IFCAXIS2PLACEMENT3D", vec![r(8), r(9), Value::Null]),
     );
-    let scale = UnitScale::default();
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let node = lower_half_space_node(&mut session, EntityId(5), frame)?;
     let lowered = session.finish(node).expect("finishes");

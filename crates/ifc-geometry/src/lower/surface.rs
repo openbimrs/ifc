@@ -209,8 +209,9 @@ fn to_metres(session: &LoweringSession<'_>, value: f64) -> f64 {
 /// basis type, instead of leaking a bool to every caller.
 pub(crate) fn trim_converter(
     session: &LoweringSession<'_>,
+    entity: EntityId,
     basis_kind: &str,
-) -> impl Fn(f64) -> f64 {
+) -> GeometryResult<impl Fn(f64) -> f64> {
     let angular = matches!(
         basis_kind,
         "IFCCYLINDRICALSURFACE"
@@ -219,11 +220,11 @@ pub(crate) fn trim_converter(
             | "IFCSURFACEOFREVOLUTION"
     );
     let factor = if angular {
-        session.units().angle_to_radians
+        session.units().radians_per_unit(entity)?
     } else {
         session.units().length_to_metres
     };
-    move |value: f64| value * factor
+    Ok(move |value: f64| value * factor)
 }
 
 /// Read an `IfcCartesianPoint`'s three coordinates, as written.
@@ -512,7 +513,7 @@ pub fn lower_rectangular_trimmed(
     let rect = view.rectangle()?;
 
     let basis_kind = session.type_name(basis_id)?.to_ascii_uppercase();
-    let convert = trim_converter(session, &basis_kind);
+    let convert = trim_converter(session, id, &basis_kind)?;
 
     session.node_for(
         id,

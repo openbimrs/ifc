@@ -167,7 +167,7 @@ impl PlacementResolver {
         // in file units unchanged.
         self.resolve(
             model,
-            &UnitScale::default(),
+            &UnitScale::SI,
             placement,
             LinearResolution::cache_only(),
         )

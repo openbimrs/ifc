@@ -115,7 +115,7 @@ pub(crate) fn basis_curve(
 ) -> GeometryResult<EntityId> {
     let file_units = ifc_alignment::AlignmentUnits {
         length_to_metres: 1.0,
-        angle_to_radians: units.angle_to_radians,
+        angle_to_radians: units.radians_per_unit(placement)?,
     };
     ifc_alignment::resolve_linear_placement(model, placement, file_units)
         .map(|resolved| resolved.relative_placement.basis_curve)

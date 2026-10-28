@@ -7,7 +7,7 @@ use crate::units::UnitScale;
 
 pub(super) const METRES: UnitScale = UnitScale {
     length_to_metres: 1.0,
-    angle_to_radians: 1.0,
+    angle_to_radians: Some(1.0),
 };
 
 /// Builder for small segment models; ids are handed out in order.

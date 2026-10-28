@@ -189,7 +189,7 @@ impl Tolerance {
     fn for_session(session: &LoweringSession<'_>, id: EntityId) -> GeometryResult<Self> {
         let units = AlignmentUnits {
             length_to_metres: session.units().length_to_metres,
-            angle_to_radians: session.units().angle_to_radians,
+            angle_to_radians: session.units().radians_per_unit(id)?,
         };
         SeamTolerance::for_model(session.model(), units)
             .map(|t| Self(t.length()))

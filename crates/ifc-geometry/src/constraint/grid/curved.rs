@@ -222,7 +222,8 @@ fn carrier(model: &Model, units: &UnitScale, curve: EntityId) -> GeometryResult<
                      for its intersection",
                 ));
             };
-            let [t1, t2] = [units.angle(t1), units.angle(t2)];
+            let factor = units.radians_per_unit(curve)?;
+            let [t1, t2] = [t1 * factor, t2 * factor];
             let agrees = view.sense_agreement()?;
             // ISO 10303-42: with SenseAgreement the arc runs from Trim1 the
             // positive way round to Trim2; without, the negative way.

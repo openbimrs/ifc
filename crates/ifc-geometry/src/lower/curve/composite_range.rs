@@ -33,7 +33,7 @@ use axiolid_model::{
 };
 use ifc_model::EntityId;
 
-use super::{lower_curve_node, scale_parameter, transition, world_point};
+use super::{lower_curve_node, parameter_factor, transition, world_point};
 use crate::curve::composite::{CompositeCurve, CompositeCurveSegment};
 use crate::curve::polyline::Polyline;
 use crate::curve::trimmed::TrimmedCurve;
@@ -300,7 +300,7 @@ fn trimmed_span(
     let (span, period) = match basis_kind.as_str() {
         "IFCCIRCLE" | "IFCELLIPSE" => {
             // One turn in the file's own angle unit.
-            let period = TAU / session.units().angle(1.0);
+            let period = TAU / session.units().radians_per_unit(parent)?;
             let span = if travelled > 0.0 && travelled <= period * (1.0 + RELATIVE_SLACK) {
                 travelled
             } else {
@@ -414,14 +414,11 @@ fn cut(
             // reverses when `sense_agreement` is false, so a piece's sense is
             // exactly its traversal direction along the basis parameter.
             let sense = *direction > 0.0;
+            let factor = parameter_factor(session, sweep, basis_kind)?;
             ranges
                 .into_iter()
                 .map(|(a, b)| {
-                    let parameter = |raw| {
-                        vec![TrimSelector::Parameter(scale_parameter(
-                            session, basis_kind, raw,
-                        ))]
-                    };
+                    let parameter = |raw| vec![TrimSelector::Parameter(raw * factor)];
                     let relation = CurveRelation::Trimmed {
                         basis: basis_node,
                         start: parameter(a),

@@ -283,7 +283,7 @@ impl Walk<'_> {
 
         let resolve = |trim: crate::curve::trimmed::Trim| -> GeometryResult<f64> {
             match trim.preferred(preference) {
-                Some(TrimPoint::Parameter(raw)) => Ok(basis.parameter(raw, self.units)),
+                Some(TrimPoint::Parameter(raw)) => basis.parameter(id, raw, self.units),
                 Some(TrimPoint::Cartesian(point)) => {
                     let c = self.planar_point(id, point)?;
                     let at = Point2::new(self.units.length(c[0]), self.units.length(c[1]));
@@ -477,10 +477,10 @@ impl Basis {
     /// A circle parameter is an angle in the project's plane-angle unit. A
     /// line parameter counts multiples of its `IfcVector`, which already
     /// carries the length, so it is dimensionless and passes through.
-    fn parameter(self, raw: f64, units: &UnitScale) -> f64 {
+    fn parameter(self, entity: EntityId, raw: f64, units: &UnitScale) -> GeometryResult<f64> {
         match self {
-            Self::Circle(_) => units.angle(raw),
-            Self::Line(_) => raw,
+            Self::Circle(_) => units.angle(entity, raw),
+            Self::Line(_) => Ok(raw),
         }
     }
 

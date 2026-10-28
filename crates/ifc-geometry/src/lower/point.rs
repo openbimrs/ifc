@@ -65,7 +65,7 @@ fn build_point_on_curve(
 
     let basis_kind = session.type_name(basis_ref)?;
     let curve = lower_curve_node(session, basis_ref, frame)?;
-    let parameter = scale_parameter(session, &basis_kind, raw_parameter);
+    let parameter = scale_parameter(session, id, &basis_kind, raw_parameter)?;
 
     session.node_for(
         id,
@@ -109,7 +109,7 @@ fn build_point_on_surface(
 
     let basis_kind = session.type_name(basis_ref)?;
     let surface = lower_surface_node(session, basis_ref, frame)?;
-    let convert = crate::lower::surface::trim_converter(session, &basis_kind);
+    let convert = crate::lower::surface::trim_converter(session, id, &basis_kind)?;
     let (u, v) = (convert(raw_u), convert(raw_v));
 
     session.node_for(

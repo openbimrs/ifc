@@ -69,7 +69,10 @@ pub(super) fn read(
         return Err(slots.degenerate(format!("slope {index} is not finite")));
     }
     let widths: Vec<f64> = widths.into_iter().map(|w| units.length(w)).collect();
-    let slopes: Vec<f64> = slopes.into_iter().map(|s| units.angle(s)).collect();
+    let slopes: Vec<f64> = slopes
+        .into_iter()
+        .map(|s| units.angle(slots.id(), s))
+        .collect::<GeometryResult<_>>()?;
     if horizontal_widths {
         if let Some(index) = slopes.iter().position(|s| is_vertical(*s)) {
             return Err(slots.degenerate(format!(

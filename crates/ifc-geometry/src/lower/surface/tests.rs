@@ -74,7 +74,7 @@ fn a_plane_keeps_the_placement_axes_that_fix_its_parameterisation() {
     // Z = +Y (world), explicit X = +Z (world). A normal-only lowering cannot
     // recover this X: it would derive some other perpendicular.
     let model = plane_model([0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]);
-    let surface = lower_plane_surface(&model, &UnitScale::default(), Transform::identity());
+    let surface = lower_plane_surface(&model, &UnitScale::SI, Transform::identity());
     let Surface::Plane(plane) = surface else {
         panic!("expected a plane");
     };
@@ -99,7 +99,7 @@ fn a_plane_origin_is_scaled_to_metres_but_its_axes_stay_unit() {
     let model = plane_model([1000.0, 0.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]);
     let scale = UnitScale {
         length_to_metres: 0.001,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     };
     let surface = lower_plane_surface(&model, &scale, Transform::identity());
     let Surface::Plane(plane) = surface else {
@@ -127,7 +127,7 @@ fn a_plane_origin_is_scaled_to_metres_but_its_axes_stay_unit() {
 #[test]
 fn a_non_unit_authored_axis_is_normalized_into_the_frame() {
     let model = plane_model([0.0, 0.0, 0.0], [0.0, 0.0, 7.0], [4.0, 0.0, 0.0]);
-    let surface = lower_plane_surface(&model, &UnitScale::default(), Transform::identity());
+    let surface = lower_plane_surface(&model, &UnitScale::SI, Transform::identity());
     let Surface::Plane(plane) = surface else {
         panic!("expected a plane");
     };
@@ -158,7 +158,7 @@ fn an_unlowered_surface_family_is_reported_by_name() {
     // lower. IfcPcurve is a surface by the schema but denotes a curve, so it
     // is refused here and handled by the curve lowerer instead.
     model.insert(EntityId(6), entity("IFCPCURVE", vec![r(5), Value::Null]));
-    let scale = UnitScale::default();
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let error = lower_surface_node(&mut session, EntityId(6), Transform::identity())
         .expect_err("a p-curve is not a surface; the curve lowerer owns it");
@@ -207,7 +207,7 @@ fn a_linear_extrusion_references_its_swept_curve_and_direction() {
         ),
     );
 
-    let scale = UnitScale::default();
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let node = lower_linear_extrusion(&mut session, EntityId(5), Transform::identity())
         .expect("the extrusion must lower");
@@ -280,7 +280,7 @@ fn the_depth_hint_never_scales_the_extrusion_direction() {
         ),
     );
 
-    let scale = UnitScale::default();
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let node =
         lower_linear_extrusion(&mut session, EntityId(5), Transform::identity()).expect("lowers");
@@ -341,7 +341,7 @@ fn a_placed_extrusion_rotates_its_direction_but_never_translates_it() {
         ),
     );
 
-    let scale = UnitScale::default();
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let frame = Transform::translation([100.0, -50.0, 25.0]);
     let node = lower_linear_extrusion(&mut session, EntityId(5), frame).expect("lowers");
@@ -477,7 +477,7 @@ fn a_cylinder_converts_its_radius_but_not_its_axes() {
 
     let scale = UnitScale {
         length_to_metres: 0.001,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     };
     let mut session = LoweringSession::new(&model, &scale);
     let node =
@@ -527,7 +527,7 @@ fn a_torus_preserves_a_self_intersecting_spindle() {
 
     let scale = UnitScale {
         length_to_metres: 0.001,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     };
     let mut session = LoweringSession::new(&model, &scale);
     let node =
@@ -584,7 +584,7 @@ fn a_trim_parameter_on_a_curved_basis_uses_the_angle_unit() {
     // orders of magnitude, so a swapped factor cannot pass by luck.
     let scale = UnitScale {
         length_to_metres: 0.001,
-        angle_to_radians: 0.017453292519943295,
+        angle_to_radians: Some(0.017453292519943295),
     };
     let mut session = LoweringSession::new(&model, &scale);
     let node =
@@ -607,7 +607,7 @@ fn a_trim_parameter_on_a_curved_basis_uses_the_angle_unit() {
 #[test]
 fn a_curve_bounded_plane_orders_outer_then_inner() {
     let model = curve_bounded_model();
-    let scale = UnitScale::default();
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let node =
         lower_surface_node(&mut session, EntityId(20), Transform::identity()).expect("lowers");
@@ -630,7 +630,7 @@ fn a_curve_bounded_plane_orders_outer_then_inner() {
 #[test]
 fn a_curve_bounded_surface_preserves_boundary_order_and_implicit_outer() {
     let model = curve_bounded_model();
-    let scale = UnitScale::default();
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let root = lower_surface_node(&mut session, EntityId(21), Transform::identity())
         .expect("curve-bounded surface lowers");
@@ -720,7 +720,7 @@ fn a_bspline_patch_keeps_its_directions_distinct() {
 
     let scale = UnitScale {
         length_to_metres: 0.001,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     };
     let mut session = LoweringSession::new(&model, &scale);
     let node = lower_surface_node(&mut session, surface_id, Transform::identity()).expect("lowers");
@@ -765,7 +765,7 @@ fn self_referential_surface_is_a_typed_cycle_error() {
         entity("IFCBOUNDARYCURVE", vec![Value::List(vec![])]),
     );
 
-    let scale = UnitScale::default();
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let error = lower_surface_node(&mut session, EntityId(1), Transform::identity())
         .expect_err("surface cycle must be bounded");

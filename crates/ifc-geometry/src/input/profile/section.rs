@@ -31,8 +31,11 @@ fn opt_len(slots: &Slots<'_>, index: usize, units: &UnitScale) -> Option<f64> {
 /// Slopes are angles, not lengths: scaling one by the length factor turns a
 /// 2 degree flange taper into radians-times-millimetres and silently deforms
 /// the section.
-fn opt_angle(slots: &Slots<'_>, index: usize, units: &UnitScale) -> Option<f64> {
-    slots.opt_f64(index).map(|value| units.angle(value))
+fn opt_angle(slots: &Slots<'_>, index: usize, units: &UnitScale) -> GeometryResult<Option<f64>> {
+    slots
+        .opt_f64(index)
+        .map(|value| units.angle(slots.id(), value))
+        .transpose()
 }
 
 /// `IfcRectangleProfileDef` and `IfcRoundedRectangleProfileDef`.
@@ -136,7 +139,7 @@ pub(super) fn i_shape(slots: &Slots<'_>, units: &UnitScale) -> GeometryResult<Pr
         flange_thickness: len(slots, section_slot::I_FLANGE, "FlangeThickness", units)?,
         fillet_radius: opt_len(slots, section_slot::I_FILLET, units),
         flange_edge_radius: opt_len(slots, section_slot::I_EDGE, units),
-        flange_slope: opt_angle(slots, section_slot::I_SLOPE, units),
+        flange_slope: opt_angle(slots, section_slot::I_SLOPE, units)?,
     })
 }
 
@@ -165,9 +168,9 @@ pub(super) fn asymmetric_i(
     } else {
         (
             opt_len(slots, section_slot::AI_BOTTOM_EDGE, units),
-            opt_angle(slots, section_slot::AI_BOTTOM_SLOPE, units),
+            opt_angle(slots, section_slot::AI_BOTTOM_SLOPE, units)?,
             opt_len(slots, section_slot::AI_TOP_EDGE, units),
-            opt_angle(slots, section_slot::AI_TOP_SLOPE, units),
+            opt_angle(slots, section_slot::AI_TOP_SLOPE, units)?,
         )
     };
     Ok(ProfileParameters::AsymmetricIShape {
@@ -206,7 +209,7 @@ pub(super) fn l_shape(slots: &Slots<'_>, units: &UnitScale) -> GeometryResult<Pr
         thickness: len(slots, section_slot::L_THICKNESS, "Thickness", units)?,
         fillet_radius: opt_len(slots, section_slot::L_FILLET, units),
         edge_radius: opt_len(slots, section_slot::L_EDGE, units),
-        leg_slope: opt_angle(slots, section_slot::L_SLOPE, units),
+        leg_slope: opt_angle(slots, section_slot::L_SLOPE, units)?,
     })
 }
 
@@ -220,8 +223,8 @@ pub(super) fn t_shape(slots: &Slots<'_>, units: &UnitScale) -> GeometryResult<Pr
         fillet_radius: opt_len(slots, section_slot::T_FILLET, units),
         flange_edge_radius: opt_len(slots, section_slot::T_FLANGE_EDGE, units),
         web_edge_radius: opt_len(slots, section_slot::T_WEB_EDGE, units),
-        web_slope: opt_angle(slots, section_slot::T_WEB_SLOPE, units),
-        flange_slope: opt_angle(slots, section_slot::T_FLANGE_SLOPE, units),
+        web_slope: opt_angle(slots, section_slot::T_WEB_SLOPE, units)?,
+        flange_slope: opt_angle(slots, section_slot::T_FLANGE_SLOPE, units)?,
     })
 }
 
@@ -234,7 +237,7 @@ pub(super) fn u_shape(slots: &Slots<'_>, units: &UnitScale) -> GeometryResult<Pr
         flange_thickness: len(slots, section_slot::U_FLANGE, "FlangeThickness", units)?,
         fillet_radius: opt_len(slots, section_slot::U_FILLET, units),
         edge_radius: opt_len(slots, section_slot::U_EDGE, units),
-        flange_slope: opt_angle(slots, section_slot::U_SLOPE, units),
+        flange_slope: opt_angle(slots, section_slot::U_SLOPE, units)?,
     })
 }
 
