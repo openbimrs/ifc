@@ -231,7 +231,7 @@ export default defineConfig({
     },
     search: { provider: 'local' },
     footer: {
-      message: 'Released under the AGPL-3.0-or-later licence. ISO and CEN standards material is not redistributed.',
+      message: 'Dual-licensed under AGPL-3.0-or-later or a commercial licence. ISO and CEN standards material is not redistributed.',
       copyright: 'Copyright (c) 2026 openbimrs contributors',
     },
   },

@@ -8,7 +8,7 @@ are tested against is what the release attaches:
     package.py archive --target T --binary PATH --out DIR
         DIR/openbim-ifc-v<version>-<T>.tar.gz (a .zip for a Windows
         target), holding openbim-ifc-v<version>-<T>/ with the binary,
-        README.md and LICENSE.
+        README.md, LICENSE, NOTICE and LICENSES/.
     package.py deb --target T --binary PATH --out DIR
         DIR/openbim-ifc_<version>_<arch>.deb for a Linux target (#376):
         the binary in /usr/bin, README.md and the licence in
@@ -43,6 +43,8 @@ from pathlib import Path
 CRATE = Path(__file__).resolve().parents[1]
 ROOT = CRATE.parents[1]
 BIN = "openbim-ifc"
+# Shipped beside LICENSE and NOTICE: the commercial option, and the catalog.
+LICENCE_TEXTS = ("LicenseRef-Commercial.txt", "CC-BY-ND-4.0.txt")
 TEMPLATE = CRATE / "packaging" / "openbim-ifc.rb.in"
 # The targets the formula installs from: Linux as static musl binaries.
 FORMULA_TARGETS = (
@@ -83,6 +85,11 @@ def archive(target: str, binary: Path, out: Path) -> Path:
         (f"{folder}/{name}", binary.read_bytes(), 0o755),
         (f"{folder}/README.md", (CRATE / "README.md").read_bytes(), 0o644),
         (f"{folder}/LICENSE", (ROOT / "LICENSE").read_bytes(), 0o644),
+        (f"{folder}/NOTICE", (ROOT / "NOTICE").read_bytes(), 0o644),
+        *(
+            (f"{folder}/LICENSES/{text}", (ROOT / "LICENSES" / text).read_bytes(), 0o644)
+            for text in LICENCE_TEXTS
+        ),
     ]
     out.mkdir(parents=True, exist_ok=True)
     if windows:
@@ -112,12 +119,18 @@ def deb_name(target: str) -> str:
     return f"{DEB_PACKAGE}_{version()}_{DEB_ARCH[target]}.deb"
 
 
+def _continuation(text: str) -> str:
+    """Text as the continuation lines of a debian/copyright field."""
+    return "".join(f" {line}\n" if line.strip() else " .\n" for line in text.rstrip().splitlines())
+
+
 def deb_copyright() -> str:
     """debian/copyright in the machine-readable format, licence in full."""
-    licence = (ROOT / "LICENSE").read_text(encoding="utf-8")
-    body = "".join(
-        f" {line}\n" if line.strip() else " .\n" for line in licence.rstrip().splitlines()
+    body = _continuation((ROOT / "LICENSE").read_text(encoding="utf-8"))
+    commercial = _continuation(
+        (ROOT / "LICENSES" / "LicenseRef-Commercial.txt").read_text(encoding="utf-8")
     )
+    catalog = _continuation((ROOT / "LICENSES" / "CC-BY-ND-4.0.txt").read_text(encoding="utf-8"))
     return (
         "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n"
         f"Upstream-Name: {DEB_PACKAGE}\n"
@@ -125,8 +138,19 @@ def deb_copyright() -> str:
         "\n"
         "Files: *\n"
         "Copyright: point-grey and the openbimrs/ifc contributors\n"
-        "License: AGPL-3.0-or-later\n"
+        "License: AGPL-3.0-or-later or LicenseRef-Commercial\n"
+        " You may choose either licence. The AGPL-3.0-or-later text follows;\n"
+        " the commercial option is the License: LicenseRef-Commercial paragraph.\n"
+        " The IFC template catalog compiled into the binary is licensed under\n"
+        " CC-BY-ND-4.0 (the License: CC-BY-ND-4.0 paragraph).\n"
+        " .\n"
         f"{body}"
+        "\n"
+        "License: LicenseRef-Commercial\n"
+        f"{commercial}"
+        "\n"
+        "License: CC-BY-ND-4.0\n"
+        f"{catalog}"
     )
 
 
@@ -147,6 +171,11 @@ def deb(target: str, binary: Path, out: Path) -> Path:
             tree / "usr" / "bin" / BIN: (binary.read_bytes(), 0o755),
             doc / "README.md": ((CRATE / "README.md").read_bytes(), 0o644),
             doc / "copyright": (deb_copyright().encode("utf-8"), 0o644),
+            doc / "NOTICE": ((ROOT / "NOTICE").read_bytes(), 0o644),
+            **{
+                doc / "LICENSES" / text: ((ROOT / "LICENSES" / text).read_bytes(), 0o644)
+                for text in LICENCE_TEXTS
+            },
         }
         for path, (data, mode) in files.items():
             path.parent.mkdir(parents=True, exist_ok=True)

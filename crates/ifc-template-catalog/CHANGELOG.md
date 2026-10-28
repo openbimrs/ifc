@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- Licence: `(AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0` (was `AGPL-3.0-or-later AND CC-BY-ND-4.0`); a commercial licence is available from the copyright holder. See LICENSING.md.
+
+Semver: patch.
+
 ## [0.4.1] - 2026-10-27
 
 ### Fixed (#537)

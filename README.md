@@ -125,5 +125,7 @@ crate's `README.md` for its design notes.
 
 ## License
 
-Code is AGPL-3.0-or-later licensed. Embedded catalog data carries the license declared by its
+Code is dual-licensed: `AGPL-3.0-or-later OR LicenseRef-Commercial`. You may use it under the
+AGPL (see `LICENSE`) or under a commercial licence from the copyright holder named in `NOTICE`;
+see `LICENSING.md`. Embedded catalog data carries the license declared by its
 own package and data notices.

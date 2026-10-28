@@ -1,0 +1,21 @@
+OpenBIM.rs is licensed under
+(AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0.
+You may choose either of the first two; the embedded IFC template catalog
+stays CC-BY-ND-4.0. The full text of the GNU Affero General Public License is
+in the LICENSE file of this package, the CC-BY-ND-4.0 text in
+CC-BY-ND-4.0.txt; the commercial option is described below. See also NOTICE.
+
+OpenBIM.rs commercial licence option
+
+This software is offered under the GNU Affero General Public License,
+version 3 or any later version (AGPL-3.0-or-later), or, as an alternative, under a
+commercial licence.
+
+A commercial licence is granted only by a separate written agreement with
+the copyright holder named in the NOTICE file. Its terms (including any fee,
+scope, duration and right to sublicense) are those of that agreement. This
+file grants no rights by itself; without such an agreement, the software is
+available to you under AGPL-3.0-or-later only.
+
+To ask for a commercial licence, contact the copyright holder through
+https://github.com/openbimrs.

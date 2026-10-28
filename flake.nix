@@ -84,6 +84,9 @@
             doCheck = false;
             meta = {
               inherit (cli) description homepage;
+              # The project is AGPL-3.0-or-later OR LicenseRef-Commercial (and the
+              # bundled catalog CC-BY-ND-4.0); nixpkgs has no entry for the
+              # commercial option, so the meta states the open one.
               license = lib.licenses.agpl3Plus;
               mainProgram = "openbim-ifc";
               platforms = systems;

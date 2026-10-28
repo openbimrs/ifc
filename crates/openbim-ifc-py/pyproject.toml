@@ -7,12 +7,12 @@ name = "openbim-ifc"
 version = "0.14.0"
 description = "Read, edit and write IFC STEP files -- Python bindings for the openbim-ifc Rust crates."
 readme = "README.md"
-license = { text = "AGPL-3.0-or-later" }
+license = "(AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0"
+license-files = ["LICENSE", "NOTICE", "LICENSES/LicenseRef-Commercial.txt", "LICENSES/CC-BY-ND-4.0.txt"]
 requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
-    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
 ]
 
 [project.optional-dependencies]

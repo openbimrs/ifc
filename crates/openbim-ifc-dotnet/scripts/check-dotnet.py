@@ -161,7 +161,10 @@ def pack(native: Path, out: Path, version: str, rids: list[str]) -> Path:
         "buildTransitive/net462/OpenBim.Ifc.targets",
         "README.md",
         "LICENSE",
+        "LICENSE.txt",
         "NOTICE",
+        "LicenseRef-Commercial.txt",
+        "CC-BY-ND-4.0.txt",
         *(f"runtimes/{rid}/native/{library_file(rid)}" for rid in rids),
     }
     with zipfile.ZipFile(nupkg) as zf:

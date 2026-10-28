@@ -2,7 +2,7 @@
   "name": "@openbim/ifc",
   "description": "Read, edit and write IFC STEP files from JavaScript (WebAssembly build of openbim-ifc).",
   "version": "0.14.0",
-  "license": "AGPL-3.0-or-later",
+  "license": "(AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/openbimrs/ifc.git",
@@ -61,7 +61,10 @@
     "mesh/",
     "catalog/",
     "catalog.mjs",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "LICENSES/"
   ],
   "engines": {
     "node": ">=18"
