@@ -23,7 +23,7 @@ use ifc_geometry::lower::{
 };
 use ifc_geometry::transform::Transform;
 use ifc_geometry::UnitScale;
-use ifc_geometry::{units, GeometryError, GeometryResult};
+use ifc_geometry::{GeometryError, GeometryResult};
 use ifc_model::{Codec, EntityId, Model};
 use ifc_step::StepCodec;
 use std::path::PathBuf;
@@ -594,7 +594,7 @@ mod meshing {
     #[test]
     fn committed_space_boundaries_mesh_in_the_space_frame() {
         let model = space_fixture();
-        let scale = units::resolve(&model).expect("project units");
+        let scale = ifc_geometry::units::resolve(&model).expect("project units");
         let frame = ifc_geometry::lower::product_world_transform(&model, &scale, EntityId(13))
             .expect("the space is placed");
         for (connection, m2, normal) in [
