@@ -38,5 +38,6 @@ for new records.
 | [0020](/adr/0020-ifc5-is-a-separate-family) | IFC5 is a separate family; no IFC-JSON codec | Accepted |
 | [0021](/adr/0021-bindings-carry-placements-and-opt-in-meshes) | Bindings carry placements by default and meshes on request | Accepted |
 | [0022](/adr/0022-undo-records-exact-inverses-in-the-model) | Undo records exact inverses in the model | Accepted |
+| [0023](/adr/0023-derived-indexes-are-maintained-once-built) | Derived indexes are maintained once built | Accepted |
 
 <!-- ADR:INDEX:END -->

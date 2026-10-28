@@ -12,6 +12,25 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#587)
+
+- `Model::reverse_index`: the reverse index, built on the first call and kept
+  current by every write, undo and redo after that; equal to
+  `ReverseIndex::build` at every moment.
+- `Model::global_id_candidates`: the entities whose first attribute is the
+  text of a `Guid`, ascending by id, kept the same way.
+- `Model::drop_derived_indexes`, to free both.
+- `PartialEq` and `Eq` on `ReverseIndex`.
+
+### Changed (#587)
+
+- `Transaction::preflight` reads the model's own reverse index when something
+  built it, instead of scanning the model for a commit that removes.
+- Undoing a batch is linear in the batch: file order and type buckets are
+  searched from the end.
+
+Semver: minor.
+
 ## [0.4.2] - 2026-10-28
 
 ### Changed

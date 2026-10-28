@@ -130,5 +130,11 @@
     "slug": "0022-undo-records-exact-inverses-in-the-model",
     "status": "Accepted",
     "title": "Undo records exact inverses in the model"
+  },
+  {
+    "number": "0023",
+    "slug": "0023-derived-indexes-are-maintained-once-built",
+    "status": "Accepted",
+    "title": "Derived indexes are maintained once built"
   }
 ]

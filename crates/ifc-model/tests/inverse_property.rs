@@ -14,6 +14,9 @@
 
 use std::collections::{BTreeSet, VecDeque};
 
+#[path = "support/maintained.rs"]
+mod maintained;
+
 use ifc_model::{
     Edit, Entity, EntityId, Header, History, Inverse, InverseError, Model, Transaction, Value,
 };
@@ -82,6 +85,7 @@ struct State {
 }
 
 fn state(model: &Model) -> State {
+    maintained::assert_maintained(model, "state");
     let histogram: Vec<_> = model
         .type_histogram()
         .into_iter()
@@ -111,15 +115,20 @@ fn existing(rng: &mut Rng, model: &Model) -> Option<EntityId> {
     (!ids.is_empty()).then(|| ids[rng.below(ids.len() as u64) as usize])
 }
 
+/// An integer, a GlobalId-like text, a reference or a list of references.
+fn value(rng: &mut Rng) -> Value {
+    match rng.below(5) {
+        0 => Value::Integer(rng.below(100) as i64),
+        1 | 2 => maintained::pool_text(rng.below(100)),
+        3 => Value::Ref(id(rng)),
+        _ => Value::List((0..rng.below(3)).map(|_| Value::Ref(id(rng))).collect()),
+    }
+}
+
 fn entity(rng: &mut Rng) -> Entity {
     let name = TYPES[rng.below(TYPES.len() as u64) as usize];
     let len = rng.below(4) as usize;
-    Entity::new(
-        name,
-        (0..len)
-            .map(|_| Value::Integer(rng.below(100) as i64))
-            .collect(),
-    )
+    Entity::new(name, (0..len).map(|_| value(rng)).collect())
 }
 
 fn header(rng: &mut Rng) -> Header {
@@ -151,13 +160,13 @@ fn op(rng: &mut Rng, model: &mut Model) {
         4 => {
             if let Some(target) = existing(rng, model) {
                 let slot = rng.below(5) as usize;
-                model.set_attribute(target, slot, Value::Integer(rng.below(100) as i64));
+                model.set_attribute(target, slot, value(rng));
             }
         }
         5 => {
             if let Some(target) = existing(rng, model) {
                 let edits: Vec<_> = (0..1 + rng.below(3))
-                    .map(|_| (rng.below(5) as usize, Value::Integer(rng.below(100) as i64)))
+                    .map(|_| (rng.below(5) as usize, value(rng)))
                     .collect();
                 model.set_attributes(target, edits);
             }
@@ -221,8 +230,14 @@ fn transaction(rng: &mut Rng, model: &mut Model) {
     }
 }
 
+/// Half the seeds build the indexes before the first write, the rest at
+/// the first `state`, so both histories of an index are covered.
 fn warm(rng: &mut Rng) -> Model {
     let mut model = Model::new();
+    if rng.chance(50) {
+        model.reverse_index();
+        model.global_id_candidates(&ifc_model::guid::Guid::parse(maintained::POOL[0]).unwrap());
+    }
     for _ in 0..WARMUP {
         op(rng, &mut model);
     }

@@ -26,6 +26,19 @@
 //! another entity holds. An edit checks the whole edited record again, as
 //! `ifc-author`'s `EntityEditor` does.
 //!
+//! # Cost
+//!
+//! Staging a batch costs the batch, not the model, once the model has its
+//! indexes: [`Model::reverse_index`](ifc_model::Model::reverse_index) and
+//! the GlobalId index, which the model builds on the first request (one scan
+//! of every entity) and keeps current through every write, undo and redo
+//! (ADR 0023). The first batch against a model pays that scan; every later
+//! one reads the indexes, and the planner indexes its own records. An
+//! operation therefore costs what it creates, plus the length of any list
+//! attribute it edits: editing a list rechecks the whole list, while
+//! assigning objects to a type appends them. A caller that only wants the
+//! memory back calls [`Model::drop_derived_indexes`](ifc_model::Model::drop_derived_indexes).
+//!
 //! # Identity and ownership
 //!
 //! An `IfcRoot` created without a `GlobalId` gets one derived from the seed,

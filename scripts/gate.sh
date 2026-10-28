@@ -113,6 +113,9 @@ gate_test() {
     # And through the bindings (#358): the batch against the per-object
     # call, every answer compared before any timing.
     cargo test -p openbim-ifc-binding-core --bench property_sets
+    # Authoring against model size (#587): the smoke scale, entity counts
+    # and checksums asserted, the replicated model checked against authoring.
+    cargo test -p openbim-ifc --features authoring,ifc4x3 --bench authoring
 
     cargo test -p ifc-model --test package_architecture
     cargo test -p ifc-model --test progressive_context

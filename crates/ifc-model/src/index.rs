@@ -7,7 +7,11 @@
 //! ## Internal split
 //!
 //! - `reverse.rs`: target-to-referrer and slot reverse index.
+//! - `maintained.rs`: the reverse and GlobalId indexes a model keeps once
+//!   built, and the write footprints that update them.
 
+mod maintained;
 mod reverse;
 
+pub(crate) use maintained::{Derived, Footprint};
 pub use reverse::{Referrer, ReverseIndex};

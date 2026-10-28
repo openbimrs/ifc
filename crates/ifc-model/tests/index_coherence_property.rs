@@ -17,6 +17,10 @@
 //!   with no duplicates, and `ReverseIndex` against references walked
 //!   independently of `Value::for_each_ref`.
 //!
+//! From a seeded step on, the reverse index and the GlobalId index the model
+//! keeps once built (#587) are compared after every step with a fresh build
+//! and a scan.
+//!
 //! A refused transaction must leave the model exactly as it was, revision
 //! included.
 //!
@@ -26,6 +30,9 @@
 //! (`insert_lazy`) need a codec source and are out of scope here.
 
 use std::collections::BTreeMap;
+
+#[path = "support/maintained.rs"]
+mod maintained;
 
 use ifc_model::{Edit, Entity, EntityId, Model, Referrer, ReverseIndex, Transaction, Value};
 
@@ -174,7 +181,13 @@ fn random_value(rng: &mut Rng, shadow: &Shadow, depth: u32) -> Value {
     };
     match rng.below(if depth == 0 { 7 } else { 5 }) {
         0 => Value::Null,
-        1 => Value::Text(format!("t{}", rng.below(100)).into()),
+        1 => {
+            if rng.chance(50) {
+                maintained::pool_text(rng.below(100))
+            } else {
+                Value::Text(format!("t{}", rng.below(100)).into())
+            }
+        }
         // Mostly references that resolve, so transactions often commit.
         2 | 3 => Value::Ref(existing(rng)),
         4 => Value::Ref(random_id(rng)),
@@ -443,6 +456,13 @@ fn run(seed: u64, tally: &mut Tally) {
         order: Vec::new(),
         max_id: 0,
     };
+    // Half the seeds ask for the maintained indexes before the first write,
+    // the others partway through, so an index is kept from both starts.
+    let build_at = if seed.is_multiple_of(2) {
+        0
+    } else {
+        1 + rng.below(STEPS as u64) as usize
+    };
 
     for step in 0..STEPS {
         let at = format!("seed {seed:#x} step {step}");
@@ -506,6 +526,9 @@ fn run(seed: u64, tally: &mut Tally) {
             _ => transaction(&mut rng, &mut model, &mut shadow, tally, &at),
         }
         check(&model, &shadow, &at);
+        if step >= build_at {
+            maintained::assert_maintained(&model, &at);
+        }
     }
 }
 
