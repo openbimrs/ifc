@@ -496,3 +496,35 @@ fn a_polygonal_bounded_clip_is_labelled_wire_format_1_4() {
     let back = GeometryGraph::from_json(&text).expect("reads back");
     assert_eq!(back.to_json().unwrap(), text);
 }
+
+#[test]
+fn a_model_without_units_refuses_every_product_curve() {
+    let model = StepCodec
+        .read_bytes(WITHOUT_UNITS.as_bytes())
+        .expect("parses");
+    let curves = ifc::product_curves(&model, None, ifc::RepresentationPurpose::Plan);
+    assert_eq!(curves.len(), 1);
+    assert_eq!(curves[0].0, EntityId(10));
+    assert!(
+        matches!(
+            curves[0].1,
+            Err(ifc::geometry::GeometryError::LengthUnitUndeclared { .. })
+        ),
+        "{:?}",
+        curves[0].1
+    );
+}
+
+#[cfg(feature = "geometry-wire")]
+#[test]
+fn a_model_without_units_refuses_every_product_graph() {
+    let model = StepCodec
+        .read_bytes(WITHOUT_UNITS.as_bytes())
+        .expect("parses");
+    let graphs = ifc::product_graphs(&model, None);
+    assert_eq!(graphs.len(), 1);
+    assert!(matches!(
+        graphs[0].1,
+        Err(ifc::geometry::GeometryError::LengthUnitUndeclared { .. })
+    ));
+}

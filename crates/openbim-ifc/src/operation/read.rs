@@ -131,9 +131,8 @@ fn length_scale(model: &Model) -> Result<f64, ReadError> {
 /// The product's world transform in metres, scaled by the exact length
 /// unit rather than the permissive one.
 pub(crate) fn world_transform(model: &Model, product: EntityId) -> Result<Transform, ReadError> {
-    let length = length_scale(model)?;
     let mut scale = units::resolve(model).map_err(ReadError::Placement)?;
-    scale.length_to_metres = length;
+    scale.length_to_metres = length_scale(model)?;
     product_world_transform(model, &scale, product).map_err(ReadError::Placement)
 }
 
@@ -149,4 +148,35 @@ pub(crate) fn governing(
         .map(|set| set.source)?;
     let governing = sets.iter().filter(|set| set.source == source).collect();
     Some((source, governing))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ifc_model::{Codec, EntityId};
+
+    /// A wall in a project that states no units (#585).
+    const WITHOUT_UNITS: &str = "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n\
+FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;
+#1=IFCPROJECT('0000000000000000000001',$,'P',$,$,$,$,$,$);
+#2=IFCCARTESIANPOINT((1000.,0.,0.));
+#3=IFCAXIS2PLACEMENT3D(#2,$,$);
+#4=IFCLOCALPLACEMENT($,#3);
+#10=IFCWALL('0000000000000000000010',$,'W',$,$,#4,$,$,$);
+ENDSEC;\nEND-ISO-10303-21;\n";
+
+    #[test]
+    fn a_model_without_units_refuses_the_world_transform() {
+        let model = ifc_step::StepCodec
+            .read_bytes(WITHOUT_UNITS.as_bytes())
+            .expect("parses");
+        let error = world_transform(&model, EntityId(10)).expect_err("no unit, no scale");
+        assert!(
+            matches!(
+                error,
+                ReadError::Placement(GeometryError::LengthUnitUndeclared { .. })
+            ),
+            "{error:?}"
+        );
+    }
 }

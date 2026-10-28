@@ -77,7 +77,13 @@ fn every_fixture_resolves_a_plausible_unit_scale() {
         checked >= 19,
         "expected the committed corpus, got {checked}"
     );
-    assert_eq!(resolved + refused, checked);
+    // Lower bounds from the committed corpus (90 parsed: 76 resolved, 14
+    // refused); a resolver that refuses everything must not pass.
+    assert!(
+        resolved >= 76,
+        "expected 76 resolved fixtures, got {resolved}"
+    );
+    assert!(refused >= 14, "expected 14 refused fixtures, got {refused}");
     assert!(
         flyaway_refused,
         "issue_1155_halfspace_flyaway.ifc declares no units and must be refused"
