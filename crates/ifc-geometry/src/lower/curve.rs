@@ -453,8 +453,9 @@ fn trimmed(
     let spec = view.spec()?;
     let (t1, t2) = spec.endpoints();
 
-    let start = selectors(session, id, t1, &basis_kind, frame)?;
-    let end = selectors(session, id, t2, &basis_kind, frame)?;
+    let cartesian_preferred = matches!(preference, TrimmingPreference::Cartesian);
+    let start = selectors(session, id, t1, &basis_kind, frame, cartesian_preferred)?;
+    let end = selectors(session, id, t2, &basis_kind, frame, cartesian_preferred)?;
     if start.is_empty() || end.is_empty() {
         return Err(session.degenerate(
             id,
@@ -486,12 +487,19 @@ fn selectors(
     trim: crate::curve::trimmed::Trim,
     basis_kind: &str,
     frame: Transform,
+    cartesian_preferred: bool,
 ) -> GeometryResult<Vec<TrimSelector>> {
     let mut out = Vec::new();
     if let Some(raw) = trim.parameter {
-        out.push(TrimSelector::Parameter(scale_parameter(
-            session, owner, basis_kind, raw,
-        )?));
+        match scale_parameter(session, owner, basis_kind, raw) {
+            Ok(scaled) => out.push(TrimSelector::Parameter(scaled)),
+            // A conic's parameter is an angle. When the project declares no
+            // angle unit and the point is the preferred form, the point
+            // carries the trim and the angle is never read (#585).
+            Err(GeometryError::AngleUnitUndeclared { .. })
+                if cartesian_preferred && trim.cartesian.is_some() => {}
+            Err(error) => return Err(error),
+        }
     }
     if let Some(point_ref) = trim.cartesian {
         let placed = world_point(session, owner, point_ref, frame)?;
