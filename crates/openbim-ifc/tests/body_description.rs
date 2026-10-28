@@ -18,9 +18,13 @@ fn the_facade_describes_a_steel_section_body() {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../test/fixtures/synthetic-surfaces/synthetic_profile_families.ifc");
     let model = ifc::read_path(&path).expect("fixture parses");
-    let body = body_description(&model, &units::resolve(&model), EntityId(89))
-        .expect("describes")
-        .expect("has a body");
+    let body = body_description(
+        &model,
+        &units::resolve(&model).expect("project units"),
+        EntityId(89),
+    )
+    .expect("describes")
+    .expect("has a body");
     assert_eq!(body.items.len(), 13);
 
     let first = &body.items[0];
