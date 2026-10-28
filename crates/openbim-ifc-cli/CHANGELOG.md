@@ -11,6 +11,8 @@ documents) is this crate's public interface.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-28
+
 ### Changed (#585)
 
 - A model without a declared, readable length unit now refuses each
@@ -223,7 +225,8 @@ Semver: patch.
 
 Semver: a new crate, first release 0.1.0.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-cli-v0.5.2...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-cli-v0.6.0...HEAD
+[0.6.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.6.0
 [0.5.2]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.5.2
 [0.5.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.5.1
 [0.5.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.5.0

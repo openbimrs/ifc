@@ -931,7 +931,7 @@ checksum = "4804bdc1dc124eb7e1aa9e144ecc04096bcf787a10a15fa44af682b51f0f6cce"
 
 [[package]]
 name = "ifc-alignment"
-version = "0.10.2"
+version = "0.11.0"
 dependencies = [
  "axiolid-core",
  "axiolid-curve",
@@ -1012,7 +1012,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-geometry"
-version = "0.31.2"
+version = "0.32.0"
 dependencies = [
  "axiolid-construct",
  "axiolid-contracts",
@@ -1332,7 +1332,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "openbim-ifc"
-version = "0.38.2"
+version = "0.39.0"
 dependencies = [
  "calamine",
  "flate2",
@@ -1380,7 +1380,7 @@ dependencies = [
 
 [[package]]
 name = "openbim-ifc-capi"
-version = "0.1.19"
+version = "0.1.20"
 dependencies = [
  "cbindgen",
  "openbim-ifc",
@@ -1392,7 +1392,7 @@ dependencies = [
 
 [[package]]
 name = "openbim-ifc-cli"
-version = "0.5.2"
+version = "0.6.0"
 dependencies = [
  "clap",
  "openbim-ifc",
@@ -1402,11 +1402,11 @@ dependencies = [
 
 [[package]]
 name = "openbim-ifc-dotnet"
-version = "0.11.2"
+version = "0.12.0"
 
 [[package]]
 name = "openbim-ifc-py"
-version = "0.14.2"
+version = "0.15.0"
 dependencies = [
  "openbim-ifc-binding-core",
  "pyo3",
@@ -1416,7 +1416,7 @@ dependencies = [
 
 [[package]]
 name = "openbim-ifc-wasm"
-version = "0.14.2"
+version = "0.15.0"
 dependencies = [
  "js-sys",
  "openbim-ifc-binding-core",

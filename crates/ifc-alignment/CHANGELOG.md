@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-28
+
 ### Changed (#585)
 
 - Breaking: `AlignmentUnits::angle_to_radians` is `Option<f64>`; `None` means
@@ -468,7 +470,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-alignment-v0.10.2...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-alignment-v0.11.0...HEAD
+[0.11.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.11.0
 [0.10.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.10.2
 [0.10.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.10.1
 [0.10.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-alignment-v0.10.0

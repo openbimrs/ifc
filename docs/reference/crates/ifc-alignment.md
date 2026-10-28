@@ -11,7 +11,7 @@ IFC4x3 linear positioning: alignments, referents, linear placement, spirals.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.10.2 (2026-10-28) |
+| Latest release | 0.11.0 (2026-10-28) |
 | Registries | [crates.io `ifc-alignment`](https://crates.io/crates/ifc-alignment) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `alignment` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_alignment/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-alignment) |
@@ -33,10 +33,14 @@ consumers should never compile spiral curve laws.
 
 ## Changes
 
-Latest release, 0.10.2 (2026-10-28):
+Latest release, 0.11.0 (2026-10-28):
 
-### Changed
+### Changed (#585)
 
-- Copyright holder in NOTICE and licence texts is rheonda.
+- Breaking: `AlignmentUnits::angle_to_radians` is `Option<f64>`; `None` means
+  the project declares no `PLANEANGLEUNIT`. Reading a `StartDirection` then
+  refuses with the new `AlignmentError::AngleUnitUndeclared { entity }`;
+  length-only reads (`SeamTolerance::for_model`, `resolve_linear_placement`)
+  need no angle unit.
 
 Full history: [`crates/ifc-alignment/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-alignment/CHANGELOG.md)

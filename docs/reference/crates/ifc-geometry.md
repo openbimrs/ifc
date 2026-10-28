@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.31.2 (2026-10-28) |
+| Latest release | 0.32.0 (2026-10-28) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -43,10 +43,30 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.31.2 (2026-10-28):
+Latest release, 0.32.0 (2026-10-28):
 
-### Changed
+### Changed (#585)
 
-- Copyright holder in NOTICE and licence texts is rheonda.
+- Breaking: `units::resolve` returns `GeometryResult<UnitScale>` and refuses
+  a model whose units have no usable scale instead of assuming metres and
+  radians. Four new `GeometryError` variants: `LengthUnitUndeclared` (no
+  project, no `UnitsInContext`, or no `LENGTHUNIT`), `AngleUnitUndeclared`,
+  `UnitUnreadable` and `UnitsAmbiguous` (two projects, or two units of one
+  type).
+- Breaking: `UnitScale::angle_to_radians` is `Option<f64>`; a missing
+  `PLANEANGLEUNIT` is refused only where an angle is read.
+  `UnitScale::angle(entity, value)` returns a `Result`, and the new
+  `UnitScale::radians_per_unit(entity)` is the factor.
+- Breaking: `impl Default for UnitScale` is removed; `UnitScale::SI` is the
+  factors of one, never a fallback for a model's missing units.
+- An `IfcConversionBasedUnit` applies its `UnitComponent`: an inch stated as
+  25.4 millimetres reads as 0.0254 metres, not 25.4. A conversion unit
+  defined through another conversion unit is `Unsupported`.
+- An unknown `IfcSIPrefix`, an `IfcSIUnit` not named `METRE` (length) or
+  `RADIAN` (angle), a context-dependent or offset unit, and a factor that is
+  not a positive finite number are `UnitUnreadable`, not a silent factor of
+  one.
+
+Semver: breaking (0.x minor).
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
