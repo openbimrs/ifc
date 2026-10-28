@@ -66,7 +66,15 @@ pub fn product_graphs(
     products: Option<&[EntityId]>,
 ) -> Vec<(EntityId, GeometryResult<ProductGraph>)> {
     let products = products.map_or_else(|| geometric_products(model), <[EntityId]>::to_vec);
-    let scale = units::resolve(model);
+    let scale = match units::resolve(model) {
+        Ok(scale) => scale,
+        Err(error) => {
+            return products
+                .into_iter()
+                .map(|product| (product, Err(error.clone())))
+                .collect();
+        }
+    };
     products_world_transforms(model, &scale, products)
         .into_iter()
         .map(|(product, world)| {

@@ -131,8 +131,9 @@ fn length_scale(model: &Model) -> Result<f64, ReadError> {
 /// The product's world transform in metres, scaled by the exact length
 /// unit rather than the permissive one.
 pub(crate) fn world_transform(model: &Model, product: EntityId) -> Result<Transform, ReadError> {
-    let mut scale = units::resolve(model);
-    scale.length_to_metres = length_scale(model)?;
+    let length = length_scale(model)?;
+    let mut scale = units::resolve(model).map_err(ReadError::Placement)?;
+    scale.length_to_metres = length;
     product_world_transform(model, &scale, product).map_err(ReadError::Placement)
 }
 
