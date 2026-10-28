@@ -1425,9 +1425,9 @@ dependencies = [
 
 [[package]]
 name = "openbim-step"
-version = "0.11.1"
+version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea1e8768c46b1c2a66519a1ae4091f6470658c6931da179079f90112047140a4"
+checksum = "3c0deb031445d124b03446a571b62b40dd0573c50faf2820ae389a5765d4f050"
 dependencies = [
  "encoding_rs",
  "memchr",
