@@ -424,3 +424,81 @@ They are the same in the debug run the gate makes.
   faster. It handles only straight-edged input and nothing more general.
   Read that as the cost of generality in the reference on such input, not
   as a ranking of kernels.
+
+## Authoring (#587)
+
+Checked authoring batches against model size, before and after the model
+keeps its reverse and GlobalId indexes and the planner reads them (ADR 0023).
+Harness: `crates/openbim-ifc/benches/authoring`, method in
+[`README.md`](README.md#authoring). A wall is ten operations creating thirteen
+entities; `author-10k` is 10,000 walls (130,022 entities), `author-100k`
+1,300,022.
+
+**Not a quiet-window measurement.** The machine is shared and was busy: the
+load gate was off (`PROVISIONAL=1`) and the 1-minute load at the start of the
+runs was 7.2 to 36.4 for the first `before` batch runs, and 5.6 to 12.4 for
+the other `before` runs and 3.9 to 7.8 for every `after` run. The `before`
+batch numbers are the ones most likely to be slow because of it; the ratios
+are large enough that this does not change a verdict.
+
+### Environment
+
+- date: 2026-10-28, 21:17-22:10 UTC
+- machine: Intel Xeon w7-3565X, shared VM, 173 GiB RAM; `taskset -c 12-19`
+- OS: Debian GNU/Linux 13 (trixie), kernel 6.12.113+deb13-cloud-amd64
+- toolchain: rustc 1.99.1 (58cf8f9c3 2026-10-13); `cargo bench` profile
+  (opt-level 3, thin LTO, 1 codegen unit)
+- **before**: `52755cbb` (the bench commit, before any change to the model or
+  the planner); the bench files of the final tree were copied in for the
+  `one_wall` and `typed_walls` rows, which the script reports as dirty
+- **after**: the branch tip at the time, whose code is that of `8aa4a695` (the
+  run script recorded its parent as it had been rebased since)
+- plans: 3 processes a side, `batch.walls`, `undo.batch`, `typed_walls`
+  1 warm-up + 5 samples, `one_wall` 2 + 15, `index.build` 2 + 10
+- commands: `PACKAGE=openbim-ifc BENCH=authoring FEATURES=authoring,ifc4x3
+  PROVISIONAL=1 RUNS=3 SCALES=... BENCH_ARGS="--bench-only ..."
+  benchmarks/run-baseline.sh`
+
+### Results
+
+Median over every sample of the three processes; `benchmarks/baseline.py
+compare` calls every row below faster (the pooled interquartile ranges and
+the run medians separate).
+
+| bench | scale | before | after | after / before |
+| --- | --- | ---: | ---: | ---: |
+| `one_wall.into_n` | 1,000 walls | 1.93 ms | 0.059 ms | 0.03 |
+| | 10,000 walls | 41.1 ms | 0.054 ms | 0.001 |
+| | 100,000 walls | 727 ms | 0.062 ms | 0.0001 |
+| `batch.walls` | 1,000 walls | 266 ms | 64.5 ms | 0.24 |
+| | 10,000 walls | 48.2 s | 0.763 s | 0.016 |
+| | 100,000 walls | not run (about 80 min, 100 times the 10,000 case) | 9.49 s | |
+| `undo.batch` | 1,000 walls | 30.9 ms | 4.97 ms | 0.16 |
+| | 10,000 walls | 2.66 s | 123 ms | 0.046 |
+| | 100,000 walls | not run | 2.24 s | |
+| `batch.typed_walls` | 1,000 walls | 226 ms | 10.8 ms | 0.05 |
+| | 10,000 walls | 30.1 s | 118 ms | 0.004 |
+| | 100,000 walls | not run | 1.38 s | |
+
+The `after` runs scale with the work: `one_wall` is flat from 1,000 to
+100,000 walls (100,000 over 1,000: 1.05); `batch.walls` takes 12.4 times as
+long for ten times the walls; `undo.batch` 18.2 times (per step 0.85
+microseconds at 10,000 walls, 1.3 at 100,000, at 600 MB of heap; the extra
+is memory traffic, not a term in the batch size).
+
+Heap retained by `batch.walls`: 5.5 MB (1,000 walls), 60.6 MB (10,000),
+583 MB (100,000); before, 4.0 MB and 46.9 MB at 1,000 and 10,000. The
+difference is the indexes the batch's model now keeps.
+
+The one-off cost of building the indexes, `index.build` (the first
+`reverse_index` and `global_id_candidates` of a model):
+
+| scale | entities | median | heap retained |
+| --- | ---: | ---: | ---: |
+| 1,000 walls | 13,022 | 2.5 ms | 0.49 MB |
+| 10,000 walls | 130,022 | 57 ms | 5.2 MB |
+| 100,000 walls | 1,300,022 | 1.10 s | 50 MB |
+
+The model of N walls for `one_wall` is replicated from one authored wall
+(the README explains why); up to 1,000 walls the harness checks it against
+authored walls.
