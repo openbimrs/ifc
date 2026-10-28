@@ -39,7 +39,7 @@ fn model_of(relative: &str) -> Model {
 #[test]
 fn the_triangulated_fixture_lowers_to_four_points_and_four_triangles() {
     let model = model_of("ifclite-geometry/mapped_instances_indexed_colour.ifc");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let id = *model
         .ids_of_type("IFCTRIANGULATEDFACESET")
         .first()
@@ -76,7 +76,7 @@ fn the_triangulated_fixture_lowers_to_four_points_and_four_triangles() {
 #[test]
 fn the_polygonal_fixture_lowers_its_indexed_face_without_unsharing_points() {
     let model = model_of("ifclite-geometry/mapped_instances_indexed_colour.ifc");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let id = model.ids_of_type("IFCPOLYGONALFACESET")[0];
     let mut session = LoweringSession::new(&model, &scale);
     let root = lower_representation_item(&mut session, id, Transform::identity())
@@ -104,7 +104,7 @@ fn no_lowered_mesh_index_escapes_its_own_position_list() {
         "ifclite-geometry/mapped_instances_indexed_colour_uniform.ifc",
     ] {
         let model = model_of(relative);
-        let scale = units::resolve(&model);
+        let scale = units::resolve(&model).expect("project units");
         for id in model.ids_of_type("IFCTRIANGULATEDFACESET") {
             let mut session = LoweringSession::new(&model, &scale);
             let node = lower_representation_item(&mut session, *id, Transform::identity())
@@ -135,7 +135,7 @@ fn no_lowered_mesh_index_escapes_its_own_position_list() {
 #[test]
 fn placing_a_face_set_moves_it_without_unsharing_points() {
     let model = model_of("ifclite-geometry/mapped_instances_indexed_colour.ifc");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let id = *model
         .ids_of_type("IFCTRIANGULATEDFACESET")
         .first()
@@ -166,7 +166,7 @@ fn placing_a_face_set_moves_it_without_unsharing_points() {
 #[test]
 fn an_over_budget_face_set_is_refused_and_locatable() {
     let model = model_of("ifclite-geometry/mapped_instances_indexed_colour.ifc");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let id = *model
         .ids_of_type("IFCTRIANGULATEDFACESET")
         .first()

@@ -455,7 +455,7 @@ mod kernel {
     #[test]
     fn the_ring_reads_as_the_compilers_path() {
         let model = bases();
-        let scale = units::resolve(&model);
+        let scale = units::resolve(&model).expect("project units");
         let evaluator = ReferenceCurveEvaluator::default();
         let ours = basis_curve_path(&model, &scale, EntityId(390), EntityId(369), &evaluator)
             .expect("the ring's path");
@@ -478,7 +478,7 @@ mod kernel {
         model: &Model,
         axes: u64,
     ) -> Result<axiolid_mesh_compile::station::ResolvedStation, axiolid_contracts::GeomError> {
-        let scale = units::resolve(model);
+        let scale = units::resolve(model).expect("project units");
         let mut session = LoweringSession::new(model, &scale);
         let root =
             lower_axis2_placement_linear_node(&mut session, EntityId(axes), Transform::identity())
@@ -497,7 +497,7 @@ mod kernel {
     #[test]
     fn linear_placements_on_the_ring_derive_as_the_kernel_resolves_them() {
         let model = bases();
-        let scale = units::resolve(&model);
+        let scale = units::resolve(&model).expect("project units");
         let evaluator = ReferenceCurveEvaluator::default();
         let close = |a: [f64; 3], b: Vec3, what: &str| {
             let off = (a[0] - b.x)
@@ -582,7 +582,7 @@ mod kernel {
             polygon + 1.0
         );
         let model = super::super::common::step(&records, false);
-        let scale = units::resolve(&model);
+        let scale = units::resolve(&model).expect("project units");
         let evaluator = ReferenceCurveEvaluator::default();
         let error = derive_linear_placement_transform(&model, &scale, EntityId(43), &evaluator)
             .expect_err("refused");

@@ -10,13 +10,16 @@
 //! parameter. The directrix is a circle, where the difference is an angle
 //! against a distance: a 1.5 m trim read as 1.5 rad is a different solid.
 
+#[path = "support/assume_units.rs"]
+mod assume_units;
+
 use axiolid_model::{GeometryNode, SolidOperation};
 use ifc_geometry::lower::{lower_representation_item, LoweringSession};
 use ifc_geometry::solid::swept::{
     FixedReferenceSweptAreaSolid, SurfaceCurveSweptAreaSolid, TrimMeasure,
 };
 use ifc_geometry::transform::Transform;
-use ifc_geometry::{units, GeometryError};
+use ifc_geometry::GeometryError;
 use ifc_model::{Codec, EntityId, Model};
 use ifc_step::StepCodec;
 
@@ -64,7 +67,7 @@ fn trims(model: &Model, kind: &str) -> (Option<TrimMeasure>, Option<TrimMeasure>
 }
 
 fn lower(model: &Model) -> Result<Option<(f64, f64)>, GeometryError> {
-    let scale = units::resolve(model);
+    let scale = assume_units::scale_or_si(model);
     let mut session = LoweringSession::new(model, &scale);
     let node = lower_representation_item(&mut session, SWEEP, Transform::identity())?;
     let lowered = session.finish(node)?;

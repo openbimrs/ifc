@@ -10,10 +10,12 @@
 //! parent's carrier curve, keeping the subedge's own narrower extent, and
 //! walking a parent chain more than one hop deep.
 
+#[path = "support/assume_units.rs"]
+mod assume_units;
+
 use axiolid_model::GeometryNode;
 use ifc_geometry::lower::{lower_representation_item, LoweringSession};
 use ifc_geometry::transform::Transform;
-use ifc_geometry::units;
 use ifc_model::{Entity, EntityId, Model, Value};
 
 fn r(id: u64) -> Value {
@@ -129,7 +131,7 @@ fn model(parent_chain: bool) -> Model {
 }
 
 fn brep(model: &Model) -> axiolid_topology::BRep<axiolid_model::NodeId> {
-    let scale = units::resolve(model);
+    let scale = assume_units::scale_or_si(model);
     let mut session = LoweringSession::new(model, &scale);
     let node = lower_representation_item(&mut session, EntityId(54), Transform::identity())
         .unwrap_or_else(|e| panic!("the brep must lower: {e}"));

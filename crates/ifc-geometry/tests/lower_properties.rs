@@ -39,7 +39,7 @@ fn millimetres() -> UnitScale {
     let mut project = vec![Value::Null; 9];
     project[8] = r(2);
     model.insert(EntityId(3), Entity::new("IFCPROJECT", project));
-    ifc_geometry::units::resolve(&model)
+    ifc_geometry::units::resolve(&model).expect("project units")
 }
 
 fn extrusion_model(depth: f64, with_position: bool) -> (Model, EntityId) {
@@ -161,7 +161,7 @@ fn circles_remain_exact_without_adapter_approximation_policy() {
             vec![Value::Enum("AREA".into()), Value::Null, Value::Null, n(5.0)],
         ),
     );
-    let exact = lower_profile(&model, EntityId(1), &UnitScale::default()).expect("lowers");
+    let exact = lower_profile(&model, EntityId(1), &UnitScale::SI).expect("lowers");
     match exact {
         Profile::Circle(circle) => assert_eq!(circle.radius, 5.0),
         other => panic!("expected exact circle, got {other:?}"),

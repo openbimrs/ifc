@@ -29,7 +29,7 @@ fn fixture() -> Model {
 }
 
 fn lower(model: &Model, id: EntityId) -> GeometryResult<LoweredGeometry> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let root = lower_representation_item(&mut session, id, Transform::identity())?;
     session.finish(root)
@@ -414,7 +414,7 @@ fn a_curve_segment_profile_boundary_is_refused_by_name() {
             ],
         ),
     );
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let error = ifc_geometry::lower::profile::lower_profile(&model, profile, &scale)
         .expect_err("an IfcCurveSegment boundary is not a contour");
     assert!(

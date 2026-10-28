@@ -9,7 +9,11 @@ use ifc_model::{EntityId, Model};
 use super::step::{metres, PRODUCT};
 
 fn describe(model: &Model) -> Result<Option<ifc_geometry::BodyDescription>, GeometryError> {
-    body_description(model, &units::resolve(model), PRODUCT)
+    body_description(
+        model,
+        &units::resolve(model).expect("project units"),
+        PRODUCT,
+    )
 }
 
 const SOLID: &str = "#101=IFCCARTESIANPOINT((0.,0.,0.));
@@ -36,8 +40,12 @@ fn an_unsupported_profile_is_refused() {
 #[test]
 fn a_generic_profile_is_refused() {
     let model = metres("#100=IFCPROFILEDEF(.AREA.,'HEA300');", "");
-    let error = describe_profile(&model, &units::resolve(&model), EntityId(100))
-        .expect_err("no geometry to describe");
+    let error = describe_profile(
+        &model,
+        &units::resolve(&model).expect("project units"),
+        EntityId(100),
+    )
+    .expect_err("no geometry to describe");
     assert!(error.is_unsupported(), "{error:?}");
 }
 
@@ -76,7 +84,12 @@ fn a_dangling_item_is_refused() {
 fn a_dangling_profile_curve_is_refused() {
     let model = metres("#100=IFCARBITRARYCLOSEDPROFILEDEF(.AREA.,$,#997);", "");
     assert_eq!(
-        describe_profile(&model, &units::resolve(&model), EntityId(100)).unwrap_err(),
+        describe_profile(
+            &model,
+            &units::resolve(&model).expect("project units"),
+            EntityId(100)
+        )
+        .unwrap_err(),
         GeometryError::MissingEntity {
             referrer: EntityId(100),
             missing: EntityId(997),
@@ -128,7 +141,7 @@ fn a_hollow_section_with_no_hole_is_refused() {
         "",
     );
     assert!(matches!(
-        describe_profile(&model, &units::resolve(&model), EntityId(100)).unwrap_err(),
+        describe_profile(&model, &units::resolve(&model).expect("project units"), EntityId(100)).unwrap_err(),
         GeometryError::Degenerate { entity, .. } if entity == EntityId(100)
     ));
 }
@@ -167,7 +180,12 @@ fn a_profile_cycle_is_refused() {
         "",
     );
     assert_eq!(
-        describe_profile(&model, &units::resolve(&model), EntityId(100)).unwrap_err(),
+        describe_profile(
+            &model,
+            &units::resolve(&model).expect("project units"),
+            EntityId(100)
+        )
+        .unwrap_err(),
         GeometryError::CyclicChain {
             entity: EntityId(100),
             kind: "profile",

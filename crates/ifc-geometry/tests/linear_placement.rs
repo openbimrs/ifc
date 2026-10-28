@@ -84,7 +84,7 @@ fn model_with_linear_placement(cached: bool) -> (Model, EntityId) {
 #[test]
 fn a_linearly_placed_product_resolves_through_the_cached_position() {
     let (model, sign) = model_with_linear_placement(true);
-    let world = product_world_transform(&model, &UnitScale::default(), sign)
+    let world = product_world_transform(&model, &UnitScale::SI, sign)
         .expect("a linear placement with a cached position must resolve");
     assert_eq!(world.origin, [100.0, 200.0, 5.0]);
 }
@@ -96,7 +96,7 @@ fn a_linearly_placed_product_resolves_through_the_cached_position() {
 #[test]
 fn without_a_cached_position_the_gap_is_named_not_guessed() {
     let (model, sign) = model_with_linear_placement(false);
-    let error = product_world_transform(&model, &UnitScale::default(), sign)
+    let error = product_world_transform(&model, &UnitScale::SI, sign)
         .expect_err("deriving a frame from the basis curve is not implemented");
     let GeometryError::Unsupported { detail, .. } = error else {
         panic!("expected a typed Unsupported refusal, got {error:?}");
@@ -124,7 +124,7 @@ fn a_malformed_expression_is_refused_despite_the_shortcut() {
         EntityId(2),
         Entity::new("IFCPOINTBYDISTANCEEXPRESSION", broken),
     );
-    let result = product_world_transform(&model, &UnitScale::default(), sign);
+    let result = product_world_transform(&model, &UnitScale::SI, sign);
     assert!(
         result.is_err(),
         "a dangling BasisCurve must not pass because a shortcut exists"

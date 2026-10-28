@@ -33,7 +33,7 @@ fn profile_named(model: &Model, type_name: &str) -> Profile {
                 .is_some_and(|e| e.type_name.eq_ignore_ascii_case(type_name))
         })
         .unwrap_or_else(|| panic!("fixture has a {type_name}"));
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     lower_profile(model, id, &scale).unwrap_or_else(|e| panic!("{type_name} must lower: {e}"))
 }
 
@@ -368,7 +368,7 @@ fn a_profile_reference_cycle_is_refused_rather_than_overflowing() {
             ],
         ),
     );
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let error = lower_profile(&model, id, &scale)
         .expect_err("a one-point path has no direction to offset along");
     assert!(
@@ -451,7 +451,7 @@ fn a_one_point_center_line_is_refused() {
             ],
         ),
     );
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let error = lower_profile(&model, id, &scale)
         .expect_err("a one-point path has no direction to offset along");
     assert!(

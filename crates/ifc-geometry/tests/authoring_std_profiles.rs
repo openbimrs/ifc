@@ -568,7 +568,7 @@ fn authored_sections_lower_with_their_numbers_intact() {
         )
         .expect("I section")
     });
-    let profile = lower_profile(&model, id, &UnitScale::default()).expect("lowers");
+    let profile = lower_profile(&model, id, &UnitScale::SI).expect("lowers");
     let text = format!("{profile:?}");
     for expected in ["300.0", "150.0", "7.1", "10.7", "15.0"] {
         assert!(

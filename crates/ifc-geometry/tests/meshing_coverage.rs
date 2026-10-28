@@ -265,7 +265,7 @@ fn each_failure_kind_compiles_to_its_pinned_answer() {
 fn the_collapsed_loop_product_compiles_under_drop_and_report() {
     let model = model();
     let id = product_named(&model, "collapsed-poly-loop");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session =
         LoweringSession::new(&model, &scale).with_face_policy(DegenerateFacePolicy::DropAndReport);
     let root = lower_product_representation(&mut session, id, RepresentationPurpose::Body)
@@ -328,7 +328,7 @@ fn the_fixture_covers_every_kind_and_nothing_unpinned() {
 fn a_chord_budget_brings_the_composite_curve_row_to_its_exact_volume() {
     let model = model();
     let id = product_named(&model, "composite-curve-profile");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session = LoweringSession::new(&model, &scale);
     let root = lower_product_representation(&mut session, id, RepresentationPurpose::Body)
         .expect("lowers")

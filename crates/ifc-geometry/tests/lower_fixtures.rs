@@ -11,11 +11,15 @@
 //! layer can look complete against synthetic input and still misread the
 //! first real record it meets.
 
+#[path = "support/assume_units.rs"]
+mod assume_units;
+
 use axiolid_model::{GeometryNode, SolidOperation};
 use axiolid_profile::Profile;
 use ifc_geometry::lower::{lower_extruded_area_solid, LoweredGeometry};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
+use ifc_geometry::UnitScale;
 use ifc_model::Codec;
 use ifc_step::StepCodec;
 use std::path::PathBuf;
@@ -69,7 +73,7 @@ fn base_profile(mut profile: &Profile) -> &Profile {
 fn the_wall_fixture_lowers_to_an_extrusion_with_the_documented_numbers() {
     let path = fixture("ifclite-geometry/issue_098_wall_W.ifc");
     let model = StepCodec.read_path(&path).expect("fixture parses");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
 
     let id = model
         .ids_of_type("IFCEXTRUDEDAREASOLID")
@@ -109,7 +113,7 @@ fn every_extrusion_in_the_corpus_lowers_or_reports_why() {
         let Ok(model) = StepCodec.read_path(path) else {
             continue;
         };
-        let scale = units::resolve(&model);
+        let scale = assume_units::scale_or_si(&model);
         for id in model.ids_of_type("IFCEXTRUDEDAREASOLID") {
             match lower_extruded_area_solid(&model, *id, Transform::identity(), &scale) {
                 Ok(lowered) => {
@@ -170,7 +174,7 @@ fn collect_ifc(dir: &std::path::Path, out: &mut Vec<PathBuf>) {
 fn a_hollow_rectangle_section_keeps_its_void() {
     let path = fixture("ifclite-geometry/issue_1155_halfspace_flyaway.ifc");
     let model = StepCodec.read_path(&path).expect("fixture parses");
-    let scale = units::resolve(&model);
+    let scale = UnitScale::SI;
 
     let id = model
         .ids_of_type("IFCRECTANGLEHOLLOWPROFILEDEF")

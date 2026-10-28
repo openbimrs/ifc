@@ -103,10 +103,10 @@ fn derived(
     expression: u64,
     evaluator: &dyn CurveEvaluator,
 ) -> Result<Transform, GeometryError> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let file_units = AlignmentUnits {
         length_to_metres: 1.0,
-        angle_to_radians: scale.angle_to_radians,
+        angle_to_radians: scale.angle_to_radians.expect("angle unit"),
     };
     let point = ifc_alignment::resolve_point_by_distance(model, EntityId(expression), file_units)
         .expect("the expression reads");
@@ -116,7 +116,7 @@ fn derived(
 /// The lowered station of `expression`: its basis, distance, side and
 /// offsets.
 fn lowered(model: &Model, expression: u64) -> (Curve3, f64, SeamSide, StationOffsets) {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let root =
         lower_point_by_distance_node(&mut session, EntityId(expression), Transform::identity())
@@ -316,7 +316,7 @@ fn world(
 ) -> Result<Transform, GeometryError> {
     product_world_transform_with_evaluator(
         model,
-        &units::resolve(model),
+        &units::resolve(model).expect("project units"),
         product(model, name),
         evaluator,
         CachedPositionPolicy::Verify,

@@ -116,11 +116,15 @@ fn assert_grid_frame(world: &Transform, origin: [f64; 3], x: [f64; 2], what: &st
 }
 
 fn world(model: &Model, name: &str) -> Result<Transform, GeometryError> {
-    product_world_transform(model, &units::resolve(model), product(model, name))
+    product_world_transform(
+        model,
+        &units::resolve(model).expect("project units"),
+        product(model, name),
+    )
 }
 
 fn lowered_centre(model: &Model, name: &str) -> Result<[f64; 3], GeometryError> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let root = lower_product_items(&mut session, product(model, name))?.expect("a Body");
     let lowered = session.finish(root)?;
@@ -417,7 +421,7 @@ mod curved {
             let evaluator = ReferenceCurveEvaluator::default();
             let world = product_world_transform_with_evaluator(
                 &model,
-                &units::resolve(&model),
+                &units::resolve(&model).expect("project units"),
                 product(&model, "R3_CURVED"),
                 &evaluator,
                 CachedPositionPolicy::Verify,
@@ -425,7 +429,7 @@ mod curved {
             .expect("intersected through the evaluator");
             assert_grid_frame(&world, [x, y, 0.0], [-sin, cos], name);
 
-            let scale = units::resolve(&model);
+            let scale = units::resolve(&model).expect("project units");
             let mut session = LoweringSession::new(&model, &scale).with_curve_evaluator(&evaluator);
             let root = lower_product_items(&mut session, product(&model, "R3_CURVED"))
                 .expect("lowers")
@@ -447,7 +451,7 @@ mod curved {
         );
         let error = product_world_transform_with_evaluator(
             &model,
-            &units::resolve(&model),
+            &units::resolve(&model).expect("project units"),
             product(&model, "R3_CURVED"),
             &ReferenceCurveEvaluator::default(),
             CachedPositionPolicy::Verify,

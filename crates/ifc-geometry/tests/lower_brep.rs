@@ -16,6 +16,7 @@ use axiolid_topology::Orientation;
 use ifc_geometry::lower::{lower_faceted_brep_node, LoweringSession};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
+use ifc_geometry::UnitScale;
 use ifc_model::{Codec, Entity, EntityId, Model, Value};
 use ifc_step::StepCodec;
 use std::path::PathBuf;
@@ -57,7 +58,7 @@ fn brep_of(
 #[test]
 fn the_cube_fixture_lowers_to_eight_vertices_and_twelve_edges() {
     let model = model_of("ifclite-geometry/issue_1985_scaled_kinds.ifc");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let id = *model
         .ids_of_type("IFCFACETEDBREP")
         .first()
@@ -88,7 +89,7 @@ fn the_cube_fixture_lowers_to_eight_vertices_and_twelve_edges() {
 #[test]
 fn every_loop_is_closed_with_as_many_edges_as_points() {
     let model = model_of("ifclite-geometry/issue_1985_scaled_kinds.ifc");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let id = *model.ids_of_type("IFCFACETEDBREP").first().expect("brep");
 
     let mut session = LoweringSession::new(&model, &scale);
@@ -113,7 +114,7 @@ fn every_loop_is_closed_with_as_many_edges_as_points() {
 #[test]
 fn each_edge_is_used_by_exactly_two_faces_in_opposite_senses() {
     let model = model_of("ifclite-geometry/issue_1985_scaled_kinds.ifc");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let id = *model.ids_of_type("IFCFACETEDBREP").first().expect("brep");
 
     let mut session = LoweringSession::new(&model, &scale);
@@ -149,7 +150,7 @@ fn each_edge_is_used_by_exactly_two_faces_in_opposite_senses() {
 #[test]
 fn vertex_positions_are_converted_to_metres_and_placed() {
     let model = model_of("ifclite-geometry/issue_1985_scaled_kinds.ifc");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let id = *model.ids_of_type("IFCFACETEDBREP").first().expect("brep");
 
     let offset = Transform::translation([10.0, 0.0, 0.0]);
@@ -181,7 +182,7 @@ fn vertex_positions_are_converted_to_metres_and_placed() {
 #[test]
 fn twelve_solids_each_intern_their_own_shared_points() {
     let model = model_of("ifclite-geometry/shared_point_faceted_brep.ifc");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let ids = model.ids_of_type("IFCFACETEDBREP").to_vec();
     assert_eq!(ids.len(), 12, "the fixture holds twelve solids");
 
@@ -292,7 +293,7 @@ fn a_brep_with_voids_keeps_its_interior_shells() {
         ),
     );
 
-    let scale = units::resolve(&model);
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let node = lower_faceted_brep_node(&mut session, EntityId(900), Transform::identity())
         .expect("a brep with voids must lower");
@@ -336,7 +337,7 @@ fn a_reversed_bound_orientation_survives_lowering() {
         Entity::new("IFCFACETEDBREP", vec![Value::Ref(EntityId(shell))]),
     );
 
-    let scale = units::resolve(&model);
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let node = lower_faceted_brep_node(&mut session, EntityId(900), Transform::identity())
         .expect("lowers");
@@ -371,7 +372,7 @@ fn a_collapsed_loop_is_reported_as_degenerate() {
         Entity::new("IFCFACETEDBREP", vec![Value::Ref(EntityId(shell))]),
     );
 
-    let scale = units::resolve(&model);
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let error = lower_faceted_brep_node(&mut session, EntityId(900), Transform::identity())
         .expect_err("a collapsed loop must not lower");
@@ -418,7 +419,7 @@ fn an_inner_bound_is_kept_and_marked_as_not_outer() {
         Entity::new("IFCFACETEDBREP", vec![Value::Ref(EntityId(shell))]),
     );
 
-    let scale = units::resolve(&model);
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let node = lower_faceted_brep_node(&mut session, EntityId(900), Transform::identity())
         .expect("lowers");
@@ -463,7 +464,7 @@ fn the_dispatcher_routes_faceted_breps() {
     );
 
     let model = model_of("ifclite-geometry/issue_1985_scaled_kinds.ifc");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let id = *model.ids_of_type("IFCFACETEDBREP").first().expect("brep");
 
     let mut session = LoweringSession::new(&model, &scale);

@@ -103,7 +103,7 @@ fn with_evaluator(
     let evaluator = ReferenceCurveEvaluator::default();
     product_world_transform_with_evaluator(
         model,
-        &units::resolve(model),
+        &units::resolve(model).expect("project units"),
         product(model, name),
         &evaluator,
         cached,
@@ -115,7 +115,7 @@ fn with_evaluator(
 /// Instance carries its centre).
 fn lowered_centre(model: &Model, name: &str) -> Result<[f64; 3], GeometryError> {
     let evaluator = ReferenceCurveEvaluator::default();
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale).with_curve_evaluator(&evaluator);
     let root = lower_product_items(&mut session, product(model, name))?.expect("a Body");
     let lowered = session.finish(root)?;
@@ -167,7 +167,7 @@ fn linear_placement_uncached_world_transform_is_the_derived_frame() {
     let evaluator = ReferenceCurveEvaluator::default();
     let frame = product_representation_frame_with_evaluator(
         &model,
-        &units::resolve(&model),
+        &units::resolve(&model).expect("project units"),
         product(&model, "LENGTH"),
         RepresentationPurpose::Body,
         &evaluator,
@@ -181,7 +181,7 @@ fn linear_placement_uncached_world_transform_is_the_derived_frame() {
 #[test]
 fn linear_placement_uncached_without_an_evaluator_is_refused_as_before() {
     let model = uncached();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session = LoweringSession::new(&model, &scale);
     assert!(!session.derives_linear_placements());
     let error = lower_product_items(&mut session, product(&model, "LENGTH"))
@@ -271,7 +271,7 @@ fn linear_placement_uncached_an_evaluator_measuring_another_distance_is_refused(
     let model = uncached();
     let error = product_world_transform_with_evaluator(
         &model,
-        &units::resolve(&model),
+        &units::resolve(&model).expect("project units"),
         product(&model, "LENGTH"),
         &ArcLengthEverywhere::default(),
         CachedPositionPolicy::Verify,
@@ -355,7 +355,7 @@ fn linear_placement_cache_check_a_stale_cache_is_refused_naming_both_positions()
     let error = lowered_centre(&model, "STALE").expect_err("lowering checks too");
     mismatch(error);
     let evaluator = ReferenceCurveEvaluator::default();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session = LoweringSession::new(&model, &scale).with_curve_evaluator(&evaluator);
     mismatch(lower_product_net(&mut session, stale).expect_err("net lowering checks too"));
 }
@@ -369,7 +369,7 @@ fn linear_placement_cache_check_trust_uses_the_cache_as_it_is() {
 
     // The session builder carries the policy.
     let evaluator = ReferenceCurveEvaluator::default();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session = LoweringSession::new(&model, &scale)
         .with_curve_evaluator(&evaluator)
         .with_cached_position_policy(CachedPositionPolicy::Trust);
@@ -383,8 +383,12 @@ fn linear_placement_cache_check_trust_uses_the_cache_as_it_is() {
 fn linear_placement_cache_check_without_an_evaluator_is_unchanged() {
     // The cache-only entry points read the cache, stale or not.
     let model = cache_check();
-    let world = product_world_transform(&model, &units::resolve(&model), product(&model, "STALE"))
-        .expect("the cache-only path");
+    let world = product_world_transform(
+        &model,
+        &units::resolve(&model).expect("project units"),
+        product(&model, "STALE"),
+    )
+    .expect("the cache-only path");
     assert_vec(world.origin, [60.0, 2.0, 11.2], "the cached origin");
 }
 
@@ -426,7 +430,7 @@ fn model_with_context(precision: Value) -> Model {
 fn millimetres() -> UnitScale {
     UnitScale {
         length_to_metres: 0.001,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     }
 }
 

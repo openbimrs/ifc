@@ -12,6 +12,7 @@ use axiolid_model::{GeometryNode, SolidOperation};
 use ifc_geometry::lower::{lower_extruded_area_solid_node, LoweringSession};
 use ifc_geometry::transform::Transform;
 use ifc_geometry::units;
+use ifc_geometry::UnitScale;
 use ifc_model::{Codec, EntityId, Model, Value};
 use ifc_step::StepCodec;
 use std::path::PathBuf;
@@ -50,7 +51,7 @@ fn swept_area(model: &Model, extrusion: EntityId) -> EntityId {
 #[test]
 fn a_real_lowered_subtree_names_the_ifc_entity_for_each_node() {
     let model = wall_model();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let extrusion = first_extrusion(&model);
     let profile_entity = swept_area(&model, extrusion);
     let mut session = LoweringSession::new(&model, &scale);
@@ -94,7 +95,7 @@ fn a_real_lowered_subtree_names_the_ifc_entity_for_each_node() {
 #[test]
 fn implicit_nodes_follow_the_innermost_active_entity_not_id_order() {
     let model = Model::new();
-    let scale = units::resolve(&model);
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let outer = EntityId(99);
     let inner = EntityId(1);
@@ -129,7 +130,7 @@ fn implicit_nodes_follow_the_innermost_active_entity_not_id_order() {
 #[test]
 fn caller_synthesized_unscoped_nodes_have_no_fake_ifc_source() {
     let model = Model::new();
-    let scale = units::resolve(&model);
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
 
     let root = session
@@ -144,7 +145,7 @@ fn caller_synthesized_unscoped_nodes_have_no_fake_ifc_source() {
 #[test]
 fn memoized_lowering_reuses_the_original_provenance_entry() {
     let model = wall_model();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let extrusion = first_extrusion(&model);
     let mut session = LoweringSession::new(&model, &scale);
 

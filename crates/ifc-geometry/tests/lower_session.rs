@@ -58,7 +58,7 @@ fn extrusion_ids(model: &Model, count: usize) -> Vec<EntityId> {
 #[test]
 fn two_families_lower_into_one_graph_and_can_be_combined() {
     let model = wall_model();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let ids = extrusion_ids(&model, 2);
 
     let mut session = LoweringSession::new(&model, &scale);
@@ -95,7 +95,7 @@ fn two_families_lower_into_one_graph_and_can_be_combined() {
 #[test]
 fn lowering_the_same_entity_twice_reuses_one_node() {
     let model = wall_model();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let id = extrusion_ids(&model, 1)[0];
 
     let mut session = LoweringSession::new(&model, &scale);
@@ -123,7 +123,7 @@ fn lowering_the_same_entity_twice_reuses_one_node() {
 #[test]
 fn the_same_entity_under_a_different_frame_is_a_distinct_node() {
     let model = wall_model();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let id = extrusion_ids(&model, 1)[0];
 
     let mut session = LoweringSession::new(&model, &scale);
@@ -148,7 +148,7 @@ fn the_same_entity_under_a_different_frame_is_a_distinct_node() {
 #[test]
 fn a_cyclic_chain_is_reported_rather_than_overflowing() {
     let model = wall_model();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session = LoweringSession::new(&model, &scale);
 
     let entity = EntityId(1);
@@ -172,7 +172,7 @@ fn a_cyclic_chain_is_reported_rather_than_overflowing() {
 #[test]
 fn an_over_deep_chain_stops_at_the_limit() {
     let model = wall_model();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let limits = SessionLimits {
         max_depth: 4,
         ..SessionLimits::default()
@@ -201,7 +201,7 @@ fn an_over_deep_chain_stops_at_the_limit() {
 #[test]
 fn leaving_a_chain_allows_legitimate_reuse() {
     let model = wall_model();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session = LoweringSession::new(&model, &scale);
 
     let entity = EntityId(7);
@@ -220,7 +220,7 @@ fn leaving_a_chain_allows_legitimate_reuse() {
 #[test]
 fn graph_faults_are_reported_against_the_source_entity() {
     let model = wall_model();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session = LoweringSession::new(&model, &scale);
 
     let point = session
@@ -245,7 +245,7 @@ fn graph_faults_are_reported_against_the_source_entity() {
 #[test]
 fn a_shared_profile_is_stored_once_for_many_solids() {
     let model = wall_model();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let ids = extrusion_ids(&model, 2);
 
     let swept_area = |id: EntityId| -> EntityId {

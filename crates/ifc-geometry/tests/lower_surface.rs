@@ -13,6 +13,9 @@
 //! lowers end to end: its open generatrix is unwrapped rather than forced
 //! through the closed-contour profile model.
 
+#[path = "support/assume_units.rs"]
+mod assume_units;
+
 use axiolid_model::{GeometryNode, SurfaceRelation};
 use axiolid_surface::Surface;
 use ifc_geometry::lower::{lower_representation_item, lower_surface_node, LoweringSession};
@@ -43,7 +46,7 @@ fn fixture(name: &str) -> Model {
 #[test]
 fn the_duct_elbow_reference_surface_lowers_through_its_open_generatrix() {
     let model = fixture(DUCT);
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let ids = model.ids_of_type("IFCSURFACEOFLINEAREXTRUSION");
     assert_eq!(ids.len(), 1, "the fixture carries one extruded surface");
 
@@ -66,7 +69,7 @@ fn the_duct_elbow_reference_surface_lowers_through_its_open_generatrix() {
 #[test]
 fn the_duct_elbow_swept_solid_lowers_end_to_end() {
     let model = fixture(DUCT);
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let ids = model.ids_of_type("IFCSURFACECURVESWEPTAREASOLID");
     assert_eq!(ids.len(), 1, "the fixture carries one surface-curve sweep");
 
@@ -87,7 +90,7 @@ fn every_corpus_plane_lowers_to_an_orthonormal_frame() {
         "synthetic-surfaces/synthetic_curve_bounded_plane.ifc",
     ] {
         let model = fixture(name);
-        let scale = units::resolve(&model);
+        let scale = assume_units::scale_or_si(&model);
         for id in model.ids_of_type("IFCPLANE") {
             let mut session = LoweringSession::new(&model, &scale);
             let node = lower_surface_node(&mut session, *id, Transform::identity())

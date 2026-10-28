@@ -99,10 +99,10 @@ fn derived(
     expression: u64,
     evaluator: &dyn CurveEvaluator,
 ) -> Result<Transform, GeometryError> {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let file_units = AlignmentUnits {
         length_to_metres: 1.0,
-        angle_to_radians: scale.angle_to_radians,
+        angle_to_radians: scale.angle_to_radians.expect("angle unit"),
     };
     let point = ifc_alignment::resolve_point_by_distance(model, EntityId(expression), file_units)
         .expect("the expression reads");
@@ -113,7 +113,7 @@ fn derived(
 /// Every one carries the precision as its window and reads the incoming
 /// side (#423).
 fn lowered(model: &Model, expression: u64) -> (GeometryGraph, NodeId, NodeId) {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let root =
         lower_point_by_distance_node(&mut session, EntityId(expression), Transform::identity())
@@ -185,7 +185,7 @@ fn assert_matches_station(model: &Model, expression: u64) -> Transform {
 #[test]
 fn the_kerb_reads_as_the_compilers_path_with_open_ends() {
     let model = bases();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let evaluator = ReferenceCurveEvaluator::default();
     for (expression, basis) in [(1000, 90), (1005, 99)] {
         let ours = basis_curve_path(
@@ -302,7 +302,7 @@ fn world(
 ) -> Result<Transform, GeometryError> {
     product_world_transform_with_evaluator(
         model,
-        &units::resolve(model),
+        &units::resolve(model).expect("project units"),
         product(model, name),
         evaluator,
         CachedPositionPolicy::Verify,
@@ -514,7 +514,7 @@ fn an_evaluator_without_certified_joints_is_refused_naming_the_basis() {
 #[test]
 fn the_joints_snapped_to_are_certified_to_a_thousandth_of_the_window() {
     let model = bases();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let evaluator = ReferenceCurveEvaluator::default();
     let path =
         basis_curve_path(&model, &scale, EntityId(1000), EntityId(90), &evaluator).expect("a path");

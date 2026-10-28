@@ -159,7 +159,7 @@ fn openings_placed_beside_their_host_are_subtracted_in_its_frame() {
 fn each_part_of_a_multi_part_host_is_cut_in_its_frame() {
     let model = fixture();
     assert_net(&model, "TWO_PART");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session = LoweringSession::new(&model, &scale);
     let host = named(&model, "IFCWALL", "TWO_PART");
     let net = lower_product_net(&mut session, host)
@@ -189,7 +189,7 @@ fn each_part_of_a_multi_part_host_is_cut_in_its_frame() {
 #[test]
 fn the_difference_runs_under_one_instance_of_the_host_frame() {
     let model = fixture();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     for wall in SITES.into_iter().chain(["SIBLING"]) {
         let mut session = LoweringSession::new(&model, &scale);
         let host = named(&model, "IFCWALL", wall);
@@ -217,7 +217,7 @@ fn the_difference_runs_under_one_instance_of_the_host_frame() {
 #[test]
 fn openings_without_a_shared_chain_keep_the_world_frame() {
     let model = fixture();
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let mut session = LoweringSession::new(&model, &scale);
     let host = named(&model, "IFCWALL", "ABSOLUTE");
     let net = lower_product_net(&mut session, host)

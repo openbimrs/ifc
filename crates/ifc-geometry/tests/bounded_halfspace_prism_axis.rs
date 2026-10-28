@@ -63,7 +63,7 @@ fn fixture(name: &str) -> Model {
 
 /// `product`'s Body lowered as the product entry points lower it.
 fn lowered(model: &Model, product: EntityId) -> LoweredGeometry {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let root = lower_product_representation(&mut session, product, RepresentationPurpose::Body)
         .expect("lowers")

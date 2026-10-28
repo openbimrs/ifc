@@ -10,6 +10,7 @@ use ifc_geometry::authoring::{
     rectangle_profile,
 };
 use ifc_geometry::solid::boolean::IfcBooleanOperator;
+use ifc_geometry::UnitScale;
 use ifc_model::{Model, Transaction};
 
 /// A 6m x 0.3m wall extruded 2.4m up, authored from plain numbers.
@@ -48,7 +49,6 @@ fn an_authored_extrusion_is_read_back_by_the_same_crate() {
 fn an_authored_extrusion_lowers_into_the_neutral_graph() {
     use ifc_geometry::lower::{lower_representation_item, LoweringSession};
     use ifc_geometry::transform::Transform;
-    use ifc_geometry::units;
 
     let model = Model::default();
     let mut tx = Transaction::new(&model);
@@ -56,7 +56,7 @@ fn an_authored_extrusion_lowers_into_the_neutral_graph() {
     let mut model = model;
     tx.commit(&mut model).expect("commit");
 
-    let scale = units::resolve(&model);
+    let scale = UnitScale::SI;
     let mut session = LoweringSession::new(&model, &scale);
     let node = lower_representation_item(&mut session, solid, Transform::identity())
         .expect("authored solid lowers");
@@ -126,7 +126,7 @@ fn an_authored_extrusion_survives_step_text_and_lowers() {
     let view = ifc_geometry::solid::swept::ExtrudedAreaSolid::new(solid, entity);
     assert_eq!(view.depth().expect("depth"), 2.4);
 
-    let units = ifc_geometry::units::UnitScale::default();
+    let units = ifc_geometry::units::UnitScale::SI;
     let mut session = LoweringSession::new(&reparsed, &units);
     lower_representation_item(&mut session, solid, Transform::identity())
         .expect("reparsed solid lowers into the neutral graph");

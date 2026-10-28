@@ -36,7 +36,7 @@ fn fixture(name: &str) -> Model {
 #[test]
 fn the_bath_csg_solid_lowers_to_its_boolean_tree() {
     let model = fixture("ifclite-geometry/bath_csg_solid.ifc");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let ids = model.ids_of_type("IFCCSGSOLID");
     assert_eq!(ids.len(), 1, "the fixture carries exactly one CSG solid");
 
@@ -60,7 +60,7 @@ fn every_corpus_swept_disk_lowers_with_resolved_units() {
         "ifclite-geometry/swept_disk_composite_arc_crankbar.ifc",
     ] {
         let model = fixture(name);
-        let scale = units::resolve(&model);
+        let scale = units::resolve(&model).expect("project units");
         for id in model.ids_of_type("IFCSWEPTDISKSOLID") {
             let mut session = LoweringSession::new(&model, &scale);
             let node = lower_representation_item(&mut session, *id, Transform::identity())
@@ -104,7 +104,7 @@ fn every_corpus_swept_disk_lowers_with_resolved_units() {
 #[test]
 fn the_crankbar_directrix_lowers_as_a_composite_of_trimmed_curves() {
     let model = fixture("ifclite-geometry/swept_disk_composite_arc_crankbar.ifc");
-    let scale = units::resolve(&model);
+    let scale = units::resolve(&model).expect("project units");
     let ids = model.ids_of_type("IFCSWEPTDISKSOLID");
     assert!(!ids.is_empty(), "the fixture carries a swept disk");
 

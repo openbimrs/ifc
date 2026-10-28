@@ -157,7 +157,7 @@ fn assert_bounds(name: &str, mesh: &TriMesh, lo: [f64; 3], hi: [f64; 3], slack: 
 /// The deviation report of `name`'s body, compiled as the product entry
 /// points compile it.
 fn report(model: &Model, name: &str) -> axiolid_mesh_compile::DeviationReport {
-    let scale = units::resolve(model);
+    let scale = units::resolve(model).expect("project units");
     let mut session = LoweringSession::new(model, &scale);
     let root = lower_product_representation(
         &mut session,
