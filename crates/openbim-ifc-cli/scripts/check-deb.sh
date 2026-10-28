@@ -93,6 +93,10 @@ dpkg-deb --extract "$deb" "$work/unpacked"
 cmp -s "$work/unpacked/usr/bin/openbim-ifc" "$binary" || fail "the packaged binary differs from $binary"
 grep -q "GNU AFFERO GENERAL PUBLIC LICENSE" "$work/unpacked/usr/share/doc/openbim-ifc/copyright" ||
     fail "copyright lacks the licence text"
+grep -q "^License: LicenseRef-Commercial" "$work/unpacked/usr/share/doc/openbim-ifc/copyright" ||
+    fail "copyright lacks the LicenseRef-Commercial paragraph"
+grep -q "^License: CC-BY-ND-4.0" "$work/unpacked/usr/share/doc/openbim-ifc/copyright" ||
+    fail "copyright lacks the CC-BY-ND-4.0 paragraph"
 
 # 3. Install, run, remove.
 if [[ "$install" == true ]]; then

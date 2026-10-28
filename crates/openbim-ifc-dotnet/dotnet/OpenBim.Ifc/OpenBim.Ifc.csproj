@@ -21,7 +21,7 @@
     <Description>Read, edit, validate and write IFC (STEP and ifcXML) files from .NET: the openbim-ifc Rust core over its versioned C ABI, with property sets, the spatial tree, materials, classification, systems, cost and georeferencing.</Description>
     <PackageTags>ifc;bim;openbim;step;ifcxml;buildingsmart</PackageTags>
     <!-- NuGet rejects LicenseRef- in a license expression, so the dual licence
-         (AGPL-3.0-or-later OR LicenseRef-Commercial) is stated in a packed file. -->
+         (AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0 is stated in a packed file. -->
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <PackageProjectUrl>https://openbimrs.github.io/ifc/bindings/dotnet</PackageProjectUrl>
     <RepositoryUrl>https://github.com/openbimrs/ifc</RepositoryUrl>
@@ -41,6 +41,8 @@
     <None Include="LICENSE.txt" Pack="true" PackagePath="/" />
     <None Include="../../../../LICENSE" Pack="true" PackagePath="/" />
     <None Include="../../../../NOTICE" Pack="true" PackagePath="/" />
+    <None Include="../../../../LICENSES/LicenseRef-Commercial.txt" Pack="true" PackagePath="/" />
+    <None Include="../../../../LICENSES/CC-BY-ND-4.0.txt" Pack="true" PackagePath="/" />
     <!-- .NET Framework consumers (Revit, Navisworks, ...) get no native
          assets from runtimes/ unless they name a RuntimeIdentifier; these
          targets copy the Windows libraries next to the assembly. -->

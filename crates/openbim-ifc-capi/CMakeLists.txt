@@ -238,5 +238,7 @@ if(OPENBIM_IFC_ENABLE_INSTALL)
   install(FILES
     "${_openbim_ifc_crate_dir}/../../LICENSE"
     "${_openbim_ifc_crate_dir}/../../NOTICE"
+    "${_openbim_ifc_crate_dir}/../../LICENSES/LicenseRef-Commercial.txt"
+    "${_openbim_ifc_crate_dir}/../../LICENSES/CC-BY-ND-4.0.txt"
     DESTINATION share/doc/openbim_ifc)
 endif()

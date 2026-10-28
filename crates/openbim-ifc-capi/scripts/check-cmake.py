@@ -65,6 +65,8 @@ PACKAGE_FILES = [
     "lib/cmake/openbim_ifc/openbim_ifc-config-version.cmake",
     "share/doc/openbim_ifc/LICENSE",
     "share/doc/openbim_ifc/NOTICE",
+    "share/doc/openbim_ifc/LicenseRef-Commercial.txt",
+    "share/doc/openbim_ifc/CC-BY-ND-4.0.txt",
     *SHARED_FILES,
     *STATIC_FILES,
 ]

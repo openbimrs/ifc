@@ -93,6 +93,6 @@ C# suite against it from a fresh project.
 
 ## License
 
-`AGPL-3.0-or-later OR LicenseRef-Commercial`: the AGPL, or a commercial licence
+`(AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0`: the AGPL, or a commercial licence
 from the copyright holder. The package carries `LICENSE.txt` (the dual-licence
 statement), `LICENSE` and `NOTICE`. See the repository's `LICENSING.md`.

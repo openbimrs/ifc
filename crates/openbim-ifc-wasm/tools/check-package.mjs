@@ -85,6 +85,10 @@ const BROWSER = ["web", "bundler", "mesh/web", "mesh/bundler"];
  */
 const REQUIRED = [
   "catalog.mjs",
+  "LICENSE",
+  "NOTICE",
+  "LICENSES/LicenseRef-Commercial.txt",
+  "LICENSES/CC-BY-ND-4.0.txt",
   ...["mesh", "mesh/bundler", "mesh/web"].flatMap((dir) => [
     `${dir}/openbim_ifc_wasm.js`,
     `${dir}/openbim_ifc_wasm.d.ts`,

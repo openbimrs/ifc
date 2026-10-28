@@ -32,4 +32,4 @@ result:
 - [ ] I updated documentation and the owning crate's `CHANGELOG.md` for user-visible behavior.
 - [ ] I did not add restricted standards material, confidential models, or third-party content without verified redistribution rights.
 - [ ] I have the right to submit this contribution under the licences named in `LICENSING.md` and preserved third-party attribution/provenance.
-- [ ] I agree to the contributor terms in `CONTRIBUTING.md`.
+- [ ] I submit this contribution under `CONTRIBUTING.md`'s contributor terms.

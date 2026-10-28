@@ -1,7 +1,9 @@
-OpenBIM.rs is dual-licensed: AGPL-3.0-or-later OR LicenseRef-Commercial.
-You may choose either. The full text of the GNU Affero General Public License
-is in the LICENSE file of this package; the commercial option is described
-below. See also NOTICE.
+OpenBIM.rs is licensed under
+(AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0.
+You may choose either of the first two; the embedded IFC template catalog
+stays CC-BY-ND-4.0. The full text of the GNU Affero General Public License is
+in the LICENSE file of this package, the CC-BY-ND-4.0 text in
+CC-BY-ND-4.0.txt; the commercial option is described below. See also NOTICE.
 
 OpenBIM.rs commercial licence option
 

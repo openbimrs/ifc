@@ -58,5 +58,6 @@ See `crates/ifc-template-catalog/data/NOTICE.md` and the package-local license f
 ## Contributions
 
 Contributions are accepted under the contributor terms in
-[`CONTRIBUTING.md`](CONTRIBUTING.md), which license them under both options
-above.
+[`CONTRIBUTING.md`](CONTRIBUTING.md), which license them under
+`AGPL-3.0-or-later` and grant the copyright holder the rights the commercial
+option needs.

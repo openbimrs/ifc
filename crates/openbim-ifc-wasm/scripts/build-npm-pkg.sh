@@ -143,6 +143,10 @@ bind "$out/mesh" ../catalog.mjs ../../catalog.mjs
 # says "type": "module" and breaks loading. The manifest also makes `out` a
 # complete npm package; its "type": "commonjs" covers mesh/ too.
 cp "$crate_dir/npm/package.json" "$crate_dir/npm/catalog.mjs" "$crate_dir/README.md" "$out/"
+# The licence texts: the dual licence, and CC-BY-ND-4.0 for the catalog files.
+mkdir -p "$out/LICENSES"
+cp "$root/LICENSE" "$root/NOTICE" "$out/"
+cp "$root/LICENSES/LicenseRef-Commercial.txt" "$root/LICENSES/CC-BY-ND-4.0.txt" "$out/LICENSES/"
 
 # The catalog snapshots, one per edition (#318), shared by both entries.
 (cd "$root" && cargo run --quiet --release -p ifc-template-catalog --features runtime \
