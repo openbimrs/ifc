@@ -175,10 +175,10 @@
           "url": "https://crates.io/crates/ifc-model"
         }
       ],
-      "released": "0.4.2",
+      "released": "0.4.3",
       "released_date": "2026-10-28",
       "status": "implemented",
-      "version": "0.4.2"
+      "version": "0.4.3"
     },
     "ifc-occurrence": {
       "description": "Built element and distribution occurrence classes and their type pairing.",
@@ -400,10 +400,10 @@
           "url": "https://crates.io/crates/openbim-ifc"
         }
       ],
-      "released": "0.39.0",
+      "released": "0.39.1",
       "released_date": "2026-10-28",
       "status": "implemented",
-      "version": "0.39.0"
+      "version": "0.39.1"
     },
     "openbim-ifc-binding-core": {
       "description": "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python).",

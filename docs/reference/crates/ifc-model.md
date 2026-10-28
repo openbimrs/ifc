@@ -11,7 +11,7 @@ The IFC entity graph: storage and structural queries, free of domain semantics a
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.2 (2026-10-28) |
+| Latest release | 0.4.3 (2026-10-28) |
 | Registries | [crates.io `ifc-model`](https://crates.io/crates/ifc-model) |
 | API documentation | [rustdoc](/api/rustdoc/ifc_model/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-model) |
 | Source | [`crates/ifc-model/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-model) |
@@ -29,10 +29,25 @@ serialization.
 
 ## Changes
 
-Latest release, 0.4.2 (2026-10-28):
+Latest release, 0.4.3 (2026-10-28):
 
-### Changed
+### Added (#587)
 
-- Copyright holder in NOTICE and licence texts is rheonda.
+- `Model::reverse_index`: the reverse index, built on the first call and kept
+  current by every write, undo and redo after that; equal to
+  `ReverseIndex::build` at every moment.
+- `Model::global_id_candidates`: the entities whose first attribute is the
+  text of a `Guid`, ascending by id, kept the same way.
+- `Model::drop_derived_indexes`, to free both.
+- `PartialEq` and `Eq` on `ReverseIndex`.
+
+### Changed (#587)
+
+- `Transaction::preflight` reads the model's own reverse index when something
+  built it, instead of scanning the model for a commit that removes.
+- Undoing a batch is linear in the batch: file order and type buckets are
+  searched from the end.
+
+Semver: minor.
 
 Full history: [`crates/ifc-model/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-model/CHANGELOG.md)
