@@ -497,6 +497,7 @@ fn a_polygonal_bounded_clip_is_labelled_wire_format_1_4() {
     assert_eq!(back.to_json().unwrap(), text);
 }
 
+#[cfg(feature = "mesh")]
 #[test]
 fn a_model_without_units_refuses_every_product_curve() {
     let model = StepCodec
