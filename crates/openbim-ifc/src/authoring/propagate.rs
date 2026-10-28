@@ -528,7 +528,7 @@ impl Planner<'_, '_> {
     /// `RelatingMaterial`.
     fn associations(&self, object: EntityId) -> Vec<(EntityId, EntityId)> {
         self.view
-            .ids_of_type(MATERIAL_RELATIONSHIP)
+            .referrers_of_type(object, MATERIAL_RELATIONSHIP)
             .into_iter()
             .filter_map(|relationship| {
                 let entity = self.view.get(relationship)?;

@@ -184,6 +184,36 @@ impl<'m> Overlay<'m> {
         found.into_iter().collect()
     }
 
+    /// The referrers of `target` that are exactly of `type_name` (upper
+    /// case), in the order [`Self::ids_of_type`] lists them: the first is
+    /// the one a scan of that type would find first, even when a malformed
+    /// model has several.
+    pub(super) fn referrers_of_type(&self, target: EntityId, type_name: &str) -> Vec<EntityId> {
+        let mut found: Vec<EntityId> = self
+            .referrers(target)
+            .into_iter()
+            .filter(|id| {
+                self.created.get(id).map_or_else(
+                    || {
+                        self.get(*id)
+                            .is_some_and(|entity| entity.type_name.eq_ignore_ascii_case(type_name))
+                    },
+                    |entity| &*entity.type_name == type_name,
+                )
+            })
+            .collect();
+        if found.len() > 1 {
+            let order: HashMap<EntityId, usize> = self
+                .ids_of_type(type_name)
+                .into_iter()
+                .enumerate()
+                .map(|(position, id)| (id, position))
+                .collect();
+            found.sort_by_key(|id| order.get(id).copied());
+        }
+        found
+    }
+
     /// Every entity of the model as the batch so far leaves it, in id
     /// order.
     pub(super) fn ids(&self) -> Vec<EntityId> {

@@ -166,7 +166,7 @@ impl Planner<'_, '_> {
     /// `relating`.
     fn relationship_of(&self, relation: &Relation, relating: EntityId) -> Option<EntityId> {
         self.view
-            .ids_of_type(relation.type_name)
+            .referrers_of_type(relating, relation.type_name)
             .into_iter()
             .find(|id| self.relating_of(relation, *id) == Some(relating))
     }
@@ -267,7 +267,7 @@ impl Planner<'_, '_> {
             .iter()
             .position(|attribute| attribute.name.eq_ignore_ascii_case(relation.related))?;
         self.view
-            .ids_of_type(relation.type_name)
+            .referrers_of_type(object, relation.type_name)
             .into_iter()
             .find(|id| {
                 self.view
