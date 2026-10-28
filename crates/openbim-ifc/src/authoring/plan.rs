@@ -3,6 +3,7 @@
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
+use ifc_model::guid::Guid;
 use ifc_model::{Entity, EntityId, Value};
 use ifc_schema::Schema;
 
@@ -32,8 +33,6 @@ pub(super) struct Planner<'m, 's> {
     pub(super) copies: Vec<Option<CopyReport>>,
     /// The copy report of the operation running now.
     copy_report: Option<CopyReport>,
-    /// `GlobalId`s of the base model, read on first need.
-    base_global_ids: Option<HashMap<Arc<str>, EntityId>>,
     /// `GlobalId`s the batch wrote.
     batch_global_ids: HashMap<Arc<str>, EntityId>,
 }
@@ -54,7 +53,6 @@ impl<'m, 's> Planner<'m, 's> {
             report: None,
             copies: Vec::new(),
             copy_report: None,
-            base_global_ids: None,
             batch_global_ids: HashMap::new(),
         }
     }
@@ -397,12 +395,10 @@ impl<'m, 's> Planner<'m, 's> {
         let Some(Value::Text(global_id)) = entity.attributes.first() else {
             return Ok(());
         };
-        let holder = self
-            .batch_global_ids
-            .get(global_id)
-            .copied()
-            .or_else(|| self.base_global_ids().get(global_id).copied())
-            .filter(|holder| *holder != id && self.view.get(*holder).is_some());
+        let holder = match self.batch_global_ids.get(global_id) {
+            Some(&holder) => Some(holder).filter(|holder| *holder != id && self.present(*holder)),
+            None => self.base_holder(global_id, Some(id)),
+        };
         if let Some(holder) = holder {
             return Err(F::DuplicateGlobalId {
                 global_id: global_id.to_string(),
@@ -415,30 +411,49 @@ impl<'m, 's> Planner<'m, 's> {
 
     /// The entity that holds `global_id` as the batch so far leaves the
     /// model, if any.
-    pub(super) fn global_id_holder(&mut self, global_id: &str) -> Option<EntityId> {
-        self.batch_global_ids
-            .get(global_id)
-            .copied()
-            .or_else(|| self.base_global_ids().get(global_id).copied())
-            .filter(|holder| self.view.get(*holder).is_some())
+    pub(super) fn global_id_holder(&self, global_id: &str) -> Option<EntityId> {
+        match self.batch_global_ids.get(global_id) {
+            Some(&holder) => Some(holder).filter(|holder| self.present(*holder)),
+            None => self.base_holder(global_id, None),
+        }
     }
 
-    fn base_global_ids(&mut self) -> &HashMap<Arc<str>, EntityId> {
-        let (schema, base) = (self.schema, self.view.base());
-        self.base_global_ids.get_or_insert_with(|| {
-            let mut roots = HashMap::new();
-            for (type_name, _) in base.type_histogram() {
-                if !schema.is_a(type_name, "IfcRoot") {
-                    continue;
-                }
-                for (id, entity) in base.of_type(type_name) {
-                    if let Some(Value::Text(text)) = entity.attributes.first() {
-                        roots.insert(text.clone(), id);
-                    }
+    fn present(&self, id: EntityId) -> bool {
+        self.view.get(id).is_some()
+    }
+
+    /// The `IfcRoot` of the base model holding `text` that the batch leaves
+    /// in the model, other than `except`; the lowest id when several do.
+    ///
+    /// Text of the GlobalId form is looked up in the model's GlobalId index;
+    /// anything else is not indexed and found by a scan.
+    fn base_holder(&self, text: &str, except: Option<EntityId>) -> Option<EntityId> {
+        let base = self.view.base();
+        let holds = |id: EntityId, entity: &Entity| {
+            Some(id) != except
+                && self.present(id)
+                && self.schema.is_a(&entity.type_name, "IfcRoot")
+                && matches!(entity.attributes.first(), Some(Value::Text(t)) if &**t == text)
+        };
+        if let Some(guid) = Guid::parse(text) {
+            return base
+                .global_id_candidates(&guid)
+                .iter()
+                .copied()
+                .find(|id| base.get(*id).is_some_and(|entity| holds(*id, entity)));
+        }
+        let mut lowest: Option<EntityId> = None;
+        for (type_name, _) in base.type_histogram() {
+            if !self.schema.is_a(type_name, "IfcRoot") {
+                continue;
+            }
+            for (id, entity) in base.of_type(type_name) {
+                if holds(id, entity) && lowest.is_none_or(|lowest| id < lowest) {
+                    lowest = Some(id);
                 }
             }
-            roots
-        })
+        }
+        lowest
     }
 }
 
