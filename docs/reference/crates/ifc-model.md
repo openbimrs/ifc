@@ -11,7 +11,7 @@ The IFC entity graph: storage and structural queries, free of domain semantics a
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.0 (2026-10-27) |
+| Latest release | 0.4.1 (2026-10-28) |
 | Registries | [crates.io `ifc-model`](https://crates.io/crates/ifc-model) |
 | API documentation | [rustdoc](/api/rustdoc/ifc_model/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-model) |
 | Source | [`crates/ifc-model/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-model) |
@@ -29,36 +29,12 @@ serialization.
 
 ## Changes
 
-Latest release, 0.4.0 (2026-10-27):
+Latest release, 0.4.1 (2026-10-28):
 
-### Added (#465)
+### Changed
 
-- `Inverse`, `Restored`, `InverseError`: the recorded inverse of a run of
-  model writes (`Inverse::record`, `Model::begin_recording` and
-  `end_recording`). Applying one restores the model exactly (file order,
-  type-index order, attribute counts, header, next free id) and returns the
-  redo.
-- `History` and `HistoryError`: a bounded undo and redo stack of inverses;
-  `History::track` records any change as one entry.
-- `Transaction::commit_reversible`, `Transaction::set_header` and
-  `Transaction::header`.
+- Licence: `AGPL-3.0-or-later OR LicenseRef-Commercial` (was `AGPL-3.0-or-later`); a commercial licence is available from the copyright holder. See LICENSING.md.
 
-### Changed (breaking) (#465)
-
-- `Model::header_mut` bumps the revision. A `Transaction` opened before a
-  `header_mut` edit is now refused at commit with
-  `Conflict::StaleRevision`; set the header first, or stage it with
-  `Transaction::set_header`.
-- Revisions are process-unique: every change draws a new value from one
-  process-wide counter, so values are increasing but no longer consecutive,
-  and two models never share a revision once either was written. A
-  `Transaction` or `Inverse` made against one model is refused by another.
-  A clone keeps its source's revision until either side changes.
-- `Model::set_attributes` with an empty edit list changes nothing and no
-  longer bumps the revision.
-- `Model::clone` does not copy an open recording.
-
-Semver: the revision changes can refuse code that committed before, so this
-release is 0.4.0, not a patch.
+Semver: patch.
 
 Full history: [`crates/ifc-model/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-model/CHANGELOG.md)

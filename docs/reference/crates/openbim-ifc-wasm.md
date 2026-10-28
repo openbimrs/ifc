@@ -11,7 +11,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.14.0 (2026-10-27) |
+| Latest release | 0.14.1 (2026-10-28) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_wasm/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-wasm) |
@@ -70,52 +70,12 @@ suites here cover only the JS conversion itself.
 
 ## Changes
 
-Latest release, 0.14.0 (2026-10-27):
+Latest release, 0.14.1 (2026-10-28):
 
-### Added (#465)
+### Changed
 
-- `IfcModel.setHistoryLimit`, `history`, `undo`, `redo` and `clearHistory`,
-  with the `HistoryState` and `HistoryChange` types and the error codes
-  `history-empty` and `history-stale`. History is off until a limit is set;
-  then every mutating method is one undo entry. `setHistoryLimit` refuses a
-  value that is not a whole number of at least 0 with `invalid-value`.
+- Licence: `(AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0` (was `AGPL-3.0-or-later`; the embedded or shipped catalog stays `CC-BY-ND-4.0`); a commercial licence is available from the copyright holder. See LICENSING.md.
 
-Semver: additive: minor.
-
-### Fixed (#559)
-
-- `setProperties`, `setProperty`, `removeProperty`, `setValue` and
-  `importTable` draw their `GlobalId` seed from `Math.random`, as `author`,
-  `copyProduct` and `append` do.
-
-Semver: patch (signatures unchanged).
-
-### Fixed (#548)
-
-- `IfcModel.copyProduct` and `IfcModel.append` draw their `GlobalId` seed
-  from `Math.random`, as `author` does. The `GlobalId`s a batch derives now
-  depend on the seed alone, and the library's own seed has no entropy on
-  `wasm32-unknown-unknown` (a counter from 0 per page load), so without this
-  the n-th copy of every page load would collide.
-
-### Added (#538, EXPRESS rules)
-
-- `IfcModel.validateExpress(express, maxFindings?)` validates with the
-  EXPRESS rules of the declared release from the `.exp` text the caller
-  supplies, behind the new `validate-express` cargo feature (default, so
-  the npm package carries it). `IfcErrorCode` gains `express-mismatch` and
-  `invalid-express`.
-- `ValidationReport.indeterminate`; findings gain the severity
-  `indeterminate`.
-
-Semver: additive: minor.
-
-### Changed (#537)
-
-- `validate` also reports the `property.undeclared_member` and
-  `property.member_type` warnings for the members of a catalog set, when
-  the build carries the property catalog.
-
-Semver: no code change; patch when released.
+Semver: patch.
 
 Full history: [`crates/openbim-ifc-wasm/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-wasm/CHANGELOG.md)

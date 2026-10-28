@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.31.1] - 2026-10-28
+
 ### Changed
 
 - Licence: `AGPL-3.0-or-later OR LicenseRef-Commercial` (was `AGPL-3.0-or-later`); a commercial licence is available from the copyright holder. See LICENSING.md.
@@ -2378,7 +2380,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.31.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.31.1...HEAD
+[0.31.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.31.1
 [0.31.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.31.0
 [0.30.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.30.1
 [0.30.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.30.0

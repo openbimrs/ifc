@@ -11,8 +11,8 @@ Versioned, memory-safe C ABI for openbim-ifc: read, edit and write IFC STEP file
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.1.17 (2026-10-27) |
-| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.17) |
+| Latest release | 0.1.18 (2026-10-28) |
+| Registries | [GitHub release `openbim_ifc`](https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.18) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_capi/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-capi/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-capi) |
 
@@ -67,50 +67,12 @@ than altering a `v0_1_` one.
 
 ## Changes
 
-Latest release, 0.1.17 (2026-10-27):
+Latest release, 0.1.18 (2026-10-28):
 
-### Fixed (#465)
+### Changed
 
-- `openbim_ifc_v0_1_model_undo`, `_redo`, `_remove_product`, `_purge`,
-  `_remove_representation`, `_copy_product` and `_append` check their output
-  pointers before they change the model: a null `out_*_required`, or a null
-  buffer with a non-zero capacity, answers `NULL_POINTER` with the model
-  unchanged, where the change used to be applied first and a retry applied it
-  twice.
+- Licence: `(AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0` (was `AGPL-3.0-or-later`; the embedded or shipped catalog stays `CC-BY-ND-4.0`); a commercial licence is available from the copyright holder. See LICENSING.md.
 
-### Added (#465, undo and redo)
-
-- `openbim_ifc_v0_1_model_set_history_limit`, `_model_history` (new
-  `OpenbimIfcHistoryState`), `_model_undo`, `_model_redo` and
-  `_model_clear_history`. History is off until a limit is set; then every
-  mutating export is one undo entry. `undo` and `redo` answer with a
-  `HistoryChange` tape; a size query or a short buffer applies nothing.
-- Statuses `HISTORY_EMPTY` (38, `history-empty`) and `HISTORY_STALE` (39,
-  `history-stale`).
-- ABI version 0.1.23; no `v0_1` symbol changed.
-
-Semver: additive, released on the 0.1 line.
-
-### Changed (#559)
-
-- `openbim_ifc_v0_1_model_set_properties`, `_set_property`, `_remove_property`, `openbim_ifc_v0_1_entity_set_value`, `openbim_ifc_v0_1_model_import_table`: draw a seed per call for the `GlobalId`s of the sets and
-  relationships they create; one the model already holds is refused with
-  `invalid-value`.
-
-Semver: patch, on the 0.1 line (no symbol changed).
-
-### Added (#538, EXPRESS rules)
-
-- `openbim_ifc_v0_1_model_validate_express(model, express, express_len,
-  max_findings, &summary, ...)` validates with the EXPRESS rules of the
-  declared release from the UTF-8 `.exp` text the caller supplies, with the
-  findings tape of `_model_validate`. A size query parses and validates.
-  New `OpenbimIfcExpressValidationSummary` (the counts plus `indeterminate`);
-  `OpenbimIfcValidationSummary` and `_model_validate` are unchanged.
-- Statuses `EXPRESS_MISMATCH` (36, `express-mismatch`) and `INVALID_EXPRESS`
-  (37, `invalid-express`).
-- ABI version 0.1.22; no `v0_1` symbol changed.
-
-Semver: additive, released on the 0.1 line.
+Semver: patch.
 
 Full history: [`crates/openbim-ifc-capi/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-capi/CHANGELOG.md)
