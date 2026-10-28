@@ -141,29 +141,40 @@ pub fn resolve(model: &Model) -> GeometryResult<UnitScale> {
     }
     let slots = Slots::new(assignment, assignment_entity);
 
-    let mut length: Option<(EntityId, f64)> = None;
-    let mut angle: Option<(EntityId, f64)> = None;
+    // Classify every member first: two units of one type are ambiguous even
+    // when the first cannot be read.
+    let mut length: Option<EntityId> = None;
+    let mut angle: Option<EntityId> = None;
     for unit_id in slots.req_ref_list(0, "Units")? {
         let unit = slots.resolve(model, unit_id)?;
-        let unit_slots = Slots::new(unit_id, unit);
-        match unit_type(&unit_slots) {
+        match unit_type(&Slots::new(unit_id, unit)) {
             Some("LENGTHUNIT") => {
-                if let Some((first, _)) = length {
+                if let Some(first) = length {
                     return Err(ambiguous(first, unit_id, "LENGTHUNIT"));
                 }
-                length = Some((unit_id, factor(model, &unit_slots, "LENGTHUNIT")?));
+                length = Some(unit_id);
             }
             Some("PLANEANGLEUNIT") => {
-                if let Some((first, _)) = angle {
+                if let Some(first) = angle {
                     return Err(ambiguous(first, unit_id, "PLANEANGLEUNIT"));
                 }
-                angle = Some((unit_id, factor(model, &unit_slots, "PLANEANGLEUNIT")?));
+                angle = Some(unit_id);
             }
             _ => {}
         }
     }
+    let read = |unit_id: EntityId, kind: &'static str| -> GeometryResult<f64> {
+        let unit = slots.resolve(model, unit_id)?;
+        factor(model, &Slots::new(unit_id, unit), kind)
+    };
+    let length = length
+        .map(|unit_id| read(unit_id, "LENGTHUNIT"))
+        .transpose()?;
+    let angle = angle
+        .map(|unit_id| read(unit_id, "PLANEANGLEUNIT"))
+        .transpose()?;
 
-    let Some((_, length_to_metres)) = length else {
+    let Some(length_to_metres) = length else {
         return Err(GeometryError::LengthUnitUndeclared {
             project: Some(project),
             assignment: Some(assignment),
@@ -171,7 +182,7 @@ pub fn resolve(model: &Model) -> GeometryResult<UnitScale> {
     };
     Ok(UnitScale {
         length_to_metres,
-        angle_to_radians: angle.map(|(_, factor)| factor),
+        angle_to_radians: angle,
     })
 }
 

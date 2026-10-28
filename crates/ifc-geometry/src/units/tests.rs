@@ -193,6 +193,25 @@ fn two_length_units_refuse() {
 }
 
 #[test]
+fn two_length_units_are_ambiguous_even_when_the_first_is_unreadable() {
+    let model = model_with(
+        vec![
+            (1, si("LENGTHUNIT", Some("BOGUS"), "METRE")),
+            (2, si("LENGTHUNIT", None, "METRE")),
+        ],
+        &[1, 2],
+    );
+    assert_eq!(
+        resolve(&model),
+        Err(GeometryError::UnitsAmbiguous {
+            first: id(1),
+            second: id(2),
+            kind: "LENGTHUNIT"
+        })
+    );
+}
+
+#[test]
 fn unknown_prefix_refuses() {
     let model = model_with_length_unit(Some("BOGUS"));
     assert!(matches!(
