@@ -11,7 +11,7 @@ Georeferencing: map conversion, coordinate reference systems, site placement.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.8.1 (2026-10-28) |
+| Latest release | 0.8.2 (2026-10-28) |
 | Registries | [crates.io `ifc-georef`](https://crates.io/crates/ifc-georef) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `georef` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_georef/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-georef) |
@@ -51,12 +51,10 @@ buildingSMART geo-referencing guide
 
 ## Changes
 
-Latest release, 0.8.1 (2026-10-28):
+Latest release, 0.8.2 (2026-10-28):
 
 ### Changed
 
-- Licence: `AGPL-3.0-or-later OR LicenseRef-Commercial` (was `AGPL-3.0-or-later`); a commercial licence is available from the copyright holder. See LICENSING.md.
-
-Semver: patch.
+- Copyright holder in NOTICE and licence texts is rheonda.
 
 Full history: [`crates/ifc-georef/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-georef/CHANGELOG.md)

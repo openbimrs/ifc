@@ -11,7 +11,7 @@ The IFC entity graph: storage and structural queries, free of domain semantics a
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.1 (2026-10-28) |
+| Latest release | 0.4.2 (2026-10-28) |
 | Registries | [crates.io `ifc-model`](https://crates.io/crates/ifc-model) |
 | API documentation | [rustdoc](/api/rustdoc/ifc_model/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-model) |
 | Source | [`crates/ifc-model/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-model) |
@@ -29,12 +29,10 @@ serialization.
 
 ## Changes
 
-Latest release, 0.4.1 (2026-10-28):
+Latest release, 0.4.2 (2026-10-28):
 
 ### Changed
 
-- Licence: `AGPL-3.0-or-later OR LicenseRef-Commercial` (was `AGPL-3.0-or-later`); a commercial licence is available from the copyright holder. See LICENSING.md.
-
-Semver: patch.
+- Copyright holder in NOTICE and licence texts is rheonda.
 
 Full history: [`crates/ifc-model/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-model/CHANGELOG.md)

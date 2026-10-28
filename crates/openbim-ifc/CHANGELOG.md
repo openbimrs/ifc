@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.38.2] - 2026-10-28
+
+### Changed
+
+- Copyright holder in NOTICE and licence texts is rheonda.
+
 ## [0.38.1] - 2026-10-28
 
 ### Changed
@@ -1344,7 +1350,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.38.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.38.2...HEAD
+[0.38.2]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.38.2
 [0.38.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.38.1
 [0.38.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.38.0
 [0.37.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.37.0

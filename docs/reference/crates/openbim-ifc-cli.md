@@ -11,7 +11,7 @@ The openbim-ifc command: validate, convert, inspect, query and edit IFC files (S
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.5.1 (2026-10-28) |
+| Latest release | 0.5.2 (2026-10-28) |
 | Registries | [crates.io `openbim-ifc-cli`](https://crates.io/crates/openbim-ifc-cli) |
 | API documentation | [docs.rs](https://docs.rs/openbim-ifc-cli) |
 | Source | [`crates/openbim-ifc-cli/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-cli) |
@@ -30,12 +30,10 @@ and formats the result. Nothing here interprets IFC on its own.
 
 ## Changes
 
-Latest release, 0.5.1 (2026-10-28):
+Latest release, 0.5.2 (2026-10-28):
 
 ### Changed
 
-- Licence: `(AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0` (was `AGPL-3.0-or-later`; the embedded or shipped catalog stays `CC-BY-ND-4.0`); a commercial licence is available from the copyright holder. See LICENSING.md.
-
-Semver: patch.
+- Copyright holder in NOTICE and licence texts is rheonda.
 
 Full history: [`crates/openbim-ifc-cli/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-cli/CHANGELOG.md)

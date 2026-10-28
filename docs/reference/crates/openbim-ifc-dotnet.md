@@ -11,7 +11,7 @@ The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned 
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.11.1 (2026-10-28) |
+| Latest release | 0.11.2 (2026-10-28) |
 | Registries | [NuGet `OpenBim.Ifc`](https://www.nuget.org/packages/OpenBim.Ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_dotnet/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-dotnet/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-dotnet) |
@@ -44,12 +44,10 @@ The behaviour is tested from C# against the packed `.nupkg` by
 
 ## Changes
 
-Latest release, 0.11.1 (2026-10-28):
+Latest release, 0.11.2 (2026-10-28):
 
 ### Changed
 
-- Licence: `(AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0` (was `AGPL-3.0-or-later`; the embedded or shipped catalog stays `CC-BY-ND-4.0`); a commercial licence is available from the copyright holder. See LICENSING.md.
-
-Semver: patch.
+- Copyright holder in NOTICE and licence texts is rheonda.
 
 Full history: [`crates/openbim-ifc-dotnet/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-dotnet/CHANGELOG.md)

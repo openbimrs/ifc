@@ -11,7 +11,7 @@ Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.14.1 (2026-10-28) |
+| Latest release | 0.14.2 (2026-10-28) |
 | Registries | [PyPI `openbim-ifc`](https://pypi.org/project/openbim-ifc/) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_py/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-py/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-py) |
@@ -42,12 +42,10 @@ This crate adds calling-convention glue only. IFC behaviour belongs in
 
 ## Changes
 
-Latest release, 0.14.1 (2026-10-28):
+Latest release, 0.14.2 (2026-10-28):
 
 ### Changed
 
-- Licence: `(AGPL-3.0-or-later OR LicenseRef-Commercial) AND CC-BY-ND-4.0` (was `AGPL-3.0-or-later`; the embedded or shipped catalog stays `CC-BY-ND-4.0`); a commercial licence is available from the copyright holder. See LICENSING.md.
-
-Semver: patch.
+- Copyright holder in NOTICE and licence texts is rheonda.
 
 Full history: [`crates/openbim-ifc-py/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-py/CHANGELOG.md)

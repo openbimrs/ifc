@@ -9,6 +9,12 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-10-28
+
+### Changed
+
+- Copyright holder in NOTICE and licence texts is rheonda.
+
 ## [0.11.1] - 2026-10-28
 
 ### Changed

@@ -11,6 +11,12 @@ documents) is this crate's public interface.
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-10-28
+
+### Changed
+
+- Copyright holder in NOTICE and licence texts is rheonda.
+
 ## [0.5.1] - 2026-10-28
 
 ### Changed
@@ -209,7 +215,8 @@ Semver: patch.
 
 Semver: a new crate, first release 0.1.0.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-cli-v0.5.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-cli-v0.5.2...HEAD
+[0.5.2]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.5.2
 [0.5.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.5.1
 [0.5.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.5.0
 [0.4.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-cli-v0.4.0

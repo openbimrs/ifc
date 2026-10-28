@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.38.1 (2026-10-28) |
+| Latest release | 0.38.2 (2026-10-28) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -103,12 +103,10 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.38.1 (2026-10-28):
+Latest release, 0.38.2 (2026-10-28):
 
 ### Changed
 
-- Licence: `AGPL-3.0-or-later OR LicenseRef-Commercial` (was `AGPL-3.0-or-later`); a commercial licence is available from the copyright holder. See LICENSING.md.
-
-Semver: patch.
+- Copyright holder in NOTICE and licence texts is rheonda.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

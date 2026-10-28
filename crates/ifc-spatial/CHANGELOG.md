@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-10-28
+
+### Changed
+
+- Copyright holder in NOTICE and licence texts is rheonda.
+
 ## [0.6.1] - 2026-10-28
 
 ### Changed
@@ -318,7 +324,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-spatial-v0.6.1...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-spatial-v0.6.2...HEAD
+[0.6.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-spatial-v0.6.2
 [0.6.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-spatial-v0.6.1
 [0.6.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-spatial-v0.6.0
 [0.5.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-spatial-v0.5.1

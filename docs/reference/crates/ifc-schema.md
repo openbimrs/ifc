@@ -11,7 +11,7 @@ IFC schema as data: entity table, supertype chain, attribute names.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.3.4 (2026-10-28) |
+| Latest release | 0.3.5 (2026-10-28) |
 | Registries | [crates.io `ifc-schema`](https://crates.io/crates/ifc-schema) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties`, `schema-api` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_schema/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-schema) |
@@ -36,12 +36,12 @@ IFC schema as data: entity table, supertype chain, attribute names.
 
 ## Changes
 
-Latest release, 0.3.4 (2026-10-28):
+Latest release, 0.3.5 (2026-10-28):
 
 ### Changed
 
-- Licence: `AGPL-3.0-or-later OR LicenseRef-Commercial` (was `AGPL-3.0-or-later`); a commercial licence is available from the copyright holder. See LICENSING.md.
-
-Semver: patch.
+- Require `openbim-step` 0.11.1, the dual-licensed release
+  (`AGPL-3.0-or-later OR LicenseRef-Commercial`) (#583).
+- Copyright holder in NOTICE and licence texts is rheonda.
 
 Full history: [`crates/ifc-schema/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-schema/CHANGELOG.md)

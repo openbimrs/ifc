@@ -11,7 +11,7 @@ Element, resource, and process type definitions: the IfcTypeObject catalogue.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.1 (2026-10-28) |
+| Latest release | 0.4.2 (2026-10-28) |
 | Registries | [crates.io `ifc-element-type`](https://crates.io/crates/ifc-element-type) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `element-type` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_element_type/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-element-type) |
@@ -45,12 +45,10 @@ release, which IFC2X3 needs for its required `OwnerHistory` (#202).
 
 ## Changes
 
-Latest release, 0.4.1 (2026-10-28):
+Latest release, 0.4.2 (2026-10-28):
 
 ### Changed
 
-- Licence: `AGPL-3.0-or-later OR LicenseRef-Commercial` (was `AGPL-3.0-or-later`); a commercial licence is available from the copyright holder. See LICENSING.md.
-
-Semver: patch.
+- Copyright holder in NOTICE and licence texts is rheonda.
 
 Full history: [`crates/ifc-element-type/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-element-type/CHANGELOG.md)

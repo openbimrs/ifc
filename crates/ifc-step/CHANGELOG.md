@@ -18,6 +18,7 @@ everything released before per-crate changelogs began.
 
 - Require `openbim-step` 0.11.1, the dual-licensed release
   (`AGPL-3.0-or-later OR LicenseRef-Commercial`) (#583).
+- Copyright holder in NOTICE and licence texts is rheonda.
 
 ## [0.6.1] - 2026-10-28
 
