@@ -1,6 +1,6 @@
 //! Running a batch's operations against the overlay.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 
 use ifc_model::guid::Guid;
@@ -35,6 +35,9 @@ pub(super) struct Planner<'m, 's> {
     copy_report: Option<CopyReport>,
     /// `GlobalId`s the batch wrote.
     batch_global_ids: HashMap<Arc<str>, EntityId>,
+    /// Relationships whose whole record a type assignment checked: further
+    /// objects join them by an append (see `relate`).
+    pub(super) rechecked: HashSet<EntityId>,
 }
 
 /// `IFCROOT` and its `GlobalId`, slot 0 in every release.
@@ -54,6 +57,7 @@ impl<'m, 's> Planner<'m, 's> {
             copies: Vec::new(),
             copy_report: None,
             batch_global_ids: HashMap::new(),
+            rechecked: HashSet::new(),
         }
     }
 

@@ -10,7 +10,11 @@
 //! relating nothing) and joins the new one. A type that already has its
 //! `IfcRelDefinesByType` takes further objects into it, not a second one.
 
+use std::collections::HashSet;
+
 use ifc_model::{EntityId, Value};
+
+use super::check::{reference, upper_bound};
 
 use super::plan::{with_owner, Planner};
 use super::{AssignTypeOptions, AuthoringFailure as F};
@@ -173,6 +177,11 @@ impl Planner<'_, '_> {
 
     /// Append `related` to the list of `relationship`, keeping its order
     /// and skipping what it already lists.
+    ///
+    /// The first join of a relationship in a batch edits and checks the whole
+    /// record. Later joins check the objects they add and append them in
+    /// place, so typing N objects one at a time costs N appends, not N
+    /// copies of a growing list (#587).
     fn join(
         &mut self,
         relation: &Relation,
@@ -188,13 +197,19 @@ impl Planner<'_, '_> {
             .attributes(&entity.type_name)
             .iter()
             .position(|declared| declared.name.eq_ignore_ascii_case(relation.related));
-        let mut items = list_of(
+        let held = list_of(
             relation.type_name,
             slot.and_then(|slot| entity.attributes.get(slot)),
-        )?
-        .to_vec();
+        )?;
+        if let (Some(slot), true) = (slot, self.rechecked.contains(&relationship)) {
+            let count = held.len();
+            let type_name = entity.type_name.clone();
+            return self.append_to_list(relationship, &type_name, slot, count, related);
+        }
+        let mut items = held.to_vec();
+        let mut listed: HashSet<EntityId> = held.iter().filter_map(Value::as_ref_id).collect();
         for object in related {
-            if !items.contains(&Value::Ref(*object)) {
+            if listed.insert(*object) {
                 items.push(Value::Ref(*object));
             }
         }
@@ -203,6 +218,41 @@ impl Planner<'_, '_> {
             vec![(relation.related.to_owned(), Value::List(items))],
         )
         .map(drop)?;
+        self.rechecked.insert(relationship);
+        Ok(relationship)
+    }
+
+    /// The later joins: `related` that the list in `slot` of a record that
+    /// was checked whole does not hold yet, checked one by one.
+    fn append_to_list(
+        &mut self,
+        relationship: EntityId,
+        type_name: &str,
+        slot: usize,
+        count: usize,
+        related: &[EntityId],
+    ) -> Result<EntityId, F> {
+        let mut added = Vec::new();
+        for object in related {
+            if !added.contains(object) && !self.view.list_contains(relationship, slot, *object) {
+                added.push(*object);
+            }
+        }
+        if added.is_empty() {
+            return Ok(relationship);
+        }
+        let attribute = &self.schema.attributes(type_name)[slot];
+        upper_bound(&attribute.aggregation, count + added.len()).map_err(|detail| {
+            F::Cardinality {
+                entity: type_name.to_owned(),
+                attribute: attribute.name.clone(),
+                detail,
+            }
+        })?;
+        for object in &added {
+            reference(self.schema, &self.view, type_name, attribute, *object)?;
+        }
+        self.view.append_refs(relationship, slot, &added);
         Ok(relationship)
     }
 

@@ -21,3 +21,4 @@
 
 mod histories;
 mod lab;
+mod typing;

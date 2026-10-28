@@ -14,7 +14,7 @@
 //! type. Every lookup then costs the answer plus the batch's own records
 //! that match, never the size of the model or of the batch (#587).
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 
 use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
@@ -34,6 +34,9 @@ pub(super) struct Overlay<'m> {
     batch_referrers: HashMap<EntityId, BTreeSet<EntityId>>,
     /// Per exact stored type name, the entities the batch created.
     created_by_type: HashMap<Arc<str>, BTreeSet<EntityId>>,
+    /// Per record and slot, the references its list holds, read on the first
+    /// membership question and dropped when the record is rewritten.
+    lists: HashMap<EntityId, HashMap<usize, HashSet<EntityId>>>,
 }
 
 impl<'m> Overlay<'m> {
@@ -46,6 +49,7 @@ impl<'m> Overlay<'m> {
             removed: BTreeSet::new(),
             batch_referrers: HashMap::new(),
             created_by_type: HashMap::new(),
+            lists: HashMap::new(),
         }
     }
 
@@ -72,6 +76,7 @@ impl<'m> Overlay<'m> {
     }
 
     pub(super) fn create(&mut self, id: EntityId, entity: Entity) {
+        self.lists.remove(&id);
         if let Some(old) = self.created.remove(&id) {
             self.unlink(id, &old);
             self.unbucket(id, &old);
@@ -86,6 +91,7 @@ impl<'m> Overlay<'m> {
 
     /// Replace an entity the batch created or the base holds.
     pub(super) fn replace(&mut self, id: EntityId, entity: Entity) {
+        self.lists.remove(&id);
         if self.created.contains_key(&id) {
             let old = self.created.remove(&id).expect("checked");
             self.unlink(id, &old);
@@ -108,6 +114,7 @@ impl<'m> Overlay<'m> {
     }
 
     pub(super) fn remove(&mut self, id: EntityId) {
+        self.lists.remove(&id);
         if let Some(old) = self.created.remove(&id) {
             self.unlink(id, &old);
             self.unbucket(id, &old);
@@ -116,6 +123,63 @@ impl<'m> Overlay<'m> {
                 self.unlink(id, &old);
             }
             self.removed.insert(id);
+        }
+    }
+
+    /// Whether the list in `slot` of `id` holds a reference to `object`, as
+    /// the batch so far leaves it. A hash lookup after the first question
+    /// about the record; [`Self::append_refs`] keeps the answer current.
+    pub(super) fn list_contains(&mut self, id: EntityId, slot: usize, object: EntityId) -> bool {
+        if !self
+            .lists
+            .get(&id)
+            .is_some_and(|slots| slots.contains_key(&slot))
+        {
+            let mut held = HashSet::new();
+            if let Some(value) = self.get(id).and_then(|entity| entity.attributes.get(slot)) {
+                value.for_each_ref(&mut |target| {
+                    held.insert(target);
+                });
+            }
+            self.lists.entry(id).or_default().insert(slot, held);
+        }
+        self.lists[&id][&slot].contains(&object)
+    }
+
+    /// Append references to `targets` to the list in `slot` of `id`, in
+    /// place: the cost is the targets, not the list. The caller has checked
+    /// the record; a record of the base model is copied into the overlay
+    /// first, so its references are linked. A slot that is unset becomes a
+    /// list.
+    pub(super) fn append_refs(&mut self, id: EntityId, slot: usize, targets: &[EntityId]) {
+        if !self.created.contains_key(&id) && !self.changed.contains_key(&id) {
+            if let Some(entity) = self.base.get(id).cloned() {
+                self.replace(id, entity);
+            }
+        }
+        let held = self.lists.entry(id).or_default().remove(&slot);
+        let record = match self.created.get_mut(&id) {
+            Some(record) => record,
+            None => match self.changed.get_mut(&id) {
+                Some(record) => record,
+                None => return,
+            },
+        };
+        if record.attributes.len() <= slot {
+            record.attributes.resize(slot + 1, Value::Null);
+        }
+        if matches!(record.attributes[slot], Value::Null) {
+            record.attributes[slot] = Value::List(Vec::new());
+        }
+        if let Value::List(items) = &mut record.attributes[slot] {
+            items.extend(targets.iter().map(|target| Value::Ref(*target)));
+        }
+        for target in targets {
+            self.batch_referrers.entry(*target).or_default().insert(id);
+        }
+        if let Some(mut held) = held {
+            held.extend(targets);
+            self.lists.entry(id).or_default().insert(slot, held);
         }
     }
 

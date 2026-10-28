@@ -229,6 +229,28 @@ pub(crate) fn ops(s: &Scene, range: std::ops::Range<usize>, tag: &str) -> Vec<Au
     ops
 }
 
+/// One wall type and `walls` bare walls, each contained in the storey and
+/// typed by it: the type assignment of the walls joins one relationship.
+pub(crate) fn typed_ops(s: &Scene, walls: usize) -> Vec<AuthorOp> {
+    let mut ops = vec![AuthorOp::TypeObject {
+        type_name: "IfcWallType".into(),
+        attributes: vec![
+            ("Name".into(), text("T")),
+            ("PredefinedType".into(), Value::Enum("STANDARD".into())),
+        ],
+        owner_history: None,
+    }];
+    ops.extend((0..walls).map(|_| AuthorOp::Product {
+        type_name: "IfcWall".into(),
+        container: Some(s.storey),
+        attributes: vec![],
+        placement: None,
+        type_object: Some(authoring_handle(0)),
+        owner_history: None,
+    }));
+    ops
+}
+
 /// The scene with `walls` walls named `w<n>`.
 ///
 /// Authoring `walls` walls through the current code costs more than the

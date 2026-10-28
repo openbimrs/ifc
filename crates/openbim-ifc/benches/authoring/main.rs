@@ -13,6 +13,7 @@
 //! | Benchmark | Measures |
 //! | --- | --- |
 //! | `authoring.batch.walls` | `apply_authoring` of N walls (ten operations, thirteen entities each) in one batch on the scene |
+//! | `authoring.batch.typed_walls` | `apply_authoring` of N bare walls, each contained in the storey and typed by one wall type, in one batch: N joins of one relationship |
 //! | `authoring.one_wall.into_n` | `Inverse::record` of `apply_authoring` of one wall into a model of N walls |
 //! | `authoring.undo.batch` | `Inverse::apply` of the inverse of the N-wall batch |
 //! | `authoring.index.build` | the first `reverse_index` and `global_id_candidates` of a model of N walls: the one-off cost of the indexes a model keeps, with the heap they retain |
@@ -46,6 +47,7 @@ static GLOBAL: alloc::Counting = alloc::Counting;
 
 const BATCH: &str = "authoring.batch.walls";
 const ONE_WALL: &str = "authoring.one_wall.into_n";
+const TYPED: &str = "authoring.batch.typed_walls";
 const UNDO: &str = "authoring.undo.batch";
 const INDEX: &str = "authoring.index.build";
 
@@ -278,6 +280,33 @@ fn main() {
         }
         drop(after_batch);
 
+        if wanted(&options, TYPED) {
+            eprintln!("{workload}: typed walls");
+            let typed = walls::typed_ops(&scene, walls);
+            // The type, its relationship, and a wall with its containment
+            // relationship each.
+            let expected = scene_len + 2 + 2 * walls;
+            let mut model = scene_model.clone();
+            apply_authoring(&mut model, schema, &typed, 2).expect("the typed batch applies");
+            assert_eq!(
+                model.len(),
+                expected,
+                "scene + type + relationship + 2 per wall"
+            );
+            let samples = stats::time(
+                out.plan,
+                || scene_model.clone(),
+                |mut m| {
+                    let applied = apply_authoring(&mut m, schema, &typed, 2);
+                    (m, applied)
+                },
+                |(m, applied)| {
+                    assert!(applied.is_ok());
+                    assert_eq!(m.len(), expected);
+                },
+            );
+            out.push(record(TYPED, expected, samples, None, checksum(&model)));
+        }
         if wanted(&options, INDEX) {
             eprintln!("{workload}: index build");
             let (model, _) = walls::model(walls);

@@ -81,28 +81,37 @@ fn references(
         Value::List(items) => items
             .iter()
             .try_for_each(|item| references(schema, view, entity, attribute, item)),
-        Value::Ref(target) => {
-            let Some(found) = view.get(*target) else {
-                return Err(F::MissingReference {
-                    entity: entity.to_owned(),
-                    attribute: attribute.name.clone(),
-                    target: *target,
-                });
-            };
-            let declared = attribute.type_name.as_str();
-            if checkable(schema, declared) && !schema.accepts_type(declared, &found.type_name) {
-                return Err(F::WrongReferenceType {
-                    entity: entity.to_owned(),
-                    attribute: attribute.name.clone(),
-                    target: *target,
-                    actual: found.type_name.to_string(),
-                    expected: declared.to_owned(),
-                });
-            }
-            Ok(())
-        }
+        Value::Ref(target) => reference(schema, view, entity, attribute, *target),
         _ => Ok(()),
     }
+}
+
+/// `target` resolves, to an entity the type `attribute` declares accepts.
+pub(super) fn reference(
+    schema: &Schema,
+    view: &Overlay<'_>,
+    entity: &str,
+    attribute: &Attribute,
+    target: EntityId,
+) -> Result<(), F> {
+    let Some(found) = view.get(target) else {
+        return Err(F::MissingReference {
+            entity: entity.to_owned(),
+            attribute: attribute.name.clone(),
+            target,
+        });
+    };
+    let declared = attribute.type_name.as_str();
+    if checkable(schema, declared) && !schema.accepts_type(declared, &found.type_name) {
+        return Err(F::WrongReferenceType {
+            entity: entity.to_owned(),
+            attribute: attribute.name.clone(),
+            target,
+            actual: found.type_name.to_string(),
+            expected: declared.to_owned(),
+        });
+    }
+    Ok(())
 }
 
 /// Whether the tables settle which entities `declared` admits: an entity,
@@ -112,6 +121,15 @@ fn checkable(schema: &Schema, declared: &str) -> bool {
         || schema
             .type_def(declared)
             .is_some_and(|definition| matches!(definition.kind, TypeKind::Select(_)))
+}
+
+/// Appending to a list of `count` items stays within the declared upper
+/// bound of its outermost level.
+pub(super) fn upper_bound(levels: &[Aggregation], count: usize) -> Result<(), String> {
+    match levels.first().and_then(|level| level.upper.as_integer()) {
+        Some(upper) if count as u64 > upper => Err(format!("{count} items; at most {upper}")),
+        _ => Ok(()),
+    }
 }
 
 /// The declared bounds and uniqueness of each aggregation level.
