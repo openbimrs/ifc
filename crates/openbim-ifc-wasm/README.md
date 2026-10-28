@@ -147,4 +147,5 @@ why); `scripts/bench-opt-level.sh` reruns the opt-level comparison (#303).
 
 ## License
 
-AGPL-3.0-or-later, like the rest of `openbimrs/ifc`.
+`AGPL-3.0-or-later OR LicenseRef-Commercial`, like the rest of `openbimrs/ifc`;
+see `LICENSING.md`.

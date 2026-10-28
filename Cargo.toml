@@ -6,7 +6,7 @@ members = ["crates/*", "xtask"]
 version = "0.2.0"
 edition = "2021"
 rust-version = "1.99"
-license = "AGPL-3.0-or-later"
+license = "AGPL-3.0-or-later OR LicenseRef-Commercial"
 authors = ["point-grey"]
 repository = "https://github.com/openbimrs/ifc"
 

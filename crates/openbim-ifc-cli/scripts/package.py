@@ -8,7 +8,7 @@ are tested against is what the release attaches:
     package.py archive --target T --binary PATH --out DIR
         DIR/openbim-ifc-v<version>-<T>.tar.gz (a .zip for a Windows
         target), holding openbim-ifc-v<version>-<T>/ with the binary,
-        README.md and LICENSE.
+        README.md, LICENSE and LicenseRef-Commercial.txt.
     package.py deb --target T --binary PATH --out DIR
         DIR/openbim-ifc_<version>_<arch>.deb for a Linux target (#376):
         the binary in /usr/bin, README.md and the licence in
@@ -83,6 +83,11 @@ def archive(target: str, binary: Path, out: Path) -> Path:
         (f"{folder}/{name}", binary.read_bytes(), 0o755),
         (f"{folder}/README.md", (CRATE / "README.md").read_bytes(), 0o644),
         (f"{folder}/LICENSE", (ROOT / "LICENSE").read_bytes(), 0o644),
+        (
+            f"{folder}/LicenseRef-Commercial.txt",
+            (ROOT / "LICENSES" / "LicenseRef-Commercial.txt").read_bytes(),
+            0o644,
+        ),
     ]
     out.mkdir(parents=True, exist_ok=True)
     if windows:
@@ -118,6 +123,10 @@ def deb_copyright() -> str:
     body = "".join(
         f" {line}\n" if line.strip() else " .\n" for line in licence.rstrip().splitlines()
     )
+    commercial = (ROOT / "LICENSES" / "LicenseRef-Commercial.txt").read_text(encoding="utf-8")
+    commercial_body = "".join(
+        f" {line}\n" if line.strip() else " .\n" for line in commercial.rstrip().splitlines()
+    )
     return (
         "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n"
         f"Upstream-Name: {DEB_PACKAGE}\n"
@@ -125,8 +134,14 @@ def deb_copyright() -> str:
         "\n"
         "Files: *\n"
         "Copyright: point-grey and the openbimrs/ifc contributors\n"
-        "License: AGPL-3.0-or-later\n"
+        "License: AGPL-3.0-or-later or LicenseRef-Commercial\n"
+        " You may choose either licence. The AGPL-3.0-or-later text follows;\n"
+        " the commercial option is the License: LicenseRef-Commercial paragraph.\n"
+        " .\n"
         f"{body}"
+        "\n"
+        "License: LicenseRef-Commercial\n"
+        f"{commercial_body}"
     )
 
 

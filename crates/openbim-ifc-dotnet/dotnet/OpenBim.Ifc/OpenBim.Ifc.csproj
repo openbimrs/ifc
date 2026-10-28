@@ -20,7 +20,9 @@
     <Authors>point-grey</Authors>
     <Description>Read, edit, validate and write IFC (STEP and ifcXML) files from .NET: the openbim-ifc Rust core over its versioned C ABI, with property sets, the spatial tree, materials, classification, systems, cost and georeferencing.</Description>
     <PackageTags>ifc;bim;openbim;step;ifcxml;buildingsmart</PackageTags>
-    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <!-- NuGet rejects LicenseRef- in a license expression, so the dual licence
+         (AGPL-3.0-or-later OR LicenseRef-Commercial) is stated in a packed file. -->
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <PackageProjectUrl>https://openbimrs.github.io/ifc/bindings/dotnet</PackageProjectUrl>
     <RepositoryUrl>https://github.com/openbimrs/ifc</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -36,6 +38,7 @@
 
   <ItemGroup>
     <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <None Include="LICENSE.txt" Pack="true" PackagePath="/" />
     <None Include="../../../../LICENSE" Pack="true" PackagePath="/" />
     <None Include="../../../../NOTICE" Pack="true" PackagePath="/" />
     <!-- .NET Framework consumers (Revit, Navisworks, ...) get no native

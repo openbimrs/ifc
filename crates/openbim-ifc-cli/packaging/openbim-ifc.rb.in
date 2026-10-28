@@ -7,6 +7,8 @@ class OpenbimIfc < Formula
   desc "Validate, convert and inspect IFC files (STEP and ifcXML)"
   homepage "https://openbimrs.github.io/ifc/guide/cli"
   version "@VERSION@"
+  # The project is AGPL-3.0-or-later OR LicenseRef-Commercial; Homebrew cannot
+  # express a non-SPDX alternative, so the formula states the open option.
   license "AGPL-3.0-or-later"
 
   on_macos do

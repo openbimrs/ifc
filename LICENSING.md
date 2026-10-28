@@ -3,8 +3,19 @@
 ## Current license
 
 Unless a file or package states otherwise, repository-authored software and
-documentation are licensed under the **GNU Affero General Public License,
-version 3 or any later version** (`AGPL-3.0-or-later`). See [`LICENSE`](LICENSE).
+documentation are dual-licensed: `AGPL-3.0-or-later OR LicenseRef-Commercial`.
+Recipients choose either:
+
+- the **GNU Affero General Public License, version 3 or any later version**
+  (`AGPL-3.0-or-later`); see [`LICENSE`](LICENSE); or
+- a **commercial licence** from the copyright holder named in
+  [`NOTICE`](NOTICE); see
+  [`LICENSES/LicenseRef-Commercial.txt`](LICENSES/LicenseRef-Commercial.txt).
+  That file grants no rights by itself; a commercial licence exists only by
+  separate written agreement.
+
+Contributions are accepted under the terms in [`CONTRIBUTING.md`](CONTRIBUTING.md),
+which keep the commercial option possible.
 
 Section 13 of the AGPL requires an operator of a modified version that supports
 remote network interaction to offer the Corresponding Source prominently to
@@ -41,10 +52,11 @@ See the `NOTICE.md` in each directory.
 
 The `ifc-template-catalog` package contains an official catalog artifact under
 `CC-BY-ND-4.0`. Its Rust code and OpenBIM.rs correction overlays are covered by
-`AGPL-3.0-or-later`; they remain separate from the unmodified official artifact.
+`AGPL-3.0-or-later OR LicenseRef-Commercial`; they remain separate from the unmodified official artifact.
 See `crates/ifc-template-catalog/data/NOTICE.md` and the package-local license files.
 
 ## Contributions
 
-Contributions are accepted under `AGPL-3.0-or-later` unless an explicitly signed
-agreement says otherwise. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Contributions are accepted under the contributor terms in
+[`CONTRIBUTING.md`](CONTRIBUTING.md), which license them under both options
+above.
