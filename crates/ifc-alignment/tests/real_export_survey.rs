@@ -92,7 +92,7 @@ fn files(dir: &Path, out: &mut Vec<PathBuf>) {
 fn units(model: &Model) -> AlignmentUnits {
     let mut units = AlignmentUnits {
         length_to_metres: 1.0,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     };
     for (_, entity) in model.iter() {
         let kind = entity.attributes.get(1).and_then(|v| match v {
@@ -117,7 +117,7 @@ fn units(model: &Model) -> AlignmentUnits {
             .eq_ignore_ascii_case("IFCCONVERSIONBASEDUNIT")
             && kind.as_deref() == Some("PLANEANGLEUNIT")
         {
-            units.angle_to_radians = core::f64::consts::PI / 180.0;
+            units.angle_to_radians = Some(core::f64::consts::PI / 180.0);
         }
     }
     units

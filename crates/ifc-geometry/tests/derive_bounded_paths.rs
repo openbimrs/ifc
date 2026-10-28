@@ -168,7 +168,7 @@ fn derived(
     let scale = units::resolve(model).expect("project units");
     let file_units = AlignmentUnits {
         length_to_metres: 1.0,
-        angle_to_radians: scale.angle_to_radians.expect("angle unit"),
+        angle_to_radians: scale.angle_to_radians,
     };
     let point = ifc_alignment::resolve_point_by_distance(model, EntityId(expression), file_units)
         .expect("the expression reads");

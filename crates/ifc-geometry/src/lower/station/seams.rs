@@ -97,7 +97,7 @@ pub(crate) fn precision(
 ) -> GeometryResult<f64> {
     let units = AlignmentUnits {
         length_to_metres: session.units().length_to_metres,
-        angle_to_radians: session.units().radians_per_unit(owner)?,
+        angle_to_radians: session.units().angle_to_radians,
     };
     SeamTolerance::for_model(session.model(), units)
         .map(|tolerance| tolerance.length())

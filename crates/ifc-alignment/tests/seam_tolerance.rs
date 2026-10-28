@@ -27,7 +27,7 @@ use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 fn metres() -> AlignmentUnits {
     AlignmentUnits {
         length_to_metres: 1.0,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     }
 }
 
@@ -207,7 +207,7 @@ fn a_coarse_declared_precision_cannot_join_a_visible_step() {
 fn the_precision_is_read_in_the_project_length_unit() {
     let millimetres = AlignmentUnits {
         length_to_metres: 0.001,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     };
     let (model, _, v) = fixture(&ROUNDED, 1000.0, Some(0.1));
     vertical_profile_law(&model, v, millimetres).expect("sound within 0.1 mm");

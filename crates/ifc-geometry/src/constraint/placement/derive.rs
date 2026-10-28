@@ -327,7 +327,7 @@ pub(crate) fn resolve_in_file_units(
 ) -> GeometryResult<LinearPlacement> {
     let file_units = AlignmentUnits {
         length_to_metres: 1.0,
-        angle_to_radians: units.radians_per_unit(placement)?,
+        angle_to_radians: units.angle_to_radians,
     };
     ifc_alignment::resolve_linear_placement(model, placement, file_units).map_err(|_error| {
         GeometryError::Unsupported {
@@ -554,7 +554,7 @@ fn model_precision(model: &Model, units: &UnitScale, placement: EntityId) -> Geo
         model,
         AlignmentUnits {
             length_to_metres: units.length_to_metres,
-            angle_to_radians: units.radians_per_unit(placement)?,
+            angle_to_radians: units.angle_to_radians,
         },
     )
     .map_err(|_| GeometryError::Degenerate {
@@ -645,7 +645,7 @@ fn basis_curve(
     })?;
     let alignment_units = AlignmentUnits {
         length_to_metres: units.length_to_metres,
-        angle_to_radians: units.radians_per_unit(basis)?,
+        angle_to_radians: units.angle_to_radians,
     };
     // IFC lets the BasisCurve be the alignment itself or its curve
     // representation. Both name the same centreline, so both resolve; a
@@ -668,10 +668,15 @@ fn basis_curve(
         )),
         "IFCALIGNMENT" => ifc_alignment::gradient_curve3(model, basis, alignment_units)
             .map(|curve| Basis::Curve(curve, DistanceConvention::PlanDistance))
-            .map_err(|_error| GeometryError::Unsupported {
-                entity: placement,
-                type_name: entity.type_name.to_string(),
-                detail: "basis curve does not compose an exact centreline",
+            .map_err(|error| match error {
+                ifc_alignment::AlignmentError::AngleUnitUndeclared { entity } => {
+                    GeometryError::AngleUnitUndeclared { entity }
+                }
+                _ => GeometryError::Unsupported {
+                    entity: placement,
+                    type_name: entity.type_name.to_string(),
+                    detail: "basis curve does not compose an exact centreline",
+                },
             }),
         "IFCPOLYLINE" => Ok(Basis::Curve(
             polyline::polyline(model, units, basis, entity)?,

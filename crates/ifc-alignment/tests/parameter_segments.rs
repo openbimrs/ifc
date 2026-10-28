@@ -17,7 +17,7 @@ fn fixture() -> ifc_model::Model {
 fn units() -> AlignmentUnits {
     AlignmentUnits {
         length_to_metres: 1.0,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     }
 }
 
@@ -29,7 +29,7 @@ fn resolves_vertical_parameters_and_units_without_curve_approximation() {
         EntityId(63),
         AlignmentUnits {
             length_to_metres: 1.0,
-            angle_to_radians: 1.0,
+            angle_to_radians: Some(1.0),
         },
     )
     .expect("vertical segment");
@@ -54,7 +54,7 @@ fn resolves_cant_parameters_and_signed_offsets() {
         EntityId(64),
         AlignmentUnits {
             length_to_metres: 1.0,
-            angle_to_radians: 1.0,
+            angle_to_radians: Some(1.0),
         },
     )
     .expect("cant segment");

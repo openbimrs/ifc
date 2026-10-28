@@ -11,8 +11,10 @@ use crate::error::{AlignmentError, AlignmentResult};
 pub struct AlignmentUnits {
     /// Factor converting a length attribute's stored value to metres.
     pub length_to_metres: f64,
-    /// Factor converting an angle attribute's stored value to radians.
-    pub angle_to_radians: f64,
+    /// Factor converting an angle attribute's stored value to radians, or
+    /// `None` when the project declares no plane-angle unit; reading an angle
+    /// then refuses with [`AlignmentError::AngleUnitUndeclared`].
+    pub angle_to_radians: Option<f64>,
 }
 
 impl AlignmentUnits {
@@ -22,7 +24,10 @@ impl AlignmentUnits {
                 detail: "length factor must be finite and positive",
             });
         }
-        if !self.angle_to_radians.is_finite() || self.angle_to_radians <= 0.0 {
+        if self
+            .angle_to_radians
+            .is_some_and(|factor| !factor.is_finite() || factor <= 0.0)
+        {
             return Err(AlignmentError::InvalidUnits {
                 detail: "angle factor must be finite and positive",
             });
@@ -171,8 +176,11 @@ pub fn read_horizontal_segment(
         })?
         * units.length_to_metres;
 
+    let angle_to_radians = units
+        .angle_to_radians
+        .ok_or(AlignmentError::AngleUnitUndeclared { entity: id })?;
     let start_direction =
-        required_number(entity, id, START_DIRECTION, "StartDirection")? * units.angle_to_radians;
+        required_number(entity, id, START_DIRECTION, "StartDirection")? * angle_to_radians;
     let start_radius = required_number(entity, id, START_RADIUS, "StartRadiusOfCurvature")?
         * units.length_to_metres;
     let end_radius =

@@ -45,7 +45,7 @@ fn an_authored_referent_resolves_to_its_station() {
 
     let units = AlignmentUnits {
         length_to_metres: 1.0,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     };
     let stations = station_equations(&model, units).expect("resolves");
     assert_eq!(stations.len(), 1, "the authored referent is found");

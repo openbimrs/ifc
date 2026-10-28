@@ -20,7 +20,7 @@ use ifc_step::StepCodec;
 /// the unwrapped number.
 const MILLIMETRES: AlignmentUnits = AlignmentUnits {
     length_to_metres: 0.001,
-    angle_to_radians: 1.0,
+    angle_to_radians: Some(1.0),
 };
 
 fn model(data: &str) -> Model {
@@ -107,7 +107,7 @@ fn the_cant_layout_reads_a_typed_rail_head_distance_as_bare() {
     assert_ne!(bare, typed, "both records were rewritten");
     let units = AlignmentUnits {
         length_to_metres: 1.0,
-        angle_to_radians: 1.0,
+        angle_to_radians: Some(1.0),
     };
     let read = |text: &str| {
         let m = StepCodec.read_bytes(text.as_bytes()).expect("parses");

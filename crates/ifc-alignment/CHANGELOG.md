@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#585)
+
+- Breaking: `AlignmentUnits::angle_to_radians` is `Option<f64>`; `None` means
+  the project declares no `PLANEANGLEUNIT`. Reading a `StartDirection` then
+  refuses with the new `AlignmentError::AngleUnitUndeclared { entity }`;
+  length-only reads (`SeamTolerance::for_model`, `resolve_linear_placement`)
+  need no angle unit.
+
 ## [0.10.2] - 2026-10-28
 
 ### Changed
