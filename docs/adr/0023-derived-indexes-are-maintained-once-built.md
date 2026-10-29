@@ -139,7 +139,7 @@ resolver, also inside a preview, finds it built and current.
   model then keeps (ADR 0023's memory cost applies).
 - Measured
   ([`benchmarks/baseline.md`](https://github.com/openbimrs/ifc/blob/main/benchmarks/baseline.md#meshing-a-subset-608)):
-  one wall of 50,000, 152 ms to 0.009 ms; with a material 177 ms to 0.043 ms;
+  one wall of 50,000, 152 ms to 0.009 ms; with a material 177 ms to 0.013 ms;
   inside `Model::preview` 144 ms to 0.07 ms.
 
 **Rejected.**

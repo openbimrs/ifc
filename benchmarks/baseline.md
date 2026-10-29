@@ -562,7 +562,8 @@ verdict.
   (opt-level 3, thin LTO, 1 codegen unit)
 - **before**: `e493055c` (the bench commit, the code of `f7f55d83`), built in a
   separate worktree
-- **after**: `662e61d6`
+- **after**: the tip of `perf/608` with the material cache (JSON re-run in
+  the same way)
 - plan: 3 processes a side, 3 warm-up and 20 samples each
 - command: `PACKAGE=openbim-ifc BENCH=mesh_subset
   FEATURES=authoring,ifc4x3,mesh PROVISIONAL=1 RUNS=3
@@ -573,17 +574,24 @@ verdict.
 | `subset.one_wall` | 1,000 walls | 1.27 ms | 0.0092 ms | 0.007 |
 | | 10,000 walls | 18.3 ms | 0.0097 ms | 0.001 |
 | | 50,000 walls | 152 ms | 0.0089 ms | 0.0001 |
-| `subset.one_wall_material` | 1,000 walls | 1.61 ms | 0.0132 ms | 0.008 |
-| | 10,000 walls | 20.5 ms | 0.0187 ms | 0.001 |
-| | 50,000 walls | 177 ms | 0.0432 ms | 0.0002 |
+| `subset.one_wall_material` | 1,000 walls | 1.61 ms | 0.0124 ms | 0.008 |
+| | 10,000 walls | 20.5 ms | 0.0131 ms | 0.001 |
+| | 50,000 walls | 177 ms | 0.0129 ms | 0.0001 |
 | `preview.one_wall` | 1,000 walls | 1.31 ms | 0.0666 ms | 0.05 |
 | | 10,000 walls | 17.6 ms | 0.0758 ms | 0.004 |
 | | 50,000 walls | 144 ms | 0.0694 ms | 0.0005 |
 
 `benchmarks/baseline.py compare` calls every row faster. Before, each row
 grew with the model (50,000 over 1,000 walls: 120 for `subset.one_wall`, 110
-for `one_wall_material`, 110 for `preview.one_wall`). After, `subset.one_wall`
-and `preview.one_wall` are flat (0.97 and 1.04) and `one_wall_material` grows
-3.3 times for 50 times the walls (not investigated further; the row is under
-0.05 ms). The preview costs the recorded apply of its wall plus the
-mesh; it no longer pays for the model.
+for `one_wall_material`, 110 for `preview.one_wall`). After, all three are flat
+(0.97 to 1.04). The material row needed two more changes: the resolver caches
+each material's own colour, and the style index scans the (few) material
+definitions instead of the (many) referrers of a material that every wall's
+relationship names.
+
+Whole-model `product_colours` with one shared material and one
+`IfcRelAssociatesMaterial` per wall (a throwaway profiler, release build,
+including the first reverse-index build) is linear: 1,000 walls 2.1 ms, 2,000
+4.5 ms, 4,000 10.4 ms, 8,000 21.9 ms. Before the cache and the definition scan,
+`one_wall_material` after the first change was 0.0132, 0.0187 and 0.0432 ms
+at 1,000, 10,000 and 50,000 walls.
