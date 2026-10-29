@@ -315,6 +315,42 @@ fn applying_an_inverse_restores_the_exact_state() {
 }
 
 #[test]
+fn a_preview_restores_the_exact_state_and_revision() {
+    for seed in SEEDS {
+        let mut rng = Rng(seed ^ 0x5EED);
+        let mut model = warm(&mut rng);
+        for round in 0..ROUNDS {
+            let ctx = format!("seed {seed} round {round}");
+            let s0 = state(&model);
+            let r0 = model.revision();
+            let wrapped = rng.chance(30);
+            let mut run = |m: &mut Model| {
+                m.preview(|m| {
+                    for _ in 0..1 + rng.below(6) {
+                        op(&mut rng, m);
+                    }
+                    m.revision()
+                })
+            };
+            let drawn = if wrapped {
+                let (drawn, inverse) = Inverse::record(&mut model, run);
+                assert!(inverse.is_empty(), "{ctx}: the recording kept steps");
+                drawn
+            } else {
+                run(&mut model)
+            };
+            assert_eq!(state(&model), s0, "{ctx}: preview");
+            assert_eq!(model.revision(), r0, "{ctx}: revision");
+            op(&mut rng, &mut model);
+            assert!(
+                model.revision() == r0 || model.revision() > drawn,
+                "{ctx}: a drawn revision was handed out again"
+            );
+        }
+    }
+}
+
+#[test]
 fn history_walk_matches_a_state_oracle() {
     for seed in SEEDS {
         let mut rng = Rng(seed ^ 0xA5A5);

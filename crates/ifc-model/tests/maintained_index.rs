@@ -346,3 +346,29 @@ fn dropped_indexes_rebuild_equal_and_are_not_kept_until_asked() {
     assert_maintained(&model, "rebuilt");
     assert_eq!(model.reverse_index(), &ReverseIndex::build(&model));
 }
+
+#[test]
+fn a_preview_keeps_built_indexes() {
+    let mut model = built();
+    let revision = model.revision();
+    model.preview(|m| {
+        m.set_attribute(EntityId(1), 0, text(G2));
+        m.push(entity("XNEW", vec![text(G1), r(1)]));
+        m.remove(EntityId(2));
+    });
+    assert_eq!(model.revision(), revision);
+    assert_maintained(&model, "after preview");
+}
+
+#[test]
+fn indexes_built_inside_a_preview_stay_coherent() {
+    let mut model = base();
+    model.preview(|m| {
+        m.push(entity("XNEW", vec![text(G2), r(1)]));
+        assert_maintained(m, "inside");
+        m.remove(EntityId(1));
+        assert_maintained(m, "inside, after remove");
+    });
+    assert_maintained(&model, "after preview");
+    assert_eq!(model.global_id_candidates(&guid(G1)), &[EntityId(1)]);
+}
