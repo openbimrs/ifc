@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#595)
+
+- `Model::set_attribute` and `Model::set_attributes` panic before any write
+  for an attribute index of `usize::MAX`, instead of wrapping in release builds
+  and truncating the entity, or leaving the first edits of a batch unrecorded.
+
 ### Added (#595)
 
 - `Model::preview` runs a change and rolls it back exactly, the revision

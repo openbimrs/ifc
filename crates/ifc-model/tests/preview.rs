@@ -242,14 +242,27 @@ impl EntitySource for Table {
     }
 }
 
-#[test]
-fn a_lazy_model_previews() {
-    let table = Table(vec![wall(1), Entity::new("IFCSLAB", vec![]), wall(3)]);
+fn lazy() -> Model {
+    let table = Table(vec![
+        wall(1),
+        Entity::new("IFCSLAB", vec![]),
+        wall(3),
+        wall(4),
+    ]);
     let mut model = Model::with_source(Arc::new(table));
     for (i, name) in ["IFCWALL", "IFCSLAB", "IFCWALL"].into_iter().enumerate() {
         model.insert_lazy(EntityId(i as u64 + 1), name, i..i + 1);
     }
-    let before = state(&model);
+    model
+}
+
+#[test]
+fn a_lazy_model_previews() {
+    // The snapshot comes from a second model, so the previewed slots are
+    // still undecoded when the preview starts.
+    let before = state(&lazy());
+    let mut model = lazy();
+    assert_eq!(model.decoded_len(), 0);
     let revision = model.revision();
     model.preview(|m| {
         m.remove(EntityId(1));
@@ -258,6 +271,19 @@ fn a_lazy_model_previews() {
     });
     assert_eq!(state(&model), before);
     assert_eq!(model.revision(), revision);
+}
+
+#[test]
+fn insert_lazy_inside_a_preview_is_put_back() {
+    let before = state(&lazy());
+    let mut model = lazy();
+    model.preview(|m| {
+        m.insert_lazy(EntityId(9), "IFCWALL", 3..4);
+        // Over an occupant of another type.
+        m.insert_lazy(EntityId(2), "IFCWALL", 3..4);
+        assert_eq!(m.ids_of_type("IFCWALL").len(), 4);
+    });
+    assert_eq!(state(&model), before);
 }
 
 #[test]
@@ -280,4 +306,37 @@ fn a_change_that_ends_the_preview_recording_panics() {
     model.preview(|m| {
         m.end_recording();
     });
+}
+
+#[test]
+#[should_panic(expected = "ended a recording it did not begin")]
+fn a_change_that_replaces_the_preview_recording_panics() {
+    let (mut model, _) = seeded();
+    model.preview(|m| {
+        m.push(wall(10));
+        m.end_recording();
+        m.begin_recording();
+    });
+}
+
+#[test]
+fn a_panicking_write_inside_a_preview_is_rolled_back() {
+    for write in [
+        (|m: &mut Model, a: EntityId| {
+            m.set_attribute(a, usize::MAX, Value::Null);
+        }) as fn(&mut Model, EntityId),
+        |m, a| {
+            m.set_attributes(a, [(0, Value::Integer(7)), (usize::MAX, Value::Null)]);
+        },
+    ] {
+        let (mut model, [a, ..]) = seeded();
+        let before = state(&model);
+        let revision = model.revision();
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            model.preview(|m| write(m, a))
+        }));
+        assert!(result.is_err());
+        assert_eq!(state(&model), before);
+        assert_eq!(model.revision(), revision);
+    }
 }
