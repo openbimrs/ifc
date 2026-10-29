@@ -12,6 +12,11 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#595)
+
+- `Model::preview` (from `ifc-model` 0.4.4); the `authoring` bench measures it
+  against a clone.
+
 ## [0.39.2] - 2026-10-29
 
 ### Fixed (#596)

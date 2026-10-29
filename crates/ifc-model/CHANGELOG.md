@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#595)
+
+- `Model::preview` runs a change and rolls it back exactly, the revision
+  included: entities, orders, header, next free id, diagnostics and the
+  maintained indexes are put back, and a `History`, `Transaction` or `Inverse`
+  made before it stays valid. Revisions drawn inside are never reissued.
+  Semver: minor (additive).
+
 ## [0.4.3] - 2026-10-28
 
 ### Added (#587)

@@ -81,3 +81,31 @@ redo are built on that.
 - `crates/ifc-model/src/mutation/`: `step.rs`, `record.rs`, `inverse.rs`,
   `history.rs`, and the hooks in `edit.rs` and `model.rs`.
 - `crates/openbim-ifc/src/lib.rs` re-exports the public items.
+
+## Amendment (2026-10-29): a preview restores the revision (#595)
+
+Looking at a change before making it (meshing what a pointer move would
+create) had two options. A clone costs the model: 41 ms per look at 10,000
+walls (130,000 entities), growing with the model. Recording the change and
+applying its inverse costs the change, but `Inverse::apply` is a new change and
+draws a new revision, which strands every `History` and `Transaction` made
+before it: the redo stack is lost on the first hover.
+
+Decision: `Model::preview(change)` records the change, rolls it back step by
+step and sets the revision back to the value it had. This is sound under the
+rule above. Revisions are process-unique and name one state; the preview
+puts back exactly the state the old revision named, so it names exactly one
+state again. The revisions drawn inside are never reissued, because the
+process-wide counter is not touched, so anything keyed by one of them only
+misses.
+
+`Inverse::apply` still draws a new revision: an undo is a change and a
+transaction opened before it must not commit against different state.
+
+Rejected: an `Inverse::apply_restoring_revision`. It would let any caller
+rewind the revision after a change that other code already observed; the
+preview confines the rewind to a closure that cannot leak a revision it drew.
+
+Consequence: the revision is not monotonic for code running inside the
+closure, which sees revisions that are gone after it returns. An `Inverse` or
+`Transaction` made inside the closure after a write is stale afterwards.

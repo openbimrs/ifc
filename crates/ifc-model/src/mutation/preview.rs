@@ -20,7 +20,7 @@
 //! The rollback never records: the enclosing recording, if any, gains no
 //! steps, because the writes and their undoing cancel.
 
-use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
+use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 
 use crate::model::Model;
 
