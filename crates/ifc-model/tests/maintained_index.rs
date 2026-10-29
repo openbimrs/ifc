@@ -372,3 +372,47 @@ fn indexes_built_inside_a_preview_stay_coherent() {
     assert_maintained(&model, "after preview");
     assert_eq!(model.global_id_candidates(&guid(G1)), &[EntityId(1)]);
 }
+
+#[test]
+fn reverse_index_if_built_never_builds_it() {
+    let mut model = base();
+    assert!(model.reverse_index_if_built().is_none());
+    // Reading and writing do not build it.
+    model.push(entity("XNEW", vec![r(1)]));
+    assert!(model.reverse_index_if_built().is_none());
+    assert!(format!("{model:?}").contains("reverse: unbuilt"));
+
+    model.reverse_index();
+    assert_eq!(
+        model.reverse_index_if_built(),
+        Some(&ReverseIndex::build(&model))
+    );
+    model.drop_derived_indexes();
+    assert!(model.reverse_index_if_built().is_none());
+}
+
+#[test]
+fn reverse_index_if_built_follows_writes_and_previews() {
+    let mut model = base();
+    model.reverse_index();
+    model.set_attribute(EntityId(2), 0, r(1));
+    model.push(entity("XNEW", vec![r(2)]));
+    assert_eq!(
+        model.reverse_index_if_built(),
+        Some(&ReverseIndex::build(&model))
+    );
+    model.preview(|m| {
+        m.remove(EntityId(3));
+        m.push(entity("XOTHER", vec![r(1), r(2)]));
+        assert_eq!(
+            m.reverse_index_if_built(),
+            Some(&ReverseIndex::build(m)),
+            "inside"
+        );
+    });
+    assert_eq!(
+        model.reverse_index_if_built(),
+        Some(&ReverseIndex::build(&model)),
+        "after"
+    );
+}

@@ -230,8 +230,10 @@ impl Model {
         self.derived_mut().clear();
     }
 
-    /// The reverse index if something already built it.
-    pub(crate) fn maintained_reverse_index(&self) -> Option<&ReverseIndex> {
+    /// The reverse index if something already built it, else `None`; it
+    /// never builds it. A lookup that would rather scan a few record types
+    /// than build the whole index for one question asks this first (#608).
+    pub fn reverse_index_if_built(&self) -> Option<&ReverseIndex> {
         self.derived().reverse.get()
     }
 
