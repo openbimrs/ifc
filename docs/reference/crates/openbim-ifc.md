@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.39.1 (2026-10-28) |
+| Latest release | 0.39.2 (2026-10-29) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -103,20 +103,16 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.39.1 (2026-10-28):
+Latest release, 0.39.2 (2026-10-29):
 
-### Changed (#587)
+### Fixed (#596)
 
-- Staging a checked authoring batch costs the batch, not the model: the
-  planner reads the model's own reverse and GlobalId indexes (`ifc-model`),
-  indexes its own records, and appends the objects of a type assignment to
-  the relationship in place. The `authoring` bench measures it.
-
-### Fixed (#587)
-
-- A base `GlobalId` held by several `IfcRoot`s is refused while any of them
-  remains in the model, naming the lowest id; before, one holder chosen by
-  hash order was all the check saw.
+- A layer, profile or constituent set, or an IFC2X3 `IfcMaterialList`,
+  naming several materials no longer refuses the product before looking at
+  them: with no styled material it has no colour, with all styled
+  materials agreeing on rgb and transparency it takes that colour, and
+  anything else (differing styles, or a mix of styled and unstyled
+  materials) is `ColourError::AmbiguousMaterial`.
 
 Semver: patch.
 
