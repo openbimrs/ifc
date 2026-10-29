@@ -16,6 +16,8 @@
 //! | `authoring.batch.typed_walls` | `apply_authoring` of N bare walls, each contained in the storey and typed by one wall type, in one batch: N joins of one relationship |
 //! | `authoring.one_wall.into_n` | `Inverse::record` of `apply_authoring` of one wall into a model of N walls |
 //! | `authoring.undo.batch` | `Inverse::apply` of the inverse of the N-wall batch |
+//! | `authoring.preview.one_wall` | `Model::preview` of `apply_authoring` of one wall into a model of N walls: the change is looked at and rolled back, the revision included (#595) |
+//! | `authoring.preview.clone` | `Model::clone` of the model of N walls and `apply_authoring` of one wall into the clone: what a preview cost before `Model::preview` |
 //! | `authoring.index.build` | the first `reverse_index` and `global_id_candidates` of a model of N walls: the one-off cost of the indexes a model keeps, with the heap they retain |
 //!
 //! The model of N walls is replicated from one authored wall (see
@@ -50,6 +52,8 @@ const ONE_WALL: &str = "authoring.one_wall.into_n";
 const TYPED: &str = "authoring.batch.typed_walls";
 const UNDO: &str = "authoring.undo.batch";
 const INDEX: &str = "authoring.index.build";
+const PREVIEW: &str = "authoring.preview.one_wall";
+const CLONE: &str = "authoring.preview.clone";
 
 /// 64-bit FNV-1a, as the codec harness's `checksum` module computes it.
 struct Fnv(u64);
@@ -377,6 +381,48 @@ fn main() {
             );
             assert_eq!(checksum(&model.borrow()), sum, "the samples left no trace");
             out.push(record(ONE_WALL, expected_len, samples, None, sum));
+        }
+
+        if wanted(&options, PREVIEW) || wanted(&options, CLONE) {
+            let (model, wall_scene) = walls::model(walls);
+            assert_eq!(model.len(), expected_len, "scene + 13 entities per wall");
+            let sum = checksum(&model);
+            let one = walls::ops(&wall_scene, 0..1, "x");
+            let revision = model.revision();
+            let model = RefCell::new(model);
+            let apply = |m: &mut Model| apply_authoring(m, schema, &one, 5);
+            if wanted(&options, PREVIEW) {
+                eprintln!("{workload}: preview one wall");
+                // Warm: the first apply builds the indexes it maintains.
+                model.borrow_mut().preview(apply).expect("the wall applies");
+                let samples = stats::time(
+                    out.plan,
+                    || (),
+                    |()| model.borrow_mut().preview(apply),
+                    |applied| assert!(applied.is_ok()),
+                );
+                assert_eq!(checksum(&model.borrow()), sum, "the samples left no trace");
+                assert_eq!(model.borrow().revision(), revision, "nor a revision");
+                out.push(record(PREVIEW, expected_len, samples, None, sum));
+            }
+            if wanted(&options, CLONE) {
+                eprintln!("{workload}: clone one wall");
+                let samples = stats::time(
+                    out.plan,
+                    || (),
+                    |()| {
+                        let mut copy = model.borrow().clone();
+                        let applied = apply(&mut copy);
+                        (copy, applied)
+                    },
+                    |(copy, applied)| {
+                        assert!(applied.is_ok());
+                        assert_eq!(copy.len(), expected_len + walls::ENTITIES_PER_WALL);
+                    },
+                );
+                assert_eq!(checksum(&model.borrow()), sum, "the original is untouched");
+                out.push(record(CLONE, expected_len, samples, None, sum));
+            }
         }
     }
     let after = report::load();
