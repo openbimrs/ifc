@@ -1,9 +1,9 @@
 //! The surface colour of a representation item or a material (#449);
 //! see [`StyleIndex`] for the precedence and its citations.
 
-use std::collections::BTreeMap;
+use std::borrow::Cow;
 
-use ifc_model::EntityId;
+use ifc_model::{EntityId, ReverseIndex};
 
 use crate::error::{StyleError, StyleResult};
 use crate::StyleView;
@@ -46,9 +46,11 @@ pub enum ColourSource {
 ///
 /// [`StyleView::resolve_item_style`](crate::StyleView::resolve_item_style)
 /// scans the model per item, which is fine for one item and quadratic for
-/// every item of every product; the index reads each `IfcStyledItem`,
-/// `IfcPresentationLayerAssignment` and `IfcMaterialDefinitionRepresentation`
-/// once.
+/// every item of every product; the index finds an item's `IfcStyledItem`s
+/// and layers, and a material's `IfcMaterialDefinitionRepresentation`s,
+/// through the entities that reference them (#608). A malformed record is
+/// refused by the lookups that reach it, not by `new`. Several records on
+/// one item or material are read in ascending id.
 ///
 /// # Precedence
 ///
@@ -100,56 +102,137 @@ pub enum ColourSource {
 #[derive(Debug, Clone)]
 pub struct StyleIndex<'m, 's> {
     view: StyleView<'m, 's>,
-    /// Representation item -> the `IfcStyledItem`s naming it.
-    direct: BTreeMap<EntityId, Vec<EntityId>>,
-    /// Representation item -> the layer assignments listing it.
-    layers: BTreeMap<EntityId, Vec<EntityId>>,
-    /// `IfcMaterial` -> its `IfcMaterialDefinitionRepresentation`s.
-    materials: BTreeMap<EntityId, Vec<EntityId>>,
+    /// The references held by the style records: the model's own reverse
+    /// index when something built it, else one over the records of the
+    /// three kinds below only.
+    referrers: Cow<'m, ReverseIndex>,
+    /// `IfcStyledItem.Item`; `None` when the release lacks the entity.
+    item_slot: Option<usize>,
+    /// `IfcPresentationLayerAssignment.AssignedItems`.
+    layer_slot: Option<usize>,
+    /// `IfcMaterialDefinitionRepresentation.RepresentedMaterial`; `None` in
+    /// a release without the entity.
+    material_slot: Option<usize>,
 }
 
+/// The supertypes of the records a [`StyleIndex`] reads.
+const STYLED_ITEM: &str = "IfcStyledItem";
+const LAYER: &str = "IfcPresentationLayerAssignment";
+const DEFINITION: &str = "IfcMaterialDefinitionRepresentation";
+
 impl<'m, 's> StyleIndex<'m, 's> {
-    /// Index every style assignment in `view`'s model.
+    /// Index `view`'s model for style lookups.
+    ///
+    /// Uses the model's reverse index if something built it; otherwise
+    /// reads once the `IfcStyledItem`, `IfcPresentationLayerAssignment` and
+    /// `IfcMaterialDefinitionRepresentation` records and nothing else, and
+    /// keeps no index behind (#608). The cost of a lookup is the records
+    /// that name what it asks about, not the model.
     ///
     /// # Errors
     ///
-    /// The projection errors of a malformed `IfcStyledItem.Item`,
-    /// `IfcPresentationLayerAssignment.AssignedItems` or
-    /// `IfcMaterialDefinitionRepresentation.RepresentedMaterial`, as
+    /// None today: the signature keeps the `Result` of the version that
+    /// validated every assignment here. A malformed
+    /// `IfcStyledItem.Item`, `IfcPresentationLayerAssignment.AssignedItems`
+    /// or `IfcMaterialDefinitionRepresentation.RepresentedMaterial` is
+    /// raised by the lookup it reaches, with the error
     /// [`StyleView::resolve_item_style`](crate::StyleView::resolve_item_style)
-    /// raises them.
+    /// gives.
+    #[allow(clippy::unnecessary_wraps)]
     pub fn new(view: StyleView<'m, 's>) -> StyleResult<Self> {
-        let mut index = Self {
-            view,
-            direct: BTreeMap::new(),
-            layers: BTreeMap::new(),
-            materials: BTreeMap::new(),
-        };
         let schema = view.schema;
-        let has_definition = schema
-            .entity("IfcMaterialDefinitionRepresentation")
-            .is_some();
-        for (id, entity) in view.model.iter() {
-            let type_name = &entity.type_name;
-            if schema.is_a(type_name, "IfcStyledItem") {
-                if let Some(item) = view.styled_item(id)?.item()? {
-                    index.direct.entry(item).or_default().push(id);
-                }
-            } else if schema.is_a(type_name, "IfcPresentationLayerAssignment") {
-                for item in view.presentation_layer(id)?.assigned_items()? {
-                    index.layers.entry(item).or_default().push(id);
-                }
-            } else if has_definition
-                && schema.is_a(type_name, "IfcMaterialDefinitionRepresentation")
-            {
-                let material = view
-                    .record(id, "IfcMaterialDefinitionRepresentation")?
-                    .required_ref("RepresentedMaterial", "IfcMaterial")?;
-                index.materials.entry(material).or_default().push(id);
+        let slot = |entity: &str, attribute: &str| {
+            schema.entity(entity)?;
+            schema
+                .attributes(entity)
+                .iter()
+                .position(|a| a.name.eq_ignore_ascii_case(attribute))
+        };
+        let referrers = view.model.reverse_index_if_built().map_or_else(
+            || {
+                let records = [STYLED_ITEM, LAYER, DEFINITION]
+                    .into_iter()
+                    .filter(|name| schema.entity(name).is_some())
+                    .flat_map(|name| std::iter::once(name).chain(schema.subtypes(name)))
+                    .flat_map(|name| view.model.ids_of_type(name).iter().copied());
+                Cow::Owned(ReverseIndex::build_from(view.model, records))
+            },
+            Cow::Borrowed,
+        );
+        Ok(Self {
+            view,
+            referrers,
+            item_slot: slot(STYLED_ITEM, "Item"),
+            layer_slot: slot(LAYER, "AssignedItems"),
+            material_slot: slot(DEFINITION, "RepresentedMaterial"),
+        })
+    }
+
+    /// The records of `supertype` that hold `target` in `slot`, ascending by
+    /// id: the candidates a lookup then projects.
+    fn named_in(
+        &self,
+        target: EntityId,
+        slot: Option<usize>,
+        supertype: &'static str,
+    ) -> Vec<EntityId> {
+        let Some(slot) = slot else {
+            return Vec::new();
+        };
+        self.referrers
+            .referrers(target)
+            .iter()
+            .filter(|r| r.slot == slot)
+            .filter(|r| {
+                self.view
+                    .model
+                    .get(r.from)
+                    .is_some_and(|e| self.view.schema.is_a(&e.type_name, supertype))
+            })
+            .map(|r| r.from)
+            .collect()
+    }
+
+    /// The `IfcStyledItem`s whose `Item` is `item`, ascending.
+    fn styled_items_of(&self, item: EntityId) -> StyleResult<Vec<EntityId>> {
+        let mut found = Vec::new();
+        for styled in self.named_in(item, self.item_slot, STYLED_ITEM) {
+            if self.view.styled_item(styled)?.item()? == Some(item) {
+                found.push(styled);
             }
         }
-        // `Model::iter` is in id order already; the lists are sorted.
-        Ok(index)
+        Ok(found)
+    }
+
+    /// The layer assignments listing `item`, ascending.
+    fn layers_of(&self, item: EntityId) -> StyleResult<Vec<EntityId>> {
+        let mut found = Vec::new();
+        for layer in self.named_in(item, self.layer_slot, LAYER) {
+            if self
+                .view
+                .presentation_layer(layer)?
+                .assigned_items()?
+                .contains(&item)
+            {
+                found.push(layer);
+            }
+        }
+        Ok(found)
+    }
+
+    /// The `IfcMaterialDefinitionRepresentation`s of `material`, ascending.
+    fn definitions_of(&self, material: EntityId) -> StyleResult<Vec<EntityId>> {
+        let mut found = Vec::new();
+        for definition in self.named_in(material, self.material_slot, DEFINITION) {
+            let represented = self
+                .view
+                .record(definition, DEFINITION)?
+                .required_ref("RepresentedMaterial", "IfcMaterial")?;
+            if represented == material {
+                found.push(definition);
+            }
+        }
+        Ok(found)
     }
 
     /// The view the index reads through.
@@ -170,7 +253,8 @@ impl<'m, 's> StyleIndex<'m, 's> {
     /// layers together, state two different surface colours; and the
     /// projection errors of a malformed style.
     pub fn item_colour(&self, item: EntityId) -> StyleResult<Option<SurfaceColour>> {
-        if let Some(direct) = self.direct.get(&item) {
+        let direct = self.styled_items_of(item)?;
+        if !direct.is_empty() {
             if direct.len() > 1 {
                 return Err(StyleError::AmbiguousStyleAssignment {
                     item,
@@ -188,7 +272,7 @@ impl<'m, 's> StyleIndex<'m, 's> {
             }
         }
         let mut found = Vec::new();
-        for &layer in self.layers.get(&item).map_or(&[][..], Vec::as_slice) {
+        for layer in self.layers_of(item)? {
             let styles = self
                 .view
                 .flatten_assignments(self.view.presentation_layer(layer)?.layer_styles()?)?;
@@ -216,7 +300,7 @@ impl<'m, 's> StyleIndex<'m, 's> {
     /// malformed style.
     pub fn material_colour(&self, material: EntityId) -> StyleResult<Option<SurfaceColour>> {
         let mut found = Vec::new();
-        for &definition in self.materials.get(&material).map_or(&[][..], Vec::as_slice) {
+        for definition in self.definitions_of(material)? {
             let representations = self
                 .view
                 .record(definition, "IfcMaterialDefinitionRepresentation")?
