@@ -234,3 +234,147 @@ fn meshes_carry_their_colour() {
         RED,
     );
 }
+
+/// `material_colour.ifc` with the `MULTI_LAYER` wall's layers made of
+/// `first` and `second`, after `extra` entities (ids from #900) are added.
+fn layered(extra: &str, first: &str, second: &str) -> Model {
+    let path = format!(
+        "{}/../../test/fixtures/synthetic-colour/material_colour.ifc",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let text = std::fs::read_to_string(path).expect("fixture");
+    let text = replaced(
+        &text,
+        "#126=IFCMATERIALLAYER(#24,",
+        &format!("#126=IFCMATERIALLAYER({first},"),
+    );
+    let text = replaced(
+        &text,
+        "#127=IFCMATERIALLAYER(#31,",
+        &format!("#127=IFCMATERIALLAYER({second},"),
+    );
+    let text = replaced(
+        &text,
+        "ENDSEC;\nEND-ISO",
+        &format!("{extra}ENDSEC;\nEND-ISO"),
+    );
+    StepCodec.read_bytes(text.as_bytes()).expect("parses")
+}
+
+/// `text` with `from` replaced by `to`; `from` must occur.
+fn replaced(text: &str, from: &str, to: &str) -> String {
+    assert!(text.contains(from), "fixture lacks {from}");
+    text.replace(from, to)
+}
+
+/// `material_colour.ifc` with the PLAIN proxy made of a constituent set of
+/// `first` and `second`, which no shape aspect names.
+fn constituted(extra: &str, first: &str, second: &str) -> Model {
+    let path = format!(
+        "{}/../../test/fixtures/synthetic-colour/material_colour.ifc",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let text = std::fs::read_to_string(path).expect("fixture");
+    let text = replaced(&text, "(#221),#45);", "(#221),#951);");
+    let set = format!(
+        "{extra}#949=IFCMATERIALCONSTITUENT('A',$,{first},$,$);\n\
+         #950=IFCMATERIALCONSTITUENT('B',$,{second},$,$);\n\
+         #951=IFCMATERIALCONSTITUENTSET('Pair',$,(#949,#950));\n"
+    );
+    let text = replaced(&text, "ENDSEC;\nEND-ISO", &format!("{set}ENDSEC;\nEND-ISO"));
+    StepCodec.read_bytes(text.as_bytes()).expect("parses")
+}
+
+/// A second material, `Red twin`, styled with Red's `IfcSurfaceStyle`.
+const RED_TWIN: &str = "#900=IFCMATERIAL('Red twin',$,$);\n\
+    #901=IFCSTYLEDITEM($,(#27),$);\n\
+    #902=IFCSTYLEDREPRESENTATION(#6,'Style','Material',(#901));\n\
+    #903=IFCMATERIALDEFINITIONREPRESENTATION($,$,(#902),#900);\n";
+
+#[test]
+fn a_layer_set_of_unstyled_materials_has_no_colour() {
+    let model = layered("#904=IFCMATERIAL('Plain too',$,$);\n", "#45", "#904");
+    let resolver = ColourResolver::new(&model).unwrap();
+    assert_eq!(
+        resolver.product_colour(product(&model, "MULTI_LAYER")),
+        Ok(None)
+    );
+}
+
+#[test]
+fn a_layer_set_of_equal_styles_takes_their_colour() {
+    let model = layered(RED_TWIN, "#24", "#900");
+    let resolver = ColourResolver::new(&model).unwrap();
+    let got = colour(&resolver, &model, "MULTI_LAYER");
+    assert_colour(&got, RED);
+    from_material(&got, material(&model, "Red"));
+}
+
+#[test]
+fn a_layer_set_of_styled_and_unstyled_materials_is_ambiguous() {
+    let model = layered("", "#24", "#45");
+    let resolver = ColourResolver::new(&model).unwrap();
+    assert!(matches!(
+        resolver.product_colour(product(&model, "MULTI_LAYER")),
+        Err(ColourError::AmbiguousMaterial { materials, .. })
+            if materials == [material(&model, "Red"), material(&model, "Plain")]
+    ));
+}
+
+#[test]
+fn a_layer_set_of_different_styles_is_ambiguous() {
+    let model = layered("", "#24", "#31");
+    let resolver = ColourResolver::new(&model).unwrap();
+    assert!(matches!(
+        resolver.product_colour(product(&model, "MULTI_LAYER")),
+        Err(ColourError::AmbiguousMaterial { materials, .. })
+            if materials == [material(&model, "Red"), material(&model, "Green")]
+    ));
+}
+
+#[test]
+fn three_materials_with_one_odd_one_out_are_all_named() {
+    let extra = format!("{RED_TWIN}#960=IFCMATERIALLAYER(#31,0.5,$,$,$,$,$);\n");
+    // Layers: Red, Red twin; a third layer Green is added to the set.
+    let model = layered(&extra, "#24", "#900");
+    let text = StepCodec.write_bytes(&model).expect("writes");
+    let text = replaced(
+        &String::from_utf8(text).unwrap(),
+        "(#126,#127)",
+        "(#126,#127,#960)",
+    );
+    let model = StepCodec.read_bytes(text.as_bytes()).expect("parses");
+    let resolver = ColourResolver::new(&model).unwrap();
+    let Err(ColourError::AmbiguousMaterial { materials, .. }) =
+        resolver.product_colour(product(&model, "MULTI_LAYER"))
+    else {
+        panic!("a differing third material must be ambiguous");
+    };
+    assert_eq!(
+        materials,
+        [
+            material(&model, "Red"),
+            material(&model, "Green"),
+            material(&model, "Red twin")
+        ]
+    );
+}
+
+#[test]
+fn an_unresolved_constituent_set_compares_its_materials() {
+    let plain2 = "#904=IFCMATERIAL('Plain too',$,$);\n";
+    let model = constituted(plain2, "#45", "#904");
+    let resolver = ColourResolver::new(&model).unwrap();
+    assert_eq!(resolver.product_colour(product(&model, "PLAIN")), Ok(None));
+
+    let model = constituted(RED_TWIN, "#24", "#900");
+    let resolver = ColourResolver::new(&model).unwrap();
+    assert_colour(&colour(&resolver, &model, "PLAIN"), RED);
+
+    let model = constituted("", "#24", "#31");
+    let resolver = ColourResolver::new(&model).unwrap();
+    assert!(matches!(
+        resolver.product_colour(product(&model, "PLAIN")),
+        Err(ColourError::AmbiguousMaterial { .. })
+    ));
+}

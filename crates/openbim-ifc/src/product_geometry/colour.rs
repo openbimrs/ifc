@@ -35,15 +35,23 @@
 //!   (`ForLayerSet`, `ForProfileSet`; IFC2X3's `IfcMaterialLayerSetUsage`
 //!   too), and IFC2X3's `IfcMaterialList`: the one material their members
 //!   name. The standard does not say which layer or profile of a body a
-//!   viewer paints, so members naming two materials are
-//!   [`ColourError::AmbiguousMaterial`], never the first one.
+//!   viewer paints, so members naming several materials are resolved
+//!   together (see below), never by the first one.
 //! - `IfcMaterialConstituentSet` (IFC4, IFC4X3): by item. IFC4 associates a
 //!   constituent with "the part of the shape representation" through an
 //!   `IfcShapeAspect` whose `Name` is the constituent's `Name`
 //!   (`IfcMaterialConstituent`), so an item an aspect of this product
 //!   (or of a representation map it is drawn through) lists takes that
 //!   constituent's material. An item no aspect names takes the set's one
-//!   material, or is ambiguous.
+//!   material, or the set's materials together (see below).
+//!
+//! Several materials, which of them paints the item is not stated, so each
+//! one's own colour is resolved and they are compared. None styled gives no
+//! colour (a cavity wall of unstyled layers is simply unpainted); all styled
+//! with the same rgb and transparency give that colour (its source names the
+//! first material); anything else, differing styles or a mix of styled and
+//! unstyled materials, is [`ColourError::AmbiguousMaterial`] naming every
+//! material, never a pick of one.
 //!
 //! IFC4X1 and IFC4X2 files resolve item and layer styles; the material
 //! domain is not verified for those releases, so a material fallback there
@@ -96,9 +104,10 @@ pub enum ColourError {
     /// The Body representation or a mapped item is malformed, cyclic or
     /// too deep.
     Geometry(GeometryError),
-    /// The material select names several materials and the standard does
-    /// not say which one paints the item: a layer or profile set of two
-    /// materials, a list, or a constituent set no shape aspect resolves.
+    /// The material select names several materials, some styled and not all
+    /// alike, and the standard does not say which one paints the item: a
+    /// layer or profile set, a list, or a constituent set no shape aspect
+    /// resolves.
     AmbiguousMaterial {
         /// The representation item.
         item: EntityId,
@@ -132,8 +141,8 @@ impl fmt::Display for ColourError {
                 materials,
             } => write!(
                 f,
-                "item {item}: material {definition} names {} materials and none is defined to \
-                 colour it",
+                "item {item}: material {definition} names {} materials whose colours differ or \
+                 are not all stated",
                 materials.len()
             ),
             Self::ItemsDiffer { product, items } => write!(
@@ -359,32 +368,59 @@ impl<'m> ColourResolver<'m> {
         if made.is_none() {
             *made = Some(self.made_of(product)?);
         }
-        let material = match made.as_ref().expect("resolved above") {
-            Made::Nothing => return Ok(None),
-            Made::One(material) => *material,
+        match made.as_ref().expect("resolved above") {
+            Made::Nothing => Ok(None),
+            Made::One(material) => Ok(self.styles.material_colour(*material)?),
             Made::Several {
                 definition,
                 materials,
-            } => {
-                return Err(ColourError::AmbiguousMaterial {
-                    item: leaf.item,
-                    definition: *definition,
-                    materials: materials.clone(),
-                })
+            } => self.agreed(leaf.item, *definition, materials),
+            Made::Constituents { set, parts } => {
+                let materials = self.constituent(leaf, parts);
+                match materials.as_slice() {
+                    [material] => Ok(self.styles.material_colour(*material)?),
+                    _ => self.agreed(leaf.item, *set, &materials),
+                }
             }
-            Made::Constituents { set, parts } => self.constituent(leaf, *set, parts)?,
-        };
-        Ok(self.styles.material_colour(material)?)
+        }
+    }
+
+    /// The colour `materials` (ascending, distinct) agree on: none when no
+    /// material is styled, the shared colour when all are styled with the
+    /// same rgb and transparency, else ambiguous (a mix of styled and
+    /// unstyled materials too: nothing says the unstyled one paints
+    /// nothing).
+    fn agreed(
+        &self,
+        item: EntityId,
+        definition: EntityId,
+        materials: &[EntityId],
+    ) -> Result<Option<SurfaceColour>, ColourError> {
+        let colours = materials
+            .iter()
+            .map(|&material| self.styles.material_colour(material))
+            .collect::<Result<Vec<_>, _>>()?;
+        if colours.iter().all(Option::is_none) {
+            return Ok(None);
+        }
+        if let Some(Some(first)) = colours.first() {
+            if colours.iter().all(|colour| {
+                colour.is_some_and(|c| (c.rgb, c.transparency) == (first.rgb, first.transparency))
+            }) {
+                return Ok(Some(*first));
+            }
+        }
+        Err(ColourError::AmbiguousMaterial {
+            item,
+            definition,
+            materials: materials.to_vec(),
+        })
     }
 
     /// The material of the constituent an `IfcShapeAspect` of this
-    /// product names for `leaf`.
-    fn constituent(
-        &self,
-        leaf: &Leaf,
-        set: EntityId,
-        parts: &[(Option<String>, EntityId)],
-    ) -> Result<EntityId, ColourError> {
+    /// product names for `leaf`, else every material of the set (ascending,
+    /// distinct).
+    fn constituent(&self, leaf: &Leaf, parts: &[(Option<String>, EntityId)]) -> Vec<EntityId> {
         let mut materials: Vec<EntityId> = self
             .aspects
             .get(&leaf.item)
@@ -405,19 +441,12 @@ impl<'m> ColourResolver<'m> {
             .collect();
         materials.sort_unstable();
         materials.dedup();
-        if let [material] = materials.as_slice() {
-            return Ok(*material);
-        }
         if materials.is_empty() {
             materials = parts.iter().map(|(_, material)| *material).collect();
             materials.sort_unstable();
             materials.dedup();
         }
-        Err(ColourError::AmbiguousMaterial {
-            item: leaf.item,
-            definition: set,
-            materials,
-        })
+        materials
     }
 
     /// What `product` is made of, by its own association or its type's.

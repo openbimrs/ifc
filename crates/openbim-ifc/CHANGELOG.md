@@ -12,6 +12,17 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#596)
+
+- A layer, profile or constituent set, or an IFC2X3 `IfcMaterialList`,
+  naming several materials no longer refuses the product before looking at
+  them: with no styled material it has no colour, with all styled
+  materials agreeing on rgb and transparency it takes that colour, and
+  anything else (differing styles, or a mix of styled and unstyled
+  materials) is `ColourError::AmbiguousMaterial`.
+
+Semver: patch.
+
 ## [0.39.1] - 2026-10-28
 
 ### Changed (#587)
