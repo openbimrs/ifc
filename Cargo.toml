@@ -31,7 +31,7 @@ openbim-ifc = { path = "crates/openbim-ifc", version = "0.39.0", default-feature
 openbim-ifc-binding-core = { path = "crates/openbim-ifc-binding-core", version = "0.1.0", default-features = false }
 ifc-step = { path = "crates/ifc-step", version = "0.6.0" }
 ifc-xml = { path = "crates/ifc-xml", version = "0.5.0" }
-ifc-model = { path = "crates/ifc-model", version = "0.4.3" }
+ifc-model = { path = "crates/ifc-model", version = "0.4.4" }
 ifc-geometry = { path = "crates/ifc-geometry", version = "0.32.0", default-features = false }
 ifc-properties = { path = "crates/ifc-properties", version = "0.10.0", default-features = false }
 ifc-template-catalog = { path = "crates/ifc-template-catalog", version = "0.4.0", default-features = false }

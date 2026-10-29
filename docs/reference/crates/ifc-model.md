@@ -11,7 +11,7 @@ The IFC entity graph: storage and structural queries, free of domain semantics a
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.3 (2026-10-28) |
+| Latest release | 0.4.4 (2026-10-29) |
 | Registries | [crates.io `ifc-model`](https://crates.io/crates/ifc-model) |
 | API documentation | [rustdoc](/api/rustdoc/ifc_model/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-model) |
 | Source | [`crates/ifc-model/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-model) |
@@ -29,25 +29,20 @@ serialization.
 
 ## Changes
 
-Latest release, 0.4.3 (2026-10-28):
+Latest release, 0.4.4 (2026-10-29):
 
-### Added (#587)
+### Fixed (#595)
 
-- `Model::reverse_index`: the reverse index, built on the first call and kept
-  current by every write, undo and redo after that; equal to
-  `ReverseIndex::build` at every moment.
-- `Model::global_id_candidates`: the entities whose first attribute is the
-  text of a `Guid`, ascending by id, kept the same way.
-- `Model::drop_derived_indexes`, to free both.
-- `PartialEq` and `Eq` on `ReverseIndex`.
+- `Model::set_attribute` and `Model::set_attributes` panic before any write
+  for an attribute index of `usize::MAX`, instead of wrapping in release builds
+  and truncating the entity, or leaving the first edits of a batch unrecorded.
 
-### Changed (#587)
+### Added (#595)
 
-- `Transaction::preflight` reads the model's own reverse index when something
-  built it, instead of scanning the model for a commit that removes.
-- Undoing a batch is linear in the batch: file order and type buckets are
-  searched from the end.
-
-Semver: minor.
+- `Model::preview` runs a change and rolls it back exactly, the revision
+  included: entities, orders, header, next free id, diagnostics and the
+  maintained indexes are put back, and a `History`, `Transaction` or `Inverse`
+  made before it stays valid. Revisions drawn inside are never reissued.
+  Semver: minor (additive).
 
 Full history: [`crates/ifc-model/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-model/CHANGELOG.md)

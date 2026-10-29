@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.39.2 (2026-10-29) |
+| Latest release | 0.39.3 (2026-10-29) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -103,17 +103,11 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.39.2 (2026-10-29):
+Latest release, 0.39.3 (2026-10-29):
 
-### Fixed (#596)
+### Added (#595)
 
-- A layer, profile or constituent set, or an IFC2X3 `IfcMaterialList`,
-  naming several materials no longer refuses the product before looking at
-  them: with no styled material it has no colour, with all styled
-  materials agreeing on rgb and transparency it takes that colour, and
-  anything else (differing styles, or a mix of styled and unstyled
-  materials) is `ColourError::AmbiguousMaterial`.
-
-Semver: patch.
+- `Model::preview` (from `ifc-model` 0.4.4); the `authoring` bench measures it
+  against a clone.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)
