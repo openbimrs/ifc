@@ -476,6 +476,16 @@ impl Model {
         self.max_id = max_id;
     }
 
+    /// Only `Model::preview` calls this, after putting back the exact state
+    /// `revision` named.
+    pub(crate) fn restore_revision(&mut self, revision: u64) {
+        self.revision = revision;
+    }
+
+    pub(crate) fn truncate_diagnostics(&mut self, len: usize) {
+        self.diagnostics.truncate(len);
+    }
+
     pub(crate) fn entities_mut(&mut self) -> &mut AHashMap<EntityId, Slot> {
         &mut self.entities
     }
