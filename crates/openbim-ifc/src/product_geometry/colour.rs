@@ -64,10 +64,19 @@
 //! [`ColourResolver::item_colours`] gives every item's; items that differ
 //! (one painted, one not, or two colours) are
 //! [`ColourError::ItemsDiffer`] for the product.
+//!
+//! # Cost
+//!
+//! A subset costs the subset (#608). Style, material and shape-aspect
+//! records are found through the referrers of what is asked about, never by
+//! walking the model, so colouring one product of N costs that product.
+//! [`ColourResolver::new`] makes the model keep its reverse index: the
+//! first resolver on a model scans it once, and every later one (also
+//! inside `Model::preview`) finds it built and kept current. A malformed
+//! record refuses only the products it reaches.
 
 #![cfg(feature = "colour")]
 
-use std::collections::BTreeMap;
 use std::fmt;
 
 use ifc_geometry::{select_shape_representation, GeometryError};
@@ -217,8 +226,6 @@ pub struct ColourResolver<'m> {
     schema: &'static Schema,
     styles: StyleIndex<'m, 'static>,
     materials: MaterialView<'m>,
-    /// Representation item -> the `IfcShapeAspect`s listing it.
-    aspects: BTreeMap<EntityId, Vec<Aspect>>,
 }
 
 /// One `IfcShapeAspect`, as the constituent lookup reads it.
@@ -258,8 +265,12 @@ enum Made {
 }
 
 impl<'m> ColourResolver<'m> {
-    /// Index `model`'s styles and shape aspects against the release its
-    /// header declares.
+    /// Bind `model`'s styles, materials and shape aspects to the release its
+    /// header declares, and make sure the model keeps its reverse index
+    /// (built here on first use, one scan, then kept current by every write;
+    /// #608). Every lookup then reads the records that reference what it
+    /// asks about, so a product costs the product, and a malformed record
+    /// elsewhere refuses only the products it reaches.
     ///
     /// # Errors
     ///
@@ -276,16 +287,14 @@ impl<'m> ColourResolver<'m> {
         };
         let version = SchemaVersion::from_header_token(token).ok_or_else(unsupported)?;
         let schema = ifc_schema::for_version(version).map_err(|_| unsupported())?;
+        model.reverse_index();
         let styles = StyleIndex::new(StyleView::new(model, schema))?;
-        let mut resolver = Self {
+        Ok(Self {
             model,
             schema,
             styles,
             materials: MaterialView::new(model),
-            aspects: BTreeMap::new(),
-        };
-        resolver.index_aspects()?;
-        Ok(resolver)
+        })
     }
 
     /// The colour every Body item of `product` agrees on; `Ok(None)` when
@@ -376,7 +385,7 @@ impl<'m> ColourResolver<'m> {
                 materials,
             } => self.agreed(leaf.item, *definition, materials),
             Made::Constituents { set, parts } => {
-                let materials = self.constituent(leaf, parts);
+                let materials = self.constituent(leaf, parts)?;
                 match materials.as_slice() {
                     [material] => Ok(self.styles.material_colour(*material)?),
                     _ => self.agreed(leaf.item, *set, &materials),
@@ -420,12 +429,14 @@ impl<'m> ColourResolver<'m> {
     /// The material of the constituent an `IfcShapeAspect` of this
     /// product names for `leaf`, else every material of the set (ascending,
     /// distinct).
-    fn constituent(&self, leaf: &Leaf, parts: &[(Option<String>, EntityId)]) -> Vec<EntityId> {
+    fn constituent(
+        &self,
+        leaf: &Leaf,
+        parts: &[(Option<String>, EntityId)],
+    ) -> Result<Vec<EntityId>, ColourError> {
         let mut materials: Vec<EntityId> = self
-            .aspects
-            .get(&leaf.item)
-            .into_iter()
-            .flatten()
+            .aspects_of(leaf.item)?
+            .iter()
             .filter(|aspect| {
                 aspect
                     .owner
@@ -446,7 +457,7 @@ impl<'m> ColourResolver<'m> {
             materials.sort_unstable();
             materials.dedup();
         }
-        materials
+        Ok(materials)
     }
 
     /// What `product` is made of, by its own association or its type's.
@@ -616,30 +627,60 @@ impl<'m> ColourResolver<'m> {
         Ok(())
     }
 
-    /// Index every `IfcShapeAspect` by the items of its representations.
-    fn index_aspects(&mut self) -> Result<(), ColourError> {
+    /// The `IfcShapeAspect`s that list `item`: those whose
+    /// `ShapeRepresentations` include a representation whose `Items` do,
+    /// found through the referrers of `item`, then of that representation,
+    /// ascending by id. Each is projected whole, so one that is malformed
+    /// refuses the lookups that reach it and no others.
+    fn aspects_of(&self, item: EntityId) -> Result<Vec<Aspect>, ColourError> {
         if self.schema.entity("IfcShapeAspect").is_none() {
-            return Ok(());
+            return Ok(Vec::new());
         }
-        for (id, entity) in self.model.of_type("IFCSHAPEASPECT") {
-            let name = self
-                .value(id, entity, "Name")?
-                .and_then(|value| value.unwrap_typed().as_text())
-                .map(str::to_owned);
-            let owner = self
-                .value(id, entity, "PartOfProductDefinitionShape")?
-                .and_then(Value::as_ref_id);
-            for representation in self.references(id, entity, "ShapeRepresentations")? {
-                let representation_entity = self.entity(id, representation)?;
-                for item in self.references(representation, representation_entity, "Items")? {
-                    self.aspects.entry(item).or_default().push(Aspect {
-                        owner,
-                        name: name.clone(),
-                    });
+        let index = self.model.reverse_index();
+        let aspect_slot = slot_named(self.schema, "IfcShapeAspect", "ShapeRepresentations");
+        let mut found = Vec::new();
+        for held_in in index.referrers(item) {
+            let Some(representation) = self.model.get(held_in.from) else {
+                continue;
+            };
+            if slot_named(self.schema, &representation.type_name, "Items") != Some(held_in.slot) {
+                continue;
+            }
+            for listed_by in index.referrers(held_in.from) {
+                let Some(aspect) = self.model.get(listed_by.from) else {
+                    continue;
+                };
+                if aspect.type_name.eq_ignore_ascii_case("IFCSHAPEASPECT")
+                    && aspect_slot == Some(listed_by.slot)
+                {
+                    found.push(listed_by.from);
                 }
             }
         }
-        Ok(())
+        found.sort_unstable();
+        found.dedup();
+        found
+            .into_iter()
+            .map(|id| self.aspect(id))
+            .collect::<Result<_, _>>()
+    }
+
+    /// `IfcShapeAspect` `id`, read whole: its name, its product definition
+    /// shape, and every representation and item its representations list.
+    fn aspect(&self, id: EntityId) -> Result<Aspect, ColourError> {
+        let entity = self.entity(id, id)?;
+        let name = self
+            .value(id, entity, "Name")?
+            .and_then(|value| value.unwrap_typed().as_text())
+            .map(str::to_owned);
+        let owner = self
+            .value(id, entity, "PartOfProductDefinitionShape")?
+            .and_then(Value::as_ref_id);
+        for representation in self.references(id, entity, "ShapeRepresentations")? {
+            let representation_entity = self.entity(id, representation)?;
+            self.references(representation, representation_entity, "Items")?;
+        }
+        Ok(Aspect { owner, name })
     }
 
     fn entity(&self, referrer: EntityId, id: EntityId) -> Result<&'m Entity, ColourError> {
@@ -660,13 +701,7 @@ impl<'m> ColourResolver<'m> {
         entity: &'m Entity,
         name: &'static str,
     ) -> Result<Option<&'m Value>, ColourError> {
-        let type_name = &entity.type_name;
-        let slot = (0..self.schema.attribute_count(type_name))
-            .find(|&slot| {
-                self.schema
-                    .attribute_at(type_name, slot)
-                    .is_some_and(|attribute| attribute.name.eq_ignore_ascii_case(name))
-            })
+        let slot = slot_named(self.schema, &entity.type_name, name)
             .ok_or_else(|| missing(id, entity, name))?;
         Ok(entity
             .attribute(slot)
@@ -705,6 +740,15 @@ impl<'m> ColourResolver<'m> {
             })
             .collect()
     }
+}
+
+/// The position of attribute `name` on `type_name` in `schema`.
+fn slot_named(schema: &Schema, type_name: &str, name: &str) -> Option<usize> {
+    (0..schema.attribute_count(type_name)).find(|&slot| {
+        schema
+            .attribute_at(type_name, slot)
+            .is_some_and(|attribute| attribute.name.eq_ignore_ascii_case(name))
+    })
 }
 
 fn missing(id: EntityId, entity: &Entity, attribute: &'static str) -> GeometryError {

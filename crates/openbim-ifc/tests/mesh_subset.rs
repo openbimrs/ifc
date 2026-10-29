@@ -122,3 +122,86 @@ fn a_subset_entry_equals_the_whole_model_entry_on_every_fixture() {
         assert_subsets_agree(&model, &format!("{label} (indexed)"));
     }
 }
+
+#[cfg(all(feature = "authoring", feature = "ifc4x3"))]
+#[path = "../benches/authoring/walls.rs"]
+#[allow(dead_code)]
+mod walls;
+
+/// A change looked at inside `Model::preview` meshes and colours what the
+/// same change applied for real does (#608): the resolver must see the
+/// previewed records, not an index of the model as it was.
+#[cfg(all(feature = "authoring", feature = "ifc4x3"))]
+#[test]
+fn a_preview_meshes_what_the_change_would_mesh() {
+    use ifc::{apply_authoring, Entity, Value};
+
+    fn change(model: &mut Model, scene: &walls::Scene) -> Vec<String> {
+        let out = apply_authoring(
+            model,
+            ifc::schema::ifc4x3(),
+            &walls::ops(scene, 0..1, "x"),
+            5,
+        )
+        .expect("the wall applies");
+        let wall = out.ids[5].expect("the wall");
+        let solid = out.ids[3].expect("its solid");
+        let colour = model.push(Entity::new(
+            "IFCCOLOURRGB",
+            vec![
+                Value::Null,
+                Value::Real(0.2),
+                Value::Real(0.4),
+                Value::Real(0.6),
+            ],
+        ));
+        let shading = model.push(Entity::new(
+            "IFCSURFACESTYLESHADING",
+            vec![Value::Ref(colour), Value::Null],
+        ));
+        let style = model.push(Entity::new(
+            "IFCSURFACESTYLE",
+            vec![
+                Value::Null,
+                Value::Enum("BOTH".into()),
+                Value::List(vec![Value::Ref(shading)]),
+            ],
+        ));
+        model.push(Entity::new(
+            "IFCSTYLEDITEM",
+            vec![
+                Value::Ref(solid),
+                Value::List(vec![Value::Ref(style)]),
+                Value::Null,
+            ],
+        ));
+        // A neighbour in the model, to show the lookup is per product.
+        let neighbour = model.ids_of_type("IfcWall")[0];
+        vec![
+            format!("{:?}", product_meshes(model, Some(&[wall]))),
+            format!("{:?}", product_colours(model, Some(&[wall]))),
+            format!("{:?}", product_colours(model, Some(&[neighbour]))),
+        ]
+    }
+
+    let (mut model, scene) = walls::model(20);
+    model.header_mut().schema = vec!["IFC4X3_ADD2".into()];
+    model.reverse_index();
+    let before = (model.len(), model.revision());
+
+    let previewed = model.preview(|m| change(m, &scene));
+    assert_eq!(
+        (model.len(), model.revision()),
+        before,
+        "the preview left a trace"
+    );
+    assert!(
+        previewed[1].contains("0.2, 0.4, 0.6"),
+        "the previewed style colours the new wall: {}",
+        previewed[1]
+    );
+    assert!(previewed[2].contains("Ok(None)"), "{}", previewed[2]);
+
+    let mut applied = model.clone();
+    assert_eq!(change(&mut applied, &scene), previewed);
+}

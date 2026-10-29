@@ -28,6 +28,14 @@
 //! The tolerance is [`Tolerance::MILLIMETRE`]: lowering converts every
 //! length to metres, so it is a millimetre whatever unit the file declared
 //! (ADR 0004 leaves tolerance to the bridge for exactly that reason).
+//!
+//! # Cost
+//!
+//! Meshing a subset costs the subset (#608), also inside `Model::preview`:
+//! units, placements, representations and colours are all found through
+//! the entities that reference the product. The first Body mesh of a model
+//! makes it keep its reverse index (one scan, see [`ColourResolver`]); the
+//! other purposes never touch it.
 
 #![cfg(feature = "mesh")]
 
@@ -110,11 +118,13 @@ pub fn product_meshes_for(
         }
     };
     let backend = default_backend();
-    let resolver = ColourResolver::new(model);
-    let colour = |product| match (&resolver, purpose) {
-        (Ok(resolver), RepresentationPurpose::Body) => resolver.product_colour(product),
-        (Err(error), RepresentationPurpose::Body) => Err(error.clone()),
-        _ => Ok(None),
+    // Only the Body carries a colour; the other purposes never build the
+    // resolver.
+    let resolver = (purpose == RepresentationPurpose::Body).then(|| ColourResolver::new(model));
+    let colour = |product| match &resolver {
+        Some(Ok(resolver)) => resolver.product_colour(product),
+        Some(Err(error)) => Err(error.clone()),
+        None => Ok(None),
     };
     products_world_transforms(model, &scale, products)
         .into_iter()

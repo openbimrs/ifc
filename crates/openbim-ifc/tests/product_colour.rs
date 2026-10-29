@@ -378,3 +378,62 @@ fn an_unresolved_constituent_set_compares_its_materials() {
         Err(ColourError::AmbiguousMaterial { .. })
     ));
 }
+
+/// `material_colour.ifc` with `from` replaced by `to`.
+fn edited(from: &str, to: &str) -> Model {
+    let path = format!(
+        "{}/../../test/fixtures/synthetic-colour/material_colour.ifc",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let text = std::fs::read_to_string(path).expect("fixture");
+    StepCodec
+        .read_bytes(replaced(&text, from, to).as_bytes())
+        .expect("parses")
+}
+
+/// A malformed record refuses the products that reach it and no others
+/// (#608): the whole-model result is the unedited one except for them, and
+/// asking for one product gives the same entry as asking for all.
+#[test]
+fn a_malformed_style_assignment_refuses_only_the_products_it_reaches() {
+    let clean = fixture("material_colour.ifc");
+    let expected = product_colours(&clean, None);
+    for (from, to, reached, style) in [
+        // The styled item of ITEM_OVER_MATERIAL's item: a bad `Styles`.
+        (
+            "#93=IFCSTYLEDITEM(#83,(#92),$);",
+            "#93=IFCSTYLEDITEM(#83,'bad',$);",
+            "ITEM_OVER_MATERIAL",
+            true,
+        ),
+        // The shape aspect of CONSTITUENT_FRAME: a bad representation.
+        (
+            "#166=IFCSHAPEASPECT((#165),'Frame',$,.T.,#160);",
+            "#166=IFCSHAPEASPECT((#165,'x'),'Frame',$,.T.,#160);",
+            "CONSTITUENT_FRAME",
+            false,
+        ),
+    ] {
+        let model = edited(from, to);
+        let hit = product(&model, reached);
+        let all = product_colours(&model, None);
+        assert_eq!(all.len(), expected.len());
+        for ((id, got), (_, want)) in all.iter().zip(&expected) {
+            if *id == hit {
+                assert!(
+                    if style {
+                        matches!(got, Err(ColourError::Style(_)))
+                    } else {
+                        matches!(got, Err(ColourError::Geometry(_)))
+                    },
+                    "{reached}: {got:?}"
+                );
+            } else {
+                assert_eq!(got, want, "{reached} edit moved product {id}");
+            }
+            assert_eq!(&product_colours(&model, Some(&[*id]))[0].1, got);
+        }
+        // The resolver itself accepts the model.
+        assert!(ColourResolver::new(&model).is_ok());
+    }
+}
