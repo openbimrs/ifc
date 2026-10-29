@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.39.3 (2026-10-29) |
+| Latest release | 0.39.4 (2026-10-29) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -103,11 +103,16 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.39.3 (2026-10-29):
+Latest release, 0.39.4 (2026-10-29):
 
-### Added (#595)
+### Fixed (#608)
 
-- `Model::preview` (from `ifc-model` 0.4.4); the `authoring` bench measures it
-  against a clone.
+- `product_meshes` and `product_colours` of a subset cost the subset, also
+  inside `Model::preview` (152 ms to under 0.1 ms at 50,000 walls). The colour
+  resolver builds the model's reverse index on first use and finds style,
+  material and shape-aspect records through it; the other representation
+  purposes no longer build a resolver. Whole-model colours with per-object
+  materials are no longer quadratic. A malformed style, material or aspect
+  record elsewhere no longer refuses every product.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)
