@@ -47,6 +47,55 @@ impl<'m> MaterialView<'m> {
         self.release
     }
 
+    /// The `entity` records whose `attribute` references `object`, ascending
+    /// by id (#608): the only records a lookup about `object` needs to
+    /// project. A record that names `object` in another attribute, or not at
+    /// all, is not read, so a malformed one elsewhere cannot refuse it.
+    ///
+    /// Through the model's reverse index when something built it, else one
+    /// pass over the `entity` records; neither leaves an index behind. Both
+    /// raise the release's slot error when a record references `object`.
+    pub(crate) fn naming(
+        self,
+        entity: &'static str,
+        attribute: &'static str,
+        object: EntityId,
+    ) -> MaterialResult<Vec<(EntityId, &'m Entity)>> {
+        let mut found = Vec::new();
+        if let Some(index) = self.model.reverse_index_if_built() {
+            for referrer in index.referrers(object) {
+                let Some(record) = self.model.get(referrer.from) else {
+                    continue;
+                };
+                if record.type_name.eq_ignore_ascii_case(entity)
+                    && self.release.slot(entity, referrer.from, attribute)? == referrer.slot
+                {
+                    found.push((referrer.from, record));
+                }
+            }
+        } else {
+            let references = |value: &Value| {
+                let mut hit = false;
+                value.for_each_ref(&mut |target| hit |= target == object);
+                hit
+            };
+            for &id in self.model.ids_of_type(entity) {
+                let Some(record) = self.model.get(id) else {
+                    continue;
+                };
+                if !record.attributes.iter().any(references) {
+                    continue;
+                }
+                let slot = self.release.slot(entity, id, attribute)?;
+                if record.attributes.get(slot).is_some_and(references) {
+                    found.push((id, record));
+                }
+            }
+            found.sort_unstable_by_key(|(id, _)| *id);
+        }
+        Ok(found)
+    }
+
     pub(crate) fn entity(self, source: EntityId, target: EntityId) -> MaterialResult<&'m Entity> {
         self.model
             .get(target)

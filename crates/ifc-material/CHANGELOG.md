@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#608)
+
+- `assignments_for` and `assigned_material` read only the relationships
+  whose `RelatedObjects` reference the object, through the model's reverse
+  index when built, else one pass over the relationship type. A malformed
+  relationship that does not name the object no longer refuses it. Several
+  relationships are read in ascending id.
+
 ## [0.6.2] - 2026-10-28
 
 ### Changed
