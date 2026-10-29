@@ -50,7 +50,9 @@ impl Model {
     /// If `change` panics the model is rolled back and the revision restored
     /// before the panic resumes. Panics if `change` ended or replaced the
     /// recording the preview began (the model is then left as `change` left
-    /// it).
+    /// it). If a rollback step itself panics (only through a broken
+    /// [`EntitySource`](crate::EntitySource)) the original payload is lost
+    /// and the model is left partly rolled back.
     ///
     /// # Examples
     ///

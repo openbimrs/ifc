@@ -252,6 +252,9 @@ impl Model {
     /// the process, and not necessarily one more than the last; the absolute
     /// value carries no meaning beyond comparison. See [`Transaction`](crate::Transaction).
     ///
+    /// Across a [`Model::preview`] only equality is meaningful: a revision
+    /// seen inside the closure can be greater than the model's afterwards.
+    ///
     /// [`Model::preview`] is the one call that sets the revision back: it
     /// restores the exact state that revision named, and the revisions drawn
     /// inside it are never handed out again.

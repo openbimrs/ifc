@@ -86,7 +86,9 @@ redo are built on that.
 
 Looking at a change before making it (meshing what a pointer move would
 create) had two options. A clone costs the model: 41 ms per look at 10,000
-walls (130,000 entities), growing with the model. Recording the change and
+walls (130,000 entities), growing with the model (`authoring.preview.clone` in
+`benchmarks/baseline.md`: `Model::clone` plus one-wall `apply_authoring`, on a
+busy machine; `rheonda/cad` measured 224 ms for the clone of its whole document). Recording the change and
 applying its inverse costs the change, but `Inverse::apply` is a new change and
 draws a new revision, which strands every `History` and `Transaction` made
 before it: the redo stack is lost on the first hover.
@@ -104,7 +106,8 @@ transaction opened before it must not commit against different state.
 
 Rejected: an `Inverse::apply_restoring_revision`. It would let any caller
 rewind the revision after a change that other code already observed; the
-preview confines the rewind to a closure that cannot leak a revision it drew.
+preview confines the rewind to a closure, and a revision that leaks out of it
+is never reissued, so it can only miss.
 
 Consequence: the revision is not monotonic for code running inside the
 closure, which sees revisions that are gone after it returns. An `Inverse` or

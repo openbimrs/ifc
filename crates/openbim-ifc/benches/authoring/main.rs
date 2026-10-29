@@ -391,9 +391,16 @@ fn main() {
             let revision = model.revision();
             let model = RefCell::new(model);
             let apply = |m: &mut Model| apply_authoring(m, schema, &one, 5);
+            // Both benches start from a model that keeps its indexes.
+            {
+                let model = model.borrow();
+                model.reverse_index();
+                let probe = ifc::Guid::parse("0000000000000000000001").expect("a GlobalId");
+                model.global_id_candidates(&probe);
+            }
             if wanted(&options, PREVIEW) {
                 eprintln!("{workload}: preview one wall");
-                // Warm: the first apply builds the indexes it maintains.
+                // Warm: one preview of the apply.
                 model.borrow_mut().preview(apply).expect("the wall applies");
                 let samples = stats::time(
                     out.plan,
