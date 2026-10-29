@@ -79,8 +79,9 @@ fn assert_subsets_agree(model: &Model, label: &str) {
                     "{label}: mesh of {id:?} ({purpose:?})"
                 );
             } else {
-                // The reference backend orders some triangles differently
-                // from call to call; everything else must still agree.
+                // TODO(#610): the reference backend orders some triangles
+                // differently from call to call; everything else must still
+                // agree.
                 assert_eq!(
                     shape(&subset[0].1),
                     shape(entry),
@@ -117,10 +118,26 @@ fn a_subset_entry_equals_the_whole_model_entry_on_every_fixture() {
     for path in corpus() {
         let label = path.display().to_string();
         let model = read(&path);
-        assert_subsets_agree(&model, &format!("{label} (fresh)"));
-        model.reverse_index();
+        // The first Body call builds the model's index, so this pass is the
+        // first use; the next runs on a model that already keeps it.
+        assert_subsets_agree(&model, &format!("{label} (first use)"));
+        assert!(model.reverse_index_if_built().is_some(), "{label}");
         assert_subsets_agree(&model, &format!("{label} (indexed)"));
     }
+}
+
+/// Only the Body carries a colour, so meshing another purpose builds no
+/// resolver and leaves the model without a reverse index.
+#[test]
+fn meshing_a_non_body_purpose_builds_no_index() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test/fixtures/synthetic-colour/material_colour.ifc");
+    let model = read(&path);
+    let meshes = product_meshes_for(&model, None, RepresentationPurpose::Surface);
+    assert!(!meshes.is_empty());
+    assert!(model.reverse_index_if_built().is_none());
+    product_meshes(&model, None);
+    assert!(model.reverse_index_if_built().is_some());
 }
 
 #[cfg(all(feature = "authoring", feature = "ifc4x3"))]
