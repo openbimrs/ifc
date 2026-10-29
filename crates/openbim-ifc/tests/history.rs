@@ -14,7 +14,7 @@
 
 use ifc::{
     apply_authoring, AuthorOp, Codec, EntityId, History, HistoryError, Model, PurgeOptions,
-    RemoveProductOptions, Schema, SchemaVersion, StepCodec, Value,
+    RemoveProductOptions, ReverseIndex, Schema, SchemaVersion, StepCodec, Value,
 };
 
 const FIXTURES: [(&str, SchemaVersion); 3] = [
@@ -172,5 +172,42 @@ fn an_untracked_edit_makes_undo_stale() {
             "{name}"
         );
         assert_eq!(bytes(&model), before, "{name}: unchanged");
+    });
+}
+
+#[test]
+fn a_preview_leaves_undo_and_redo_valid() {
+    // #595: looking at a change (here: what a site would create) must not
+    // strand the redo stack or the revision a transaction targets.
+    each_release(|name, mut model, schema| {
+        let mut history = History::new(8);
+        track(&mut history, &mut model, schema, &[remove_product(150)], 1);
+        track(&mut history, &mut model, schema, &[site("A")], 2);
+        let redone = bytes(&model);
+
+        history.undo(&mut model).unwrap();
+        let (before, revision) = (bytes(&model), model.revision());
+        let created = model.preview(|m| {
+            m.reverse_index();
+            apply_authoring(m, schema, &[site("A")], 2)
+                .expect("the preview authors")
+                .created
+        });
+        assert!(!created.is_empty(), "{name}");
+        assert_eq!(bytes(&model), before, "{name}: bytes");
+        assert_eq!(model.revision(), revision, "{name}: revision");
+        assert_eq!(
+            model.reverse_index(),
+            &ReverseIndex::build(&model),
+            "{name}: reverse index"
+        );
+
+        history.redo(&mut model).unwrap();
+        assert_eq!(bytes(&model), redone, "{name}: redo");
+        for id in &created {
+            assert!(model.contains(*id), "{name}: {id:?}");
+        }
+        history.undo(&mut model).unwrap();
+        history.undo(&mut model).unwrap();
     });
 }

@@ -20,6 +20,9 @@
 //! also refused by a model that is not the one it was recorded on, or a clone
 //! of it that has since diverged. A clone taken at the recorded revision
 //! accepts it, which is correct: it holds the same state.
+//!
+//! To look at a change and drop it without a new revision, use
+//! [`Model::preview`].
 
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 

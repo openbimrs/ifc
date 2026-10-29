@@ -193,3 +193,21 @@ fn remove_leaves_referrers_dangling_rather_than_rewriting_them() {
     // STEP file would, so `dangling_references` can find it.
     assert_eq!(model.dangling_references(), vec![(wall, point)]);
 }
+
+#[test]
+fn an_unrepresentable_attribute_index_panics_before_any_write() {
+    let mut model = Model::new();
+    let id = model.push(Entity::new("IFCWALL", vec![Value::Integer(1)]));
+    let revision = model.revision();
+    let before = model.get(id).unwrap().clone();
+    let single = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        model.set_attribute(id, usize::MAX, Value::Null)
+    }));
+    assert!(single.is_err());
+    let batch = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        model.set_attributes(id, [(0, Value::Integer(7)), (usize::MAX, Value::Null)])
+    }));
+    assert!(batch.is_err());
+    assert_eq!(model.get(id).unwrap(), &before);
+    assert_eq!(model.revision(), revision);
+}

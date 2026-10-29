@@ -12,6 +12,20 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#595)
+
+- `Model::set_attribute` and `Model::set_attributes` panic before any write
+  for an attribute index of `usize::MAX`, instead of wrapping in release builds
+  and truncating the entity, or leaving the first edits of a batch unrecorded.
+
+### Added (#595)
+
+- `Model::preview` runs a change and rolls it back exactly, the revision
+  included: entities, orders, header, next free id, diagnostics and the
+  maintained indexes are put back, and a `History`, `Transaction` or `Inverse`
+  made before it stays valid. Revisions drawn inside are never reissued.
+  Semver: minor (additive).
+
 ## [0.4.3] - 2026-10-28
 
 ### Added (#587)

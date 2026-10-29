@@ -11,8 +11,10 @@
 //! - `record.rs`: `begin_recording` / `end_recording` on `Model`.
 //! - `inverse.rs`: `Inverse`, the recorded undo of a run of writes.
 //! - `history.rs`: `History`, a bounded undo and redo stack of inverses.
+//! - `preview.rs`: `Model::preview`, a change that is always rolled back,
+//!   revision included.
 //!
-//! `edit.rs` and `record.rs` add inherent `Model` methods; `transaction.rs`
+//! `edit.rs`, `record.rs` and `preview.rs` add inherent `Model` methods; `transaction.rs`
 //! owns the batched authoring contract. The public items are re-exported at
 //! the crate root.
 
@@ -20,6 +22,7 @@ mod conflict;
 mod edit;
 mod history;
 mod inverse;
+mod preview;
 mod record;
 mod step;
 mod transaction;

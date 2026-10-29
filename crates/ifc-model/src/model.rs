@@ -59,6 +59,10 @@ pub struct Model {
     /// Not a content hash: two different edit sequences can reach the same
     /// bytes and still get different revisions. It answers "did anything
     /// change", which is the question optimistic concurrency asks.
+    ///
+    /// [`Model::preview`] is the one call that sets the revision back: it
+    /// restores the exact state that revision named, and the revisions drawn
+    /// inside it are never handed out again.
     revision: u64,
     /// Non-fatal findings from the read that produced this model. Empty
     /// unless a codec recovered from damaged input.
@@ -247,6 +251,13 @@ impl Model {
     /// a new value that is greater than any handed out before, in any model of
     /// the process, and not necessarily one more than the last; the absolute
     /// value carries no meaning beyond comparison. See [`Transaction`](crate::Transaction).
+    ///
+    /// Across a [`Model::preview`] only equality is meaningful: a revision
+    /// seen inside the closure can be greater than the model's afterwards.
+    ///
+    /// [`Model::preview`] is the one call that sets the revision back: it
+    /// restores the exact state that revision named, and the revisions drawn
+    /// inside it are never handed out again.
     pub fn revision(&self) -> u64 {
         self.revision
     }
@@ -474,6 +485,16 @@ impl Model {
 
     pub(crate) fn set_max_id(&mut self, max_id: u64) {
         self.max_id = max_id;
+    }
+
+    /// Only `Model::preview` calls this, after putting back the exact state
+    /// `revision` named.
+    pub(crate) fn restore_revision(&mut self, revision: u64) {
+        self.revision = revision;
+    }
+
+    pub(crate) fn truncate_diagnostics(&mut self, len: usize) {
+        self.diagnostics.truncate(len);
     }
 
     pub(crate) fn entities_mut(&mut self) -> &mut AHashMap<EntityId, Slot> {

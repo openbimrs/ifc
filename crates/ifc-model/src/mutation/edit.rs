@@ -51,14 +51,20 @@ impl Model {
     /// let coords = model.get(id).unwrap().attribute(0).unwrap().as_list().unwrap();
     /// assert_eq!(coords[0].as_f64(), Some(10.0));
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// If `index` is `usize::MAX`, before anything is written.
     pub fn set_attribute(&mut self, id: EntityId, index: usize, value: Value) -> Option<Value> {
+        // Before any write: a panic must leave the entity as it was.
+        let width = slot_width(index);
         let recording = self.is_recording();
         let built = self.derived_is_built();
         let entity = self.entity_mut(id)?;
         let before = built.then(|| Footprint::of_slots(entity, &[index]));
         let len = entity.attributes.len();
         if index >= len {
-            entity.attributes.resize(index + 1, Value::Null);
+            entity.attributes.resize(width, Value::Null);
         }
         let previous = std::mem::replace(&mut entity.attributes[index], value);
         let after = built.then(|| Footprint::of_slots(entity, &[index]));
@@ -88,6 +94,10 @@ impl Model {
     /// Returns the previous values in `edits` order, or `None` if `id` does
     /// not name an entity. An empty `edits` changes nothing, revision
     /// included.
+    ///
+    /// # Panics
+    ///
+    /// If any index is `usize::MAX`, before anything is written.
     pub fn set_attributes(
         &mut self,
         id: EntityId,
@@ -96,6 +106,10 @@ impl Model {
         let recording = self.is_recording();
         let built = self.derived_is_built();
         let edits: Vec<(usize, Value)> = edits.into_iter().collect();
+        // Before any write: a panic must leave the entity as it was.
+        for (index, _) in &edits {
+            slot_width(*index);
+        }
         let slots: Vec<usize> = if built {
             edits.iter().map(|(index, _)| *index).collect()
         } else {
@@ -222,4 +236,12 @@ impl Model {
         self.bump_revision();
         Some(entity)
     }
+}
+
+/// The attribute count that holds slot `index`; panics, rather than wrap,
+/// for an index no entity can hold.
+fn slot_width(index: usize) -> usize {
+    index
+        .checked_add(1)
+        .expect("an attribute index must be below usize::MAX")
 }

@@ -17,6 +17,8 @@
 //! The bound counts entries, not bytes: removed entities stay in memory until
 //! their entry is dropped.
 //!
+//! A [`Model::preview`] is not a change; the history stays valid across it.
+//!
 //! ```
 //! use ifc_model::{Entity, History, Model};
 //!

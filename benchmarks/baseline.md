@@ -508,3 +508,35 @@ The one-off cost of building the indexes, `index.build` (the first
 The model of N walls for `one_wall` is replicated from one authored wall
 (the README explains why); up to 1,000 walls the harness checks it against
 authored walls.
+
+### Preview (#595)
+
+`Model::preview` against the clone it replaces: one wall authored into a
+model of N walls, looked at and dropped. Harness: `authoring.preview.one_wall`
+(the preview) and `authoring.preview.clone` (`Model::clone` and the same
+`apply_authoring`) in `crates/openbim-ifc/benches/authoring`.
+
+**Not a quiet-window measurement.** The machine is shared and was busy: the
+1-minute load was 41 before and 39 after the run, with the load gate left at
+its default for a single process and no CPU pinning. The ratio is large enough
+that this does not change the verdict.
+
+- date: 2026-10-29
+- machine: Intel Xeon w7-3565X, shared VM, 173 GiB RAM, no pinning
+- OS: Debian GNU/Linux 13 (trixie), kernel 6.12.113+deb13-cloud-amd64
+- toolchain: rustc 1.99.1; `cargo bench` profile (opt-level 3, thin LTO,
+  1 codegen unit)
+- plan: one process, 3 warm-up and 20 samples
+- command: `cargo bench -p openbim-ifc --features authoring,ifc4x3 --bench
+  authoring -- --scale author-1k,author-10k --bench-only
+  authoring.preview.one_wall,authoring.preview.clone,authoring.one_wall.into_n`
+
+| bench | 1,000 walls | 10,000 walls |
+| --- | ---: | ---: |
+| `preview.one_wall` | 0.066 ms | 0.063 ms |
+| `preview.clone` | 1.65 ms | 40.7 ms |
+| `one_wall.into_n` (recorded apply and undo, for reference) | 0.063 ms | 0.063 ms |
+
+The preview is flat in the model size and costs what the recorded apply of the
+same wall costs (the rollback replays the recorded steps); the clone grows
+with the model, 25 times the preview at 1,000 walls and 650 times at 10,000.
