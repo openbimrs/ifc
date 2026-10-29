@@ -10,14 +10,14 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.39.2 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
+| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.39.3 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
 
 ## Model, codecs, schema, authoring and validation
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
 | [`ifc-author`](./crates/ifc-author) | <span class="status-implemented">Implemented</span> | 0.4.2 | Schema-checked IFC authoring: construct entities by attribute name with arity and type validation. |
-| [`ifc-model`](./crates/ifc-model) | <span class="status-implemented">Implemented</span> | 0.4.3 | The IFC entity graph: storage and structural queries, free of domain semantics and serialization. |
+| [`ifc-model`](./crates/ifc-model) | <span class="status-implemented">Implemented</span> | 0.4.4 | The IFC entity graph: storage and structural queries, free of domain semantics and serialization. |
 | [`ifc-schema`](./crates/ifc-schema) | <span class="status-implemented">Implemented</span> | 0.3.5 | IFC schema as data: entity table, supertype chain, attribute names. |
 | [`ifc-step`](./crates/ifc-step) | <span class="status-implemented">Implemented</span> | 0.6.2 | STEP physical file (ISO 10303-21) codec for the IFC model. |
 | [`ifc-validate`](./crates/ifc-validate) | <span class="status-implemented">Implemented</span> | 0.8.2 | Schema conformance: WHERE rules, cardinality, GUID and reference integrity. |
