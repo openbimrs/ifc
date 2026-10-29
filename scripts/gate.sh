@@ -116,6 +116,8 @@ gate_test() {
     # Authoring against model size (#587): the smoke scale, entity counts
     # and checksums asserted, the replicated model checked against authoring.
     cargo test -p openbim-ifc --features authoring,ifc4x3 --bench authoring
+    # Meshing a subset (#608): the smoke scale, the mesh and its colour asserted.
+    cargo test -p openbim-ifc --features authoring,ifc4x3,mesh --bench mesh_subset
 
     cargo test -p ifc-model --test package_architecture
     cargo test -p ifc-model --test progressive_context

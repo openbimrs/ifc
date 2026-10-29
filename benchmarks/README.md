@@ -15,6 +15,9 @@ Two sets of measurements, each with the machine and method it was taken on:
 - [Authoring](#authoring): a checked authoring batch and a single edit against
   model size, and the undo of a batch (#587). Measured comparison:
   [`baseline.md`](baseline.md#authoring-587).
+- [Meshing a subset](#meshing-a-subset-608): `product_meshes` of one wall
+  against model size, with a material, and inside `Model::preview` (#608).
+  Measured comparison: [`baseline.md`](baseline.md#meshing-a-subset-608).
 - [Cross-backend geometry comparison](#cross-backend-geometry-comparison):
   one fixture corpus compiled through the reference geometry backend and a
   caller-supplied one, agreement checked (#31). Sample output:
@@ -293,6 +296,33 @@ cargo test -p openbim-ifc --features authoring,ifc4x3 --bench authoring   # the 
 PACKAGE=openbim-ifc BENCH=authoring FEATURES=authoring,ifc4x3 \
     SCALES="author-1k author-10k author-100k" \
     BENCH_ARGS="--bench-only authoring.one_wall.into_n" benchmarks/run-baseline.sh out-dir
+```
+
+## Meshing a subset (#608)
+
+`crates/openbim-ifc/benches/mesh_subset/`, run by `cargo bench -p openbim-ifc
+--features authoring,ifc4x3,mesh --bench mesh_subset`: what meshing and
+colouring one product costs as the model grows. It compiles in the harness
+modules of the codec bench and the wall workload of the authoring bench by
+path.
+
+| Benchmark | Measures |
+| --- | --- |
+| `mesh.subset.one_wall` | `product_meshes` of the middle wall of a model of N unstyled walls |
+| `mesh.subset.one_wall_material` | the same when each of the N walls has an `IfcRelAssociatesMaterial` to one coloured material |
+| `mesh.preview.one_wall` | `Model::preview` of `apply_authoring` of one wall, then `product_meshes` of that wall inside the preview |
+
+Scales: `mesh-smoke` (50 walls, the gate), `mesh-1k`, `mesh-10k`,
+`mesh-50k`. The model keeps its reverse index, as a model in an editor
+does. Before any timing the entity count is asserted, the colour resolver
+must accept the model, and the mesh must be non-empty with the expected
+colour. A subset must cost the subset: the 50k/1k ratio of every row stays
+within 10.
+
+```sh
+cargo test -p openbim-ifc --features authoring,ifc4x3,mesh --bench mesh_subset   # the smoke run, in the gate
+PACKAGE=openbim-ifc BENCH=mesh_subset FEATURES=authoring,ifc4x3,mesh \
+    SCALES="mesh-1k mesh-10k mesh-50k" benchmarks/run-baseline.sh out-dir
 ```
 
 ## Cross-backend geometry comparison
