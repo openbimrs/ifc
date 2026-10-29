@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.39.4] - 2026-10-29
+
 ### Fixed (#608)
 
 - `product_meshes` and `product_colours` of a subset cost the subset, also
@@ -1411,7 +1413,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.39.3...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.39.4...HEAD
+[0.39.4]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.4
 [0.39.3]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.3
 [0.39.2]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.2
 [0.39.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.1

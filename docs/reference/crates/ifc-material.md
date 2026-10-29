@@ -11,7 +11,7 @@ Material definitions: layer sets, profile sets, constituents, usage.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.6.2 (2026-10-28) |
+| Latest release | 0.6.3 (2026-10-29) |
 | Registries | [crates.io `ifc-material`](https://crates.io/crates/ifc-material) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `material` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_material/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-material) |
@@ -52,10 +52,17 @@ another release's slot.
 
 ## Changes
 
-Latest release, 0.6.2 (2026-10-28):
+Latest release, 0.6.3 (2026-10-29):
 
-### Changed
+### Changed (#608)
 
-- Copyright holder in NOTICE and licence texts is rheonda.
+- `assignments_for` and `assigned_material` read only the relationships
+  whose `RelatedObjects` reference the object, through the model's reverse
+  index when built, else one pass over the relationship type. A malformed
+  relationship that does not name the object no longer refuses it. Several
+  relationships are read in ascending id. `assigned_material` on a model
+  with no single bound release returns `Ok(None)` for an object no
+  relationship references (it was `UnsupportedSchema` or `MultipleSchemas`
+  whenever any relationship existed).
 
 Full history: [`crates/ifc-material/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-material/CHANGELOG.md)

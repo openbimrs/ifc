@@ -11,7 +11,7 @@ The IFC entity graph: storage and structural queries, free of domain semantics a
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.4 (2026-10-29) |
+| Latest release | 0.4.5 (2026-10-29) |
 | Registries | [crates.io `ifc-model`](https://crates.io/crates/ifc-model) |
 | API documentation | [rustdoc](/api/rustdoc/ifc_model/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-model) |
 | Source | [`crates/ifc-model/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-model) |
@@ -29,20 +29,14 @@ serialization.
 
 ## Changes
 
-Latest release, 0.4.4 (2026-10-29):
+Latest release, 0.4.5 (2026-10-29):
 
-### Fixed (#595)
+### Added (#608)
 
-- `Model::set_attribute` and `Model::set_attributes` panic before any write
-  for an attribute index of `usize::MAX`, instead of wrapping in release builds
-  and truncating the entity, or leaving the first edits of a batch unrecorded.
-
-### Added (#595)
-
-- `Model::preview` runs a change and rolls it back exactly, the revision
-  included: entities, orders, header, next free id, diagnostics and the
-  maintained indexes are put back, and a `History`, `Transaction` or `Inverse`
-  made before it stays valid. Revisions drawn inside are never reissued.
-  Semver: minor (additive).
+- `Model::reverse_index_if_built` returns the reverse index if something
+  already built it, and never builds it.
+- `ReverseIndex::build_from` indexes the references held by the entities
+  given, in one pass over them: for every target it reports what
+  `ReverseIndex::build` reports, restricted to those entities.
 
 Full history: [`crates/ifc-model/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-model/CHANGELOG.md)

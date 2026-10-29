@@ -31,14 +31,14 @@ openbim-ifc = { path = "crates/openbim-ifc", version = "0.39.0", default-feature
 openbim-ifc-binding-core = { path = "crates/openbim-ifc-binding-core", version = "0.1.0", default-features = false }
 ifc-step = { path = "crates/ifc-step", version = "0.6.0" }
 ifc-xml = { path = "crates/ifc-xml", version = "0.5.0" }
-ifc-model = { path = "crates/ifc-model", version = "0.4.4" }
+ifc-model = { path = "crates/ifc-model", version = "0.4.5" }
 ifc-geometry = { path = "crates/ifc-geometry", version = "0.32.0", default-features = false }
 ifc-properties = { path = "crates/ifc-properties", version = "0.10.0", default-features = false }
 ifc-template-catalog = { path = "crates/ifc-template-catalog", version = "0.4.0", default-features = false }
 ifc-cost = { path = "crates/ifc-cost", version = "0.5.0", default-features = false }
 ifc-schedule = { path = "crates/ifc-schedule", version = "0.5.0" }
-ifc-material = { path = "crates/ifc-material", version = "0.6.0", default-features = false }
-ifc-style = { path = "crates/ifc-style", version = "0.6.0" }
+ifc-material = { path = "crates/ifc-material", version = "0.6.3", default-features = false }
+ifc-style = { path = "crates/ifc-style", version = "0.6.3" }
 ifc-element-type = { path = "crates/ifc-element-type", version = "0.4.0" }
 ifc-occurrence = { path = "crates/ifc-occurrence", version = "0.4.0" }
 ifc-structural = { path = "crates/ifc-structural", version = "0.5.0" }

@@ -11,7 +11,7 @@ Presentation: styles, colours, textures, layers, annotation.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.6.2 (2026-10-28) |
+| Latest release | 0.6.3 (2026-10-29) |
 | Registries | [crates.io `ifc-style`](https://crates.io/crates/ifc-style) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `style` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_style/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-style) |
@@ -34,10 +34,14 @@ IFC4, and IFC4X3 layout drift is explicit rather than guessed.
 
 ## Changes
 
-Latest release, 0.6.2 (2026-10-28):
+Latest release, 0.6.3 (2026-10-29):
 
-### Changed
+### Changed (#608)
 
-- Copyright holder in NOTICE and licence texts is rheonda.
+- `StyleIndex` finds an item's styled items and layers, and a material's
+  representations, through referrers: the model's reverse index when built,
+  else one pass over the style records only. A malformed assignment refuses
+  only the lookups that reach it, and `StyleIndex::new` no longer fails.
+  Several records on one item or material are read in ascending id.
 
 Full history: [`crates/ifc-style/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-style/CHANGELOG.md)

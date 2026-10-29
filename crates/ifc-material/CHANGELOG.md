@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-10-29
+
 ### Changed (#608)
 
 - `assignments_for` and `assigned_material` read only the relationships
@@ -181,7 +183,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-material-v0.6.2...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-material-v0.6.3...HEAD
+[0.6.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-material-v0.6.3
 [0.6.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-material-v0.6.2
 [0.6.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-material-v0.6.1
 [0.6.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-material-v0.6.0
