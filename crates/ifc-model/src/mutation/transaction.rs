@@ -344,7 +344,7 @@ impl Transaction {
         if self.edits.iter().any(|e| matches!(e, Edit::Remove { .. })) {
             // The model's own index when something built it: no scan.
             let temporary;
-            let index = match model.maintained_reverse_index() {
+            let index = match model.reverse_index_if_built() {
                 Some(index) => index,
                 None => {
                     temporary = ReverseIndex::build(model);

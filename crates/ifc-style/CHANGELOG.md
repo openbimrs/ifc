@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#608)
+
+- `StyleIndex` finds an item's styled items and layers, and a material's
+  representations, through referrers: the model's reverse index when built,
+  else one pass over the style records only. A malformed assignment refuses
+  only the lookups that reach it, and `StyleIndex::new` no longer fails.
+  Several records on one item or material are read in ascending id.
+
 ## [0.6.2] - 2026-10-28
 
 ### Changed

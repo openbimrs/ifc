@@ -302,6 +302,11 @@ name = "authoring"
 harness = false
 required-features = ["authoring", "ifc4x3"]
 
+[[bench]]
+name = "mesh_subset"
+harness = false
+required-features = ["authoring", "ifc4x3", "mesh"]
+
 [[example]]
 name = "wasm_fresh_seed"
 crate-type = ["cdylib"]

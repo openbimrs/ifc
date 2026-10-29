@@ -295,7 +295,7 @@ impl<'m> MaterialView<'m> {
         const ENTITY: &str = "IFCRELDEFINESBYTYPE";
         let release = self.release();
         let mut type_relations = Vec::new();
-        for (relation_id, relation) in self.model().of_type(ENTITY) {
+        for (relation_id, relation) in self.naming(ENTITY, "RelatedObjects", object)? {
             let related_slot = release.slot(ENTITY, relation_id, "RelatedObjects")?;
             let related = required_refs(
                 ENTITY,

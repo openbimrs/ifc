@@ -106,3 +106,76 @@ fn an_unreferenced_target_yields_an_empty_slice() {
     assert!(index.referrers(EntityId(42)).is_empty());
     assert!(index.is_empty());
 }
+
+/// A model with a spread of references: lists, repeats, dangling targets.
+fn spread() -> Model {
+    let mut model = Model::new();
+    put(&mut model, 1, "IFCWALL", vec![]);
+    put(&mut model, 2, "IFCWALL", vec![]);
+    put(
+        &mut model,
+        3,
+        "IFCRELA",
+        vec![Value::Ref(EntityId(1)), Value::Ref(EntityId(2))],
+    );
+    put(
+        &mut model,
+        4,
+        "IFCRELB",
+        vec![
+            Value::Null,
+            Value::List(vec![Value::Ref(EntityId(1)), Value::Ref(EntityId(1))]),
+            Value::Ref(EntityId(9)),
+        ],
+    );
+    put(&mut model, 5, "IFCRELC", vec![Value::Ref(EntityId(2))]);
+    model
+}
+
+fn all_targets() -> impl Iterator<Item = EntityId> {
+    (0..12).map(EntityId)
+}
+
+#[test]
+fn build_from_every_entity_equals_build() {
+    let model = spread();
+    let full = ReverseIndex::build(&model);
+    let from_all = ReverseIndex::build_from(&model, model.ids());
+    assert_eq!(from_all, full);
+}
+
+#[test]
+fn build_from_a_subset_is_the_full_index_restricted_to_it() {
+    let model = spread();
+    let full = ReverseIndex::build(&model);
+    let subset = [EntityId(4), EntityId(3)];
+    let part = ReverseIndex::build_from(&model, subset);
+    for target in all_targets() {
+        let expected: Vec<Referrer> = full
+            .referrers(target)
+            .iter()
+            .filter(|r| subset.contains(&r.from))
+            .copied()
+            .collect();
+        assert_eq!(part.referrers(target), expected, "target {target}");
+    }
+    assert!(
+        !part.is_referenced(EntityId(5)),
+        "#5 is not a referrer here"
+    );
+}
+
+#[test]
+fn build_from_skips_missing_ids_and_counts_repeats_once() {
+    let model = spread();
+    let once = ReverseIndex::build_from(&model, [EntityId(3)]);
+    let noisy = ReverseIndex::build_from(
+        &model,
+        [EntityId(3), EntityId(77), EntityId(3), EntityId(3)],
+    );
+    assert_eq!(noisy, once);
+    assert_eq!(
+        ReverseIndex::build_from(&model, std::iter::empty()),
+        ReverseIndex::default()
+    );
+}

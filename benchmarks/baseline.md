@@ -540,3 +540,58 @@ that this does not change the verdict.
 The preview is flat in the model size and costs what the recorded apply of the
 same wall costs (the rollback replays the recorded steps); the clone grows
 with the model, 25 times the preview at 1,000 walls and 650 times at 10,000.
+
+## Meshing a subset (#608)
+
+`product_meshes` of one wall in a model of N walls, before and after the
+style, material and aspect lookups read the referrers of what they are asked
+about (ADR 0023, amendment). Harness: `crates/openbim-ifc/benches/mesh_subset`,
+method in [`README.md`](README.md#meshing-a-subset-608). The model keeps its
+reverse index; `one_wall_material` adds one coloured material and one
+`IfcRelAssociatesMaterial` per wall.
+
+**Not a quiet-window measurement.** The machine is shared and was busy: the
+load gate was off (`PROVISIONAL=1`) and the 1-minute load at the start of the
+runs was 5.7 to 9.5. The ratios are large enough that this does not change a
+verdict.
+
+- date: 2026-10-29
+- machine: Intel Xeon w7-3565X, shared VM, 173 GiB RAM; `taskset -c 12-19`
+- OS: Debian GNU/Linux 13 (trixie), kernel 6.12.113+deb13-cloud-amd64
+- toolchain: rustc 1.99.1 (58cf8f9c3 2026-10-13); `cargo bench` profile
+  (opt-level 3, thin LTO, 1 codegen unit)
+- **before**: `e493055c` (the bench commit, the code of `f7f55d83`), built in a
+  separate worktree
+- **after**: the tip of `perf/608` with the material cache (JSON re-run in
+  the same way)
+- plan: 3 processes a side, 3 warm-up and 20 samples each
+- command: `PACKAGE=openbim-ifc BENCH=mesh_subset
+  FEATURES=authoring,ifc4x3,mesh PROVISIONAL=1 RUNS=3
+  SCALES="mesh-1k mesh-10k mesh-50k" benchmarks/run-baseline.sh`
+
+| bench | scale | before | after | after / before |
+| --- | --- | ---: | ---: | ---: |
+| `subset.one_wall` | 1,000 walls | 1.27 ms | 0.0092 ms | 0.007 |
+| | 10,000 walls | 18.3 ms | 0.0097 ms | 0.001 |
+| | 50,000 walls | 152 ms | 0.0089 ms | 0.0001 |
+| `subset.one_wall_material` | 1,000 walls | 1.61 ms | 0.0124 ms | 0.008 |
+| | 10,000 walls | 20.5 ms | 0.0131 ms | 0.001 |
+| | 50,000 walls | 177 ms | 0.0129 ms | 0.0001 |
+| `preview.one_wall` | 1,000 walls | 1.31 ms | 0.0666 ms | 0.05 |
+| | 10,000 walls | 17.6 ms | 0.0758 ms | 0.004 |
+| | 50,000 walls | 144 ms | 0.0694 ms | 0.0005 |
+
+`benchmarks/baseline.py compare` calls every row faster. Before, each row
+grew with the model (50,000 over 1,000 walls: 120 for `subset.one_wall`, 110
+for `one_wall_material`, 110 for `preview.one_wall`). After, all three are flat
+(0.97 to 1.04). The material row needed two more changes: the resolver caches
+each material's own colour, and the style index scans the (few) material
+definitions instead of the (many) referrers of a material that every wall's
+relationship names.
+
+Whole-model `product_colours` with one shared material and one
+`IfcRelAssociatesMaterial` per wall (a throwaway profiler, release build,
+including the first reverse-index build) is linear: 1,000 walls 2.1 ms, 2,000
+4.5 ms, 4,000 10.4 ms, 8,000 21.9 ms. Before the cache and the definition scan,
+`one_wall_material` after the first change was 0.0132, 0.0187 and 0.0432 ms
+at 1,000, 10,000 and 50,000 walls.

@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#608)
+
+- `Model::reverse_index_if_built` returns the reverse index if something
+  already built it, and never builds it.
+- `ReverseIndex::build_from` indexes the references held by the entities
+  given, in one pass over them: for every target it reports what
+  `ReverseIndex::build` reports, restricted to those entities.
+
 ## [0.4.4] - 2026-10-29
 
 ### Fixed (#595)

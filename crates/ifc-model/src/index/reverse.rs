@@ -56,9 +56,29 @@ impl ReverseIndex {
     /// Scan every entity once and record each reference by target.
     #[must_use]
     pub fn build(model: &Model) -> Self {
-        let mut incoming: AHashMap<EntityId, Vec<Referrer>> = AHashMap::new();
         // File order, so the result is stable rather than hash-ordered.
-        for from in model.ids() {
+        Self::collect(model, model.ids())
+    }
+
+    /// The references held by `referrers` only, in one pass over them.
+    ///
+    /// For every target, [`ReverseIndex::referrers`] equals what
+    /// [`ReverseIndex::build`] reports for it, restricted to those
+    /// entities: the same slots, ascending. Ids the model does not hold are
+    /// skipped, and an id repeated counts once. A caller that knows which
+    /// record types can point at what it asks about pays for those records,
+    /// not for the model (#608).
+    #[must_use]
+    pub fn build_from(model: &Model, referrers: impl IntoIterator<Item = EntityId>) -> Self {
+        let mut ids: Vec<EntityId> = referrers.into_iter().collect();
+        ids.sort_unstable();
+        ids.dedup();
+        Self::collect(model, ids)
+    }
+
+    fn collect(model: &Model, from: impl IntoIterator<Item = EntityId>) -> Self {
+        let mut incoming: AHashMap<EntityId, Vec<Referrer>> = AHashMap::new();
+        for from in from {
             let Some(entity) = model.get(from) else {
                 continue;
             };

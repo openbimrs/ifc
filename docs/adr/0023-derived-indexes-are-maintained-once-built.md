@@ -102,3 +102,49 @@ Every public signature of the authoring API is unchanged.
   `mutation/edit.rs`, `mutation/step.rs` and `mutation/transaction.rs`.
 - `crates/openbim-ifc/src/authoring/overlay.rs`, `plan.rs`, `relate.rs`,
   `propagate.rs`, `check.rs`.
+
+## Amendment (2026-10-29): lookups read referrers and refuse what they reach (#608)
+
+**Problem.** Meshing one wall of 50,000 took 142 ms. About 99% was
+`ifc_style::StyleIndex::new`, which walked every entity of the model to index
+style records on each `ColourResolver::new`; the material lookups read every
+`IfcRelAssociatesMaterial` and `IfcRelDefinesByType` per product (quadratic
+over a whole model), and the resolver indexed every `IfcShapeAspect` per call.
+Inside `Model::preview` nothing could be cached across calls, since every
+preview changes the model.
+
+**Decision.** A lookup finds the style, material and aspect records through
+the referrers of the entity it is asked about, and reads only the records that
+reference it in the attribute that names it (`IfcStyledItem.Item`,
+`IfcPresentationLayerAssignment.AssignedItems`,
+`IfcMaterialDefinitionRepresentation.RepresentedMaterial`, `RelatedObjects` of
+`IfcRelAssociatesMaterial` and `IfcRelDefinesByType`, and the shape aspect
+whose `ShapeRepresentations` lists a representation whose `Items` list the
+item). `ifc-model` gains `Model::reverse_index_if_built` and
+`ReverseIndex::build_from` (the references held by chosen entities in one
+pass). `ifc-style` and `ifc-material` use the model's index when something
+built it, else one pass over only the record types they read, and never leave
+an index behind. The `openbim-ifc` facade builds the model's maintained
+index on the first colour lookup (`ColourResolver::new`), so every later
+resolver, also inside a preview, finds it built and current.
+
+**Consequences.**
+
+- A malformed record refuses only the lookups that reach it, with the error it
+  gave before. `StyleIndex::new` no longer validates every assignment (it keeps
+  its `Result` and never returns `Err`), and a malformed style, material or
+  aspect record elsewhere no longer refuses every product.
+- Several records on one item or material are read in ascending id.
+- The first colour lookup on a model pays one reverse-index scan, which the
+  model then keeps (ADR 0023's memory cost applies).
+- Measured
+  ([`benchmarks/baseline.md`](https://github.com/openbimrs/ifc/blob/main/benchmarks/baseline.md#meshing-a-subset-608)):
+  one wall of 50,000, 152 ms to 0.009 ms; with a material 177 ms to 0.013 ms;
+  inside `Model::preview` 144 ms to 0.07 ms.
+
+**Rejected.**
+
+| Option | Why not |
+| --- | --- |
+| A type-bucket `StyleIndex` that still validates every record | Still O(records of those types) on each resolver, and a malformed record anywhere refuses everything. |
+| A per-revision cache of the style index | A preview changes the model, so every preview misses it. |
