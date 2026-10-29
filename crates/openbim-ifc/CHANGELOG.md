@@ -15,7 +15,7 @@ everything released before per-crate changelogs began.
 ### Fixed (#608)
 
 - `product_meshes` and `product_colours` of a subset cost the subset, also
-  inside `Model::preview` (142 ms to under 1 ms at 50,000 walls). The colour
+  inside `Model::preview` (152 ms to under 0.1 ms at 50,000 walls). The colour
   resolver builds the model's reverse index on first use and finds style,
   material and shape-aspect records through it; the other representation
   purposes no longer build a resolver. Whole-model colours with per-object

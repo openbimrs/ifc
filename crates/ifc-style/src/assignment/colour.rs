@@ -113,6 +113,8 @@ pub struct StyleIndex<'m, 's> {
     /// `IfcMaterialDefinitionRepresentation.RepresentedMaterial`; `None` in
     /// a release without the entity.
     material_slot: Option<usize>,
+    /// `IfcMaterialDefinitionRepresentation` and its subtypes in the release.
+    definition_types: Vec<&'s str>,
 }
 
 /// The supertypes of the records a [`StyleIndex`] reads.
@@ -159,9 +161,17 @@ impl<'m, 's> StyleIndex<'m, 's> {
             },
             Cow::Borrowed,
         );
+        let definition_types = if schema.entity(DEFINITION).is_some() {
+            std::iter::once(DEFINITION)
+                .chain(schema.subtypes(DEFINITION))
+                .collect()
+        } else {
+            Vec::new()
+        };
         Ok(Self {
             view,
             referrers,
+            definition_types,
             item_slot: slot(STYLED_ITEM, "Item"),
             layer_slot: slot(LAYER, "AssignedItems"),
             material_slot: slot(DEFINITION, "RepresentedMaterial"),
@@ -222,8 +232,9 @@ impl<'m, 's> StyleIndex<'m, 's> {
 
     /// The `IfcMaterialDefinitionRepresentation`s of `material`, ascending.
     fn definitions_of(&self, material: EntityId) -> StyleResult<Vec<EntityId>> {
+        let named = self.named_definitions(material);
         let mut found = Vec::new();
-        for definition in self.named_in(material, self.material_slot, DEFINITION) {
+        for definition in named {
             let represented = self
                 .view
                 .record(definition, DEFINITION)?
@@ -233,6 +244,43 @@ impl<'m, 's> StyleIndex<'m, 's> {
             }
         }
         Ok(found)
+    }
+
+    /// The definitions holding `material` in `RepresentedMaterial`. A
+    /// material many relationships reference (every wall of a model made of
+    /// it) has far more referrers than the model has definitions: then the
+    /// definitions are scanned instead, with the same answer.
+    fn named_definitions(&self, material: EntityId) -> Vec<EntityId> {
+        let Some(slot) = self.material_slot else {
+            return Vec::new();
+        };
+        let model = self.view.model;
+        let definitions: usize = self
+            .definition_types
+            .iter()
+            .map(|name| model.ids_of_type(name).len())
+            .sum();
+        if definitions >= self.referrers.referrers(material).len() {
+            return self.named_in(material, self.material_slot, DEFINITION);
+        }
+        let mut found: Vec<EntityId> = self
+            .definition_types
+            .iter()
+            .flat_map(|name| model.ids_of_type(name).iter().copied())
+            .filter(|&id| {
+                model
+                    .get(id)
+                    .and_then(|e| e.attributes.get(slot))
+                    .is_some_and(|value| {
+                        let mut hit = false;
+                        value.for_each_ref(&mut |target| hit |= target == material);
+                        hit
+                    })
+            })
+            .collect();
+        found.sort_unstable();
+        found.dedup();
+        found
     }
 
     /// The view the index reads through.

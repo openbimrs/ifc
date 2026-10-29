@@ -77,7 +77,9 @@
 
 #![cfg(feature = "colour")]
 
+use std::collections::BTreeMap;
 use std::fmt;
+use std::sync::Mutex;
 
 use ifc_geometry::{select_shape_representation, GeometryError};
 use ifc_material::{
@@ -218,14 +220,34 @@ pub fn product_colours(
     }
 }
 
-/// Every style assignment and shape aspect of a model, indexed once, for
-/// colour lookups per product.
-#[derive(Debug, Clone)]
+/// The style, material and shape-aspect lookups of a model, bound to its
+/// release, for colour lookups per product. Records are found through the
+/// model's reverse index, not indexed here (#608).
+#[derive(Debug)]
 pub struct ColourResolver<'m> {
     model: &'m Model,
     schema: &'static Schema,
     styles: StyleIndex<'m, 'static>,
     materials: MaterialView<'m>,
+    /// Each material's own colour, resolved once: a model whose products
+    /// share a few materials would otherwise resolve them per product.
+    material_colours: Mutex<BTreeMap<EntityId, Result<Option<SurfaceColour>, StyleError>>>,
+}
+
+impl Clone for ColourResolver<'_> {
+    fn clone(&self) -> Self {
+        Self {
+            model: self.model,
+            schema: self.schema,
+            styles: self.styles.clone(),
+            materials: self.materials,
+            material_colours: Mutex::new(
+                self.material_colours
+                    .lock()
+                    .map_or_else(|poisoned| poisoned.into_inner().clone(), |g| g.clone()),
+            ),
+        }
+    }
 }
 
 /// One `IfcShapeAspect`, as the constituent lookup reads it.
@@ -275,8 +297,7 @@ impl<'m> ColourResolver<'m> {
     /// # Errors
     ///
     /// [`ColourError::UnsupportedSchema`] unless the header declares one
-    /// release this build bundles, and the style index's errors
-    /// ([`StyleIndex::new`]).
+    /// release this build bundles.
     pub fn new(model: &'m Model) -> Result<Self, ColourError> {
         let declared = &model.header().schema;
         let unsupported = || ColourError::UnsupportedSchema {
@@ -294,7 +315,20 @@ impl<'m> ColourResolver<'m> {
             schema,
             styles,
             materials: MaterialView::new(model),
+            material_colours: Mutex::new(BTreeMap::new()),
         })
+    }
+
+    /// `material`'s own colour, from the cache once resolved (errors too).
+    fn material_colour(&self, material: EntityId) -> Result<Option<SurfaceColour>, StyleError> {
+        let mut cache = self
+            .material_colours
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        cache
+            .entry(material)
+            .or_insert_with(|| self.styles.material_colour(material))
+            .clone()
     }
 
     /// The colour every Body item of `product` agrees on; `Ok(None)` when
@@ -379,7 +413,7 @@ impl<'m> ColourResolver<'m> {
         }
         match made.as_ref().expect("resolved above") {
             Made::Nothing => Ok(None),
-            Made::One(material) => Ok(self.styles.material_colour(*material)?),
+            Made::One(material) => Ok(self.material_colour(*material)?),
             Made::Several {
                 definition,
                 materials,
@@ -387,7 +421,7 @@ impl<'m> ColourResolver<'m> {
             Made::Constituents { set, parts } => {
                 let materials = self.constituent(leaf, parts)?;
                 match materials.as_slice() {
-                    [material] => Ok(self.styles.material_colour(*material)?),
+                    [material] => Ok(self.material_colour(*material)?),
                     _ => self.agreed(leaf.item, *set, &materials),
                 }
             }
@@ -407,7 +441,7 @@ impl<'m> ColourResolver<'m> {
     ) -> Result<Option<SurfaceColour>, ColourError> {
         let colours = materials
             .iter()
-            .map(|&material| self.styles.material_colour(material))
+            .map(|&material| self.material_colour(material))
             .collect::<Result<Vec<_>, _>>()?;
         if colours.iter().all(Option::is_none) {
             return Ok(None);

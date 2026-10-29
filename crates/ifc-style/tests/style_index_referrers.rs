@@ -304,3 +304,57 @@ fn two_styled_items_on_one_item_are_still_ambiguous() {
         );
     });
 }
+
+#[test]
+fn a_material_referenced_by_many_relationships_still_finds_its_definitions() {
+    let mut model = Model::new();
+    let material = model.push(Entity::new(
+        "IFCMATERIAL",
+        vec![Value::Text("M".into()), Value::Null, Value::Null],
+    ));
+    // Far more referrers of the material than definitions in the model.
+    for _ in 0..8 {
+        model.push(Entity::new(
+            "IFCRELASSOCIATESMATERIAL",
+            vec![
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::List(vec![]),
+                Value::Ref(material),
+            ],
+        ));
+    }
+    let style = surface_style(&mut model, 0.5);
+    let item = styled_item(&mut model, Value::Null, ref_list(&[style]));
+    let representation = model.push(Entity::new(
+        "IFCSTYLEDREPRESENTATION",
+        vec![
+            Value::Null,
+            Value::Text("Style".into()),
+            Value::Text("Material".into()),
+            ref_list(&[item]),
+        ],
+    ));
+    let definition = model.push(Entity::new(
+        "IFCMATERIALDEFINITIONREPRESENTATION",
+        vec![
+            Value::Null,
+            Value::Null,
+            ref_list(&[representation]),
+            Value::Ref(material),
+        ],
+    ));
+    assert!(definition.0 > material.0);
+    both(&model, |index| {
+        let colour = index.material_colour(material).unwrap().unwrap();
+        assert_eq!(
+            colour.source,
+            ColourSource::Material {
+                material,
+                styled_item: item
+            }
+        );
+    });
+}

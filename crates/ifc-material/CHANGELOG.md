@@ -18,7 +18,10 @@ everything released before per-crate changelogs began.
   whose `RelatedObjects` reference the object, through the model's reverse
   index when built, else one pass over the relationship type. A malformed
   relationship that does not name the object no longer refuses it. Several
-  relationships are read in ascending id.
+  relationships are read in ascending id. `assigned_material` on a model
+  with no single bound release returns `Ok(None)` for an object no
+  relationship references (it was `UnsupportedSchema` or `MultipleSchemas`
+  whenever any relationship existed).
 
 ## [0.6.2] - 2026-10-28
 
