@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.39.4 (2026-10-29) |
+| Latest release | 0.39.5 (2026-10-30) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -103,16 +103,18 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.39.4 (2026-10-29):
+Latest release, 0.39.5 (2026-10-30):
 
-### Fixed (#608)
+### Added (#597)
 
-- `product_meshes` and `product_colours` of a subset cost the subset, also
-  inside `Model::preview` (152 ms to under 0.1 ms at 50,000 walls). The colour
-  resolver builds the model's reverse index on first use and finds style,
-  material and shape-aspect records through it; the other representation
-  purposes no longer build a resolver. Whole-model colours with per-object
-  materials are no longer quadratic. A malformed style, material or aspect
-  record elsewhere no longer refuses every product.
+- With `style` and `properties`: `material_fill(model, material)`, a material's cut fill as hatch line families in metres and radians with the project units resolved exactly, `material_fills(model, material)` for the fills per representation context (cut and projection views), `fill_area_style(model, style)` for a bare fill area style, `project_style_units(model)` for callers resolving many materials, and `MaterialFillError`.
+### Changed (#609)
+
+- Through ifc-material 0.6.4: a product whose own or whose type's several
+  `IfcRelAssociatesMaterial` name one material is coloured by it instead of
+  refused with `MaterialError::AmbiguousAssignment`. `material::MaterialIndex`
+  resolves the material of many products in one pass.
+
+Semver: patch (additive).
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

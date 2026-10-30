@@ -1053,7 +1053,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-material"
-version = "0.6.3"
+version = "0.6.4"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -1149,7 +1149,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-style"
-version = "0.6.3"
+version = "0.6.4"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -1332,7 +1332,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "openbim-ifc"
-version = "0.39.4"
+version = "0.39.5"
 dependencies = [
  "calamine",
  "flate2",

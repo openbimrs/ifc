@@ -11,7 +11,7 @@ Presentation: styles, colours, textures, layers, annotation.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.6.3 (2026-10-29) |
+| Latest release | 0.6.4 (2026-10-30) |
 | Registries | [crates.io `ifc-style`](https://crates.io/crates/ifc-style) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `style` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_style/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-style) |
@@ -34,14 +34,19 @@ IFC4, and IFC4X3 layout drift is explicit rather than guessed.
 
 ## Changes
 
-Latest release, 0.6.3 (2026-10-29):
+Latest release, 0.6.4 (2026-10-30):
 
-### Changed (#608)
+### Added (#597)
 
-- `StyleIndex` finds an item's styled items and layers, and a material's
-  representations, through referrers: the model's reverse index when built,
-  else one pass over the style records only. A malformed assignment refuses
-  only the lookups that reach it, and `StyleIndex::new` no longer fails.
-  Several records on one item or material are read in ascending id.
+- `StyleIndex::material_fill(material, units)`: the cut fill a material's `IfcMaterialDefinitionRepresentation` states, as a `MaterialFill` (fill area style, styled item, name, `ModelOrDraughting`, background colour) with one `HatchLine` per `IfcFillAreaStyleHatching`: angle in radians; spacing, along-line shift, origin, pattern start, dashes and width in metres; line colour. An `IfcVector` (IFC2X3: `IfcOneDirectionRepeatFactor`) distance splits into the perpendicular spacing and the shift. Fills over several contexts must draw the same, else `StyleError::AmbiguousFill`. Tiles, externally defined hatch styles, predefined curve fonts other than 'continuous' and 'by layer' deferrals are `StyleError::UnsupportedFill`.
+- `StyleIndex::material_fills(material, units)`: a material's fills per representation context as `ContextFill` (representation, context, `ContextIdentifier`, `ContextType`, the sub-context's `TargetView` without dots, its `UserDefinedTargetView` and `ParentContext`, and the `MaterialFill`), for materials that state a cut and a projection fill in `SECTION_VIEW` and `ELEVATION_VIEW` sub-contexts. Fills must agree only within one context, else `StyleError::AmbiguousFill` owned by the context (or by the styled representation, styled item or material, as in `material_fill`); `material_fill` on such a material stays ambiguous.
+- `StyleIndex::fill_area_style(style, units)`: a bare `IfcFillAreaStyle` that nothing references, resolved like a material's fill; `MaterialFill::styled_item` is an `Option` for it.
+- `StyleUnits`: the project's metres per length unit and radians per plane angle unit, resolved by the caller; a measure read without its factor is `StyleError::UnitUndeclared`, a bad factor `StyleError::InvalidUnits`.
+
+### Fixed (#597)
+
+- `create_fill_area_style_hatching` writes a length distance as `IFCPOSITIVELENGTHMEASURE(..)`, the select member, not a bare real; in IFC2X3 `HatchLineDistance::Vector` takes an `IfcOneDirectionRepeatFactor` and refuses an `IfcVector` and an `IfcTwoDirectionRepeatFactor` (WR21). `HatchLineAngle` is documented in the project's plane angle unit.
+
+Semver: patch (additive; `StyleError` is `#[non_exhaustive]`).
 
 Full history: [`crates/ifc-style/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-style/CHANGELOG.md)

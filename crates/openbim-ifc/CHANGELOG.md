@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.39.5] - 2026-10-30
+
 ### Added (#597)
 
 - With `style` and `properties`: `material_fill(model, material)`, a material's cut fill as hatch line families in metres and radians with the project units resolved exactly, `material_fills(model, material)` for the fills per representation context (cut and projection views), `fill_area_style(model, style)` for a bare fill area style, `project_style_units(model)` for callers resolving many materials, and `MaterialFillError`.
@@ -22,7 +24,7 @@ everything released before per-crate changelogs began.
   refused with `MaterialError::AmbiguousAssignment`. `material::MaterialIndex`
   resolves the material of many products in one pass.
 
-Semver: minor (additive).
+Semver: patch (additive).
 
 ## [0.39.4] - 2026-10-29
 
@@ -1425,7 +1427,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.39.4...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.39.5...HEAD
+[0.39.5]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.5
 [0.39.4]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.4
 [0.39.3]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.3
 [0.39.2]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.2

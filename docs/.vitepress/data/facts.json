@@ -160,10 +160,10 @@
           "url": "https://crates.io/crates/ifc-material"
         }
       ],
-      "released": "0.6.3",
-      "released_date": "2026-10-29",
+      "released": "0.6.4",
+      "released_date": "2026-10-30",
       "status": "implemented",
-      "version": "0.6.3"
+      "version": "0.6.4"
     },
     "ifc-model": {
       "description": "The IFC entity graph: storage and structural queries, free of domain semantics and serialization.",
@@ -310,10 +310,10 @@
           "url": "https://crates.io/crates/ifc-style"
         }
       ],
-      "released": "0.6.3",
-      "released_date": "2026-10-29",
+      "released": "0.6.4",
+      "released_date": "2026-10-30",
       "status": "implemented",
-      "version": "0.6.3"
+      "version": "0.6.4"
     },
     "ifc-systems": {
       "description": "Distribution systems, ports, and connectivity between elements.",
@@ -400,10 +400,10 @@
           "url": "https://crates.io/crates/openbim-ifc"
         }
       ],
-      "released": "0.39.4",
-      "released_date": "2026-10-29",
+      "released": "0.39.5",
+      "released_date": "2026-10-30",
       "status": "implemented",
-      "version": "0.39.4"
+      "version": "0.39.5"
     },
     "openbim-ifc-binding-core": {
       "description": "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python).",

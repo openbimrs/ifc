@@ -11,7 +11,7 @@ Material definitions: layer sets, profile sets, constituents, usage.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.6.3 (2026-10-29) |
+| Latest release | 0.6.4 (2026-10-30) |
 | Registries | [crates.io `ifc-material`](https://crates.io/crates/ifc-material) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `material` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_material/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-material) |
@@ -52,17 +52,35 @@ another release's slot.
 
 ## Changes
 
-Latest release, 0.6.3 (2026-10-29):
+Latest release, 0.6.4 (2026-10-30):
 
-### Changed (#608)
+### Added (#609)
 
-- `assignments_for` and `assigned_material` read only the relationships
-  whose `RelatedObjects` reference the object, through the model's reverse
-  index when built, else one pass over the relationship type. A malformed
-  relationship that does not name the object no longer refuses it. Several
-  relationships are read in ascending id. `assigned_material` on a model
-  with no single bound release returns `Ok(None)` for an object no
-  relationship references (it was `UnsupportedSchema` or `MultipleSchemas`
-  whenever any relationship existed).
+- `MaterialIndex`: the material of many objects in one pass.
+  `MaterialIndex::new(view)` reads the `IfcRelAssociatesMaterial` and
+  `IfcRelDefinesByType` records once (through the model's reverse index when
+  something built it, else an index over those records only, never left on the
+  model) and checks each one's `RelatedObjects` once. `assigned_material` and
+  `assignments_for` then cost the relationships that name the object, not the
+  model or the length of a shared `RelatedObjects`. Every answer, refusals
+  included, equals `MaterialView`'s. Measured (provisional: loaded machine; see `benchmarks/baseline.md`): every
+  wall of a 100,000-wall model resolves in 149 ms (1.5 microseconds per wall,
+  1.4 times the cost per wall at 1,000 walls), where
+  `MaterialView::assigned_material` costs 3.1 ms per wall without a model
+  reverse index at that size.
+
+### Changed (#609)
+
+- `assigned_material` counts the distinct `RelatingMaterial`s (by entity id) of
+  an object's `IfcRelAssociatesMaterial`s, at the occurrence and at its type:
+  several relationships naming the same material resolve, and
+  `ResolvedAssignment::assignment` is the lowest-id one.
+  `AmbiguousAssignment::count` is the number of distinct materials (was
+  relationships); the message reads "object #N is assigned K distinct
+  materials". Every relationship's `RelatingMaterial` is read first, so one
+  that is missing or not a reference refuses with its own error instead of
+  `AmbiguousAssignment`. Two `IfcRelDefinesByType` on one object remain
+  `AmbiguousType` even when they name one type: no release allows it (IFC2X3
+  `IfcObject` WR1; IFC4 and IFC4X3 `IsTypedBy SET [0:1]`).
 
 Full history: [`crates/ifc-material/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-material/CHANGELOG.md)

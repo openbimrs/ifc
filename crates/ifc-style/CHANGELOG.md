@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.6.4] - 2026-10-30
+
 ### Added (#597)
 
 - `StyleIndex::material_fill(material, units)`: the cut fill a material's `IfcMaterialDefinitionRepresentation` states, as a `MaterialFill` (fill area style, styled item, name, `ModelOrDraughting`, background colour) with one `HatchLine` per `IfcFillAreaStyleHatching`: angle in radians; spacing, along-line shift, origin, pattern start, dashes and width in metres; line colour. An `IfcVector` (IFC2X3: `IfcOneDirectionRepeatFactor`) distance splits into the perpendicular spacing and the shift. Fills over several contexts must draw the same, else `StyleError::AmbiguousFill`. Tiles, externally defined hatch styles, predefined curve fonts other than 'continuous' and 'by layer' deferrals are `StyleError::UnsupportedFill`.
@@ -23,7 +25,7 @@ everything released before per-crate changelogs began.
 
 - `create_fill_area_style_hatching` writes a length distance as `IFCPOSITIVELENGTHMEASURE(..)`, the select member, not a bare real; in IFC2X3 `HatchLineDistance::Vector` takes an `IfcOneDirectionRepeatFactor` and refuses an `IfcVector` and an `IfcTwoDirectionRepeatFactor` (WR21). `HatchLineAngle` is documented in the project's plane angle unit.
 
-Semver: additive (`StyleError` is `#[non_exhaustive]`), a minor release while 0.x.
+Semver: patch (additive; `StyleError` is `#[non_exhaustive]`).
 
 ## [0.6.3] - 2026-10-29
 
@@ -159,7 +161,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-style-v0.6.3...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-style-v0.6.4...HEAD
+[0.6.4]: https://github.com/openbimrs/ifc/releases/tag/ifc-style-v0.6.4
 [0.6.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-style-v0.6.3
 [0.6.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-style-v0.6.2
 [0.6.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-style-v0.6.1
