@@ -8,6 +8,12 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#609)
+
+- `material(object)` resolves an object whose several
+  `IfcRelAssociatesMaterial` name one material, reporting the lowest-id
+  relationship.
+
 ### Changed (#585)
 
 - A model without a declared, readable length unit now refuses each

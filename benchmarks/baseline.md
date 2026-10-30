@@ -595,3 +595,50 @@ including the first reverse-index build) is linear: 1,000 walls 2.1 ms, 2,000
 4.5 ms, 4,000 10.4 ms, 8,000 21.9 ms. Before the cache and the definition scan,
 `one_wall_material` after the first change was 0.0132, 0.0187 and 0.0432 ms
 at 1,000, 10,000 and 50,000 walls.
+
+## Material resolution (#609)
+
+`MaterialIndex` against `MaterialView::assigned_material` per call, on a
+generated IFC4 model of N walls whose `IfcRelAssociatesMaterial` lists are
+shared (every fourth wall) or inherited through `IfcRelDefinesByType` (every
+odd wall). Harness: `crates/ifc-material/benches/materials`, method in
+[`README.md`](README.md#material-resolution-609). Both sides are the same
+build; the per-call rows are the "before" path.
+
+**Not a quiet-window measurement.** The machine is shared and was busy: the
+load gate was off (`PROVISIONAL=1`) and the 1-minute load at the start of the
+runs was 22.6 to 30.6. The ratios are large enough that this does not change a
+verdict; the `every_wall` timings in particular are noisy (IQR up to 30 % at
+`mat-10k`).
+
+- date: 2026-10-30
+- machine: Intel Xeon w7-3565X, shared VM, 173 GiB RAM; `taskset -c 12-19`
+- OS: Debian GNU/Linux 13 (trixie), kernel 6.12.113+deb13-cloud-amd64
+- toolchain: rustc 1.99.1 (58cf8f9c3 2026-10-13); `cargo bench` profile
+  (opt-level 3, thin LTO, 1 codegen unit)
+- commit: `44e71681` (the bench commit)
+- plan: 3 processes, 3 warm-up and 20 samples each; medians of the pooled runs
+- command: `PACKAGE=ifc-material BENCH=materials PROVISIONAL=1 RUNS=3
+  SCALES="mat-1k mat-10k mat-100k" taskset -c 12-19 benchmarks/run-baseline.sh`
+
+Cost per wall, in microseconds (`index.every_wall` is the row over N walls,
+`per_call.100` the row over 100 walls):
+
+| row | 1,000 walls | 10,000 walls | 100,000 walls | 100,000 / 1,000 |
+| --- | ---: | ---: | ---: | ---: |
+| `index.every_wall` | 1.02 | 1.21 | 1.54 | 1.5 |
+| `index.every_wall.indexed` | 0.89 | 1.07 | 1.31 | 1.5 |
+| `per_call.100` | 7.67 | 97.9 | 1,960 | 255 |
+| `per_call.100.indexed` | 1.02 | 1.08 | 1.09 | 1.1 |
+
+`material.index.build` alone takes 0.109, 1.42 and 23.8 ms at 1,000, 10,000
+and 100,000 walls (the last is 17 times the one before for ten times the
+entities, so the build is not quite linear at the largest scale; one
+resolution pass over every wall still stays within the 2x claim above).
+
+Resolving every wall at 100,000 walls takes 154 ms through the index. The
+per-call path costs 1.96 ms per wall there, so a loop over every wall would
+take about 196 s (extrapolated from `per_call.100`, not run). The per-call
+cost grows with the model without a reverse index (255 times from 1,000 to
+100,000 walls) and is flat with one (1.1 times); the index gives the flat
+cost without keeping an index on the model.

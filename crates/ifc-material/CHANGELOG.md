@@ -12,6 +12,35 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#609)
+
+- `MaterialIndex`: the material of many objects in one pass.
+  `MaterialIndex::new(view)` reads the `IfcRelAssociatesMaterial` and
+  `IfcRelDefinesByType` records once (through the model's reverse index when
+  something built it, else an index over those records only, never left on the
+  model) and checks each one's `RelatedObjects` once. `assigned_material` and
+  `assignments_for` then cost the relationships that name the object, not the
+  model or the length of a shared `RelatedObjects`. Every answer, refusals
+  included, equals `MaterialView`'s. Measured: every wall of a 100,000-wall
+  model resolves in 154 ms (1.5 microseconds per wall, 1.5 times the cost per
+  wall at 1,000 walls), where `MaterialView::assigned_material` costs 1.96 ms
+  per wall without a model reverse index at that size
+  (`benchmarks/baseline.md`).
+
+### Changed (#609)
+
+- `assigned_material` counts the distinct `RelatingMaterial`s (by entity id) of
+  an object's `IfcRelAssociatesMaterial`s, at the occurrence and at its type:
+  several relationships naming the same material resolve, and
+  `ResolvedAssignment::assignment` is the lowest-id one.
+  `AmbiguousAssignment::count` is the number of distinct materials (was
+  relationships); the message reads "object #N is assigned K distinct
+  materials". Every relationship's `RelatingMaterial` is read first, so one
+  that is missing or not a reference refuses with its own error instead of
+  `AmbiguousAssignment`. Two `IfcRelDefinesByType` on one object remain
+  `AmbiguousType` even when they name one type: no release allows it (IFC2X3
+  `IfcObject` WR1; IFC4 and IFC4X3 `IsTypedBy SET [0:1]`).
+
 ## [0.6.3] - 2026-10-29
 
 ### Changed (#608)
