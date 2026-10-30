@@ -54,7 +54,7 @@ fn malformed_enums_cardinals_and_selects_are_explicit_errors() {
 }
 
 #[test]
-fn duplicate_occurrence_assignments_are_not_guessed() {
+fn duplicate_assignments_naming_one_material_resolve() {
     let mut model = Model::new();
     model.insert(EntityId(1), Entity::new("IFCMATERIAL", vec![]));
     model.insert(EntityId(10), Entity::new("IFCWALL", vec![]));
@@ -74,11 +74,10 @@ fn duplicate_occurrence_assignments_are_not_guessed() {
             ),
         );
     }
-    let error = MaterialView::new(&model)
+    let resolved = MaterialView::new(&model)
         .assigned_material(EntityId(10))
-        .unwrap_err();
-    assert!(matches!(
-        error,
-        MaterialError::AmbiguousAssignment { count: 2, .. }
-    ));
+        .unwrap()
+        .unwrap();
+    assert_eq!(resolved.assignment.id(), EntityId(2));
+    assert_eq!(resolved.source, ifc_material::AssignmentSource::Occurrence);
 }

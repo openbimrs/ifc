@@ -142,6 +142,10 @@ fn duplicate_type_relations_are_ambiguous_even_for_the_same_type() {
         MaterialView::new(&model).assigned_material(EntityId(1)),
         Err(MaterialError::AmbiguousType { .. })
     ));
+    assert!(matches!(
+        ifc_material::MaterialIndex::new(MaterialView::new(&model)).assigned_material(EntityId(1)),
+        Err(MaterialError::AmbiguousType { .. })
+    ));
 }
 
 #[test]

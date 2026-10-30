@@ -2,6 +2,7 @@
 
 use ifc_model::EntityId;
 
+use crate::usage::index::{Lookup, ASSOCIATES_MATERIAL};
 use crate::view::{
     borrowed_entity, optional_text, required_ref, required_refs, required_text, MaterialView,
 };
@@ -79,21 +80,33 @@ impl<'m> MaterialView<'m> {
     }
 
     /// Collects every `IfcRelAssociatesMaterial` whose `RelatedObjects`
-    /// includes `object`, ascending by id. Multiple hits indicate an
-    /// ambiguous direct assignment; callers that need a single answer
-    /// should check the result length themselves or use `assigned_material`.
+    /// includes `object`, ascending by id. Several hits naming one
+    /// material resolve; see `assigned_material`.
     ///
     /// Reads only the relationships that reference `object` in
     /// `RelatedObjects` (through the model's reverse index when built), so
     /// it costs those and not every relationship in the model; a malformed
-    /// relationship elsewhere does not refuse it (#608).
+    /// relationship elsewhere does not refuse it (#608). For many objects
+    /// use [`crate::MaterialIndex`].
     pub fn assignments_for(self, object: EntityId) -> MaterialResult<Vec<MaterialAssignment<'m>>> {
+        self.assignments_in(self.lookup(), object)
+    }
+
+    pub(crate) fn assignments_in(
+        self,
+        lookup: Lookup<'_>,
+        object: EntityId,
+    ) -> MaterialResult<Vec<MaterialAssignment<'m>>> {
         let release = self.release();
         let mut matches = Vec::new();
-        for (id, entity) in self.naming("IFCRELASSOCIATESMATERIAL", "RelatedObjects", object)? {
-            let assignment = MaterialAssignment::from_known(id, entity, release);
-            if assignment.related_object_ids()?.contains(&object) {
-                matches.push(assignment);
+        for (id, entity) in self.naming(
+            lookup.referrers,
+            ASSOCIATES_MATERIAL,
+            "RelatedObjects",
+            object,
+        )? {
+            if self.names(lookup, ASSOCIATES_MATERIAL, id, entity, object)? {
+                matches.push(MaterialAssignment::from_known(id, entity, release));
             }
         }
         Ok(matches)

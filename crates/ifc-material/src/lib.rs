@@ -54,7 +54,7 @@ pub use types::{
     StandardCardinalPoint, IFC4_MATERIAL_RESOURCE_ENTITIES, IFC4_MATERIAL_RESOURCE_TYPES,
 };
 pub use usage::{
-    AssignmentSource, MaterialAssignment, MaterialDefinition, MaterialUsageDefinition,
-    ResolvedAssignment, ResolvedMaterialSelect,
+    AssignmentSource, MaterialAssignment, MaterialDefinition, MaterialIndex,
+    MaterialUsageDefinition, ResolvedAssignment, ResolvedMaterialSelect,
 };
 pub use view::MaterialView;

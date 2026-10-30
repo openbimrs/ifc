@@ -1,6 +1,6 @@
 //! Shared borrowed-view mechanics and strict IFC slot decoders.
 
-use ifc_model::{Entity, EntityId, Model, Value};
+use ifc_model::{Entity, EntityId, Model, ReverseIndex, Value};
 
 use crate::release::Release;
 use crate::{LogicalValue, MaterialError, MaterialResult, SchemaVersion};
@@ -57,12 +57,13 @@ impl<'m> MaterialView<'m> {
     /// raise the release's slot error when a record references `object`.
     pub(crate) fn naming(
         self,
+        referrers: Option<&ReverseIndex>,
         entity: &'static str,
         attribute: &'static str,
         object: EntityId,
     ) -> MaterialResult<Vec<(EntityId, &'m Entity)>> {
         let mut found = Vec::new();
-        if let Some(index) = self.model.reverse_index_if_built() {
+        if let Some(index) = referrers {
             for referrer in index.referrers(object) {
                 let Some(record) = self.model.get(referrer.from) else {
                     continue;

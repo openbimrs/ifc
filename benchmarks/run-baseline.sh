@@ -22,7 +22,9 @@
 #   PROVISIONAL=1: skip the load gate and label the result provisional
 #   PACKAGE=ifc-step, BENCH=baseline: the bench target to run; the property
 #   benchmarks (#352) are PACKAGE=ifc-properties BENCH=properties with
-#   SCALES="props-1k props-10k props-100k"
+#   SCALES="props-1k props-10k props-100k"; the material benchmarks (#609)
+#   are PACKAGE=ifc-material BENCH=materials with
+#   SCALES="mat-1k mat-10k mat-100k"
 #   FEATURES: cargo features for the bench build, e.g. authoring,ifc4x3
 #   (the authoring benchmarks, #587: SCALES="author-1k author-10k")
 #   BENCH_ARGS: further arguments for every run, e.g. "--bench-only NAME,..."

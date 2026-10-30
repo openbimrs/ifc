@@ -86,14 +86,13 @@ pub enum MaterialError {
         /// The IFC entity type name actually found at `target`.
         actual: String,
     },
-    /// The object is directly related to more than one `IfcMaterial`
-    /// via `IfcRelAssociatesMaterial`, so the single active material cannot
-    /// be determined.
-    #[error("object {object} has {count} direct material assignments")]
+    /// The object's `IfcRelAssociatesMaterial`s name more than one distinct
+    /// `RelatingMaterial` (by entity id).
+    #[error("object {object} is assigned {count} distinct materials")]
     AmbiguousAssignment {
         /// The id of the object with conflicting assignments.
         object: EntityId,
-        /// The number of direct material assignments found.
+        /// The number of distinct `RelatingMaterial` entities they name.
         count: usize,
     },
     /// The object is typed by more than one `IfcTypeObject`, so its
