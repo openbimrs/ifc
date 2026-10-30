@@ -87,7 +87,8 @@ impl<'m> MaterialView<'m> {
     /// Reads only the relationships that reference `object` in
     /// `RelatedObjects` (through the model's reverse index when built), so
     /// it costs those and not every relationship in the model; a malformed
-    /// relationship elsewhere does not refuse it (#608).
+    /// relationship elsewhere does not refuse it (#608). For many objects
+    /// use [`crate::MaterialIndex`].
     pub fn assignments_for(self, object: EntityId) -> MaterialResult<Vec<MaterialAssignment<'m>>> {
         self.assignments_in(self.lookup(), object)
     }

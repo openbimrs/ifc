@@ -241,7 +241,8 @@ impl<'m> MaterialView<'m> {
     /// such relations are ambiguous even when they name the same type: the
     /// file states the typing twice, and this lookup does not guess which
     /// statement was meant. (`ifc-resource` deliberately accepts a repeated
-    /// relation naming the same type.)
+    /// relation naming the same type.) For many objects use
+    /// [`crate::MaterialIndex`].
     pub fn assigned_material(
         self,
         object: EntityId,

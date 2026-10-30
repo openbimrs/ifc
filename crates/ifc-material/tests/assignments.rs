@@ -1,6 +1,8 @@
 //! Material assignment resolution: direct vs. type-inherited, and ambiguity.
 
-use ifc_material::{AssignmentSource, MaterialDefinition, MaterialView, ResolvedMaterialSelect};
+use ifc_material::{
+    AssignmentSource, MaterialDefinition, MaterialIndex, MaterialView, ResolvedMaterialSelect,
+};
 use ifc_model::{Entity, EntityId, Model, Value};
 
 fn text(v: &str) -> Value {
@@ -90,13 +92,23 @@ fn both(model: &Model, check: impl Fn(MaterialView<'_>)) {
 
 /// What `assigned_material` and `assignments_for` answer for every entity.
 fn answers(view: MaterialView<'_>) -> Vec<String> {
+    let index = MaterialIndex::new(view);
     view.model()
         .ids()
         .map(|id| {
-            let assignments = view
-                .assignments_for(id)
-                .map(|found| found.iter().map(|a| a.id()).collect::<Vec<_>>());
-            format!("{id}: {:?} {assignments:?}", view.assigned_material(id))
+            let ids =
+                |found: ifc_material::MaterialResult<Vec<ifc_material::MaterialAssignment<'_>>>| {
+                    found.map(|found| found.iter().map(|a| a.id()).collect::<Vec<_>>())
+                };
+            let assignments = ids(view.assignments_for(id));
+            let line = format!("{id}: {:?} {assignments:?}", view.assigned_material(id));
+            let indexed = format!(
+                "{id}: {:?} {:?}",
+                index.assigned_material(id),
+                ids(index.assignments_for(id))
+            );
+            assert_eq!(line, indexed, "the index answers as the view does");
+            line
         })
         .collect()
 }
@@ -167,6 +179,7 @@ fn the_index_changes_no_answer_on_the_fixtures() {
     use ifc_model::Codec;
     let mut resolved = 0;
     for name in [
+        "ifclite-geometry/bath_csg_solid.ifc",
         "synthetic-colour/material_colour.ifc",
         "synthetic-colour/material_colour_ifc2x3.ifc",
         "synthetic-colour/material_colour_ifc4x3.ifc",
@@ -174,6 +187,9 @@ fn the_index_changes_no_answer_on_the_fixtures() {
         "synthetic-relations/cascade_ifc4.ifc",
         "synthetic-relations/cascade_ifc4x3.ifc",
         "synthetic-relations/relations_ifc4.ifc",
+        "synthetic-relations/selector_ifc2x3.ifc",
+        "synthetic-relations/selector_ifc4.ifc",
+        "synthetic-relations/selector_ifc4x3.ifc",
     ] {
         let path = format!("{}/../../test/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
         let model = ifc_step::StepCodec
@@ -300,5 +316,57 @@ fn several_relationships_are_read_in_ascending_id() {
             .map(|a| a.id())
             .collect();
         assert_eq!(ids, [EntityId(22), EntityId(40), EntityId(41)]);
+    });
+}
+
+#[test]
+fn the_material_index_leaves_no_model_index() {
+    let model = wall_and_type_model();
+    let index = MaterialIndex::new(MaterialView::new(&model));
+    assert!(index.assigned_material(EntityId(12)).unwrap().is_some());
+    assert!(model.reverse_index_if_built().is_none(), "left an index");
+}
+
+#[test]
+fn material_index_is_send_and_sync() {
+    fn check<T: Send + Sync + Clone + std::fmt::Debug>() {}
+    check::<MaterialIndex<'static>>();
+}
+
+#[test]
+fn a_malformed_shared_list_refuses_every_object_it_names_through_the_index() {
+    let mut model = wall_and_type_model();
+    model.insert(EntityId(13), Entity::new("IFCWALL", vec![]));
+    model.insert(EntityId(14), Entity::new("IFCWALL", vec![]));
+    model.insert(EntityId(15), relation("IFCRELASSOCIATESMATERIAL", &[14], 1));
+    model.insert(
+        EntityId(30),
+        Entity::new(
+            "IFCRELDEFINESBYTYPE",
+            vec![
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::List(vec![
+                    Value::Ref(EntityId(12)),
+                    Value::Ref(EntityId(13)),
+                    Value::Text("x".into()),
+                ]),
+                Value::Ref(EntityId(11)),
+            ],
+        ),
+    );
+    both(&model, |view| {
+        let index = MaterialIndex::new(view);
+        for wall in [12, 13] {
+            let through_view = view.assigned_material(EntityId(wall));
+            assert!(through_view.is_err(), "wall {wall}");
+            assert_eq!(
+                format!("{through_view:?}"),
+                format!("{:?}", index.assigned_material(EntityId(wall))),
+            );
+        }
+        assert!(index.assigned_material(EntityId(14)).unwrap().is_some());
     });
 }
