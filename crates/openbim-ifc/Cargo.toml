@@ -57,7 +57,7 @@ sheet = "Tables of values by path (`ifc::sheet`, #474): export selected entities
 sheet-xlsx = "`sheet` with XLSX workbooks too, through the pure-Rust `rust_xlsxwriter` (write) and `calamine` (read) crates."
 selector = "The selector query language (`ifc::selector`, grammar 1.0): filter elements by class, `GlobalId`, attribute, property, type, material, classification, location and group, with typed parse errors carrying byte spans; read and write values by path (`type.Name`, `Pset_WallCommon.FireRating`) through a checked transaction. Property facets need `properties` too."
 validate-express = "Validation (`validate`) with the EXPRESS rule evaluator (`ifc::validate::express`): every WHERE rule, type rule and global rule of a release, evaluated from the `.exp` text the caller supplies (#461)."
-properties = "Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry; together with `spatial`, element properties by spatial container."
+properties = "Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry; together with `spatial`, element properties by spatial container; together with `style`, a material's cut fill as hatch line families in metres and radians (`material_fill`)."
 
 [lib]
 name = "ifc"

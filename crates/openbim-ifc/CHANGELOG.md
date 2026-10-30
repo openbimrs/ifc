@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#597)
+
+- With `style` and `properties`: `material_fill(model, material)`, a material's cut fill as hatch line families in metres and radians with the project units resolved exactly, `project_style_units(model)` for callers resolving many materials, and `MaterialFillError`.
+
+Semver: minor (additive).
+
 ## [0.39.4] - 2026-10-29
 
 ### Fixed (#608)

@@ -52,7 +52,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `material-templates` |  | Material views together with the property template catalogue. |
 | `mesh` |  | Triangle meshes per product (`product_meshes`, `product_meshes_for` a representation purpose, with solid or surface closure) and polylines of curve representations (`product_curves`: Axis, FootPrint, annotation curves, each with a certified chord bound) through `ifc-geometry`'s reference compile backend: positions relative to each product's world placement, its surface colour (`colour`), a typed refusal per product. Opt-in; links an execution provider (ADR 0004, ADR 0012). |
 | `occurrence` |  | [`ifc-occurrence`](./ifc-occurrence): Built element and distribution occurrence classes and their type pairing. |
-| `properties` |  | Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry; together with `spatial`, element properties by spatial container. |
+| `properties` |  | Property sets, quantities and unit resolution (`ifc-properties`); together with `geometry-select`, door and window operation geometry; together with `spatial`, element properties by spatial container; together with `style`, a material's cut fill as hatch line families in metres and radians (`material_fill`). |
 | `property-catalog` |  | The PSD/QTO template catalogue (`ifc-template-catalog`), every edition embedded. |
 | `property-catalog-runtime` |  | The PSD/QTO template catalogue installed at runtime from pinned per-edition snapshot files; nothing embedded. |
 | `resource` |  | [`ifc-resource`](./ifc-resource): Construction resources: labour, equipment, material, crew, subcontract. |
