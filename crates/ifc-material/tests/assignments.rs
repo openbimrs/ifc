@@ -1,7 +1,8 @@
 //! Material assignment resolution: direct vs. type-inherited, and ambiguity.
 
 use ifc_material::{
-    AssignmentSource, MaterialDefinition, MaterialIndex, MaterialView, ResolvedMaterialSelect,
+    AssignmentSource, MaterialDefinition, MaterialError, MaterialIndex, MaterialView,
+    ResolvedMaterialSelect,
 };
 use ifc_model::{Entity, EntityId, Model, Value};
 
@@ -368,5 +369,124 @@ fn a_malformed_shared_list_refuses_every_object_it_names_through_the_index() {
             );
         }
         assert!(index.assigned_material(EntityId(14)).unwrap().is_some());
+    });
+}
+
+// --- ambiguity counts distinct materials (#609) ---
+
+/// The relationship and source `assigned_material` resolved, or its refusal.
+type Resolved = Result<Option<(EntityId, AssignmentSource)>, MaterialError>;
+
+/// Run `check` on the view and on a `MaterialIndex` over it, bare and indexed.
+fn each_path(model: &Model, check: impl Fn(&dyn Fn(EntityId) -> Resolved)) {
+    let summary = |found: ifc_material::MaterialResult<
+        Option<ifc_material::ResolvedAssignment<'_>>,
+    >| { found.map(|found| found.map(|r| (r.assignment.id(), r.source))) };
+    both(model, |view| {
+        check(&|id| summary(view.assigned_material(id)));
+        let index = MaterialIndex::new(view);
+        check(&|id| summary(index.assigned_material(id)));
+    });
+}
+
+fn two_material_model() -> Model {
+    let mut model = wall_and_type_model();
+    model.remove(EntityId(22));
+    model.insert(
+        EntityId(3),
+        Entity::new("IFCMATERIAL", vec![text("Concrete")]),
+    );
+    model
+}
+
+#[test]
+fn several_relationships_naming_one_material_resolve_with_the_lowest_id() {
+    let mut model = two_material_model();
+    // Inserted at the higher id first.
+    model.insert(EntityId(41), relation("IFCRELASSOCIATESMATERIAL", &[10], 1));
+    model.insert(EntityId(40), relation("IFCRELASSOCIATESMATERIAL", &[10], 1));
+    each_path(&model, |assigned| {
+        let resolved = assigned(EntityId(10)).unwrap().unwrap();
+        assert_eq!(resolved, (EntityId(40), AssignmentSource::Occurrence));
+    });
+}
+
+#[test]
+fn relationships_naming_different_materials_are_ambiguous() {
+    let mut model = two_material_model();
+    model.insert(EntityId(40), relation("IFCRELASSOCIATESMATERIAL", &[10], 1));
+    model.insert(EntityId(41), relation("IFCRELASSOCIATESMATERIAL", &[10], 2));
+    each_path(&model, |assigned| {
+        assert!(matches!(
+            assigned(EntityId(10)),
+            Err(MaterialError::AmbiguousAssignment { count: 2, object }) if object == EntityId(10)
+        ));
+    });
+}
+
+#[test]
+fn the_count_is_distinct_materials_not_relationships() {
+    let mut model = two_material_model();
+    model.insert(EntityId(40), relation("IFCRELASSOCIATESMATERIAL", &[10], 1));
+    model.insert(EntityId(41), relation("IFCRELASSOCIATESMATERIAL", &[10], 1));
+    model.insert(EntityId(42), relation("IFCRELASSOCIATESMATERIAL", &[10], 2));
+    each_path(&model, |assigned| {
+        assert!(matches!(
+            assigned(EntityId(10)),
+            Err(MaterialError::AmbiguousAssignment { count: 2, .. })
+        ));
+    });
+}
+
+#[test]
+fn several_type_relationships_naming_one_material_resolve() {
+    let mut model = wall_and_type_model();
+    // Wall 12 has no association of its own; the type has #20 and #25.
+    model.insert(EntityId(25), relation("IFCRELASSOCIATESMATERIAL", &[11], 2));
+    each_path(&model, |assigned| {
+        let resolved = assigned(EntityId(12)).unwrap().unwrap();
+        assert_eq!(
+            resolved,
+            (EntityId(20), AssignmentSource::Type(EntityId(11)))
+        );
+    });
+}
+
+#[test]
+fn ambiguity_is_by_entity_id_not_by_content() {
+    let mut model = two_material_model();
+    model.insert(EntityId(40), relation("IFCRELASSOCIATESMATERIAL", &[10], 1));
+    model.insert(EntityId(41), relation("IFCRELASSOCIATESMATERIAL", &[10], 3));
+    each_path(&model, |assigned| {
+        assert!(matches!(
+            assigned(EntityId(10)),
+            Err(MaterialError::AmbiguousAssignment { count: 2, .. })
+        ));
+    });
+}
+
+#[test]
+fn a_second_relationship_without_a_material_refuses_with_its_own_error() {
+    let mut model = two_material_model();
+    model.insert(EntityId(40), relation("IFCRELASSOCIATESMATERIAL", &[10], 1));
+    model.insert(
+        EntityId(41),
+        Entity::new(
+            "IFCRELASSOCIATESMATERIAL",
+            vec![
+                text("gid"),
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                refs(&[10]),
+                Value::Null,
+            ],
+        ),
+    );
+    each_path(&model, |assigned| {
+        assert!(matches!(
+            assigned(EntityId(10)),
+            Err(MaterialError::MissingAttribute { .. })
+        ));
     });
 }

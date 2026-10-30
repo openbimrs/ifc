@@ -234,13 +234,21 @@ impl<'m> MaterialView<'m> {
     /// `crate::MaterialError::UnknownEntity` if `object` is not in the
     /// model.
     ///
+    /// Several `IfcRelAssociatesMaterial` on one object, or on its type,
+    /// resolve when they name one `RelatingMaterial` (compared by entity id,
+    /// never by content); `assignment` is then the lowest-id relationship.
+    /// `AmbiguousAssignment::count` is the number of distinct materials.
+    ///
     /// Every record is read against the model's release, so an IFC2X3 model
     /// resolves with IFC2X3 slots and type objects.
     ///
     /// The type fallback is exactly one `IfcRelDefinesByType` hop, and two
-    /// such relations are ambiguous even when they name the same type: the
-    /// file states the typing twice, and this lookup does not guess which
-    /// statement was meant. (`ifc-resource` deliberately accepts a repeated
+    /// such relations are ambiguous even when they name the same type: no
+    /// release allows it (IFC2X3 `IfcObject` WR1; IFC4 and IFC4X3
+    /// `IsTypedBy SET [0:1]`), so the file states the typing twice and this
+    /// lookup does not guess which statement was meant. `HasAssociations` is
+    /// `SET [0:?]` in every release, which is why several material
+    /// relationships are accepted. (`ifc-resource` deliberately accepts a repeated
     /// relation naming the same type.) For many objects use
     /// [`crate::MaterialIndex`].
     pub fn assigned_material(
@@ -260,13 +268,7 @@ impl<'m> MaterialView<'m> {
             .ok_or(MaterialError::UnknownEntity { id: object })?;
 
         let direct = self.assignments_in(lookup, object)?;
-        if direct.len() > 1 {
-            return Err(MaterialError::AmbiguousAssignment {
-                object,
-                count: direct.len(),
-            });
-        }
-        if let Some(assignment) = direct.first().copied() {
+        if let Some(assignment) = self.single_material(object, &direct)? {
             return self
                 .resolve_assignment(assignment, AssignmentSource::Occurrence)
                 .map(Some);
@@ -286,17 +288,37 @@ impl<'m> MaterialView<'m> {
         }
 
         let assigned = self.assignments_in(lookup, type_id)?;
-        if assigned.len() > 1 {
-            return Err(MaterialError::AmbiguousAssignment {
-                object: type_id,
-                count: assigned.len(),
-            });
-        }
-        assigned
-            .first()
-            .copied()
+        self.single_material(type_id, &assigned)?
             .map(|assignment| self.resolve_assignment(assignment, AssignmentSource::Type(type_id)))
             .transpose()
+    }
+
+    /// The lowest-id of `holder`'s relationships when they all name one
+    /// `RelatingMaterial` (by entity id; content is never compared), `None`
+    /// when there are none. Every relationship's `RelatingMaterial` is read,
+    /// so a missing or non-reference one refuses with its own error.
+    fn single_material(
+        self,
+        holder: EntityId,
+        assignments: &[MaterialAssignment<'m>],
+    ) -> MaterialResult<Option<MaterialAssignment<'m>>> {
+        let Some(first) = assignments.first().copied() else {
+            return Ok(None);
+        };
+        let mut materials = Vec::new();
+        for assignment in assignments {
+            let material = assignment.relating_material_id()?;
+            if !materials.contains(&material) {
+                materials.push(material);
+            }
+        }
+        if materials.len() > 1 {
+            return Err(MaterialError::AmbiguousAssignment {
+                object: holder,
+                count: materials.len(),
+            });
+        }
+        Ok(Some(first))
     }
 
     /// The single `IfcRelDefinesByType` typing `object`, as
