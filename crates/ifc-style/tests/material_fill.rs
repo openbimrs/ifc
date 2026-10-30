@@ -350,3 +350,87 @@ fn a_hatch_needs_the_units_it_reads() {
     let none = StyleUnits::new(None, None).unwrap();
     assert!(fill(&model, "Insulation", none).unwrap().is_some());
 }
+
+const RELEASES: [&str; 3] = [
+    "material_fill.ifc",
+    "material_fill_ifc4x3.ifc",
+    "material_fill_ifc2x3.ifc",
+];
+
+#[test]
+fn a_material_gives_one_fill_per_view() {
+    for name in RELEASES {
+        let model = fixture(name);
+        let id = material(&model, "CutAndProjection");
+        let index = StyleIndex::new(StyleView::new(&model, schema_of(&model))).unwrap();
+        let fills = index.material_fills(id, StyleUnits::SI).unwrap();
+        let views: Vec<_> = fills
+            .iter()
+            .map(|c| (c.target_view.as_deref(), c.fill.name.as_deref()))
+            .collect();
+        assert_eq!(
+            views,
+            [
+                (Some("SECTION_VIEW"), Some("Section fill")),
+                (Some("ELEVATION_VIEW"), Some("Elevation fill")),
+            ],
+            "{name}"
+        );
+        assert!(fills[0].representation < fills[1].representation);
+        assert_ne!(fills[0].context, fills[1].context);
+        assert_eq!(fills[0].identifier.as_deref(), Some("Body"), "{name}");
+        assert_eq!(fills[0].context_type.as_deref(), Some("Model"), "{name}");
+        assert_eq!(fills[0].fill.background, Some([0.7; 3]), "{name}");
+        assert!(near(fills[0].fill.lines[0].spacing, 0.005), "{name}");
+        assert!(near(fills[1].fill.lines[0].spacing, 0.02), "{name}");
+        // The single-fill lookup refuses what differs per view.
+        assert_eq!(
+            index.material_fill(id, StyleUnits::SI),
+            Err(StyleError::AmbiguousFill {
+                owner: id,
+                styles: vec![fills[0].fill.style, fills[1].fill.style],
+            }),
+            "{name}"
+        );
+    }
+}
+
+#[test]
+fn materials_with_one_context_give_one_context_fill() {
+    for name in RELEASES {
+        let model = fixture(name);
+        let index = StyleIndex::new(StyleView::new(&model, schema_of(&model))).unwrap();
+        for (material_name, count) in [("Concrete", 1), ("Layered", 2), ("Plain", 0)] {
+            let id = material(&model, material_name);
+            let fills = index.material_fills(id, StyleUnits::SI).unwrap();
+            assert_eq!(fills.len(), count, "{name} {material_name}");
+            assert!(fills.iter().all(|c| c.target_view.is_none()));
+        }
+    }
+}
+
+#[test]
+fn a_bare_style_resolves_and_a_non_fill_is_refused() {
+    for name in RELEASES {
+        let model = fixture(name);
+        let index = StyleIndex::new(StyleView::new(&model, schema_of(&model))).unwrap();
+        let style = named(&model, "IFCFILLAREASTYLE", 0, "Library pattern");
+        let fill = index.fill_area_style(style, StyleUnits::SI).unwrap();
+        assert_eq!(fill.style, style, "{name}");
+        assert_eq!(fill.styled_item, None, "{name}");
+        assert_eq!(fill.background, Some([0.8; 3]), "{name}");
+        assert_eq!(fill.lines.len(), 1, "{name}");
+        assert!(near(fill.lines[0].angle_rad, 0.5), "{name}");
+        assert!(near(fill.lines[0].spacing, 0.003), "{name}");
+        assert!(
+            matches!(
+                index.fill_area_style(material(&model, "Concrete"), StyleUnits::SI),
+                Err(StyleError::ReferenceType {
+                    expected: "IfcFillAreaStyle",
+                    ..
+                })
+            ),
+            "{name}"
+        );
+    }
+}

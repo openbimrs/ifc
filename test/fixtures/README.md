@@ -86,7 +86,9 @@ manifest is checked and the prose is not.
   0.9.0.post1): materials whose `IfcMaterialDefinitionRepresentation` states
   an `IfcFillAreaStyle` (#597) -- `Concrete` with two hatchings and a
   background, a solid `Insulation`, a scaled dash font, fills that differ or
-  agree across the Model and Plan contexts, and the refused tiles, external
+  agree across the Model and Plan contexts, a `CutAndProjection` material
+  with a section and an elevation fill in `SECTION_VIEW` and `ELEVATION_VIEW`
+  sub-contexts, a bare `Library pattern` fill style, and the refused tiles, external
   hatch style, 'by layer' and predefined dashed font. IFC4, IFC4X3_ADD2 and
   IFC2X3 (own layout, no tiles) in metres and radians, plus an IFC4
   millimetre/degree file with the same `Concrete` and `Scaled`. Regenerate

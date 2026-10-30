@@ -34,6 +34,13 @@ fills in millimetres and degrees):
 | `Dashed`       | A hatch line in the predefined font 'dashed' (refused).           |
 | `SurfaceOnly`  | A styled item with only an `IfcSurfaceStyle`: no fill.            |
 | `Plain`        | No representation: no fill.                                       |
+| `CutAndProjection` | Two styled representations in `Body`/`Model` sub-contexts of the |
+|                | Model context, `SECTION_VIEW` ('Section fill': 5 mm hatching on a |
+|                | grey background) and `ELEVATION_VIEW` ('Elevation fill': 20 mm    |
+|                | hatching): different per view, so `material_fill` is ambiguous    |
+|                | and `material_fills` gives both.                                  |
+| (bare style)   | 'Library pattern': a hatching at 0.5 rad on a (0.8) background,   |
+|                | referenced by nothing.                                            |
 
 `material_fill.ifc` is IFC4, `material_fill_ifc4x3.ifc` IFC4X3_ADD2 (its
 `ModelOrDraughting` flag and `CurveStyleFont` slot), and
@@ -244,10 +251,10 @@ class Builder:
                           1.5707963267948966)
         return self.fill("Scaled cut", [h])
 
-    def continuous_hatch(self, metres):
+    def continuous_hatch(self, metres, angle=0.0):
         font = self.f.create_entity("IfcDraughtingPreDefinedCurveFont",
                                     Name="continuous")
-        return self.hatching(self.curve_style(font), self.length_distance(metres), 0.0)
+        return self.hatching(self.curve_style(font), self.length_distance(metres), angle)
 
     def tiled(self):
         f = self.f
@@ -313,6 +320,19 @@ def build(schema, label, minimal=False, **units):
     b.material("ByLayer", [(b.plan, b.by_layer())])
     b.material("Dashed", [(b.plan, b.dashed())])
     b.material("SurfaceOnly", [(b.plan, b.surface_only())])
+    sub = {
+        view: b.f.create_entity(
+            "IfcGeometricRepresentationSubContext", ContextIdentifier="Body",
+            ContextType="Model", ParentContext=b.model, TargetView=view)
+        for view in ("SECTION_VIEW", "ELEVATION_VIEW")
+    }
+    section = b.fill("Section fill", [b.continuous_hatch(0.005),
+                                      b.colour(0.7, 0.7, 0.7)])
+    elevation = b.fill("Elevation fill", [b.continuous_hatch(0.02)])
+    b.material("CutAndProjection", [(sub["SECTION_VIEW"], section),
+                                    (sub["ELEVATION_VIEW"], elevation)])
+    b.fill("Library pattern", [b.continuous_hatch(0.003, 0.5),
+                               b.colour(0.8, 0.8, 0.8)])
     b.material("Plain")
     return b.f
 

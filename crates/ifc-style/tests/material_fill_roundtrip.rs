@@ -53,12 +53,14 @@ fn reals(values: &[f64]) -> Value {
     Value::List(values.iter().copied().map(Value::Real).collect())
 }
 
-/// Author `fill` back and return the model and its material.
-fn author(fill: &MaterialFill, token: &str, schema: &Schema) -> (Model, EntityId) {
+/// Author `fill` back as an `IfcFillAreaStyle` staged in `tx`.
+fn author_style(
+    tx: &mut Transaction,
+    model: &Model,
+    schema: &Schema,
+    fill: &MaterialFill,
+) -> EntityId {
     let ifc2x3 = schema.entity("IfcOneDirectionRepeatFactor").is_some();
-    let mut model = Model::default();
-    model.header_mut().schema = vec![token.to_owned()];
-    let mut tx = Transaction::new(&model);
     let colour = |tx: &mut Transaction, [red, green, blue]: [f64; 3]| {
         create_colour_rgb(tx, schema, ColourRgbDraft::new(red, green, blue)).unwrap()
     };
@@ -78,18 +80,17 @@ fn author(fill: &MaterialFill, token: &str, schema: &Schema) -> (Model, EntityId
             None => {}
             Some(pairs) if pairs.is_empty() => {
                 let font =
-                    create_draughting_predefined_curve_font(&mut tx, schema, "continuous").unwrap();
+                    create_draughting_predefined_curve_font(tx, schema, "continuous").unwrap();
                 curve = curve.curve_font(font);
             }
             Some(pairs) => {
                 let patterns: Vec<_> = pairs
                     .iter()
                     .map(|[visible, invisible]| {
-                        create_curve_style_font_pattern(&mut tx, schema, *visible, *invisible)
-                            .unwrap()
+                        create_curve_style_font_pattern(tx, schema, *visible, *invisible).unwrap()
                     })
                     .collect();
-                let font = create_curve_style_font(&mut tx, schema, None, &patterns).unwrap();
+                let font = create_curve_style_font(tx, schema, None, &patterns).unwrap();
                 curve = curve.curve_font(font);
             }
         }
@@ -97,10 +98,10 @@ fn author(fill: &MaterialFill, token: &str, schema: &Schema) -> (Model, EntityId
             curve = curve.curve_width(CurveWidth::PositiveLength(width));
         }
         if let Some(rgb) = line.colour {
-            let colour = colour(&mut tx, rgb);
+            let colour = colour(tx, rgb);
             curve = curve.curve_colour(colour);
         }
-        let appearance = create_curve_style(&mut tx, schema, curve).unwrap();
+        let appearance = create_curve_style(tx, schema, curve).unwrap();
 
         let distance = if line.shift == 0.0 {
             HatchLineDistance::Length(line.spacing)
@@ -112,7 +113,7 @@ fn author(fill: &MaterialFill, token: &str, schema: &Schema) -> (Model, EntityId
             ];
             let magnitude = v[0].hypot(v[1]);
             let direction = raw(
-                &mut tx,
+                tx,
                 schema,
                 "IfcDirection",
                 vec![(
@@ -121,7 +122,7 @@ fn author(fill: &MaterialFill, token: &str, schema: &Schema) -> (Model, EntityId
                 )],
             );
             let vector = raw(
-                &mut tx,
+                tx,
                 schema,
                 "IfcVector",
                 vec![
@@ -131,7 +132,7 @@ fn author(fill: &MaterialFill, token: &str, schema: &Schema) -> (Model, EntityId
             );
             HatchLineDistance::Vector(if ifc2x3 {
                 raw(
-                    &mut tx,
+                    tx,
                     schema,
                     "IfcOneDirectionRepeatFactor",
                     vec![("RepeatFactor", Value::Ref(vector))],
@@ -140,11 +141,11 @@ fn author(fill: &MaterialFill, token: &str, schema: &Schema) -> (Model, EntityId
                 vector
             })
         };
-        let origin = point(&mut tx, line.origin);
-        let start = line.pattern_start.map(|xy| point(&mut tx, xy));
+        let origin = point(tx, line.origin);
+        let start = line.pattern_start.map(|xy| point(tx, xy));
         let hatching = create_fill_area_style_hatching(
-            &mut tx,
-            &model,
+            tx,
+            model,
             schema,
             appearance,
             distance,
@@ -155,27 +156,60 @@ fn author(fill: &MaterialFill, token: &str, schema: &Schema) -> (Model, EntityId
         members.push((hatching, FillStyleKind::Hatching));
     }
     if let Some(rgb) = fill.background {
-        members.push((colour(&mut tx, rgb), FillStyleKind::Colour));
+        members.push((colour(tx, rgb), FillStyleKind::Colour));
     }
-    let style = create_fill_area_style(
-        &mut tx,
+    create_fill_area_style(
+        tx,
         schema,
         fill.name.as_deref(),
         &members,
         fill.model_or_draughting,
     )
-    .unwrap();
-    let styled =
-        create_styled_item(&mut tx, &model, schema, StyledItemDraft::new(vec![style])).unwrap();
+    .unwrap()
+}
 
-    let origin = point(&mut tx, [0.0, 0.0]);
+fn point(tx: &mut Transaction, schema: &Schema, xy: [f64; 2]) -> EntityId {
+    raw(
+        tx,
+        schema,
+        "IfcCartesianPoint",
+        vec![("Coordinates", reals(&xy))],
+    )
+}
+
+fn blank(token: &str) -> Model {
+    let mut model = Model::default();
+    model.header_mut().schema = vec![token.to_owned()];
+    model
+}
+
+/// Author a bare `IfcFillAreaStyle` for `fill`.
+fn author_bare(fill: &MaterialFill, token: &str, schema: &Schema) -> (Model, EntityId) {
+    let mut model = blank(token);
+    let mut tx = Transaction::new(&model);
+    let style = author_style(&mut tx, &model, schema, fill);
+    tx.commit(&mut model).expect("commit");
+    (model, style)
+}
+
+/// Author a material with one styled representation per `(target view, fill)`:
+/// all in the plan context, or, for a target view, in a `Body`/`Model`
+/// sub-context of it.
+fn author(
+    fills: &[(Option<&str>, &MaterialFill)],
+    token: &str,
+    schema: &Schema,
+) -> (Model, EntityId) {
+    let mut model = blank(token);
+    let mut tx = Transaction::new(&model);
+    let origin = point(&mut tx, schema, [0.0, 0.0]);
     let axis = raw(
         &mut tx,
         schema,
         "IfcAxis2Placement2D",
         vec![("Location", Value::Ref(origin))],
     );
-    let context = raw(
+    let plan = raw(
         &mut tx,
         schema,
         "IfcGeometricRepresentationContext",
@@ -186,17 +220,37 @@ fn author(fill: &MaterialFill, token: &str, schema: &Schema) -> (Model, EntityId
             ("WorldCoordinateSystem", Value::Ref(axis)),
         ],
     );
-    let representation = raw(
-        &mut tx,
-        schema,
-        "IfcStyledRepresentation",
-        vec![
-            ("ContextOfItems", Value::Ref(context)),
-            ("RepresentationIdentifier", Value::Text("Style".into())),
-            ("RepresentationType", Value::Text("Material".into())),
-            ("Items", Value::List(vec![Value::Ref(styled)])),
-        ],
-    );
+    let mut representations = Vec::new();
+    for (view, fill) in fills {
+        let style = author_style(&mut tx, &model, schema, fill);
+        let styled =
+            create_styled_item(&mut tx, &model, schema, StyledItemDraft::new(vec![style])).unwrap();
+        let context = match view {
+            None => plan,
+            Some(view) => raw(
+                &mut tx,
+                schema,
+                "IfcGeometricRepresentationSubContext",
+                vec![
+                    ("ContextIdentifier", Value::Text("Body".into())),
+                    ("ContextType", Value::Text("Model".into())),
+                    ("ParentContext", Value::Ref(plan)),
+                    ("TargetView", Value::Enum((*view).into())),
+                ],
+            ),
+        };
+        representations.push(Value::Ref(raw(
+            &mut tx,
+            schema,
+            "IfcStyledRepresentation",
+            vec![
+                ("ContextOfItems", Value::Ref(context)),
+                ("RepresentationIdentifier", Value::Text("Style".into())),
+                ("RepresentationType", Value::Text("Material".into())),
+                ("Items", Value::List(vec![Value::Ref(styled)])),
+            ],
+        )));
+    }
     let material = raw(
         &mut tx,
         schema,
@@ -208,10 +262,7 @@ fn author(fill: &MaterialFill, token: &str, schema: &Schema) -> (Model, EntityId
         schema,
         "IfcMaterialDefinitionRepresentation",
         vec![
-            (
-                "Representations",
-                Value::List(vec![Value::Ref(representation)]),
-            ),
+            ("Representations", Value::List(representations)),
             ("RepresentedMaterial", Value::Ref(material)),
         ],
     );
@@ -254,6 +305,28 @@ fn same_line(a: &HatchLine, b: &HatchLine) -> bool {
         && near(a.width.unwrap_or_default(), b.width.unwrap_or_default())
 }
 
+fn assert_same_fill(context: &str, a: &MaterialFill, b: &MaterialFill) {
+    assert_eq!(a.name, b.name, "{context}");
+    assert_eq!(a.model_or_draughting, b.model_or_draughting, "{context}");
+    assert_eq!(a.background, b.background, "{context}");
+    assert_eq!(a.lines.len(), b.lines.len(), "{context}");
+    for (a, b) in a.lines.iter().zip(&b.lines) {
+        assert!(same_line(a, b), "{context}: {a:?} vs {b:?}");
+    }
+}
+
+fn find(model: &Model, type_name: &str, name: &str) -> EntityId {
+    model
+        .of_type(type_name)
+        .find(|(_, e)| e.text(0) == Some(name))
+        .map(|(id, _)| id)
+        .unwrap()
+}
+
+fn index(model: &Model) -> StyleIndex<'_, '_> {
+    StyleIndex::new(StyleView::new(model, schema_of(model))).unwrap()
+}
+
 #[test]
 fn fixtures_round_trip_through_authoring_fill() {
     for (name, token) in [
@@ -262,27 +335,57 @@ fn fixtures_round_trip_through_authoring_fill() {
         ("material_fill_ifc2x3.ifc", "IFC2X3"),
     ] {
         let source = fixture(name);
+        let schema = schema_of(&source);
         for material in ["Concrete", "Insulation", "Scaled"] {
-            let id = source
-                .of_type("IFCMATERIAL")
-                .find(|(_, e)| e.text(0) == Some(material))
-                .map(|(id, _)| id)
-                .unwrap();
-            let a = resolve(&source, id);
-
-            let (authored, authored_material) = author(&a, token, schema_of(&source));
-            let bytes = StepCodec.write_bytes(&authored).expect("writes");
-            let reread = StepCodec.read_bytes(&bytes).expect("reads");
+            let a = resolve(&source, find(&source, "IFCMATERIAL", material));
+            let (authored, authored_material) = author(&[(None, &a)], token, schema);
+            let reread = StepCodec
+                .read_bytes(&StepCodec.write_bytes(&authored).expect("writes"))
+                .expect("reads");
             let b = resolve(&reread, authored_material);
-
-            let context = format!("{name} {material}");
-            assert_eq!(a.name, b.name, "{context}");
-            assert_eq!(a.model_or_draughting, b.model_or_draughting, "{context}");
-            assert_eq!(a.background, b.background, "{context}");
-            assert_eq!(a.lines.len(), b.lines.len(), "{context}");
-            for (a, b) in a.lines.iter().zip(&b.lines) {
-                assert!(same_line(a, b), "{context}: {a:?} vs {b:?}");
-            }
+            assert_same_fill(&format!("{name} {material}"), &a, &b);
         }
+
+        // One fill per view, and a bare style.
+        let a = index(&source)
+            .material_fills(
+                find(&source, "IFCMATERIAL", "CutAndProjection"),
+                StyleUnits::SI,
+            )
+            .unwrap();
+        assert_eq!(a.len(), 2, "{name}");
+        let views: Vec<_> = a
+            .iter()
+            .map(|c| (Some(c.target_view.as_deref().unwrap()), &c.fill))
+            .collect();
+        let (authored, authored_material) = author(&views, token, schema);
+        let reread = StepCodec
+            .read_bytes(&StepCodec.write_bytes(&authored).expect("writes"))
+            .expect("reads");
+        let b = index(&reread)
+            .material_fills(authored_material, StyleUnits::SI)
+            .unwrap();
+        assert_eq!(b.len(), 2, "{name}");
+        for (a, b) in a.iter().zip(&b) {
+            assert_eq!(a.target_view, b.target_view, "{name}");
+            assert_eq!(a.identifier, b.identifier, "{name}");
+            assert_eq!(a.context_type, b.context_type, "{name}");
+            assert_same_fill(name, &a.fill, &b.fill);
+        }
+
+        let library = index(&source)
+            .fill_area_style(
+                find(&source, "IFCFILLAREASTYLE", "Library pattern"),
+                StyleUnits::SI,
+            )
+            .unwrap();
+        let (authored, style) = author_bare(&library, token, schema);
+        let reread = StepCodec
+            .read_bytes(&StepCodec.write_bytes(&authored).expect("writes"))
+            .expect("reads");
+        let b = index(&reread)
+            .fill_area_style(style, StyleUnits::SI)
+            .unwrap();
+        assert_same_fill(name, &library, &b);
     }
 }
