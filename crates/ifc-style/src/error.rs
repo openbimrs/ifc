@@ -135,11 +135,13 @@ pub enum StyleError {
         /// The conflicting `IfcSurfaceStyle`s, ascending.
         styles: Vec<EntityId>,
     },
-    /// One styled item or material states more than one different fill area
-    /// style; the fill lookup refuses to guess (#597).
+    /// A styled item, styled representation, representation context or
+    /// material states more than one different fill area style; the fill
+    /// lookup refuses to guess (#597).
     #[error("{owner} states {} different fill area styles", styles.len())]
     AmbiguousFill {
-        /// The styled item or material with the conflict.
+        /// The styled item, styled representation, context or material with
+        /// the conflict.
         owner: EntityId,
         /// The conflicting `IfcFillAreaStyle`s, ascending.
         styles: Vec<EntityId>,

@@ -70,6 +70,10 @@ pub struct ContextFill {
     /// `TargetView` of an `IfcGeometricRepresentationSubContext` without the
     /// dots (`"SECTION_VIEW"`); `None` for any other context.
     pub target_view: Option<String>,
+    /// `UserDefinedTargetView` of a sub-context, when authored.
+    pub user_defined_target_view: Option<String>,
+    /// `ParentContext` of a sub-context; `None` for any other context.
+    pub parent_context: Option<EntityId>,
     /// The fill.
     pub fill: MaterialFill,
 }

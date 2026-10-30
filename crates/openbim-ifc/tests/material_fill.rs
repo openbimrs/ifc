@@ -134,7 +134,7 @@ fn a_release_the_unit_resolver_does_not_read_is_refused() {
 }
 
 #[test]
-fn per_view_fills_and_bare_styles_resolve_in_every_unit_system() {
+fn per_view_fills_and_bare_styles_resolve() {
     let metric = fixture("material_fill.ifc");
     let id = material(&metric, "CutAndProjection");
     let fills = material_fills(&metric, id).unwrap();
@@ -152,7 +152,7 @@ fn per_view_fills_and_bare_styles_resolve_in_every_unit_system() {
     assert_eq!(pattern.background, Some([0.8; 3]));
     assert!(matches!(
         fill_area_style(&metric, id),
-        Err(MaterialFillError::Style(StyleError::ReferenceType { .. }))
+        Err(MaterialFillError::Style(StyleError::WrongEntityType { .. }))
     ));
 }
 

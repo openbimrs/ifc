@@ -20,7 +20,7 @@ impl StyleIndex<'_, '_> {
     /// The traversal is that of [`StyleIndex::material_colour`]. Fills in
     /// different contexts must draw the same: equal flag, background and
     /// hatch lines (as a set, compared exactly); the first one, in
-    /// ascending order of definition, representation and item, is returned.
+    /// ascending order of representation and item, is returned.
     /// A material that states different fills per context (cut and
     /// projection) is ambiguous here: see [`StyleIndex::material_fills`].
     ///
@@ -108,6 +108,29 @@ impl StyleIndex<'_, '_> {
             let sub = view
                 .schema
                 .is_a(record.type_name(), "IfcGeometricRepresentationSubContext");
+            let (target_view, user_defined_target_view, parent_context) = if sub {
+                let target = record.required_enum("TargetView")?.trim_matches('.');
+                if !PROJECTIONS.contains(&target) {
+                    return Err(StyleError::InvalidValue {
+                        entity: record.type_name().to_owned(),
+                        id: context,
+                        attribute: "TargetView",
+                        value: target.to_owned(),
+                    });
+                }
+                (
+                    Some(target.to_owned()),
+                    record
+                        .optional_text("UserDefinedTargetView")?
+                        .map(str::to_owned),
+                    Some(
+                        record
+                            .required_ref("ParentContext", "IfcGeometricRepresentationContext")?,
+                    ),
+                )
+            } else {
+                (None, None, None)
+            };
             out.push(ContextFill {
                 representation,
                 context,
@@ -115,13 +138,9 @@ impl StyleIndex<'_, '_> {
                     .optional_text("ContextIdentifier")?
                     .map(str::to_owned),
                 context_type: record.optional_text("ContextType")?.map(str::to_owned),
-                target_view: if sub {
-                    record
-                        .optional_enum("TargetView")?
-                        .map(|view| view.trim_matches('.').to_owned())
-                } else {
-                    None
-                },
+                target_view,
+                user_defined_target_view,
+                parent_context,
                 fill,
             });
         }
@@ -135,21 +154,10 @@ impl StyleIndex<'_, '_> {
     /// # Errors
     ///
     /// [`StyleError::UnknownEntity`] for a missing entity;
-    /// [`StyleError::ReferenceType`] when `style` is no `IfcFillAreaStyle`;
+    /// [`StyleError::WrongEntityType`] when `style` is no `IfcFillAreaStyle`;
     /// and the errors of [`StyleIndex::material_fill`] for the style itself.
     pub fn fill_area_style(&self, style: EntityId, units: StyleUnits) -> StyleResult<MaterialFill> {
         let view = self.view();
-        let entity = view
-            .model
-            .get(style)
-            .ok_or(StyleError::UnknownEntity { id: style })?;
-        if !view.schema.is_a(&entity.type_name, "IfcFillAreaStyle") {
-            return Err(StyleError::ReferenceType {
-                target: style,
-                expected: "IfcFillAreaStyle",
-                actual: entity.type_name.to_string(),
-            });
-        }
         resolve_fill(view, style, None, units)
     }
 
@@ -168,16 +176,19 @@ impl StyleIndex<'_, '_> {
         Ok(found)
     }
 
-    /// The fill of each styled item of `representation` that states one.
+    /// The fill of each styled item of `representation` that states one,
+    /// in ascending item order.
     fn representation_fills(
         &self,
         representation: EntityId,
         units: StyleUnits,
     ) -> StyleResult<Vec<MaterialFill>> {
         let view = self.view();
-        let items = view
+        let mut items = view
             .record(representation, "IfcStyledRepresentation")?
             .required_refs("Items", "IfcStyledItem", 1, None)?;
+        items.sort_unstable();
+        items.dedup();
         let mut found = Vec::new();
         for styled in items {
             let styles = view.flatten_assignments(view.styled_item(styled)?.styles()?)?;
@@ -201,6 +212,19 @@ impl StyleIndex<'_, '_> {
 
 /// The first of `found` when every fill agrees, `None` when empty, else
 /// ambiguous.
+/// `IfcGeometricProjectionEnum`, the same in every release.
+const PROJECTIONS: [&str; 9] = [
+    "GRAPH_VIEW",
+    "SKETCH_VIEW",
+    "MODEL_VIEW",
+    "PLAN_VIEW",
+    "REFLECTED_PLAN_VIEW",
+    "SECTION_VIEW",
+    "ELEVATION_VIEW",
+    "USERDEFINED",
+    "NOTDEFINED",
+];
+
 fn agree_fill(owner: EntityId, found: Vec<MaterialFill>) -> StyleResult<Option<MaterialFill>> {
     let Some(first) = found.first() else {
         return Ok(None);

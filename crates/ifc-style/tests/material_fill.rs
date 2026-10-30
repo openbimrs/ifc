@@ -425,7 +425,7 @@ fn a_bare_style_resolves_and_a_non_fill_is_refused() {
         assert!(
             matches!(
                 index.fill_area_style(material(&model, "Concrete"), StyleUnits::SI),
-                Err(StyleError::ReferenceType {
+                Err(StyleError::WrongEntityType {
                     expected: "IfcFillAreaStyle",
                     ..
                 })

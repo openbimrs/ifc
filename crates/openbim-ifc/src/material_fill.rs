@@ -19,7 +19,7 @@ use ifc_properties::{exact_unit, ExactUnitError};
 use ifc_schema::SchemaVersion;
 use ifc_style::{ContextFill, MaterialFill, StyleError, StyleIndex, StyleUnits, StyleView};
 
-/// Why a material's cut fill could not be resolved.
+/// Why a material's fills or a bare fill area style could not be resolved.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum MaterialFillError {
@@ -139,7 +139,7 @@ pub fn material_fills(
 ///
 /// # Errors
 ///
-/// As [`material_fill`]; [`StyleError::ReferenceType`] when `style` is no
+/// As [`material_fill`]; [`StyleError::WrongEntityType`] when `style` is no
 /// `IfcFillAreaStyle`.
 pub fn fill_area_style(model: &Model, style: EntityId) -> Result<MaterialFill, MaterialFillError> {
     with_index(model, |index, units| index.fill_area_style(style, units))
