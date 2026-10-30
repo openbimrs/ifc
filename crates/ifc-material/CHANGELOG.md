@@ -21,11 +21,11 @@ everything released before per-crate changelogs began.
   model) and checks each one's `RelatedObjects` once. `assigned_material` and
   `assignments_for` then cost the relationships that name the object, not the
   model or the length of a shared `RelatedObjects`. Every answer, refusals
-  included, equals `MaterialView`'s. Measured: every wall of a 100,000-wall
-  model resolves in 154 ms (1.5 microseconds per wall, 1.5 times the cost per
-  wall at 1,000 walls), where `MaterialView::assigned_material` costs 1.96 ms
-  per wall without a model reverse index at that size
-  (`benchmarks/baseline.md`).
+  included, equals `MaterialView`'s. Measured (provisional: loaded machine; see `benchmarks/baseline.md`): every
+  wall of a 100,000-wall model resolves in 149 ms (1.5 microseconds per wall,
+  1.4 times the cost per wall at 1,000 walls), where
+  `MaterialView::assigned_material` costs 3.1 ms per wall without a model
+  reverse index at that size.
 
 ### Changed (#609)
 

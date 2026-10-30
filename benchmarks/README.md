@@ -256,7 +256,7 @@ excludes `benches/` from its published archive.
 | `material.index.build` | `MaterialIndex::new`: every `IfcRelAssociatesMaterial` and `IfcRelDefinesByType` read once, no model reverse index |
 | `material.index.every_wall` | `MaterialIndex::new` and `assigned_material` of every wall, no model reverse index |
 | `material.index.every_wall.indexed` | the same on a model whose reverse index was built before timing |
-| `material.per_call.100` | `MaterialView::assigned_material` for 100 walls spread over the model, each call on its own, no reverse index |
+| `material.per_call.100` | `MaterialView::assigned_material` for 100 walls (25 each of own, shared-list, type-inherited and duplicated association) spread over the model, each call on its own, no reverse index |
 | `material.per_call.100.indexed` | the same on a model whose reverse index was built before timing |
 
 Each output is checksummed outside the clock over the `Debug` form of every

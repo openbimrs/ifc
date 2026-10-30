@@ -229,8 +229,8 @@ impl<'m> MaterialView<'m> {
     /// back to the material assigned to its `IfcTypeObject` via
     /// `IfcRelDefinesByType`. Returns `Ok(None)` if neither exists. Fails
     /// with [`crate::MaterialError::AmbiguousAssignment`] or
-    /// [`crate::MaterialError::AmbiguousType`] if more than one candidate is
-    /// found at either level, and with
+    /// [`crate::MaterialError::AmbiguousType`] for more than one distinct
+    /// material, or more than one `IfcRelDefinesByType`, and with
     /// `crate::MaterialError::UnknownEntity` if `object` is not in the
     /// model.
     ///
@@ -246,10 +246,11 @@ impl<'m> MaterialView<'m> {
     /// such relations are ambiguous even when they name the same type: no
     /// release allows it (IFC2X3 `IfcObject` WR1; IFC4 and IFC4X3
     /// `IsTypedBy SET [0:1]`), so the file states the typing twice and this
-    /// lookup does not guess which statement was meant. `HasAssociations` is
+    /// lookup does not guess which statement was meant. (`ifc-resource`
+    /// deliberately accepts a repeated relation naming the same type.)
+    /// `HasAssociations` is
     /// `SET [0:?]` in every release, which is why several material
-    /// relationships are accepted. (`ifc-resource` deliberately accepts a repeated
-    /// relation naming the same type.) For many objects use
+    /// relationships are accepted. For many objects use
     /// [`crate::MaterialIndex`].
     pub fn assigned_material(
         self,

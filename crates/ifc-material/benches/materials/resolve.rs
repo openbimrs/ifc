@@ -5,7 +5,7 @@
 //! | `material.index.build` | `MaterialIndex::new`: every material and typing relationship read once, on a model with no reverse index |
 //! | `material.index.every_wall` | `MaterialIndex::new` and `assigned_material` of every wall, on a model with no reverse index |
 //! | `material.index.every_wall.indexed` | the same on a model whose reverse index was built before timing |
-//! | `material.per_call.100` | `MaterialView::assigned_material` for 100 walls spread over the model, each call on its own, no reverse index |
+//! | `material.per_call.100` | `MaterialView::assigned_material` for 100 walls (25 each of own, shared-list, type-inherited and duplicated association) spread over the model, each call on its own, no reverse index |
 //! | `material.per_call.100.indexed` | the same on a model whose reverse index was built before timing |
 //!
 //! The `every_wall` benchmarks include building the index: that is what a
@@ -86,10 +86,22 @@ pub(crate) fn run(workload: &Workload, model: &Model, selection: &[String], out:
     let mut walls: Vec<EntityId> = model.ids_of_type("IFCWALL").to_vec();
     walls.sort_unstable();
     assert_eq!(walls.len(), workload.walls, "every wall was read");
-    // The per-call cost is the same for every wall; a hundred spread over
-    // the model keep the quadratic path measurable at every scale.
-    let stride = walls.len().div_ceil(100).max(1);
-    let sample: Vec<EntityId> = walls.iter().step_by(stride).copied().collect();
+    // Up to 25 walls of each class, spread over the model, so the per-call
+    // rows cover every path: own association, the shared list, inheritance
+    // through the type, and a duplicated association.
+    let spread = |class: &dyn Fn(usize) -> bool| -> Vec<EntityId> {
+        let positions: Vec<usize> = (0..walls.len()).filter(|&i| class(i)).collect();
+        let stride = positions.len().div_ceil(25).max(1);
+        positions
+            .iter()
+            .step_by(stride)
+            .map(|&i| walls[i])
+            .collect()
+    };
+    let mut sample = spread(&|i| i % 4 == 0 && i % 20 != 0);
+    sample.extend(spread(&|i| i % 4 == 2));
+    sample.extend(spread(&|i| i % 2 == 1));
+    sample.extend(spread(&|i| i % 20 == 0));
 
     // The view's answers, wall by wall: the index must give exactly these,
     // for every wall at the small scales and for the sample at every scale.

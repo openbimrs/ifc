@@ -490,3 +490,16 @@ fn a_second_relationship_without_a_material_refuses_with_its_own_error() {
         ));
     });
 }
+
+#[test]
+fn a_type_with_two_distinct_materials_is_ambiguous_on_the_type() {
+    let mut model = wall_and_type_model();
+    // Type #11 has #20 (material 2) and #25 (material 1); wall #12 has none of its own.
+    model.insert(EntityId(25), relation("IFCRELASSOCIATESMATERIAL", &[11], 1));
+    each_path(&model, |assigned| {
+        assert!(matches!(
+            assigned(EntityId(12)),
+            Err(MaterialError::AmbiguousAssignment { object, count: 2 }) if object == EntityId(11)
+        ));
+    });
+}
