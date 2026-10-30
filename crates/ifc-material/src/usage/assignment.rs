@@ -2,6 +2,7 @@
 
 use ifc_model::EntityId;
 
+use crate::usage::index::{Lookup, ASSOCIATES_MATERIAL};
 use crate::view::{
     borrowed_entity, optional_text, required_ref, required_refs, required_text, MaterialView,
 };
@@ -88,12 +89,24 @@ impl<'m> MaterialView<'m> {
     /// it costs those and not every relationship in the model; a malformed
     /// relationship elsewhere does not refuse it (#608).
     pub fn assignments_for(self, object: EntityId) -> MaterialResult<Vec<MaterialAssignment<'m>>> {
+        self.assignments_in(self.lookup(), object)
+    }
+
+    pub(crate) fn assignments_in(
+        self,
+        lookup: Lookup<'_>,
+        object: EntityId,
+    ) -> MaterialResult<Vec<MaterialAssignment<'m>>> {
         let release = self.release();
         let mut matches = Vec::new();
-        for (id, entity) in self.naming("IFCRELASSOCIATESMATERIAL", "RelatedObjects", object)? {
-            let assignment = MaterialAssignment::from_known(id, entity, release);
-            if assignment.related_object_ids()?.contains(&object) {
-                matches.push(assignment);
+        for (id, entity) in self.naming(
+            lookup.referrers,
+            ASSOCIATES_MATERIAL,
+            "RelatedObjects",
+            object,
+        )? {
+            if self.names(lookup, ASSOCIATES_MATERIAL, id, entity, object)? {
+                matches.push(MaterialAssignment::from_known(id, entity, release));
             }
         }
         Ok(matches)

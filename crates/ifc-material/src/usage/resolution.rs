@@ -7,7 +7,8 @@
 use ifc_model::{Entity, EntityId};
 
 use crate::release::{is_type_object, Release};
-use crate::view::{required_ref, required_refs};
+use crate::usage::index::{Lookup, DEFINES_BY_TYPE};
+use crate::view::required_ref;
 use crate::{
     Material, MaterialAssignment, MaterialConstituent, MaterialConstituentSet, MaterialError,
     MaterialLayer, MaterialLayerSet, MaterialLayerSetUsage, MaterialLayerWithOffsets, MaterialList,
@@ -245,11 +246,19 @@ impl<'m> MaterialView<'m> {
         self,
         object: EntityId,
     ) -> MaterialResult<Option<ResolvedAssignment<'m>>> {
+        self.assigned_material_in(self.lookup(), object)
+    }
+
+    pub(crate) fn assigned_material_in(
+        self,
+        lookup: Lookup<'_>,
+        object: EntityId,
+    ) -> MaterialResult<Option<ResolvedAssignment<'m>>> {
         self.model()
             .get(object)
             .ok_or(MaterialError::UnknownEntity { id: object })?;
 
-        let direct = self.assignments_for(object)?;
+        let direct = self.assignments_in(lookup, object)?;
         if direct.len() > 1 {
             return Err(MaterialError::AmbiguousAssignment {
                 object,
@@ -262,7 +271,7 @@ impl<'m> MaterialView<'m> {
                 .map(Some);
         }
 
-        let Some((relation_id, type_id)) = self.type_relation(object)? else {
+        let Some((relation_id, type_id)) = self.type_relation(lookup, object)? else {
             return Ok(None);
         };
         let type_entity = self.entity(relation_id, type_id)?;
@@ -275,7 +284,7 @@ impl<'m> MaterialView<'m> {
             });
         }
 
-        let assigned = self.assignments_for(type_id)?;
+        let assigned = self.assignments_in(lookup, type_id)?;
         if assigned.len() > 1 {
             return Err(MaterialError::AmbiguousAssignment {
                 object: type_id,
@@ -291,24 +300,25 @@ impl<'m> MaterialView<'m> {
 
     /// The single `IfcRelDefinesByType` typing `object`, as
     /// `(relation, type)`.
-    fn type_relation(self, object: EntityId) -> MaterialResult<Option<(EntityId, EntityId)>> {
-        const ENTITY: &str = "IFCRELDEFINESBYTYPE";
+    fn type_relation(
+        self,
+        lookup: Lookup<'_>,
+        object: EntityId,
+    ) -> MaterialResult<Option<(EntityId, EntityId)>> {
         let release = self.release();
         let mut type_relations = Vec::new();
-        for (relation_id, relation) in self.naming(ENTITY, "RelatedObjects", object)? {
-            let related_slot = release.slot(ENTITY, relation_id, "RelatedObjects")?;
-            let related = required_refs(
-                ENTITY,
-                relation_id,
-                relation,
-                related_slot,
-                "RelatedObjects",
-                1,
-            )?;
-            if related.contains(&object) {
-                let type_slot = release.slot(ENTITY, relation_id, "RelatingType")?;
-                let type_id =
-                    required_ref(ENTITY, relation_id, relation, type_slot, "RelatingType")?;
+        for (relation_id, relation) in
+            self.naming(lookup.referrers, DEFINES_BY_TYPE, "RelatedObjects", object)?
+        {
+            if self.names(lookup, DEFINES_BY_TYPE, relation_id, relation, object)? {
+                let type_slot = release.slot(DEFINES_BY_TYPE, relation_id, "RelatingType")?;
+                let type_id = required_ref(
+                    DEFINES_BY_TYPE,
+                    relation_id,
+                    relation,
+                    type_slot,
+                    "RelatingType",
+                )?;
                 type_relations.push((relation_id, type_id));
             }
         }

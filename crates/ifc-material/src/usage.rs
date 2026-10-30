@@ -6,9 +6,11 @@
 //! ## Internal split
 //!
 //! - `assignment.rs`: RelAssociatesMaterial view.
+//! - `index.rs`: lookup plumbing shared by the view and the index.
 //! - `resolution.rs`: bounded association resolution.
 
 mod assignment;
+mod index;
 mod resolution;
 
 pub use assignment::MaterialAssignment;
