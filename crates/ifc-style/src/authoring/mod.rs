@@ -537,15 +537,13 @@ pub(crate) fn build_named(
     Ok(Entity::new(entity.to_ascii_uppercase(), slots))
 }
 
-pub(crate) fn validate_ref(
-    tx: &Transaction,
-    model: &Model,
-    schema: &Schema,
+/// The IFC type of `target`, staged in `tx` or stored in `model`.
+pub(crate) fn staged_type<'a>(
+    tx: &'a Transaction,
+    model: &'a Model,
     target: EntityId,
-    expected: &'static str,
-) -> StyleResult<()> {
-    let type_name = tx
-        .edits()
+) -> StyleResult<&'a str> {
+    tx.edits()
         .iter()
         .rev()
         .find_map(|edit| match edit {
@@ -556,7 +554,17 @@ pub(crate) fn validate_ref(
         .ok_or(StyleError::DanglingReference {
             source_id: EntityId(0),
             target,
-        })?;
+        })
+}
+
+pub(crate) fn validate_ref(
+    tx: &Transaction,
+    model: &Model,
+    schema: &Schema,
+    target: EntityId,
+    expected: &'static str,
+) -> StyleResult<()> {
+    let type_name = staged_type(tx, model, target)?;
     if !schema.is_a(type_name, expected) {
         return Err(StyleError::ReferenceType {
             target,

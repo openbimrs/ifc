@@ -20,6 +20,7 @@ mod light;
 mod surface_style;
 mod text_style;
 mod texture;
+mod units;
 mod view;
 
 pub use annotation::{
@@ -64,7 +65,9 @@ pub use coverage::{
 pub use curve_style::{CurveStyle, CurveStyleFont, CurveStyleFontPattern};
 pub use error::{StyleError, StyleResult};
 pub use extent::{PlanarBox, PlanarExtent};
-pub use fill_style::{FillAreaStyle, FillAreaStyleHatching, FillAreaStyleTiles};
+pub use fill_style::{
+    ContextFill, FillAreaStyle, FillAreaStyleHatching, FillAreaStyleTiles, HatchLine, MaterialFill,
+};
 pub use layer::PresentationLayer;
 pub use light::{
     LightDistributionData, LightIntensityDistribution, LightSource, LightSourceAmbient,
@@ -80,4 +83,5 @@ pub use texture::{
     BlobTexture, ImageTexture, IndexedTextureMap, PixelTexture, SurfaceTexture, TextureCoordinate,
     TextureVertex, TextureVertexList,
 };
+pub use units::StyleUnits;
 pub use view::StyleView;

@@ -145,6 +145,19 @@ const EXPECTED: &[(&str, u64)] = &[
         "synthetic-coverage/meshing_coverage.ifc",
         0xd006bc7824c13d00,
     ),
+    ("synthetic-fill/material_fill.ifc", 0x09612b07b5ecb5a5),
+    (
+        "synthetic-fill/material_fill_ifc2x3.ifc",
+        0x09612b07b5ecb5a5,
+    ),
+    (
+        "synthetic-fill/material_fill_ifc4x3.ifc",
+        0x09612b07b5ecb5a5,
+    ),
+    (
+        "synthetic-fill/material_fill_mm_deg.ifc",
+        0x09612b07b5ecb5a5,
+    ),
     (
         "synthetic-georef/epset_malformed_ifc2x3.ifc",
         0x09612b07b5ecb5a5,

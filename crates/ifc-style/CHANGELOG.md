@@ -12,6 +12,19 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#597)
+
+- `StyleIndex::material_fill(material, units)`: the cut fill a material's `IfcMaterialDefinitionRepresentation` states, as a `MaterialFill` (fill area style, styled item, name, `ModelOrDraughting`, background colour) with one `HatchLine` per `IfcFillAreaStyleHatching`: angle in radians; spacing, along-line shift, origin, pattern start, dashes and width in metres; line colour. An `IfcVector` (IFC2X3: `IfcOneDirectionRepeatFactor`) distance splits into the perpendicular spacing and the shift. Fills over several contexts must draw the same, else `StyleError::AmbiguousFill`. Tiles, externally defined hatch styles, predefined curve fonts other than 'continuous' and 'by layer' deferrals are `StyleError::UnsupportedFill`.
+- `StyleIndex::material_fills(material, units)`: a material's fills per representation context as `ContextFill` (representation, context, `ContextIdentifier`, `ContextType`, the sub-context's `TargetView` without dots, its `UserDefinedTargetView` and `ParentContext`, and the `MaterialFill`), for materials that state a cut and a projection fill in `SECTION_VIEW` and `ELEVATION_VIEW` sub-contexts. Fills must agree only within one context, else `StyleError::AmbiguousFill` owned by the context (or by the styled representation, styled item or material, as in `material_fill`); `material_fill` on such a material stays ambiguous.
+- `StyleIndex::fill_area_style(style, units)`: a bare `IfcFillAreaStyle` that nothing references, resolved like a material's fill; `MaterialFill::styled_item` is an `Option` for it.
+- `StyleUnits`: the project's metres per length unit and radians per plane angle unit, resolved by the caller; a measure read without its factor is `StyleError::UnitUndeclared`, a bad factor `StyleError::InvalidUnits`.
+
+### Fixed (#597)
+
+- `create_fill_area_style_hatching` writes a length distance as `IFCPOSITIVELENGTHMEASURE(..)`, the select member, not a bare real; in IFC2X3 `HatchLineDistance::Vector` takes an `IfcOneDirectionRepeatFactor` and refuses an `IfcVector` and an `IfcTwoDirectionRepeatFactor` (WR21). `HatchLineAngle` is documented in the project's plane angle unit.
+
+Semver: additive (`StyleError` is `#[non_exhaustive]`), a minor release while 0.x.
+
 ## [0.6.3] - 2026-10-29
 
 ### Changed (#608)

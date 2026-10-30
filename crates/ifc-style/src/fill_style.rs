@@ -5,6 +5,12 @@ use ifc_model::{EntityId, Value};
 use crate::error::StyleResult;
 use crate::view::Record;
 
+mod resolve;
+mod resolved;
+
+pub(crate) use resolve::resolve_fill;
+pub use resolved::{ContextFill, HatchLine, MaterialFill};
+
 /// Borrowed projection of `IfcFillAreaStyle`.
 #[derive(Debug, Clone, Copy)]
 pub struct FillAreaStyle<'m, 's> {

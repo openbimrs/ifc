@@ -135,6 +135,43 @@ pub enum StyleError {
         /// The conflicting `IfcSurfaceStyle`s, ascending.
         styles: Vec<EntityId>,
     },
+    /// A styled item, styled representation, representation context or
+    /// material states more than one different fill area style; the fill
+    /// lookup refuses to guess (#597).
+    #[error("{owner} states {} different fill area styles", styles.len())]
+    AmbiguousFill {
+        /// The styled item, styled representation, context or material with
+        /// the conflict.
+        owner: EntityId,
+        /// The conflicting `IfcFillAreaStyle`s, ascending.
+        styles: Vec<EntityId>,
+    },
+    /// A fill area style uses a construct that is not resolved into hatch lines.
+    #[error("fill area style {style} uses {construct} at {entity}, which is not resolved into hatch lines")]
+    UnsupportedFill {
+        /// The `IfcFillAreaStyle`.
+        style: EntityId,
+        /// The entity carrying the construct.
+        entity: EntityId,
+        /// The construct, e.g. `"IfcFillAreaStyleTiles"`.
+        construct: String,
+    },
+    /// A measure needs a project unit the caller did not state.
+    #[error("{entity} needs the project {unit}, which is not stated")]
+    UnitUndeclared {
+        /// The entity whose measure needs the unit.
+        entity: EntityId,
+        /// The unit type, `"LENGTHUNIT"` or `"PLANEANGLEUNIT"`.
+        unit: &'static str,
+    },
+    /// A unit factor is not finite and positive.
+    #[error("unit factor {factor} must be finite and positive, got {value}")]
+    InvalidUnits {
+        /// The factor's name.
+        factor: &'static str,
+        /// The offending value.
+        value: f64,
+    },
 }
 
 /// The result type returned by this crate's projection and authoring operations.

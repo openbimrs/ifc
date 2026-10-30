@@ -243,13 +243,10 @@ pub use {
     ifc_author::{EntityBuilder, EntityEditor},
 };
 
-/// Containment and objectified relationship traversal.
+/// Containment and objectified relationship traversal, and the
+/// project/site/building/storey/element tree of a model.
 #[cfg(feature = "spatial")]
-pub use ifc_spatial as spatial;
-
-/// The project/site/building/storey/element tree of a model.
-#[cfg(feature = "spatial")]
-pub use ifc_spatial::{SpatialKind, SpatialTree};
+pub use ifc_spatial::{self as spatial, SpatialKind, SpatialTree};
 
 /// Representation selection and, with `geometry`, lowering to the DAG.
 ///
@@ -357,6 +354,16 @@ pub use spatial_properties::{
 mod georeference;
 #[cfg(all(feature = "georef", feature = "properties"))]
 pub use georeference::{georeferencing, GeoreferencingError};
+
+// A material's cut fill in metres and radians (#597) needs the project
+// units from `ifc-properties` AND the fill from `ifc-style`, siblings under
+// ADR 0003. The module gates itself on `all(style, properties)` with an
+// inner `#![cfg]`.
+mod material_fill;
+#[cfg(all(feature = "style", feature = "properties"))]
+pub use material_fill::{
+    fill_area_style, material_fill, material_fills, project_style_units, MaterialFillError,
+};
 
 // Converting a model's length unit (#469) reads every attribute against the
 // release's table, resolves units through `ifc-properties`' exact resolver,
