@@ -5,7 +5,8 @@
 
 use ifc::style::{HatchLine, MaterialFill, StyleError};
 use ifc::{
-    material_fill, project_style_units, Codec, EntityId, MaterialFillError, Model, StepCodec,
+    fill_area_style, material_fill, material_fills, project_style_units, Codec, EntityId,
+    MaterialFillError, Model, StepCodec,
 };
 
 fn fixture(name: &str) -> Model {
@@ -130,4 +131,35 @@ fn a_release_the_unit_resolver_does_not_read_is_refused() {
         material_fill(&unknown, EntityId(1)),
         Err(MaterialFillError::UnsupportedSchema { .. })
     ));
+}
+
+#[test]
+fn per_view_fills_and_bare_styles_resolve_in_every_unit_system() {
+    let metric = fixture("material_fill.ifc");
+    let id = material(&metric, "CutAndProjection");
+    let fills = material_fills(&metric, id).unwrap();
+    let views: Vec<_> = fills.iter().map(|c| c.target_view.as_deref()).collect();
+    assert_eq!(views, [Some("SECTION_VIEW"), Some("ELEVATION_VIEW")]);
+    // The single fill stays ambiguous; the per-view lookup is the answer.
+    assert!(matches!(
+        material_fill(&metric, id),
+        Err(MaterialFillError::Style(StyleError::AmbiguousFill { .. }))
+    ));
+
+    let style = model_style(&metric, "Library pattern");
+    let pattern = fill_area_style(&metric, style).unwrap();
+    assert_eq!(pattern.styled_item, None);
+    assert_eq!(pattern.background, Some([0.8; 3]));
+    assert!(matches!(
+        fill_area_style(&metric, id),
+        Err(MaterialFillError::Style(StyleError::ReferenceType { .. }))
+    ));
+}
+
+fn model_style(model: &Model, name: &str) -> EntityId {
+    model
+        .of_type("IFCFILLAREASTYLE")
+        .find(|(_, entity)| entity.text(0) == Some(name))
+        .map(|(id, _)| id)
+        .unwrap()
 }

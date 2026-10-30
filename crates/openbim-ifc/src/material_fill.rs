@@ -17,7 +17,7 @@ use std::fmt;
 use ifc_model::{EntityId, Model};
 use ifc_properties::{exact_unit, ExactUnitError};
 use ifc_schema::SchemaVersion;
-use ifc_style::{MaterialFill, StyleError, StyleIndex, StyleUnits, StyleView};
+use ifc_style::{ContextFill, MaterialFill, StyleError, StyleIndex, StyleUnits, StyleView};
 
 /// Why a material's cut fill could not be resolved.
 #[derive(Debug, Clone, PartialEq)]
@@ -80,11 +80,30 @@ pub fn project_style_units(model: &Model) -> Result<StyleUnits, MaterialFillErro
         .map_err(MaterialFillError::Style)
 }
 
+/// Run `resolve` on a [`StyleIndex`] over `model`, with the project units.
+fn with_index<T>(
+    model: &Model,
+    resolve: impl FnOnce(&StyleIndex<'_, '_>, StyleUnits) -> Result<T, StyleError>,
+) -> Result<T, MaterialFillError> {
+    let declared = &model.header().schema;
+    let unsupported = || MaterialFillError::UnsupportedSchema {
+        schema: declared.join(","),
+    };
+    let [token] = declared.as_slice() else {
+        return Err(unsupported());
+    };
+    let version = SchemaVersion::from_header_token(token).ok_or_else(unsupported)?;
+    let schema = ifc_schema::for_version(version).map_err(|_| unsupported())?;
+    let index = StyleIndex::new(StyleView::new(model, schema)).map_err(MaterialFillError::Style)?;
+    resolve(&index, project_style_units(model)?).map_err(MaterialFillError::Style)
+}
+
 /// The cut fill `material` states, as hatch line families in metres and
 /// radians, or `None` when it states none ([`StyleIndex::material_fill`]).
 ///
 /// The model's `FILE_SCHEMA` must pin one release this build bundles; the
-/// project units come from [`project_style_units`].
+/// project units come from [`project_style_units`]. A material that states
+/// different fills per view is ambiguous here: use [`material_fills`].
 ///
 /// # Errors
 ///
@@ -97,17 +116,31 @@ pub fn material_fill(
     model: &Model,
     material: EntityId,
 ) -> Result<Option<MaterialFill>, MaterialFillError> {
-    let declared = &model.header().schema;
-    let unsupported = || MaterialFillError::UnsupportedSchema {
-        schema: declared.join(","),
-    };
-    let [token] = declared.as_slice() else {
-        return Err(unsupported());
-    };
-    let version = SchemaVersion::from_header_token(token).ok_or_else(unsupported)?;
-    let schema = ifc_schema::for_version(version).map_err(|_| unsupported())?;
-    let index = StyleIndex::new(StyleView::new(model, schema)).map_err(MaterialFillError::Style)?;
-    index
-        .material_fill(material, project_style_units(model)?)
-        .map_err(MaterialFillError::Style)
+    with_index(model, |index, units| index.material_fill(material, units))
+}
+
+/// The fills `material` states per representation context, in metres and
+/// radians ([`StyleIndex::material_fills`]): a cut fill in a `SECTION_VIEW`
+/// sub-context and a projection fill in an `ELEVATION_VIEW` one, say.
+///
+/// # Errors
+///
+/// As [`material_fill`]; [`StyleError::AmbiguousFill`] is owned by the
+/// representation or context whose fills differ.
+pub fn material_fills(
+    model: &Model,
+    material: EntityId,
+) -> Result<Vec<ContextFill>, MaterialFillError> {
+    with_index(model, |index, units| index.material_fills(material, units))
+}
+
+/// The fill a bare `IfcFillAreaStyle` states, in metres and radians
+/// ([`StyleIndex::fill_area_style`]), for a pattern nothing references.
+///
+/// # Errors
+///
+/// As [`material_fill`]; [`StyleError::ReferenceType`] when `style` is no
+/// `IfcFillAreaStyle`.
+pub fn fill_area_style(model: &Model, style: EntityId) -> Result<MaterialFill, MaterialFillError> {
+    with_index(model, |index, units| index.fill_area_style(style, units))
 }
