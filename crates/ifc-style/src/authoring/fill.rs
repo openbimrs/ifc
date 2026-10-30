@@ -8,21 +8,23 @@ use ifc_schema::Schema;
 
 use crate::error::StyleResult;
 
-use super::{build_named, invalid_authoring, validate_ref};
+use super::{build_named, invalid_authoring, staged_type, validate_ref};
 
 /// `IfcHatchLineDistanceSelect`: the spacing between hatch lines.
 #[derive(Debug, Clone, Copy)]
 pub enum HatchLineDistance {
     /// An `IfcPositiveLengthMeasure`: constant perpendicular spacing.
     Length(f64),
-    /// An `IfcVector`: spacing and direction, for a skewed pattern.
+    /// A skewed pattern: in IFC4 and later an `IfcVector`; in IFC2X3 an
+    /// `IfcOneDirectionRepeatFactor`.
     Vector(EntityId),
 }
 
 /// Stage an `IfcFillAreaStyleHatching`.
 ///
-/// One family of parallel hatch lines. `HatchLineAngle` is in radians,
-/// like every other `IfcPlaneAngleMeasure` in the schema.
+/// One family of parallel hatch lines. `HatchLineAngle` is in the
+/// project's plane angle unit (`IfcPlaneAngleMeasure`);
+/// `StyleIndex::material_fill` converts it with `StyleUnits`.
 ///
 /// # Errors
 ///
@@ -53,10 +55,24 @@ pub fn create_fill_area_style_hatching(
                     format!("expected a positive length, got {value}"),
                 ));
             }
-            Value::Real(value)
+            Value::Typed {
+                type_name: "IFCPOSITIVELENGTHMEASURE".into(),
+                value: Box::new(Value::Real(value)),
+            }
         }
         HatchLineDistance::Vector(id) => {
-            validate_ref(tx, model, schema, id, "IfcVector")?;
+            if schema.entity("IfcOneDirectionRepeatFactor").is_some() {
+                validate_ref(tx, model, schema, id, "IfcOneDirectionRepeatFactor")?;
+                if schema.is_a(staged_type(tx, model, id)?, "IfcTwoDirectionRepeatFactor") {
+                    return Err(invalid_authoring(
+                        ENTITY,
+                        "StartOfNextHatchLine",
+                        "WR21: a two-direction repeat factor",
+                    ));
+                }
+            } else {
+                validate_ref(tx, model, schema, id, "IfcVector")?;
+            }
             Value::Ref(id)
         }
     };

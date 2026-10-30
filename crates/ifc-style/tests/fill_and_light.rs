@@ -1,10 +1,10 @@
 //! Fill patterns and the photometric light source.
 
 use ifc_model::{Entity, EntityId, Model, Transaction, Value};
-use ifc_schema::ifc4;
+use ifc_schema::{ifc2x3, ifc4};
 use ifc_style::{
     create_fill_area_style_hatching, create_fill_area_style_tiles, create_light_source_goniometric,
-    GoniometricLight, HatchLineDistance, LightSourceDraft,
+    GoniometricLight, HatchLineDistance, LightSourceDraft, StyleError,
 };
 
 fn colour(tx: &mut Transaction) -> EntityId {
@@ -44,10 +44,65 @@ fn a_hatching_takes_a_length_or_a_vector() {
     let staged = model.get(by_length).expect("staged");
     assert_eq!(staged.type_name.as_ref(), "IFCFILLAREASTYLEHATCHING");
     assert_eq!(staged.attributes.len(), 5);
-    assert_eq!(staged.attributes[1], Value::Real(0.01));
+    assert_eq!(
+        staged.attributes[1],
+        Value::Typed {
+            type_name: "IFCPOSITIVELENGTHMEASURE".into(),
+            value: Box::new(Value::Real(0.01)),
+        },
+    );
     assert_eq!(
         model.get(by_vector).expect("staged").attributes[1],
         Value::Ref(vector),
+    );
+}
+
+/// IFC2X3 states a skewed distance as an `IfcOneDirectionRepeatFactor`.
+#[test]
+fn ifc2x3_takes_a_one_direction_repeat_factor() {
+    let mut model = Model::default();
+    let mut tx = Transaction::new(&model);
+    let style = tx.create(Entity::new("IFCCURVESTYLE", vec![Value::Null; 5]));
+    let one = tx.create(Entity::new(
+        "IFCONEDIRECTIONREPEATFACTOR",
+        vec![Value::Null; 2],
+    ));
+    let vector = tx.create(Entity::new("IFCVECTOR", vec![Value::Null; 2]));
+    let two = tx.create(Entity::new(
+        "IFCTWODIRECTIONREPEATFACTOR",
+        vec![Value::Null; 3],
+    ));
+    let author = |tx: &mut Transaction, id| {
+        create_fill_area_style_hatching(
+            tx,
+            &model,
+            ifc2x3(),
+            style,
+            HatchLineDistance::Vector(id),
+            (None, None),
+            0.0,
+        )
+    };
+
+    let hatching = author(&mut tx, one).expect("one-direction repeat factor");
+    assert!(matches!(
+        author(&mut tx, vector),
+        Err(StyleError::ReferenceType {
+            expected: "IfcOneDirectionRepeatFactor",
+            ..
+        })
+    ));
+    assert!(matches!(
+        author(&mut tx, two),
+        Err(StyleError::AuthoringInvalid {
+            attribute: "StartOfNextHatchLine",
+            ..
+        })
+    ));
+    tx.commit(&mut model).expect("commit");
+    assert_eq!(
+        model.get(hatching).expect("staged").attributes[1],
+        Value::Ref(one),
     );
 }
 
