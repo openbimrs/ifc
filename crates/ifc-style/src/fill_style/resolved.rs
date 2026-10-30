@@ -13,8 +13,9 @@ use ifc_model::EntityId;
 pub struct MaterialFill {
     /// The `IfcFillAreaStyle`.
     pub style: EntityId,
-    /// The item-less `IfcStyledItem` it was read from.
-    pub styled_item: EntityId,
+    /// The item-less `IfcStyledItem` it was read from; `None` for a bare
+    /// style resolved by `StyleIndex::fill_area_style`.
+    pub styled_item: Option<EntityId>,
     /// The style's `Name`, when authored.
     pub name: Option<String>,
     /// `ModelOrDraughting`; `None` when unauthored or in IFC2X3.
@@ -50,4 +51,25 @@ pub struct HatchLine {
     pub colour: Option<[f64; 3]>,
     /// The line width in metres, when stated.
     pub width: Option<f64>,
+}
+
+/// A fill a material states in one representation context
+/// (`StyleIndex::material_fills`).
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct ContextFill {
+    /// The `IfcStyledRepresentation` the fill was read from (the lowest one
+    /// of the context when several agree).
+    pub representation: EntityId,
+    /// Its `ContextOfItems`.
+    pub context: EntityId,
+    /// The context's `ContextIdentifier`, when authored.
+    pub identifier: Option<String>,
+    /// The context's `ContextType`, when authored.
+    pub context_type: Option<String>,
+    /// `TargetView` of an `IfcGeometricRepresentationSubContext` without the
+    /// dots (`"SECTION_VIEW"`); `None` for any other context.
+    pub target_view: Option<String>,
+    /// The fill.
+    pub fill: MaterialFill,
 }

@@ -45,11 +45,12 @@ use crate::fill_style::{HatchLine, MaterialFill};
 use crate::units::StyleUnits;
 use crate::StyleView;
 
-/// Resolve `style`, an `IfcFillAreaStyle` read from `styled_item`.
+/// Resolve `style`, an `IfcFillAreaStyle` read from `styled_item` (none for a
+/// bare style).
 pub(crate) fn resolve_fill(
     view: StyleView<'_, '_>,
     style: EntityId,
-    styled_item: EntityId,
+    styled_item: Option<EntityId>,
     units: StyleUnits,
 ) -> StyleResult<MaterialFill> {
     let fill = view.fill_area_style(style)?;

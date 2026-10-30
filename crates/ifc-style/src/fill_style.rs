@@ -9,7 +9,7 @@ mod resolve;
 mod resolved;
 
 pub(crate) use resolve::resolve_fill;
-pub use resolved::{HatchLine, MaterialFill};
+pub use resolved::{ContextFill, HatchLine, MaterialFill};
 
 /// Borrowed projection of `IfcFillAreaStyle`.
 #[derive(Debug, Clone, Copy)]

@@ -5,7 +5,7 @@ use std::cmp::Ordering;
 use ifc_model::EntityId;
 
 use crate::error::{StyleError, StyleResult};
-use crate::fill_style::{resolve_fill, HatchLine, MaterialFill};
+use crate::fill_style::{resolve_fill, ContextFill, HatchLine, MaterialFill};
 use crate::units::StyleUnits;
 
 use super::StyleIndex;
@@ -21,6 +21,8 @@ impl StyleIndex<'_, '_> {
     /// different contexts must draw the same: equal flag, background and
     /// hatch lines (as a set, compared exactly); the first one, in
     /// ascending order of definition, representation and item, is returned.
+    /// A material that states different fills per context (cut and
+    /// projection) is ambiguous here: see [`StyleIndex::material_fills`].
     ///
     /// # Errors
     ///
@@ -42,35 +44,158 @@ impl StyleIndex<'_, '_> {
         material: EntityId,
         units: StyleUnits,
     ) -> StyleResult<Option<MaterialFill>> {
+        let mut found = Vec::new();
+        for representation in self.representations_of(material)? {
+            found.extend(self.representation_fills(representation, units)?);
+        }
+        agree_fill(material, found)
+    }
+
+    /// The fills `material` states per representation context, one
+    /// [`ContextFill`] for each context that carries a fill area style, in
+    /// ascending order of the lowest `IfcStyledRepresentation` in it.
+    ///
+    /// This is how one material gives several fills, e.g. a cut fill in a
+    /// `SECTION_VIEW` sub-context and a projection fill in an
+    /// `ELEVATION_VIEW` one. [`StyleIndex::material_fill`] over the same
+    /// material refuses that as [`StyleError::AmbiguousFill`]: use this
+    /// method for per-view fills.
+    ///
+    /// Fills agree as in `material_fill`, but only within a context: the
+    /// styled items of one representation must agree, then the
+    /// representations of one context. Of agreeing representations the
+    /// lowest is reported.
+    ///
+    /// # Errors
+    ///
+    /// [`StyleError::AmbiguousFill`] with the representation as owner when
+    /// its styled items differ, and with the context as owner when two
+    /// representations in it differ; every other error of
+    /// [`StyleIndex::material_fill`]; and the projection errors of a missing
+    /// or malformed representation context.
+    pub fn material_fills(
+        &self,
+        material: EntityId,
+        units: StyleUnits,
+    ) -> StyleResult<Vec<ContextFill>> {
+        let view = self.view();
+        // (context, its representations' fills), in order of first sight.
+        let mut contexts: Vec<(EntityId, Vec<(EntityId, MaterialFill)>)> = Vec::new();
+        for representation in self.representations_of(material)? {
+            let Some(fill) = agree_fill(
+                representation,
+                self.representation_fills(representation, units)?,
+            )?
+            else {
+                continue;
+            };
+            let context = view
+                .record(representation, "IfcStyledRepresentation")?
+                .required_ref("ContextOfItems", "IfcRepresentationContext")?;
+            match contexts.iter_mut().find(|(id, _)| *id == context) {
+                Some((_, found)) => found.push((representation, fill)),
+                None => contexts.push((context, vec![(representation, fill)])),
+            }
+        }
+        let mut out = Vec::new();
+        for (context, found) in contexts {
+            let representation = found[0].0;
+            let fills = found.into_iter().map(|(_, fill)| fill).collect();
+            let Some(fill) = agree_fill(context, fills)? else {
+                continue;
+            };
+            let record = view.record(context, "IfcRepresentationContext")?;
+            let sub = view
+                .schema
+                .is_a(record.type_name(), "IfcGeometricRepresentationSubContext");
+            out.push(ContextFill {
+                representation,
+                context,
+                identifier: record
+                    .optional_text("ContextIdentifier")?
+                    .map(str::to_owned),
+                context_type: record.optional_text("ContextType")?.map(str::to_owned),
+                target_view: if sub {
+                    record
+                        .optional_enum("TargetView")?
+                        .map(|view| view.trim_matches('.').to_owned())
+                } else {
+                    None
+                },
+                fill,
+            });
+        }
+        Ok(out)
+    }
+
+    /// The fill a bare `IfcFillAreaStyle` states, as [`StyleIndex::material_fill`]
+    /// resolves it, for a style nothing may reference (a pattern library).
+    /// [`MaterialFill::styled_item`] is `None`.
+    ///
+    /// # Errors
+    ///
+    /// [`StyleError::UnknownEntity`] for a missing entity;
+    /// [`StyleError::ReferenceType`] when `style` is no `IfcFillAreaStyle`;
+    /// and the errors of [`StyleIndex::material_fill`] for the style itself.
+    pub fn fill_area_style(&self, style: EntityId, units: StyleUnits) -> StyleResult<MaterialFill> {
+        let view = self.view();
+        let entity = view
+            .model
+            .get(style)
+            .ok_or(StyleError::UnknownEntity { id: style })?;
+        if !view.schema.is_a(&entity.type_name, "IfcFillAreaStyle") {
+            return Err(StyleError::ReferenceType {
+                target: style,
+                expected: "IfcFillAreaStyle",
+                actual: entity.type_name.to_string(),
+            });
+        }
+        resolve_fill(view, style, None, units)
+    }
+
+    /// The `IfcStyledRepresentation`s of `material`, ascending.
+    fn representations_of(&self, material: EntityId) -> StyleResult<Vec<EntityId>> {
         let view = self.view();
         let mut found = Vec::new();
         for definition in self.definitions_of(material)? {
-            let representations = view
-                .record(definition, "IfcMaterialDefinitionRepresentation")?
-                .required_refs("Representations", "IfcStyledRepresentation", 1, None)?;
-            for representation in representations {
-                let items = view
-                    .record(representation, "IfcStyledRepresentation")?
-                    .required_refs("Items", "IfcStyledItem", 1, None)?;
-                for styled in items {
-                    let styles = view.flatten_assignments(view.styled_item(styled)?.styles()?)?;
-                    let mut fills = Vec::new();
-                    for style in styles {
-                        let entity = view
-                            .model
-                            .get(style)
-                            .ok_or(StyleError::UnknownEntity { id: style })?;
-                        if view.schema.is_a(&entity.type_name, "IfcFillAreaStyle") {
-                            fills.push(resolve_fill(view, style, styled, units)?);
-                        }
-                    }
-                    if let Some(fill) = agree_fill(styled, fills)? {
-                        found.push(fill);
-                    }
+            found.extend(
+                view.record(definition, "IfcMaterialDefinitionRepresentation")?
+                    .required_refs("Representations", "IfcStyledRepresentation", 1, None)?,
+            );
+        }
+        found.sort_unstable();
+        found.dedup();
+        Ok(found)
+    }
+
+    /// The fill of each styled item of `representation` that states one.
+    fn representation_fills(
+        &self,
+        representation: EntityId,
+        units: StyleUnits,
+    ) -> StyleResult<Vec<MaterialFill>> {
+        let view = self.view();
+        let items = view
+            .record(representation, "IfcStyledRepresentation")?
+            .required_refs("Items", "IfcStyledItem", 1, None)?;
+        let mut found = Vec::new();
+        for styled in items {
+            let styles = view.flatten_assignments(view.styled_item(styled)?.styles()?)?;
+            let mut fills = Vec::new();
+            for style in styles {
+                let entity = view
+                    .model
+                    .get(style)
+                    .ok_or(StyleError::UnknownEntity { id: style })?;
+                if view.schema.is_a(&entity.type_name, "IfcFillAreaStyle") {
+                    fills.push(resolve_fill(view, style, Some(styled), units)?);
                 }
             }
+            if let Some(fill) = agree_fill(styled, fills)? {
+                found.push(fill);
+            }
         }
-        agree_fill(material, found)
+        Ok(found)
     }
 }
 

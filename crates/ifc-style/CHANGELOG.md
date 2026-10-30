@@ -15,6 +15,8 @@ everything released before per-crate changelogs began.
 ### Added (#597)
 
 - `StyleIndex::material_fill(material, units)`: the cut fill a material's `IfcMaterialDefinitionRepresentation` states, as a `MaterialFill` (fill area style, styled item, name, `ModelOrDraughting`, background colour) with one `HatchLine` per `IfcFillAreaStyleHatching`: angle in radians; spacing, along-line shift, origin, pattern start, dashes and width in metres; line colour. An `IfcVector` (IFC2X3: `IfcOneDirectionRepeatFactor`) distance splits into the perpendicular spacing and the shift. Fills over several contexts must draw the same, else `StyleError::AmbiguousFill`. Tiles, externally defined hatch styles, predefined curve fonts other than 'continuous' and 'by layer' deferrals are `StyleError::UnsupportedFill`.
+- `StyleIndex::material_fills(material, units)`: a material's fills per representation context as `ContextFill` (representation, context, `ContextIdentifier`, `ContextType`, the sub-context's `TargetView` without dots, and the `MaterialFill`), for materials that state a cut and a projection fill in `SECTION_VIEW` and `ELEVATION_VIEW` sub-contexts. Fills must agree only within one context, else `StyleError::AmbiguousFill` owned by the context; `material_fill` on such a material stays ambiguous.
+- `StyleIndex::fill_area_style(style, units)`: a bare `IfcFillAreaStyle` that nothing references, resolved like a material's fill; `MaterialFill::styled_item` is an `Option` for it.
 - `StyleUnits`: the project's metres per length unit and radians per plane angle unit, resolved by the caller; a measure read without its factor is `StyleError::UnitUndeclared`, a bad factor `StyleError::InvalidUnits`.
 
 ### Fixed (#597)
