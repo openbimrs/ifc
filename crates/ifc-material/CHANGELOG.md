@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.6.4] - 2026-10-30
+
 ### Added (#609)
 
 - `MaterialIndex`: the material of many objects in one pass.
@@ -212,7 +214,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-material-v0.6.3...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-material-v0.6.4...HEAD
+[0.6.4]: https://github.com/openbimrs/ifc/releases/tag/ifc-material-v0.6.4
 [0.6.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-material-v0.6.3
 [0.6.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-material-v0.6.2
 [0.6.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-material-v0.6.1

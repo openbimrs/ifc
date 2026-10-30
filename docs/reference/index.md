@@ -10,7 +10,7 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.39.4 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
+| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.39.5 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
 
 ## Model, codecs, schema, authoring and validation
 
@@ -33,14 +33,14 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 | [`ifc-control`](./crates/ifc-control) | <span class="status-implemented">Implemented</span> | 0.4.2 | Bounded IFC control semantics: permits, project orders, action requests, and performance history. |
 | [`ifc-cost`](./crates/ifc-cost) | <span class="status-implemented">Implemented</span> | 0.5.2 | Cost semantics as a borrowed view over the IFC model. |
 | [`ifc-element-type`](./crates/ifc-element-type) | <span class="status-implemented">Implemented</span> | 0.4.2 | Element, resource, and process type definitions: the IfcTypeObject catalogue. |
-| [`ifc-material`](./crates/ifc-material) | <span class="status-implemented">Implemented</span> | 0.6.3 | Material definitions: layer sets, profile sets, constituents, usage. |
+| [`ifc-material`](./crates/ifc-material) | <span class="status-implemented">Implemented</span> | 0.6.4 | Material definitions: layer sets, profile sets, constituents, usage. |
 | [`ifc-occurrence`](./crates/ifc-occurrence) | <span class="status-implemented">Implemented</span> | 0.4.2 | Built element and distribution occurrence classes and their type pairing. |
 | [`ifc-properties`](./crates/ifc-properties) | <span class="status-implemented">Implemented</span> | 0.10.2 | Property sets, quantities, and unit resolution. No geometry. |
 | [`ifc-resource`](./crates/ifc-resource) | <span class="status-implemented">Implemented</span> | 0.5.2 | Construction resources: labour, equipment, material, crew, subcontract. |
 | [`ifc-schedule`](./crates/ifc-schedule) | <span class="status-implemented">Implemented</span> | 0.5.2 | IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage. |
 | [`ifc-spatial`](./crates/ifc-spatial) | <span class="status-implemented">Implemented</span> | 0.6.2 | IFC spatial containment and objectified relationship traversal: project, site, building, storey, element. |
 | [`ifc-structural`](./crates/ifc-structural) | <span class="status-implemented">Implemented</span> | 0.5.2 | Structural analysis model: members, connections, actions, reactions, loads. |
-| [`ifc-style`](./crates/ifc-style) | <span class="status-implemented">Implemented</span> | 0.6.3 | Presentation: styles, colours, textures, layers, annotation. |
+| [`ifc-style`](./crates/ifc-style) | <span class="status-implemented">Implemented</span> | 0.6.4 | Presentation: styles, colours, textures, layers, annotation. |
 | [`ifc-systems`](./crates/ifc-systems) | <span class="status-implemented">Implemented</span> | 0.6.2 | Distribution systems, ports, and connectivity between elements. |
 | [`ifc-tabular`](./crates/ifc-tabular) | <span class="status-implemented">Implemented</span> | 0.4.2 | Structured IFC value containers indexed by position or time. |
 | [`ifc-template-catalog`](./crates/ifc-template-catalog) | <span class="status-implemented">Implemented</span> | 0.4.3 | Versioned IFC PSD/QTO catalog definitions and correction overlays |
