@@ -8,6 +8,9 @@ authors = ["rheonda"]
 repository = "https://github.com/openbimrs/ifc"
 description = "Material definitions: layer sets, profile sets, constituents, usage."
 readme = "README.md"
+# The material bench compiles in the `ifc-step` baseline harness by path,
+# which a published archive cannot reach; it is a workspace tool only.
+exclude = ["benches/"]
 
 # Published on the docs site by `cargo run -p xtask -- docs`.
 [package.metadata.openbim]
@@ -30,6 +33,12 @@ thiserror.workspace = true
 # fetched normative schemas; production builds never link the parser.
 ifc-schema = { workspace = true, features = ["default", "express"] }
 ifc-step.workspace = true
+
+# Material-resolution benchmarks (#609). `cargo bench` measures;
+# `cargo test --bench materials` is the CI smoke run. See benchmarks/README.md.
+[[bench]]
+name = "materials"
+harness = false
 
 [features]
 default = ["ifc2x3", "ifc4", "ifc4x1", "ifc4x2", "ifc4x3"]
