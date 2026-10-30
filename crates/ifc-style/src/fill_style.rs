@@ -5,8 +5,10 @@ use ifc_model::{EntityId, Value};
 use crate::error::StyleResult;
 use crate::view::Record;
 
+mod resolve;
 mod resolved;
 
+pub(crate) use resolve::resolve_fill;
 pub use resolved::{HatchLine, MaterialFill};
 
 /// Borrowed projection of `IfcFillAreaStyle`.

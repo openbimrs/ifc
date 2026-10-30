@@ -231,7 +231,7 @@ impl<'m, 's> StyleIndex<'m, 's> {
     }
 
     /// The `IfcMaterialDefinitionRepresentation`s of `material`, ascending.
-    fn definitions_of(&self, material: EntityId) -> StyleResult<Vec<EntityId>> {
+    pub(super) fn definitions_of(&self, material: EntityId) -> StyleResult<Vec<EntityId>> {
         let named = self.named_definitions(material);
         let mut found = Vec::new();
         for definition in named {

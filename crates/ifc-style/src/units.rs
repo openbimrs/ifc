@@ -61,14 +61,11 @@ impl StyleUnits {
         })
     }
 
-    // Read by the fill resolver; the allow goes with it.
-    #[allow(dead_code)]
     /// `value` in metres, read by `entity`.
     pub(crate) fn length(&self, entity: EntityId, value: f64) -> StyleResult<f64> {
         scale(self.metres_per_length, entity, "LENGTHUNIT", value)
     }
 
-    #[allow(dead_code)]
     /// `value` in radians, read by `entity`.
     pub(crate) fn angle(&self, entity: EntityId, value: f64) -> StyleResult<f64> {
         scale(self.radians_per_angle, entity, "PLANEANGLEUNIT", value)
@@ -84,7 +81,6 @@ fn check(factor: &'static str, value: Option<f64>) -> StyleResult<()> {
     }
 }
 
-#[allow(dead_code)]
 fn scale(
     factor: Option<f64>,
     entity: EntityId,

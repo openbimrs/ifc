@@ -7,9 +7,11 @@
 //! Colour-space conversion, profiles, and renderer-specific encodings remain
 //! adapter concerns. This module only projects IFC presentation data.
 
+mod predefined;
 mod rgb;
 mod select;
 
+pub(crate) use predefined::colour_rgb_of;
 pub use rgb::ColourRgb;
 pub(crate) use select::optional_colour_or_factor;
 pub use select::ColourOrFactor;
