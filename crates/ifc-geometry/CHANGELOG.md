@@ -12,6 +12,16 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#640)
+
+- `BodyItem::local_sweep` and `LocalSweptSolid`/`LocalSweepPath`: a swept-area item's profile, `Position` and path in its own item frame, for every swept-area item.
+
+### Changed (#640)
+
+- `body_description` no longer refuses a swept solid that an `IfcMappedItem` scales or mirrors: its `swept` is `None` and `local_sweep` describes it.
+
+Semver: minor.
+
 ## [0.33.0] - 2026-11-03
 
 ### Added (#651)
