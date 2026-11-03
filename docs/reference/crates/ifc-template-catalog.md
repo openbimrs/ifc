@@ -11,7 +11,7 @@ Versioned IFC PSD/QTO catalog definitions and correction overlays
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.3 (2026-10-28) |
+| Latest release | 0.4.4 (2026-11-03) |
 | Registries | [crates.io `ifc-template-catalog`](https://crates.io/crates/ifc-template-catalog) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `property-catalog`, `property-catalog-runtime` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_template_catalog/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-template-catalog) |
@@ -40,10 +40,10 @@ and quantity instances remain in `ifc-properties`.
 
 ## Changes
 
-Latest release, 0.4.3 (2026-10-28):
+Latest release, 0.4.4 (2026-11-03):
 
-### Changed
+### Fixed
 
-- Copyright holder in NOTICE and licence texts is rheonda.
+- The corrected profiles give `Pset_ElementAssemblyCommon`, `Pset_CivilElementCommon`, `Pset_SpatialZoneCommon` (IFC4, IFC4X3), `Pset_MarineFacilityTransportation` and 11 IFC4X3 `Qto_*` sets the applicable entity their published XML omits (patches NEH-IFC4-PSD-0001..0003, NEH-IFC4X3-PSD-0002..0005, NEH-IFC4X3-QTO-0001..0011, #622). `Pset_ElectricFlowStorageDevicePHistory` stays empty because no buildingSMART source names its entity. The official snapshots, container and TSV exports are unchanged; the TSVs still show the published empty `applicable_entity`.
 
 Full history: [`crates/ifc-template-catalog/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-template-catalog/CHANGELOG.md)

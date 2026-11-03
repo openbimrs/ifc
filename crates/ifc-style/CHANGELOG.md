@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.6.5] - 2026-11-03
+
 ### Added (#624)
 
 - `material_fills_by_context(material, units)`: a `ContextFillResult` per context; a refusal in one context (tiles in `ELEVATION_VIEW`, `AmbiguousFill` between its representations, a unit it needs) stays in that entry; only refusals no context owns fail the call (the definitions and their `Representations`, a refused representation's `ContextOfItems`, a malformed context). `material_fill_for_view(material, target_view, units)`: the agreed fill of the contexts with that `TargetView`, `AmbiguousFill` owned by the material when they differ; `StyleError::UnknownTargetView` for a literal that is not an `IfcGeometricProjectionEnum` member.
@@ -167,7 +169,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-style-v0.6.4...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-style-v0.6.5...HEAD
+[0.6.5]: https://github.com/openbimrs/ifc/releases/tag/ifc-style-v0.6.5
 [0.6.4]: https://github.com/openbimrs/ifc/releases/tag/ifc-style-v0.6.4
 [0.6.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-style-v0.6.3
 [0.6.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-style-v0.6.2

@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.39.6] - 2026-11-03
+
 ### Added (#624)
 
 - With `style` and `properties`: `material_fills_by_context(model, material)`, `material_fill_for_view(model, material, target_view)`, and `FillResolver`, which binds the release and resolves the project units once for many materials.
@@ -1433,7 +1435,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.39.5...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.39.6...HEAD
+[0.39.6]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.6
 [0.39.5]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.5
 [0.39.4]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.4
 [0.39.3]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.3
