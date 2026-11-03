@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.39.6 (2026-11-03) |
+| Latest release | 0.39.7 (2026-11-03) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -103,13 +103,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.39.6 (2026-11-03):
-
-### Added (#624)
-
-- With `style` and `properties`: `material_fills_by_context(model, material)`, `material_fill_for_view(model, material, target_view)`, and `FillResolver`, which binds the release and resolves the project units once for many materials.
-
-Semver: patch (additive).
+Latest release, 0.39.7 (2026-11-03):
 
 ### Added (#614, #616)
 

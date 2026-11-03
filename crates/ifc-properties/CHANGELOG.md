@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.10.4] - 2026-11-03
+
+### Added (#487)
+
+- `si_conversion` and `si_to_project` take an SI value (the coherent unit of the measure's dimensions) into the unit that applies: the explicit unit, else the project unit of the measure's unit type. A project that declares no unit of the type is refused, since IFC states no SI default; `DEGREE_CELSIUS` converts affinely, offset units are refused (#110), and nothing is rounded beyond `UnitConversion::apply`. `ConversionUnit::coherent_si` is the source unit. (#487)
+
+Semver: patch (additive).
+
 ## [0.10.3] - 2026-11-03
 
 ### Added
@@ -29,7 +37,7 @@ everything released before per-crate changelogs began.
   sets on one owner as `DuplicateSetName`. `MissingDefinition`, `TypedTwice`
   and the `IfcRelDefinesByType` anomalies appear in the lists of both the
   property and the quantity view.
-- `si_conversion` and `si_to_project` take an SI value (the coherent unit of the measure's dimensions) into the unit that applies: the explicit unit, else the project unit of the measure's unit type. A project that declares no unit of the type is refused, since IFC states no SI default; `DEGREE_CELSIUS` converts affinely, offset units are refused (#110), and nothing is rounded beyond `UnitConversion::apply`. `ConversionUnit::coherent_si` is the source unit. (#487) Semver: patch (additive).
+
 
 ### Changed
 
@@ -805,7 +813,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-properties-v0.10.3...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-properties-v0.10.4...HEAD
+[0.10.4]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.10.4
 [0.10.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.10.3
 [0.10.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.10.2
 [0.10.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.10.1
