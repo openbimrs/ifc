@@ -27,7 +27,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `alignment` |  | [`ifc-alignment`](./ifc-alignment): IFC4x3 linear positioning: alignments, referents, linear placement, spirals. |
 | `approval` |  | [`ifc-approval`](./ifc-approval): Bounded IFC4 approval resource semantics. |
 | `author` |  | Schema-checked authoring (`authoring`) with every bundled release (`schema`). |
-| `authoring` |  | Schema-checked authoring (`ifc-author`) and the checked authoring batch (`apply_authoring`), against the releases the build names. |
+| `authoring` |  | Schema-checked authoring (`ifc-author`) and the checked authoring batch (`apply_authoring`), against the releases the build names; with `properties`, numbers read in SI (`apply_authoring_with`). |
 | `classification` |  | [`ifc-classification`](./ifc-classification): Classification systems, document references, libraries, external references. |
 | `codecs` |  | Both codecs: STEP and ifcXML. |
 | `colour` |  | The surface colour of each product's Body (`product_colours`): the item's styled item, its styled presentation layer, else its material's styled representation (layer, profile and constituent sets resolved per item), with the source and a typed refusal; and what decides it, a material also while unstyled (`ColourResolver::product_decider`). Kernel-free. |

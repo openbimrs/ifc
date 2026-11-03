@@ -19,6 +19,13 @@ use std::sync::Arc;
 
 use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
 
+#[cfg(feature = "properties")]
+impl crate::unit_rules::Records for Overlay<'_> {
+    fn record(&self, id: EntityId) -> Option<&Entity> {
+        self.get(id)
+    }
+}
+
 /// The base model plus the batch's staged changes.
 pub(super) struct Overlay<'m> {
     base: &'m Model,

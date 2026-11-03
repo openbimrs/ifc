@@ -1,5 +1,6 @@
 //! The parameter space of a curve or surface instance: unitless, a length,
-//! or undefined for this conversion.
+//! a plane angle, a mix of angles and other ranges, or undefined for these
+//! conversions.
 //!
 //! The parameterisations are ISO 10303-42's, as the IFC entity definitions
 //! adopt them (IFC4 ADD2 TC1, IFC4.3 ADD2):
@@ -39,31 +40,42 @@
 
 use std::sync::Arc;
 
-use ifc_model::{EntityId, Model, Value};
+use ifc_model::{EntityId, Value};
 use ifc_schema::Schema;
 
+use super::Records;
+
 /// A parameter direction's unit.
+///
+/// Length conversion (#469) rescales [`Space::Length`] and keeps every
+/// other space; SI input (#638) also converts [`Space::PlaneAngle`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Space {
-    /// Unitless (an angle, a knot, a multiple, an ordinal): kept.
+pub(crate) enum Space {
+    /// Unitless (a knot, a multiple, an ordinal): kept.
     Unitless,
     /// A length in the project unit: rescaled.
     Length,
+    /// An angle in the project plane-angle unit.
+    PlaneAngle,
+    /// Ranges of angles and of other units along one curve (a composite
+    /// curve with an arc segment, an indexed poly curve with arcs): no single
+    /// factor applies.
+    AngleRanges,
 }
 
 /// Why a parameter space is undefined: the host and the reason.
-pub(super) type Undefined = (EntityId, Arc<str>, Arc<str>);
+pub(crate) type Undefined = (EntityId, Arc<str>, Arc<str>);
 
 const DEPTH: usize = 64;
 
 /// The value of attribute `name` of `entity`, by the release's layout.
-pub(super) fn attribute<'m>(
+pub(crate) fn attribute<'m, R: Records + ?Sized>(
     schema: &Schema,
-    model: &'m Model,
+    model: &'m R,
     entity: EntityId,
     name: &str,
 ) -> Option<&'m Value> {
-    let record = model.get(entity)?;
+    let record = model.record(entity)?;
     let slot = (0..schema.attribute_count(&record.type_name)).find(|slot| {
         schema
             .attribute_at(&record.type_name, *slot)
@@ -73,9 +85,9 @@ pub(super) fn attribute<'m>(
 }
 
 /// The entity attribute `name` of `entity` refers to.
-pub(super) fn reference(
+pub(crate) fn reference<R: Records + ?Sized>(
     schema: &Schema,
-    model: &Model,
+    model: &R,
     entity: EntityId,
     name: &str,
 ) -> Option<EntityId> {
@@ -85,24 +97,28 @@ pub(super) fn reference(
     }
 }
 
-fn type_of(model: &Model, id: EntityId) -> Arc<str> {
+fn type_of<R: Records + ?Sized>(model: &R, id: EntityId) -> Arc<str> {
     model
-        .get(id)
+        .record(id)
         .map_or_else(|| "(missing)".into(), |entity| entity.type_name.clone())
 }
 
-fn undefined(model: &Model, id: EntityId, detail: &str) -> Undefined {
+fn undefined<R: Records + ?Sized>(model: &R, id: EntityId, detail: &str) -> Undefined {
     (id, type_of(model, id), detail.into())
 }
 
 /// The parameter space of curve `curve`.
-pub(super) fn curve(schema: &Schema, model: &Model, curve: EntityId) -> Result<Space, Undefined> {
+pub(crate) fn curve<R: Records + ?Sized>(
+    schema: &Schema,
+    model: &R,
+    curve: EntityId,
+) -> Result<Space, Undefined> {
     curve_at(schema, model, curve, 0)
 }
 
-fn curve_at(
+fn curve_at<R: Records + ?Sized>(
     schema: &Schema,
-    model: &Model,
+    model: &R,
     id: EntityId,
     depth: usize,
 ) -> Result<Space, Undefined> {
@@ -113,7 +129,7 @@ fn curve_at(
             "the curve chain is deeper than the budget",
         ));
     }
-    let Some(entity) = model.get(id) else {
+    let Some(entity) = model.record(id) else {
         return Err(undefined(model, id, "the curve does not exist"));
     };
     let is_a = |ancestor| schema.is_a(&entity.type_name, ancestor);
@@ -122,10 +138,12 @@ fn curve_at(
             .ok_or_else(|| undefined(model, id, "the basis curve is not a reference"))
             .and_then(|basis| curve_at(schema, model, basis, depth + 1))
     };
-    if is_a("IFCLINE")
-        || is_a("IFCCONIC")
+    if is_a("IFCCONIC") {
+        Ok(Space::PlaneAngle)
+    } else if is_a("IFCINDEXEDPOLYCURVE") {
+        Ok(poly_curve(schema, model, id))
+    } else if is_a("IFCLINE")
         || is_a("IFCPOLYLINE")
-        || is_a("IFCINDEXEDPOLYCURVE")
         || is_a("IFCBSPLINECURVE")
         || is_a("IFCCLOTHOID")
     {
@@ -152,9 +170,26 @@ fn curve_at(
     }
 }
 
-fn composite(
+/// An indexed poly curve's space: its parameter runs 1 per line segment and
+/// an angle per arc.
+fn poly_curve<R: Records + ?Sized>(schema: &Schema, model: &R, id: EntityId) -> Space {
+    let arcs = matches!(
+        attribute(schema, model, id, "Segments"),
+        Some(Value::List(segments)) if segments.iter().any(|segment| matches!(
+            segment,
+            Value::Typed { type_name, .. } if type_name.eq_ignore_ascii_case("IFCARCINDEX")
+        ))
+    );
+    if arcs {
+        Space::AngleRanges
+    } else {
+        Space::Unitless
+    }
+}
+
+fn composite<R: Records + ?Sized>(
     schema: &Schema,
-    model: &Model,
+    model: &R,
     id: EntityId,
     depth: usize,
 ) -> Result<Space, Undefined> {
@@ -162,11 +197,12 @@ fn composite(
         return Err(undefined(model, id, "the segments are not a list"));
     };
     let mut space = Space::Unitless;
+    let mut angles = false;
     for segment in segments {
         let Value::Ref(segment) = segment else {
             return Err(undefined(model, id, "a segment is not a reference"));
         };
-        let Some(record) = model.get(*segment) else {
+        let Some(record) = model.record(*segment) else {
             return Err(undefined(model, *segment, "the segment does not exist"));
         };
         if schema.is_a(&record.type_name, "IFCREPARAMETRISEDCOMPOSITECURVESEGMENT") {
@@ -181,8 +217,10 @@ fn composite(
         }
         let parent = reference(schema, model, *segment, "ParentCurve")
             .ok_or_else(|| undefined(model, *segment, "the parent curve is not a reference"))?;
-        if curve_at(schema, model, parent, depth + 1)? == Space::Length {
-            space = Space::Length;
+        match curve_at(schema, model, parent, depth + 1)? {
+            Space::Length => space = Space::Length,
+            Space::PlaneAngle | Space::AngleRanges => angles = true,
+            Space::Unitless => {}
         }
     }
     if space == Space::Length {
@@ -193,12 +231,12 @@ fn composite(
             "segments mix length and unitless parameters",
         ));
     }
-    Ok(space)
+    Ok(if angles { Space::AngleRanges } else { space })
 }
 
 /// Which direction of a surface's parameter space.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Direction {
+pub(crate) enum Direction {
     /// `u`.
     U,
     /// `v`.
@@ -206,18 +244,18 @@ pub(super) enum Direction {
 }
 
 /// The parameter space of surface `surface` in `direction`.
-pub(super) fn surface(
+pub(crate) fn surface<R: Records + ?Sized>(
     schema: &Schema,
-    model: &Model,
+    model: &R,
     surface: EntityId,
     direction: Direction,
 ) -> Result<Space, Undefined> {
     surface_at(schema, model, surface, direction, 0)
 }
 
-fn surface_at(
+fn surface_at<R: Records + ?Sized>(
     schema: &Schema,
-    model: &Model,
+    model: &R,
     id: EntityId,
     direction: Direction,
     depth: usize,
@@ -229,7 +267,7 @@ fn surface_at(
             "the surface chain is deeper than the budget",
         ));
     }
-    let Some(entity) = model.get(id) else {
+    let Some(entity) = model.record(id) else {
         return Err(undefined(model, id, "the surface does not exist"));
     };
     let is_a = |ancestor| schema.is_a(&entity.type_name, ancestor);
@@ -247,17 +285,13 @@ fn surface_at(
     };
     match direction {
         _ if is_a("IFCPLANE") => Ok(Space::Length),
-        Direction::U if is_a("IFCCYLINDRICALSURFACE") => Ok(Space::Unitless),
+        Direction::U if is_a("IFCCYLINDRICALSURFACE") => Ok(Space::PlaneAngle),
         Direction::V if is_a("IFCCYLINDRICALSURFACE") => Ok(Space::Length),
-        _ if is_a("IFCSPHERICALSURFACE")
-            || is_a("IFCTOROIDALSURFACE")
-            || is_a("IFCBSPLINESURFACE") =>
-        {
-            Ok(Space::Unitless)
-        }
+        _ if is_a("IFCSPHERICALSURFACE") || is_a("IFCTOROIDALSURFACE") => Ok(Space::PlaneAngle),
+        _ if is_a("IFCBSPLINESURFACE") => Ok(Space::Unitless),
         Direction::U if is_a("IFCSURFACEOFLINEAREXTRUSION") => swept_curve(),
         Direction::V if is_a("IFCSURFACEOFLINEAREXTRUSION") => Ok(Space::Unitless),
-        Direction::U if is_a("IFCSURFACEOFREVOLUTION") => Ok(Space::Unitless),
+        Direction::U if is_a("IFCSURFACEOFREVOLUTION") => Ok(Space::PlaneAngle),
         Direction::V if is_a("IFCSURFACEOFREVOLUTION") => swept_curve(),
         _ if is_a("IFCRECTANGULARTRIMMEDSURFACE")
             || is_a("IFCCURVEBOUNDEDPLANE")
@@ -274,8 +308,12 @@ fn surface_at(
 }
 
 /// The curve an arbitrary profile is drawn by.
-fn profile_curve(schema: &Schema, model: &Model, profile: EntityId) -> Option<EntityId> {
-    let record = model.get(profile)?;
+fn profile_curve<R: Records + ?Sized>(
+    schema: &Schema,
+    model: &R,
+    profile: EntityId,
+) -> Option<EntityId> {
+    let record = model.record(profile)?;
     if schema.is_a(&record.type_name, "IFCARBITRARYOPENPROFILEDEF") {
         reference(schema, model, profile, "Curve")
     } else if schema.is_a(&record.type_name, "IFCARBITRARYCLOSEDPROFILEDEF") {
@@ -288,19 +326,90 @@ fn profile_curve(schema: &Schema, model: &Model, profile: EntityId) -> Option<En
 /// The surface whose parameter space an `IfcPcurve` is drawn in, when its
 /// coordinates are all lengths (a plane, also through a trimmed or bounded
 /// plane); otherwise that surface and its type.
-pub(super) fn pcurve_surface(
+pub(crate) fn pcurve_surface<R: Records + ?Sized>(
     schema: &Schema,
-    model: &Model,
+    model: &R,
     pcurve: EntityId,
 ) -> Result<(), (EntityId, Arc<str>)> {
     let Some(surface) = reference(schema, model, pcurve, "BasisSurface") else {
         return Err((pcurve, type_of(model, pcurve)));
     };
+    length_surface(schema, model, surface)
+}
+
+/// Whether `surface` is parameterised by lengths in both directions, else
+/// the surface and its type.
+pub(crate) fn length_surface<R: Records + ?Sized>(
+    schema: &Schema,
+    model: &R,
+    surface: EntityId,
+) -> Result<(), (EntityId, Arc<str>)> {
     let both = surface_at(schema, model, surface, Direction::U, 0)
         .ok()
         .zip(surface_at(schema, model, surface, Direction::V, 0).ok());
     match both {
         Some((Space::Length, Space::Length)) => Ok(()),
         _ => Err((surface, type_of(model, surface))),
+    }
+}
+
+#[cfg(all(test, feature = "step"))]
+mod tests {
+    use super::*;
+    use crate::{Codec, Model, StepCodec};
+    use ifc_properties::SchemaVersion;
+
+    fn ifc4(data: &str) -> (Model, &'static Schema) {
+        let text = format!(
+            "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n\
+             FILE_NAME('','',(''),(''),'','','');\nFILE_SCHEMA(('IFC4'));\n\
+             ENDSEC;\nDATA;\n{data}\nENDSEC;\nEND-ISO-10303-21;\n"
+        );
+        let model = StepCodec.read_bytes(text.as_bytes()).expect("parses");
+        let schema = ifc_schema::for_version(SchemaVersion::Ifc4).expect("IFC4 is bundled");
+        (model, schema)
+    }
+
+    const BASE: &str = "#1=IFCCARTESIANPOINT((0.,0.,0.));
+#2=IFCAXIS2PLACEMENT3D(#1,$,$);
+#3=IFCCIRCLE(#2,1.);
+#4=IFCCYLINDRICALSURFACE(#2,1.);
+#5=IFCDIRECTION((1.,0.,0.));
+#6=IFCVECTOR(#5,1.);
+#7=IFCLINE(#1,#6);
+#8=IFCCOMPOSITECURVESEGMENT(.CONTINUOUS.,.T.,#3);
+#9=IFCCOMPOSITECURVE((#8),.F.);
+#10=IFCCOMPOSITECURVESEGMENT(.CONTINUOUS.,.T.,#7);
+#11=IFCCOMPOSITECURVE((#10),.F.);
+#12=IFCTRIMMEDCURVE(#3,(IFCPARAMETERVALUE(0.)),(IFCPARAMETERVALUE(1.)),.T.,.PARAMETER.);
+#13=IFCSPHERICALSURFACE(#2,1.);
+#14=IFCINDEXEDPOLYCURVE(#15,(IFCARCINDEX((1,2,3))),.F.);
+#15=IFCCARTESIANPOINTLIST2D(((0.,0.),(1.,1.),(2.,0.)));
+#16=IFCINDEXEDPOLYCURVE(#15,(IFCLINEINDEX((1,2))),.F.);";
+
+    #[test]
+    fn angles_are_planes_angles_and_lengths_are_lengths() {
+        let (model, schema) = ifc4(BASE);
+        let at = |id| EntityId(id);
+        assert_eq!(curve(schema, &model, at(3)), Ok(Space::PlaneAngle));
+        assert_eq!(curve(schema, &model, at(12)), Ok(Space::PlaneAngle));
+        assert_eq!(curve(schema, &model, at(7)), Ok(Space::Unitless));
+        let u = surface(schema, &model, at(4), Direction::U);
+        let v = surface(schema, &model, at(4), Direction::V);
+        assert_eq!((u, v), (Ok(Space::PlaneAngle), Ok(Space::Length)));
+        let sphere = (
+            surface(schema, &model, at(13), Direction::U),
+            surface(schema, &model, at(13), Direction::V),
+        );
+        assert_eq!(sphere, (Ok(Space::PlaneAngle), Ok(Space::PlaneAngle)));
+    }
+
+    #[test]
+    fn a_composite_of_arcs_is_a_mix_of_ranges() {
+        let (model, schema) = ifc4(BASE);
+        assert_eq!(curve(schema, &model, EntityId(9)), Ok(Space::AngleRanges));
+        assert_eq!(curve(schema, &model, EntityId(11)), Ok(Space::Unitless));
+        assert_eq!(curve(schema, &model, EntityId(14)), Ok(Space::AngleRanges));
+        assert_eq!(curve(schema, &model, EntityId(16)), Ok(Space::Unitless));
     }
 }

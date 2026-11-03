@@ -1,4 +1,5 @@
-//! The units a property or quantity edit reads its numbers in (#487).
+//! The units a property or quantity edit, and an authoring batch, read their
+//! numbers in (#487, #638).
 //!
 //! A writer that computes in SI (metre, kilogram, kelvin, radian) must not
 //! need the model's units to write a value: it states the SI value and the
@@ -35,6 +36,19 @@
 //!
 //! The conversion runs before the template and value checks, which see the
 //! converted number, and it is the converted number that is stored.
+//!
+//! # Authoring batches
+//!
+//! [`AuthoringOptions`] with [`InputUnits::Si`] does the same for
+//! `apply_authoring_with` and `stage_authoring_with` (feature `authoring`).
+//! It converts the attribute values of `Create`, `Edit`, `ReassignClass`,
+//! `Project`, `Spatial`, `Product` and `TypeObject`, a `Placement` location
+//! and a `CopyProduct` offset; values the planner derives or copies are
+//! already in the model's units. The rules, and what is refused, are in the
+//! `authoring` module documentation ("SI input"). One difference from
+//! property edits: monetary and logarithmic measures pass unchanged there
+//! (a reviewed table), where a property edit refuses every measure without a
+//! unit mapping.
 #![cfg(feature = "properties")]
 
 /// How a property edit reads its numbers.
@@ -69,6 +83,25 @@ impl PropertyEditOptions {
     }
 }
 
+/// Options of `stage_authoring_with` and `apply_authoring_with` (#638).
+#[cfg(feature = "authoring")]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct AuthoringOptions {
+    /// How the batch's numbers are read.
+    pub input_units: InputUnits,
+}
+
+#[cfg(feature = "authoring")]
+impl AuthoringOptions {
+    /// These options with `input_units` set.
+    #[must_use]
+    pub const fn with_input_units(mut self, input_units: InputUnits) -> Self {
+        self.input_units = input_units;
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -77,6 +110,17 @@ mod tests {
     fn numbers_are_read_raw_unless_si_is_asked_for() {
         assert_eq!(InputUnits::default(), InputUnits::Raw);
         let options = PropertyEditOptions::default();
+        assert_eq!(options.input_units, InputUnits::Raw);
+        assert_eq!(
+            options.with_input_units(InputUnits::Si).input_units,
+            InputUnits::Si
+        );
+    }
+
+    #[cfg(feature = "authoring")]
+    #[test]
+    fn a_batch_reads_raw_unless_si_is_asked_for() {
+        let options = AuthoringOptions::default();
         assert_eq!(options.input_units, InputUnits::Raw);
         assert_eq!(
             options.with_input_units(InputUnits::Si).input_units,
