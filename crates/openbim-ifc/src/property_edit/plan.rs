@@ -19,6 +19,7 @@ use super::edit::{PropertyEdit, PropertyEditError, PropertyEditFailure, SetType}
 use super::holder::{holding, sole_member, Holder, Link, Release};
 use super::template::{template, SetTemplate};
 use super::value::{check_ifc_value, describe, quantity_number, wrapper};
+use crate::input_units::InputUnits;
 
 /// The member forms this writer writes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -111,11 +112,19 @@ pub(super) struct Planner<'m> {
 
 impl<'m> Planner<'m> {
     /// Bind the batch to `model`'s release.
-    pub(super) fn new(model: &'m Model) -> Result<Self, PropertyEditError> {
+    pub(super) fn new(
+        model: &'m Model,
+        input_units: InputUnits,
+    ) -> Result<Self, PropertyEditError> {
         let batch = |failure| PropertyEditError {
             edit: None,
             failure,
         };
+        if input_units != InputUnits::Raw {
+            return Err(batch(PropertyEditFailure::Unsupported(
+                "SI input is not converted yet".to_owned(),
+            )));
+        }
         let version = exact_schema(model).map_err(|e| batch(PropertyEditFailure::Resolve(e)))?;
         let schema = ifc_schema::for_version(version).map_err(|_| {
             batch(PropertyEditFailure::Resolve(

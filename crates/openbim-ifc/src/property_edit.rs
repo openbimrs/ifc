@@ -52,6 +52,13 @@
 //! release's edition is installed. Without either feature such a set cannot
 //! be checked and a Set on one is refused.
 //!
+//! # Input units
+//!
+//! Numbers are written as given unless `PropertyEditOptions` asks for
+//! `InputUnits::Si` (`apply_property_edits_with`): then they are SI values
+//! converted into the unit that applies to the property, or refused. See
+//! the `input_units` module for the rule.
+//!
 //! # New records
 //!
 //! Sets and relationships are written by the release-bound `ifc-properties`
@@ -75,6 +82,7 @@ mod template;
 mod value;
 
 pub use edit::{
-    apply_property_edits, stage_property_edits, PropertyEdit, PropertyEditError,
-    PropertyEditFailure, PropertyEditOutcome, SetType, StagedPropertyEdits,
+    apply_property_edits, apply_property_edits_with, stage_property_edits,
+    stage_property_edits_with, PropertyEdit, PropertyEditError, PropertyEditFailure,
+    PropertyEditOutcome, SetType, StagedPropertyEdits,
 };

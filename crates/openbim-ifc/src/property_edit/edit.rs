@@ -7,6 +7,7 @@ use ifc_properties::{ExactPropertyError, PropertyError};
 
 use super::emit::emit;
 use super::plan::Planner;
+use crate::input_units::PropertyEditOptions;
 
 /// One edit of a property or quantity value, addressed by object, set name
 /// and property name. Names are compared exactly, as the resolver does.
@@ -231,6 +232,16 @@ pub enum PropertyEditFailure {
         /// The entity holding it.
         holder: EntityId,
     },
+    /// A number given in SI could not be converted into the unit that
+    /// applies to it (`InputUnits::Si`, #487): the measure has no verified
+    /// unit, the model declares none, the unit has an offset, or the number
+    /// is not finite.
+    UnitConversion {
+        /// The measure wrapper as written, such as `IFCLENGTHMEASURE`.
+        measure: String,
+        /// Why.
+        error: ifc_properties::UnitConversionError,
+    },
     /// The planned transaction failed its preflight.
     Conflict(Vec<Conflict>),
 }
@@ -291,6 +302,10 @@ impl fmt::Display for PropertyEditFailure {
                 f,
                 "GlobalId `{global_id}` derived from the batch seed is already held by {holder}; the seed names an earlier batch: draw one seed per batch"
             ),
+            Self::UnitConversion { measure, error } => write!(
+                f,
+                "{measure} given in SI cannot be converted into the unit that applies: {error}"
+            ),
             Self::Conflict(conflicts) => write!(f, "the planned edit conflicts: {conflicts:?}"),
         }
     }
@@ -314,7 +329,22 @@ pub fn stage_property_edits(
     edits: &[PropertyEdit],
     seed: u128,
 ) -> Result<StagedPropertyEdits, PropertyEditError> {
-    let mut planner = Planner::new(model)?;
+    stage_property_edits_with(model, edits, seed, &PropertyEditOptions::default())
+}
+
+/// [`stage_property_edits`] with `options`: how numbers are read.
+///
+/// # Errors
+///
+/// As [`stage_property_edits`], and [`PropertyEditFailure::UnitConversion`]
+/// when `options` read numbers in SI and one cannot be converted.
+pub fn stage_property_edits_with(
+    model: &Model,
+    edits: &[PropertyEdit],
+    seed: u128,
+    options: &PropertyEditOptions,
+) -> Result<StagedPropertyEdits, PropertyEditError> {
+    let mut planner = Planner::new(model, options.input_units)?;
     for (index, edit) in edits.iter().enumerate() {
         planner
             .apply(index, edit)
@@ -336,7 +366,22 @@ pub fn apply_property_edits(
     edits: &[PropertyEdit],
     seed: u128,
 ) -> Result<PropertyEditOutcome, PropertyEditError> {
-    let staged = stage_property_edits(model, edits, seed)?;
+    apply_property_edits_with(model, edits, seed, &PropertyEditOptions::default())
+}
+
+/// [`apply_property_edits`] with `options`: how numbers are read.
+///
+/// # Errors
+///
+/// As [`apply_property_edits`], and [`PropertyEditFailure::UnitConversion`]
+/// when `options` read numbers in SI and one cannot be converted.
+pub fn apply_property_edits_with(
+    model: &mut Model,
+    edits: &[PropertyEdit],
+    seed: u128,
+    options: &PropertyEditOptions,
+) -> Result<PropertyEditOutcome, PropertyEditError> {
+    let staged = stage_property_edits_with(model, edits, seed, options)?;
     let applied = staged
         .transaction
         .commit(model)
