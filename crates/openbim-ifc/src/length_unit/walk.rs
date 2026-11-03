@@ -370,6 +370,7 @@ impl Walk<'_> {
                     Declared::Select {
                         name,
                         numeric: None,
+                        ..
                     } => {
                         if !state.refused {
                             state.refused = true;

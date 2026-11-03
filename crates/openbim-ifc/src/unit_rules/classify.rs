@@ -2,6 +2,11 @@
 //! from the release's tables; and the reviewed tables for the attributes
 //! the measure types cannot classify.
 //!
+//! SI input (#638) reads the same tables: [`Classifier::si_measure`] says
+//! whether an SI number of a measure is converted into the unit that applies,
+//! kept, or refused. A measure `ifc_properties::measure_unit_type` has no
+//! unit for is kept only when [`UNMAPPED_MEASURES`] reviews it.
+//!
 //! A measure type is classified by `ifc_properties::measure_unit_type`,
 //! which derives the unit type from the release (`IfcXMeasure` takes
 //! `XUNIT`, a defined type follows its base): `LENGTHUNIT`, `AREAUNIT` and
@@ -17,7 +22,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use ifc_properties::{measure_unit_type, MeasureUnitType, SchemaVersion};
+use ifc_properties::{measure_unit_type, ExactUnitError, MeasureUnitType, SchemaVersion};
 use ifc_schema::{Schema, TypeKind};
 
 /// What a numeric value of a type means for the conversion.
@@ -46,6 +51,8 @@ pub(crate) enum Declared {
         name: Arc<str>,
         /// The numeric member an untyped number must be, if unique.
         numeric: Option<Option<Measure>>,
+        /// That member's name, upper case.
+        member: Option<Arc<str>>,
     },
 }
 
@@ -308,12 +315,64 @@ pub(crate) fn lookup<T: Copy>(
         .map(|(_, _, role)| *role)
 }
 
+/// What an SI number of a measure type becomes (#638).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum SiMeasure {
+    /// Kept: dimensionless, not a measure, or reviewed as without a unit.
+    Unchanged,
+    /// An `IfcParameterValue`: its host decides.
+    Parameter,
+    /// Converted into the unit that applies to this measure type.
+    Convert(Arc<str>),
+    /// Refused with the resolver's reason.
+    Refuse(ExactUnitError),
+}
+
+/// What an unmapped measure becomes under SI input.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SiRole {
+    /// Kept: no unit of the model applies.
+    Unchanged,
+    /// Refused.
+    Refuse,
+}
+
+/// Scalar measures `ifc_properties::measure_unit_type` has no unit for,
+/// reviewed against the `EXPRESS` schemas under `references/ifc-spec/`
+/// (`IFC2X3_TC1.exp`, `IFC4.exp`, `IFC4X3_ADD2.exp`): each is `REAL`, and
+/// no `IfcUnitEnum` or `IfcDerivedUnitEnum` constant applies to it.
+///
+/// - `IfcMonetaryMeasure`: an amount in the `IfcMonetaryUnit` of the
+///   context; a currency has no SI factor.
+/// - `IfcSoundPowerLevelMeasure`, `IfcSoundPressureLevelMeasure` (decibels;
+///   IFC4 and IFC4X3) and `IfcPHMeasure` (a logarithmic scale, bounded to
+///   0..14): numbers on a logarithmic scale, with no SI factor. Their unit
+///   constants are in `IfcDerivedUnitEnum`; they are unmapped because
+///   `ifc-properties` lists them as logarithmic.
+/// - `IfcContextDependentMeasure`: in an `IfcContextDependentUnit`, which
+///   states no factor into SI, so it is refused.
+/// - `IfcThermalConductivityMeasure`: no `IfcDerivedUnitEnum` constant is
+///   named for it (only `THERMALCONDUCTANCEUNIT`), so the unit is not
+///   derivable from the release's tables; refused.
+///
+/// `tests::every_unmapped_scalar_measure_is_reviewed_for_si` fails when a
+/// release declares another.
+pub(crate) const UNMAPPED_MEASURES: &[(&str, SiRole)] = &[
+    ("IFCMONETARYMEASURE", SiRole::Unchanged),
+    ("IFCSOUNDPOWERLEVELMEASURE", SiRole::Unchanged),
+    ("IFCSOUNDPRESSURELEVELMEASURE", SiRole::Unchanged),
+    ("IFCPHMEASURE", SiRole::Unchanged),
+    ("IFCCONTEXTDEPENDENTMEASURE", SiRole::Refuse),
+    ("IFCTHERMALCONDUCTIVITYMEASURE", SiRole::Refuse),
+];
+
 /// Classifies type names against one release, caching each answer.
 pub(crate) struct Classifier {
     version: SchemaVersion,
     schema: &'static Schema,
     measures: HashMap<Arc<str>, Option<Measure>>,
     declared: HashMap<Arc<str>, Declared>,
+    si: HashMap<Arc<str>, SiMeasure>,
 }
 
 impl Classifier {
@@ -323,6 +382,7 @@ impl Classifier {
             schema,
             measures: HashMap::new(),
             declared: HashMap::new(),
+            si: HashMap::new(),
         }
     }
 
@@ -364,6 +424,58 @@ impl Classifier {
         None
     }
 
+    /// What an SI number of the named type becomes.
+    pub(crate) fn si_measure(&mut self, type_name: &str) -> SiMeasure {
+        if let Some(known) = self.si.get(type_name) {
+            return known.clone();
+        }
+        let answer = self.classify_si(type_name);
+        self.si.insert(type_name.into(), answer.clone());
+        answer
+    }
+
+    fn classify_si(&self, type_name: &str) -> SiMeasure {
+        let mut current = type_name.to_ascii_uppercase();
+        for _ in 0..16 {
+            if current == "IFCPARAMETERVALUE" {
+                return SiMeasure::Parameter;
+            }
+            match measure_unit_type(self.version, &current) {
+                Ok(MeasureUnitType::Named(_) | MeasureUnitType::Derived(_)) => {
+                    return SiMeasure::Convert(current.as_str().into());
+                }
+                Ok(MeasureUnitType::Dimensionless) => return SiMeasure::Unchanged,
+                Err(
+                    ExactUnitError::NotAMeasure { .. } | ExactUnitError::MeasureNotInSchema { .. },
+                ) => {}
+                Err(error @ ExactUnitError::UnmappedMeasureType { .. }) => {
+                    let reviewed = UNMAPPED_MEASURES
+                        .iter()
+                        .find(|(name, _)| *name == current)
+                        .map(|(_, role)| *role);
+                    return match reviewed {
+                        Some(SiRole::Unchanged) => SiMeasure::Unchanged,
+                        Some(SiRole::Refuse) | None => SiMeasure::Refuse(error),
+                    };
+                }
+                Err(error) => return SiMeasure::Refuse(error),
+                // A kind of unit this code does not know: refuse, never guess.
+                Ok(_) => {
+                    return SiMeasure::Refuse(ExactUnitError::UnmappedMeasureType {
+                        measure_type: current.as_str().into(),
+                    })
+                }
+            }
+            match self.defined_base(&current) {
+                Some(base) => current = base,
+                None => return SiMeasure::Unchanged,
+            }
+        }
+        SiMeasure::Refuse(ExactUnitError::UnmappedMeasureType {
+            measure_type: type_name.into(),
+        })
+    }
+
     /// The type a defined type aliases, when that is itself a type.
     fn defined_base(&self, name: &str) -> Option<String> {
         let TypeKind::Defined(rhs) = &self.schema.type_def(name)?.kind else {
@@ -396,9 +508,14 @@ impl Classifier {
                     [only] => Some(self.measure(only)),
                     _ => None,
                 };
+                let member = match members.as_slice() {
+                    [only] => Some(Arc::from(only.as_str())),
+                    _ => None,
+                };
                 Declared::Select {
                     name: upper.as_str().into(),
                     numeric,
+                    member,
                 }
             }
             _ => Declared::Plain(self.measure(&upper)),
@@ -570,12 +687,104 @@ mod tests {
                 Declared::Select {
                     name: "IFCTRIMMINGSELECT".into(),
                     numeric: Some(Some(Measure::Parameter)),
+                    member: Some("IFCPARAMETERVALUE".into()),
                 }
             );
             assert!(matches!(
                 classifier.declared("IFCVALUE"),
                 Declared::Select { numeric: None, .. }
             ));
+        }
+    }
+
+    #[test]
+    fn si_measures_are_classified() {
+        for (version, schema) in releases() {
+            let mut classifier = Classifier::new(version, schema);
+            for converted in [
+                "IFCLENGTHMEASURE",
+                "IFCPOSITIVELENGTHMEASURE",
+                "IFCPLANEANGLEMEASURE",
+                "IFCPOSITIVEPLANEANGLEMEASURE",
+                "IFCAREAMEASURE",
+                "IFCTHERMODYNAMICTEMPERATUREMEASURE",
+            ] {
+                assert_eq!(
+                    classifier.si_measure(converted),
+                    SiMeasure::Convert(converted.into()),
+                    "{version:?} {converted}"
+                );
+            }
+            for unchanged in [
+                "IFCRATIOMEASURE",
+                "IFCCOUNTMEASURE",
+                "IFCREAL",
+                "IFCMONETARYMEASURE",
+                "IFCPHMEASURE",
+                "IFCLABEL",
+            ] {
+                assert_eq!(
+                    classifier.si_measure(unchanged),
+                    SiMeasure::Unchanged,
+                    "{version:?} {unchanged}"
+                );
+            }
+            assert_eq!(
+                classifier.si_measure("IFCPARAMETERVALUE"),
+                SiMeasure::Parameter
+            );
+        }
+    }
+
+    #[test]
+    fn an_unreviewed_unmapped_measure_is_refused_for_si() {
+        for (version, schema) in releases() {
+            let mut classifier = Classifier::new(version, schema);
+            // Not a scalar: no unit applies and nothing reviews it.
+            let answer = classifier.si_measure("IFCCOMPLEXNUMBER");
+            let SiMeasure::Refuse(ExactUnitError::UnmappedMeasureType { .. }) = answer else {
+                panic!("{version:?}: {answer:?}");
+            };
+        }
+    }
+
+    #[test]
+    fn every_unmapped_scalar_measure_is_reviewed_for_si() {
+        for (version, schema) in releases() {
+            let mut found = 0;
+            for definition in schema.types() {
+                let name = definition.name.to_ascii_uppercase();
+                let TypeKind::Defined(_) = definition.kind else {
+                    continue;
+                };
+                let base = schema.resolve_defined(&name).to_ascii_uppercase();
+                // `IfcParameterValue` is read through its host.
+                if name == "IFCPARAMETERVALUE" || (base != "REAL" && base != "NUMBER") {
+                    continue;
+                }
+                if let Err(ExactUnitError::UnmappedMeasureType { .. }) =
+                    measure_unit_type(version, &name)
+                {
+                    found += 1;
+                    assert!(
+                        UNMAPPED_MEASURES.iter().any(|(row, _)| *row == name),
+                        "{version:?}: {name} has no unit and is not reviewed for SI input"
+                    );
+                }
+            }
+            assert!(found >= 4, "{version:?}: {found} unmapped scalar measures");
+        }
+    }
+
+    #[test]
+    fn every_reviewed_unmapped_measure_is_declared() {
+        for (name, _) in UNMAPPED_MEASURES {
+            assert!(
+                releases()
+                    .iter()
+                    .any(|(_, schema)| schema.type_def(name).is_some()),
+                "{name} is declared by no release"
+            );
         }
     }
 }
