@@ -1,6 +1,6 @@
 [package]
 name = "ifc-properties"
-version = "0.10.4"
+version = "0.10.5"
 edition = "2021"
 rust-version = "1.99"
 license = "AGPL-3.0-or-later OR LicenseRef-Commercial"

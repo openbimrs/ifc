@@ -11,7 +11,7 @@ Property sets, quantities, and unit resolution. No geometry.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.10.4 (2026-11-03) |
+| Latest release | 0.10.5 (2026-11-03) |
 | Registries | [crates.io `ifc-properties`](https://crates.io/crates/ifc-properties) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_properties/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-properties) |
@@ -44,12 +44,16 @@ standard Psets are data here rather than hand-written tables.
 
 ## Changes
 
-Latest release, 0.10.4 (2026-11-03):
+Latest release, 0.10.5 (2026-11-03):
 
-### Added (#487)
+### Changed (#615)
 
-- `si_conversion` and `si_to_project` take an SI value (the coherent unit of the measure's dimensions) into the unit that applies: the explicit unit, else the project unit of the measure's unit type. A project that declares no unit of the type is refused, since IFC states no SI default; `DEGREE_CELSIUS` converts affinely, offset units are refused (#110), and nothing is rounded beyond `UnitConversion::apply`. `ConversionUnit::coherent_si` is the source unit. (#487)
+- Unit resolution (`exact_unit`, `exact_project_unit`, `resolve_unit`, `convert_between`, `si_conversion`, `si_to_project`) no longer refuses a model for any reader diagnostic; it refuses only damage it reaches. A record it reads that the reader skipped is `MissingReference`; one the reader reported by id (a duplicate id, or a skipped record while another record holds its id) is the new `ExactUnitError::DamagedRecord`; no `IfcProject` after skipped records is `IncompleteModel`, not `NoProject`. `IncompleteModel` also remains for a diagnostic of a kind it does not classify, a duplicate id the reader could not attribute, and a skipped record without an id (it may have been a damaged duplicate of a unit record). A REAL read without its decimal point and a dangling reference elsewhere no longer refuse. One surviving `IfcProject` is trusted, since every release requires one (`IfcSingleProjectInstance`: IFC2X3_TC1.exp:9563, IFC4.exp:12392, IFC4X3_ADD2.exp:13977); a skipped second project is not detected (#627). Property resolution and `exact_schema` still refuse any diagnostic: a skipped record may have been a relationship.
 
-Semver: patch (additive).
+### Added (#615)
+
+- `ExactUnitError::DamagedRecord { entity, diagnostic }`.
+
+Semver: patch.
 
 Full history: [`crates/ifc-properties/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-properties/CHANGELOG.md)

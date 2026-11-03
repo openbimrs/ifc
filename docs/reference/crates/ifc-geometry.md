@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.32.1 (2026-11-03) |
+| Latest release | 0.33.0 (2026-11-03) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -43,20 +43,47 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.32.1 (2026-11-03):
+Latest release, 0.33.0 (2026-11-03):
 
-### Added (#455)
+### Added (#651)
 
-- `layer_set_reference`, `LayerSetReference` and `LayerBoundaries`: where an
-  `IfcMaterialLayerSetUsage` measures its layers from, and the exact boundary
-  planes of its stack, in the product's object frame and metres. AXIS2 reads
-  a straight `IfcPolyline` Axis of an `IfcWall` or `IfcWallStandardCase` and
-  needs the extrusion perpendicular to the local y axis; AXIS3 reads the
-  `Position` z of the `IfcExtrudedAreaSolid` of an `IfcSlab`, `IfcPlate` or
-  their standard cases, independent of `ExtrudedDirection`. The body must be
-  one extrusion, optionally clipped by `IfcBooleanClippingResult`. AXIS1,
-  other classes, other bodies and other axis curves are refused as
-  `Unsupported`; a zero-extent axis or an extrusion in the profile plane is
-  `Degenerate`.
+- `body_description_for(model, units, product, purpose)`, which describes the representation selected for any `RepresentationPurpose`; `body_description` is its `Body` case. A product without that purpose's representation is `Ok(None)`, never another purpose's.
+- `RepresentationPurpose::Reference`, the geometry provided beside the Body for reference, such as an IFC4 Reference View `IfcOpeningElement`'s void.
+- `BodyDescription::{purpose, frame}` and `BodyItem::bounds`, the new `BodyItemBounds`: the exact bounds of a tessellated item's referenced vertices in the representation frame, mappings applied.
+
+### Changed (#651)
+
+- `body_description` now reads a tessellated item's vertex list and indices, so a face set lowering already refuses (index 0 or past the end, dangling or 2D coordinates, TIN void/hole flags) now refuses the description by name.
+
+Semver: minor (new refusals for malformed face sets and TIN voids in `body_description`).
+
+Semver: breaking (0.x minor). No public item is added, removed or changed in
+signature, but `NetLowering::root` and `gross` of a product with a boolean or
+clip in its Body and no opening is now an `Instance` where it was the boolean
+itself.
+
+### Changed (#655)
+
+- `lower_product_net` and `lower_product_net_with` lower a product no
+  opening voids in its own frame when an item of its Body is an
+  `IfcBooleanResult`, an `IfcBooleanClippingResult` or an `IfcCsgSolid`;
+  `gross` and `root` are one `Instance` of its world transform. Other
+  opening-less Bodies are unchanged.
+
+### Fixed
+
+- The turned wall with a flush polygonal clip meshes net without a lid over
+  the slot (`axiolid-mesh-compile` 0.3.31 up to at least 0.3.40 kept one
+  in world coordinates). The gross path is unchanged (#657).
+
+### Added (#656)
+
+- `compile::compile_product_item_meshes` and `compile_product_item_meshes_with`,
+  returning `ItemMesh { item, mapped_by, mesh, closure }`: one world-space
+  gross mesh per leaf item of a product's Body, mapped items expanded, in the
+  order `ColourResolver::item_colours` lists them. Any item that does not
+  lower or compile refuses the call.
+
+Semver: patch (additive).
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)
