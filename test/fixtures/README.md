@@ -88,8 +88,10 @@ manifest is checked and the prose is not.
   background, a solid `Insulation`, a scaled dash font, fills that differ or
   agree across the Model and Plan contexts, a `CutAndProjection` material
   with a section and an elevation fill in `SECTION_VIEW` and `ELEVATION_VIEW`
-  sub-contexts, a bare `Library pattern` fill style, and the refused tiles, external
-  hatch style, 'by layer' and predefined dashed font. IFC4, IFC4X3_ADD2 and
+  sub-contexts, a `CutAndTiledProjection` material whose elevation fill is
+  tiles beside a readable section fill (#624), a bare `Library pattern` fill
+  style, and the refused tiles, external hatch style, 'by layer' and
+  predefined dashed font. IFC4, IFC4X3_ADD2 and
   IFC2X3 (own layout, no tiles) in metres and radians, plus an IFC4
   millimetre/degree file with the same `Concrete` and `Scaled`. Regenerate
   with `python3 tools/gen_fill_fixtures.py test/fixtures/synthetic-fill`.
