@@ -55,6 +55,10 @@ itself.
 
 Semver: patch (additive).
 
+### Fixed (#547)
+
+- `IfcSurfaceOfRevolution` now applies `IfcSweptSurface.Position` to its generatrix and axis, as `IfcSurfaceOfLinearExtrusion` already did. A conforming 2D generatrix placed through `Position` was lowered in the XY plane, with no error. Semver: patch.
+
 ## [0.32.1] - 2026-11-03
 
 ### Added (#455)

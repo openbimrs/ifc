@@ -464,6 +464,9 @@ fn swept_generatrix(
 /// wrong one still yields a surface -- just one revolved about the wrong line.
 /// The axis origin is a length and converts; the direction is placed by the
 /// linear part only so an off-origin frame does not translate it.
+///
+/// `Position` (#547) is composed into the frame for the generatrix and the
+/// axis alike.
 pub fn lower_revolution(
     session: &mut LoweringSession<'_>,
     id: EntityId,
@@ -472,18 +475,31 @@ pub fn lower_revolution(
     let entity = session.entity(id, id)?;
     let view = SurfaceOfRevolution::new(id, entity);
 
-    let swept_curve = swept_generatrix(session, id, view.swept_curve_ref()?, frame)?;
+    // An optional Position places the whole surface, axis included, as it does
+    // for the linear extrusion. A conforming generatrix is 2D (WR12) and lies
+    // in XY until `Position` places it.
+    let placed = match view.position_ref() {
+        Some(position_id) => {
+            let position = session.entity(id, position_id)?;
+            let local = axis_placement_transform(session.model(), position_id, position)?
+                .to_metres(session.units());
+            frame.compose(&local)
+        }
+        None => frame,
+    };
+
+    let swept_curve = swept_generatrix(session, id, view.swept_curve_ref()?, placed)?;
 
     let axis_id = view.axis_position_ref()?;
     let axis_entity = session.entity(id, axis_id)?;
     let axis = Axis1Placement::new(axis_id, axis_entity);
     let raw_origin = axis.location(session.model())?;
-    let origin = frame.apply([
+    let origin = placed.apply([
         to_metres(session, raw_origin[0]),
         to_metres(session, raw_origin[1]),
         to_metres(session, raw_origin[2]),
     ]);
-    let direction = frame.apply_direction(axis.axis(session.model())?);
+    let direction = placed.apply_direction(axis.axis(session.model())?);
 
     session.node_for(
         id,
