@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#627)
+
+- With ifc-step 0.6.4, which names the id the reader read for a skipped record, unit resolution in a lenient model refuses a skipped record that names a held unit record with `ExactUnitError::DamagedRecord` naming that record, instead of `IncompleteModel` for the whole model. Any other skip naming an id a kept record holds still refuses with `IncompleteModel` when resolution does not read that id, because the skip may have swallowed later records. A skipped record whose id was not read still gives `IncompleteModel`; a skip that swallowed several records names only the first (#668).
+
+Semver: patch.
+
 ## [0.10.5] - 2026-11-03
 
 ### Changed (#615)
