@@ -6,6 +6,7 @@
 - **Supersedes:** —
 - **Amends:** [ADR 0012](/adr/0012-geometry-backends-are-swappable) — adds a second compile entry point with the same backend seam
 - **Amended:** 2026-10-04 — a Reference View opening may be taken as already applied, on explicit request (#351)
+- **Amended:** 2026-11-03 — an opening-less Body with a boolean is lowered in its frame (#655)
 
 ## Context
 
@@ -133,6 +134,22 @@ shares no such chain with its host, or its Body's context frame differs
 from the host's, the whole net body is lowered in world coordinates as
 before rather than guessed.
 
+## Amendment (2026-11-03): an opening-less Body with a boolean, in its frame (#655)
+
+A turned wall with a flush polygonal clip has no opening, so it was lowered
+in world coordinates. There the clip's plane and the wall's faces are
+1e-16 apart, and the kernel kept a lid over the slot (axioval/engine#373).
+
+**The amended rule:** a product no opening voids is lowered in its host
+frame, as in #388, when an item of its Body is an `IfcBooleanResult`, an
+`IfcBooleanClippingResult` or an `IfcCsgSolid`. `gross` and `root` are one
+`Instance` of the product's world transform above the Body at identity;
+there is no `Instance` when that transform is the identity. Only
+`BodyKind::Csg` items select this path: an `Instance` compile adds the
+certified `PLACEMENT_ROUNDING` deviation (Exact to Within) to every placed
+body, which every other opening-less Body would pay for nothing. The gross
+entry points are unchanged; #657 covers the gross path.
+
 ## Relation to existing code
 
 - `ifc-geometry/src/input/openings.rs` — kernel-free relation read; slot
@@ -140,8 +157,11 @@ before rather than guessed.
 - `ifc-geometry/src/lower/net.rs` — graph construction and body splitting.
 - `ifc-geometry/src/lower/net/frame.rs` — the host's frame and each
   opening's placement relative to it (#388).
+- `ifc-geometry/src/lower/net/boolean_body.rs` — whether a Body holds a
+  boolean or a clip (#655).
 - `ifc-geometry/src/lower/session.rs` — `NodeShape` side table recorded at push.
 - `ifc-geometry/src/compile.rs` — net entry points and refusal attribution.
 - Tests: `tests/opening_subtraction_compile.rs` (analytic volumes),
   `tests/opening_attribution.rs` (backend refusals named precisely),
-  `tests/net_host_frame.rs` (flush openings under georeferenced sites).
+  `tests/net_host_frame.rs` (flush openings under georeferenced sites),
+  `tests/net_clip_frame.rs` (opening-less clipped bodies, #655).
