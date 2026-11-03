@@ -9,7 +9,9 @@
 //!
 //! - `resolve.rs`: one unit entity to its SI scale and dimensions, following
 //!   conversion chains and derived elements under a depth budget.
+//! - `from_si.rs`: SI input to the unit that applies (#487).
 
+mod from_si;
 mod resolve;
 
 use std::{fmt, sync::Arc};
@@ -23,6 +25,8 @@ use super::release::{validate_model, Release};
 use super::value::select_accepts_entity;
 use super::ExactPropertyError;
 use resolve::{declared_unit_type, Resolver};
+
+pub use from_si::{si_conversion, si_to_project};
 
 use crate::convert::{normalise_decimal, unit_conversion, ConversionUnit, UnitConversionError};
 

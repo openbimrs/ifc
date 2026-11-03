@@ -51,8 +51,8 @@ pub use predefined::{exact_predefined_sets, ExactPredefinedSet};
 use release::{validate_model, Release};
 use set::find_property;
 pub use unit::{
-    convert_between, exact_project_unit, exact_unit, measure_unit_type, resolve_unit, ExactUnit,
-    ExactUnitError, MeasureUnitType,
+    convert_between, exact_project_unit, exact_unit, measure_unit_type, resolve_unit,
+    si_conversion, si_to_project, ExactUnit, ExactUnitError, MeasureUnitType,
 };
 pub use values::{
     ExactBoundedValue, ExactComplexMember, ExactComplexValue, ExactEntityRef, ExactEnumeratedValue,

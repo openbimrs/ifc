@@ -129,4 +129,9 @@ Semver: patch (additive)
 
 Semver: patch (additive).
 
+### Added (#487)
+
+- Property edits can read their numbers in SI (#487): `InputUnits` (`Raw`, the default, writes as given; `Si` converts), `PropertyEditOptions`, `stage_property_edits_with` and `apply_property_edits_with`, and `PropertyEditFailure::UnitConversion`. A real of a measure with a verified unit is converted into the property's stated unit, else the project unit; a project that declares none is refused, as are unmapped measures, offset units and non-finite numbers. The existing functions are unchanged.
+- Through `ifc-properties`: `properties::si_conversion`, `si_to_project` and `ConversionUnit::coherent_si`. (#487) Semver: patch (additive).
+
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

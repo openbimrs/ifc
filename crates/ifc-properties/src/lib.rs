@@ -74,7 +74,8 @@ pub use convert::{
 };
 pub use error::{PropertyAnomaly, PropertyError, PropertyResult, TemplateError};
 pub use exact::{
-    convert_between, exact_project_unit, measure_unit_type, resolve_unit, MeasureUnitType,
+    convert_between, exact_project_unit, measure_unit_type, resolve_unit, si_conversion,
+    si_to_project, MeasureUnitType,
 };
 pub use exact::{
     exact_material_properties_where, exact_material_property, exact_material_property_sets_where,

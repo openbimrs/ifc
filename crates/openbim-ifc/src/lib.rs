@@ -171,18 +171,21 @@ pub use self::{
 pub use ifc_cost as cost;
 
 /// Property sets and quantities, their checked edit (`property_edit`
-/// below), and converting a model's length unit (`length_unit` below).
+/// below) with the units its numbers are read in (`input_units` below), and
+/// converting a model's length unit (`length_unit` below).
 #[cfg(feature = "properties")]
 pub use {
     ifc_properties as properties,
+    input_units::{InputUnits, PropertyEditOptions},
     length_unit::{
         convert_length_unit, stage_length_unit_conversion, ConvertedAttribute, ConvertedKind,
         KeptAttribute, KeptReason, LengthUnitError, LengthUnitOptions, LengthUnitRefusal,
         LengthUnitReport, RefusalReason, StagedLengthUnitConversion,
     },
     property_edit::{
-        apply_property_edits, stage_property_edits, PropertyEdit, PropertyEditError,
-        PropertyEditFailure, PropertyEditOutcome, SetType, StagedPropertyEdits,
+        apply_property_edits, apply_property_edits_with, stage_property_edits,
+        stage_property_edits_with, PropertyEdit, PropertyEditError, PropertyEditFailure,
+        PropertyEditOutcome, SetType, StagedPropertyEdits,
     },
 };
 
@@ -411,6 +414,9 @@ mod length_unit;
 // on `properties` with an inner `#![cfg]`; the catalog checks need
 // `property-catalog` or `property-catalog-runtime` too.
 mod property_edit;
+// The units a property edit reads its numbers in (#487); an inner `#![cfg]`
+// gates the module on `properties`.
+mod input_units;
 
 // The release-to-catalog policy property edits and validation share (#566).
 // Its items gate on `schema-api` and a catalog feature; empty otherwise.

@@ -61,6 +61,7 @@ Latest release, 0.10.3 (2026-11-03):
   sets on one owner as `DuplicateSetName`. `MissingDefinition`, `TypedTwice`
   and the `IfcRelDefinesByType` anomalies appear in the lists of both the
   property and the quantity view.
+- `si_conversion` and `si_to_project` take an SI value (the coherent unit of the measure's dimensions) into the unit that applies: the explicit unit, else the project unit of the measure's unit type. A project that declares no unit of the type is refused, since IFC states no SI default; `DEGREE_CELSIUS` converts affinely, offset units are refused (#110), and nothing is rounded beyond `UnitConversion::apply`. `ConversionUnit::coherent_si` is the source unit. (#487) Semver: patch (additive).
 
 ### Changed
 
