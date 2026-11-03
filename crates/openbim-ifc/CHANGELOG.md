@@ -20,6 +20,18 @@ everything released before per-crate changelogs began.
 
 Semver: patch (additive).
 
+### Added (#614, #616)
+
+- Re-exports `Diagnostic`, `DiagnosticKind`, `SourcePosition`, the
+  `diagnostic` module and, with `step`, `ReadFailure` and `SyntaxLocation`.
+
+### Fixed (#617)
+
+- Through ifc-step, `next_id` after a read is above every declared and
+  referenced id.
+
+Semver: patch (additive)
+
 ## [0.39.5] - 2026-10-30
 
 ### Added (#597)

@@ -58,9 +58,40 @@
 //! assert!(String::from_utf8_lossy(&out).contains("IFCCOSTITEM"));
 //! # }
 //! ```
+//!
+//! # A file that does not read
+//!
+//! A refused read can hand its buffer back (`StepReader::try_read_owned`),
+//! so the caller can show where the error is (`ReadFailure::location`),
+//! ask whether a policy would accept the file (`StepReader::check`) and
+//! read it again leniently:
+//!
+//! ```
+//! # #[cfg(feature = "step")] {
+//! use ifc::{Codec, StepCodec};
+//!
+//! let bytes = b"ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n\
+//!               FILE_NAME('t.ifc','',(''),(''),'','','');\n\
+//!               FILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;\n\
+//!               #1= IFCPERSON($,$,'a',$,$,$,$,$);\n#2\nENDSEC;\n\
+//!               END-ISO-10303-21;\n"
+//!     .to_vec();
+//!
+//! let failure = StepCodec.try_read_owned(bytes).unwrap_err();
+//! let at = failure.location().expect("a syntax error has a location");
+//! assert_eq!((at.position().line(), at.excerpt()), (10, "ENDSEC;"));
+//!
+//! assert!(StepCodec::lenient().check(&failure.bytes).is_ok());
+//! let model = StepCodec::lenient().read_owned(failure.bytes).unwrap();
+//! assert_eq!(model.diagnostics().len(), 1);
+//! assert_eq!(model.diagnostics()[0].position().unwrap().line(), 9);
+//! # }
+//! ```
 
 // The model is always available: it is the common vocabulary.
 pub use ifc_model::{codec, Codec, Entity, EntityId, Header, Model, ModelError, Value};
+// What a recovered read dropped, and where (#614).
+pub use ifc_model::{diagnostic, Diagnostic, DiagnosticKind, SourcePosition};
 // `EntityEditor::stage` and the domain writers take a transaction; without
 // these a facade user could build an editor but never apply it.
 // `Budget` bounds the domain views' traversals (a classification hierarchy).
@@ -79,7 +110,7 @@ pub use ifc_step::StepCodec;
 /// A STEP reader with an explicit policy: recovery, eager decoding, or a
 /// memory-mapped read ([`StepReader::read_path_mapped`]).
 #[cfg(feature = "step")]
-pub use ifc_step::{OnMalformed, ParseOptions, StepReader};
+pub use ifc_step::{OnMalformed, ParseOptions, ReadFailure, StepReader, SyntaxLocation};
 
 /// The ifcXML codec (`.ifcxml`): its layouts, release profiles and how a
 /// schema-aware read treats content the schema does not declare.
