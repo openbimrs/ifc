@@ -211,3 +211,38 @@ fn an_unrepresentable_attribute_index_panics_before_any_write() {
     assert_eq!(model.get(id).unwrap(), &before);
     assert_eq!(model.revision(), revision);
 }
+
+#[test]
+fn truncate_attributes_drops_and_returns_the_tail() {
+    let mut model = Model::new();
+    let id = model.push(Entity::new(
+        "IFCWALL",
+        vec![Value::Integer(1), Value::Integer(2), Value::Integer(3)],
+    ));
+    let revision = model.revision();
+
+    let tail = model.truncate_attributes(id, 1);
+
+    assert_eq!(tail, Some(vec![Value::Integer(2), Value::Integer(3)]));
+    assert_eq!(model.get(id).unwrap().attributes, vec![Value::Integer(1)]);
+    assert_ne!(model.revision(), revision);
+}
+
+#[test]
+fn truncate_attributes_at_or_past_the_length_changes_nothing() {
+    let mut model = Model::new();
+    let id = model.push(Entity::new("IFCWALL", vec![Value::Integer(1), Value::Null]));
+    let revision = model.revision();
+
+    assert_eq!(model.truncate_attributes(id, 2), Some(vec![]));
+    assert_eq!(model.truncate_attributes(id, 9), Some(vec![]));
+
+    assert_eq!(model.get(id).unwrap().attributes.len(), 2);
+    assert_eq!(model.revision(), revision);
+}
+
+#[test]
+fn truncate_attributes_on_a_missing_id_returns_none() {
+    let mut model = Model::new();
+    assert_eq!(model.truncate_attributes(EntityId(7), 0), None);
+}

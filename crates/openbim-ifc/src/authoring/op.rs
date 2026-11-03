@@ -396,7 +396,7 @@ pub enum AuthorOp {
     /// cannot hold is refused: [`WrongReferenceType`], [`RelationshipLost`],
     /// [`InverseCardinality`], and [`TypeRuleChanged`] for a typed object
     /// whose type rule would change. A class with fewer attributes than the
-    /// stored record is refused with [`UnsupportedReassignment`]. `WHERE`
+    /// stored record shortens it. `WHERE`
     /// rules are not evaluated, neither the entity's nor its referrers'
     /// (an `IfcRelSpaceBoundary` of `.PHYSICAL.` accepts a wall moved to
     /// `IfcVirtualElement`).
@@ -406,7 +406,6 @@ pub enum AuthorOp {
     /// [`RelationshipLost`]: super::AuthoringFailure::RelationshipLost
     /// [`InverseCardinality`]: super::AuthoringFailure::InverseCardinality
     /// [`TypeRuleChanged`]: super::AuthoringFailure::TypeRuleChanged
-    /// [`UnsupportedReassignment`]: super::AuthoringFailure::UnsupportedReassignment
     ReassignClass {
         /// The `IfcObject` to reassign; keeps its id. Produces it.
         entity: EntityId,

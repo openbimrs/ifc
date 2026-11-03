@@ -146,6 +146,15 @@ impl Shadow {
         Some(std::mem::replace(&mut entity.attributes[slot], value))
     }
 
+    fn truncate_attributes(&mut self, id: EntityId, len: usize) -> Option<Vec<Value>> {
+        let entity = self.get_mut(id)?;
+        Some(if len < entity.attributes.len() {
+            entity.attributes.split_off(len)
+        } else {
+            Vec::new()
+        })
+    }
+
     fn apply(&mut self, edit: &Edit) {
         match edit {
             Edit::Create { id, entity } => self.insert(*id, entity.clone()),
@@ -392,6 +401,9 @@ fn stage_random(rng: &mut Rng, tx: &mut Transaction, shadow: &Shadow) {
             }
         }
     }
+    if rng.chance(30) {
+        tx.truncate(random_id(rng), rng.below(4) as usize);
+    }
 }
 
 #[derive(Debug, Default)]
@@ -415,6 +427,7 @@ fn transaction(rng: &mut Rng, model: &mut Model, shadow: &mut Shadow, tally: &mu
 
     let before = snapshot(model);
     let edits = tx.edits().to_vec();
+    let truncations: Vec<_> = tx.truncations().collect();
     match tx.commit(model) {
         Ok(applied) => {
             assert!(!stale, "{at}: a stale transaction committed");
@@ -425,6 +438,9 @@ fn transaction(rng: &mut Rng, model: &mut Model, shadow: &mut Shadow, tally: &mu
                     created.push(*id);
                 }
                 shadow.apply(edit);
+            }
+            for (id, len) in truncations {
+                shadow.truncate_attributes(id, len);
             }
             assert_eq!(applied.created, created, "{at}: Applied::created");
             assert_eq!(
@@ -466,7 +482,7 @@ fn run(seed: u64, tally: &mut Tally) {
 
     for step in 0..STEPS {
         let at = format!("seed {seed:#x} step {step}");
-        match rng.below(10) {
+        match rng.below(11) {
             0 | 1 => {
                 let id = random_id(&mut rng);
                 let entity = random_entity(&mut rng, &shadow);
@@ -521,6 +537,15 @@ fn run(seed: u64, tally: &mut Tally) {
                     model.set_attributes(id, edits),
                     expected,
                     "{at}: set_attributes({id})"
+                );
+            }
+            10 => {
+                let id = random_id(&mut rng);
+                let len = rng.below(5) as usize;
+                assert_eq!(
+                    model.truncate_attributes(id, len),
+                    shadow.truncate_attributes(id, len),
+                    "{at}: truncate_attributes({id}, {len})"
                 );
             }
             _ => transaction(&mut rng, &mut model, &mut shadow, tally, &at),

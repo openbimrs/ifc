@@ -93,3 +93,48 @@ fn a_case_only_difference_is_no_retype() {
     );
     assert!(retypes(overlay).is_empty());
 }
+
+#[test]
+fn a_shorter_changed_record_stages_a_truncation_and_slot_writes_below_it() {
+    let mut committed = Model::new();
+    let id = committed.push(Entity::new(
+        "IFCDOOR",
+        vec![
+            Value::Integer(1),
+            Value::Integer(2),
+            Value::Integer(3),
+            Value::Integer(4),
+        ],
+    ));
+    let mut overlay = Overlay::new(&committed);
+    overlay.replace(
+        id,
+        Entity::new("IFCWALL", vec![Value::Integer(1), Value::Integer(9)]),
+    );
+
+    let tx = overlay.into_transaction();
+
+    assert_eq!(tx.truncations().collect::<Vec<_>>(), vec![(id, 2)]);
+    let writes: Vec<_> = tx
+        .edits()
+        .iter()
+        .filter_map(|edit| match edit {
+            Edit::SetAttribute { slot, .. } => Some(*slot),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(writes, vec![1], "only the differing slot below the length");
+    tx.commit(&mut committed).expect("commits");
+    assert_eq!(
+        committed.get(id).unwrap().attributes,
+        vec![Value::Integer(1), Value::Integer(9)]
+    );
+}
+
+#[test]
+fn an_unchanged_length_stages_no_truncation() {
+    let base = model();
+    let mut overlay = Overlay::new(&base);
+    overlay.replace(EntityId(1), entity("IFCSLAB"));
+    assert_eq!(overlay.into_transaction().truncations().count(), 0);
+}

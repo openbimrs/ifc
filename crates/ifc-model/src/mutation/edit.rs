@@ -148,6 +148,57 @@ impl Model {
         Some(previous)
     }
 
+    /// Shorten an entity's record to its first `len` attributes.
+    ///
+    /// Returns the dropped tail in slot order, or `None` if `id` does not
+    /// name an entity. A record of `len` attributes or fewer is left alone:
+    /// `Some(vec![])`, no revision bump, nothing recorded.
+    ///
+    /// Recorded like every write, so [`Inverse`](crate::Inverse), history and
+    /// [`Model::preview`] restore the dropped tail exactly. Like
+    /// [`Model::set_attribute`] it does not check the declared attribute
+    /// count: that is the caller's concern.
+    ///
+    /// ```
+    /// use ifc_model::{Entity, Model, Value};
+    ///
+    /// let mut model = Model::new();
+    /// let id = model.push(Entity::new("IFCWALL", vec![
+    ///     Value::Null, Value::Integer(1), Value::Integer(2),
+    /// ]));
+    /// let tail = model.truncate_attributes(id, 1).unwrap();
+    /// assert_eq!(tail.len(), 2);
+    /// assert_eq!(model.get(id).unwrap().attributes.len(), 1);
+    /// ```
+    pub fn truncate_attributes(&mut self, id: EntityId, len: usize) -> Option<Vec<Value>> {
+        let recording = self.is_recording();
+        let built = self.derived_is_built();
+        let entity = self.entity_mut(id)?;
+        let old_len = entity.attributes.len();
+        if len >= old_len {
+            return Some(Vec::new());
+        }
+        let dropped: Vec<usize> = (len..old_len).collect();
+        let before = built.then(|| Footprint::of_slots(entity, &dropped));
+        let tail = entity.attributes.split_off(len);
+        let after = built.then(|| Footprint::of_slots(entity, &[]));
+        self.note_write(id, before, after);
+        if recording {
+            // Descending, so `end_recording`'s reversal restores ascending.
+            for (offset, value) in tail.iter().enumerate().rev() {
+                let slot = len + offset;
+                self.record(Step::Slot {
+                    id,
+                    slot,
+                    value: Some(value.clone()),
+                    len: slot + 1,
+                });
+            }
+        }
+        self.bump_revision();
+        Some(tail)
+    }
+
     /// Change an entity's type in place, keeping its id and attributes.
     ///
     /// Reindexes `by_type` so `ids_of_type` reflects the new type immediately

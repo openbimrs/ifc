@@ -77,6 +77,27 @@ pub enum Conflict {
         /// The slot the surviving reference sits in.
         slot: usize,
     },
+    /// A truncation names an entity that will not exist.
+    ///
+    /// Reported after the per-edit conflicts, in ascending id.
+    TruncationMissingTarget {
+        /// The id it named.
+        id: EntityId,
+    },
+    /// An edit writes a slot its entity's truncation drops.
+    ///
+    /// Truncations apply after the edits, so the write would be discarded;
+    /// refused rather than silently lost.
+    WriteBeyondTruncation {
+        /// Position of the offending edit.
+        edit: usize,
+        /// The entity being truncated.
+        id: EntityId,
+        /// The slot written.
+        slot: usize,
+        /// The length the entity is truncated to.
+        len: usize,
+    },
 }
 
 impl std::fmt::Display for Conflict {
@@ -111,6 +132,19 @@ impl std::fmt::Display for Conflict {
                 f,
                 "edit {edit}: removing #{} leaves #{}[{slot}] dangling",
                 removed.0, referrer.0
+            ),
+            Self::TruncationMissingTarget { id } => {
+                write!(f, "truncation names #{} which will not exist", id.0)
+            }
+            Self::WriteBeyondTruncation {
+                edit,
+                id,
+                slot,
+                len,
+            } => write!(
+                f,
+                "edit {edit}: #{}[{slot}] lies beyond its truncation to {len} attributes",
+                id.0
             ),
         }
     }

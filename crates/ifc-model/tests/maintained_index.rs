@@ -416,3 +416,28 @@ fn reverse_index_if_built_follows_writes_and_previews() {
         "after"
     );
 }
+
+#[test]
+fn truncate_attributes_keeps_both_indexes_current() {
+    let mut model = built();
+    // Drops the reference at slot 1 of the root and one list slot of 3.
+    model.truncate_attributes(EntityId(1), 1);
+    assert_maintained(&model, "truncate keeps GlobalId");
+    model.truncate_attributes(EntityId(3), 1);
+    assert_maintained(&model, "truncate drops a list");
+    assert!(model.reverse_index().referrers(EntityId(2)).is_empty());
+    // Down to nothing: the GlobalId at slot 0 goes too.
+    model.truncate_attributes(EntityId(1), 0);
+    assert_maintained(&model, "truncate to zero");
+    assert!(model.global_id_candidates(&guid(G1)).is_empty());
+}
+
+#[test]
+fn undoing_a_truncation_restores_both_indexes() {
+    let mut model = built();
+    let (_, inverse) = Inverse::record(&mut model, |m| m.truncate_attributes(EntityId(1), 0));
+    assert_maintained(&model, "truncated");
+    inverse.apply(&mut model).unwrap();
+    assert_maintained(&model, "undone");
+    assert_eq!(model.global_id_candidates(&guid(G1)), [EntityId(1)]);
+}
