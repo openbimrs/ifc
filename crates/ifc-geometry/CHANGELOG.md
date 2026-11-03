@@ -12,6 +12,18 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#651)
+
+- `body_description_for(model, units, product, purpose)`, which describes the representation selected for any `RepresentationPurpose`; `body_description` is its `Body` case. A product without that purpose's representation is `Ok(None)`, never another purpose's.
+- `RepresentationPurpose::Reference`, the geometry provided beside the Body for reference, such as an IFC4 Reference View `IfcOpeningElement`'s void.
+- `BodyDescription::{purpose, frame}` and `BodyItem::bounds`, the new `BodyItemBounds`: the exact bounds of a tessellated item's referenced vertices in the representation frame, mappings applied.
+
+### Changed (#651)
+
+- `body_description` now reads a tessellated item's vertex list and indices, so a face set lowering already refuses (index 0 or past the end, dangling or 2D coordinates, TIN void/hole flags) now refuses the description by name.
+
+Semver: minor (new refusals for malformed face sets and TIN voids in `body_description`).
+
 ## [0.32.1] - 2026-11-03
 
 ### Added (#455)
