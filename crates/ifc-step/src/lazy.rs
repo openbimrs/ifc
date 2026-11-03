@@ -167,7 +167,7 @@ fn index(source: &Arc<StepSource>) -> Option<Model> {
         floor = floor.max(refs);
     }
     // After the records and in file order, as the eager read reports them.
-    for diagnostic in parser::diagnostics(input, &diagnostics, source.options, &model) {
+    for diagnostic in parser::diagnostics(input, &diagnostics, source.options) {
         model.push_diagnostic(diagnostic);
     }
     parser::reserve_through(&mut model, floor);

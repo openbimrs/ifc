@@ -150,15 +150,49 @@ fn a_complex_instance_is_skipped_with_its_id_and_no_range() {
 }
 
 #[test]
-fn a_skipped_record_does_not_take_the_id_of_a_record_that_was_read() {
+fn a_skipped_record_names_the_id_read_even_when_a_kept_record_holds_it() {
     let text = exchange("#45=IFCSITE($);\n#10=IFCSITE(#1;#45,#46);\n#11=IFCSITE($);");
-    let found = read(&lenient(), &text);
-    let skipped: Vec<_> = found
+    let codec = lenient();
+    let model = codec.read_bytes(text.as_bytes()).expect("reads");
+    let instances: Vec<_> = model
+        .diagnostics()
         .iter()
         .filter(|d| d.kind() == DiagnosticKind::SkippedRecord)
+        .map(|d| d.instance())
         .collect();
     // `#10=IFCSITE(#1;` is cut at the `;`; the rest, `#45,#46);`, starts with
-    // an id the model holds, which must not be named as the skipped one.
-    let instances: Vec<_> = skipped.iter().map(|d| d.instance()).collect();
-    assert_eq!(instances, [Some(EntityId(10)), None], "{found:?}");
+    // an id the model holds, which the substrate read and so names.
+    assert_eq!(
+        instances,
+        [Some(EntityId(10)), Some(EntityId(45))],
+        "{:?}",
+        model.diagnostics()
+    );
+    assert!(model.contains(EntityId(45)));
+}
+
+fn skipped_instances(records: &str) -> Vec<Option<EntityId>> {
+    read(&lenient(), &exchange(records))
+        .iter()
+        .filter(|d| d.kind() == DiagnosticKind::SkippedRecord)
+        .map(|d| d.instance())
+        .collect()
+}
+
+#[test]
+fn a_skipped_duplicate_names_the_id_it_shares() {
+    assert_eq!(
+        skipped_instances("#1=IFCSITE($);\n#1=IFCSITE(;"),
+        [Some(EntityId(1))]
+    );
+}
+
+#[test]
+fn leading_zeros_are_dropped() {
+    assert_eq!(skipped_instances("#007=IFCSITE(,);"), [Some(EntityId(7))]);
+}
+
+#[test]
+fn a_skip_before_any_id_names_none() {
+    assert_eq!(skipped_instances("@;\n#2=IFCSITE($);"), [None]);
 }

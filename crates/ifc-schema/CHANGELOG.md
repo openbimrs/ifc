@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed
+
+- Require `openbim-step` 0.11.3, the release ifc-step requires (#627).
+
+Semver: patch
+
 ## [0.3.5] - 2026-10-28
 
 ### Changed
