@@ -141,7 +141,7 @@ fn header(rng: &mut Rng) -> Header {
 
 /// One random write through the public API.
 fn op(rng: &mut Rng, model: &mut Model) {
-    match rng.below(10) {
+    match rng.below(11) {
         0 => model.insert(id(rng), entity(rng)),
         1 => {
             model.push(entity(rng));
@@ -174,6 +174,11 @@ fn op(rng: &mut Rng, model: &mut Model) {
         6 => *model.header_mut() = header(rng),
         7 => transaction(rng, model),
         8 => model.reserve_ids_through(id(rng)),
+        10 => {
+            if let Some(target) = existing(rng, model) {
+                model.truncate_attributes(target, rng.below(4) as usize);
+            }
+        }
         _ => {
             // A nested recording whose own inverse is discarded.
             Inverse::record(model, |m| {

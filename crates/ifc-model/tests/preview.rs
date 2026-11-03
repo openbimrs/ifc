@@ -102,6 +102,7 @@ fn a_preview_restores_every_primitive() {
                 (0, Value::Integer(9)),
             ],
         );
+        m.truncate_attributes(d, 1);
         m.retype(c, "IFCTESTONLY");
         m.remove(a);
         m.header_mut().name = "previewed".into();

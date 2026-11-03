@@ -3,7 +3,7 @@
 //! ## Internal split
 //!
 //! - `edit.rs`: schema-agnostic edit operations (`set_attribute`, `retype`,
-//!   `remove`) — the mutable counterpart to `insert`/`push`.
+//!   `truncate_attributes`, `remove`) — the mutable counterpart to `insert`/`push`.
 //! - `transaction.rs`: preflight and atomic commit.
 //! - `conflict.rs`: ID/reference/index conflict diagnostics.
 //!
