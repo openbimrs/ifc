@@ -193,7 +193,8 @@ export type RepresentationName =
   | "Axis"
   | "FootPrint"
   | "Annotation"
-  | "Surface";
+  | "Surface"
+  | "Reference";
 
 /** One curve of a `ProductCurves`, as a slice of its `positions` (#458). */
 export interface ProductPolyline {

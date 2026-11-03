@@ -8,6 +8,12 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#651)
+
+- `representation` accepts `Reference`, the void geometry of an IFC4 Reference View opening.
+
+Semver: patch (additive).
+
 ### Changed (#614)
 
 - A diagnostic string with a position reads "warning at line L, column C

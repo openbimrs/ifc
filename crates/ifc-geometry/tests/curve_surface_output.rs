@@ -700,7 +700,15 @@ fn an_offset_of_an_offset_is_refused_by_name() {
 
 #[test]
 fn representation_purposes_round_trip_their_names() {
-    for name in ["Body", "Plan", "Axis", "FootPrint", "Annotation", "Surface"] {
+    for name in [
+        "Body",
+        "Plan",
+        "Axis",
+        "FootPrint",
+        "Annotation",
+        "Surface",
+        "Reference",
+    ] {
         let purpose = RepresentationPurpose::from_name(name).expect(name);
         assert_eq!(purpose.name(), name);
     }

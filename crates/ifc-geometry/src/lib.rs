@@ -147,7 +147,8 @@ pub use input::openings::{openings_of, voiding_conflicts, VoidingConflict};
 // and depth -- in SI and world coordinates. Kernel-free: a rule check asking
 // "is this beam an HEA300" must not link a solid kernel for the answer.
 pub use input::body::{
-    body_description, BodyDescription, BodyItem, BodyKind, SweepPath, SweptSolid,
+    body_description, body_description_for, BodyDescription, BodyItem, BodyItemBounds, BodyKind,
+    SweepPath, SweptSolid,
 };
 // Profile families read into SI parameters. The same reader feeds
 // `lower::profile`, so a description and a lowering cannot disagree.

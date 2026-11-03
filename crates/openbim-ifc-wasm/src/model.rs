@@ -244,7 +244,7 @@ impl IfcModel {
     /// polyline's vertices in turn, and per curve its slice, whether it is
     /// closed and its certified chord bound. `representation` is `"Plan"`
     /// by default (the best drawing curves), or `"Axis"`, `"FootPrint"`,
-    /// `"Annotation"`, `"Body"`, `"Surface"`; another throws
+    /// `"Annotation"`, `"Body"`, `"Surface"`, `"Reference"`; another throws
     /// `invalid-value`. Trimmed, composite, offset and intrinsic curves
     /// compile (#506); a curve the reference compiler has no certified
     /// polyline for (an implicit curve, an offset of an offset) is an

@@ -27,7 +27,7 @@
 //! A representation is named by a host as `Body` (the meshes' default),
 //! `Plan` (the polylines' default: `Plan`, `Annotation`, `FootPrint` or
 //! `Axis`, preferring a `PLAN_VIEW` context), or one identifier: `Axis`,
-//! `FootPrint`, `Annotation`, `Surface`. Another name is refused with
+//! `FootPrint`, `Annotation`, `Surface`, `Reference`. Another name is refused with
 //! `invalid-value`.
 //!
 //! A product that cannot be placed, selected or meshed is a record with a
@@ -222,7 +222,7 @@ impl IfcModel {
 fn purpose(name: &str) -> Result<ifc::RepresentationPurpose, BindingError> {
     ifc::RepresentationPurpose::from_name(name).ok_or_else(|| {
         BindingError::InvalidValue(format!(
-            "representation must be Body, Plan, Axis, FootPrint, Annotation or Surface, \
+            "representation must be Body, Plan, Axis, FootPrint, Annotation, Surface or Reference, \
              not {name:?}"
         ))
     })

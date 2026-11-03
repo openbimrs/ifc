@@ -9,6 +9,12 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#651)
+
+- `representation` accepts `Reference`, the void geometry of an IFC4 Reference View opening.
+
+Semver: patch (additive).
+
 ## [0.12.0] - 2026-10-28
 
 ### Changed (#585)

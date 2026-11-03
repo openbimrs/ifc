@@ -77,7 +77,7 @@ pub struct ProductCurves {
 /// ([`select_product_representation`](ifc_geometry::select_product_representation)):
 /// [`RepresentationPurpose::Plan`] the best drawing curves (`Plan`, then
 /// `Annotation`, `FootPrint`, `Axis`, preferring a `PLAN_VIEW` context),
-/// or one identifier: `Axis`, `FootPrint`, `Annotation`. Its surfaces and
+/// or one identifier: `Axis`, `FootPrint`, `Annotation`, `Surface`, `Reference`. Its surfaces and
 /// solids are not here: [`product_meshes_for`](super::product_meshes_for)
 /// meshes them. A product with no such representation has no polylines and
 /// no refusal. Its text literals and fill areas are listed in

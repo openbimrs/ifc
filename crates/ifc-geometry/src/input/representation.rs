@@ -185,6 +185,11 @@ pub enum RepresentationPurpose {
     /// The `Surface` representation: a surface standing for the product,
     /// such as a structural surface member's mid-surface.
     Surface,
+    /// The `Reference` representation: geometry provided beside the Body
+    /// for reference, such as an IFC4 Reference View `IfcOpeningElement`'s
+    /// void, which is not subtracted from its host (IFC4 ADD2 TC1
+    /// `IfcOpeningElement`; ADR 0014).
+    Reference,
 }
 
 impl RepresentationPurpose {
@@ -198,6 +203,7 @@ impl RepresentationPurpose {
             Self::FootPrint => Some("FootPrint"),
             Self::Annotation => Some("Annotation"),
             Self::Surface => Some("Surface"),
+            Self::Reference => Some("Reference"),
         }
     }
 
@@ -212,6 +218,7 @@ impl RepresentationPurpose {
             Self::FootPrint,
             Self::Annotation,
             Self::Surface,
+            Self::Reference,
         ]
         .into_iter()
         .find(|purpose| purpose.name() == name)
@@ -227,6 +234,7 @@ impl RepresentationPurpose {
             Self::FootPrint => "FootPrint",
             Self::Annotation => "Annotation",
             Self::Surface => "Surface",
+            Self::Reference => "Reference",
         }
     }
 }

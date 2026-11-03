@@ -18,6 +18,16 @@ everything released before per-crate changelogs began.
 
 Semver: patch.
 
+### Added (#651)
+
+- With `geometry-select`: `body_description_for(model, units, product, purpose)`, `BodyItemBounds`, and the `Reference` representation purpose from ifc-geometry, so an IFC4 Reference View opening's void is described, with a tessellated item's exact bounds.
+
+### Changed (#651)
+
+- `body_description` now refuses a tessellated Body item that lowering refuses (index 0 or past the end, dangling or 2D coordinates), and a Body TIN with void or hole flags fails the whole description.
+
+Semver: minor (new refusals in `body_description`; additive API).
+
 ## [0.39.7] - 2026-11-03
 
 ### Added (#614, #616)

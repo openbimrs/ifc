@@ -212,17 +212,32 @@ fn body_description_survives_without_the_kernel() {
         &ifc_geometry::units::UnitScale,
         ifc_model::EntityId,
     ) -> ifc_geometry::GeometryResult<Option<ifc_geometry::BodyDescription>>;
+    type DescribeFor = fn(
+        &ifc_model::Model,
+        &ifc_geometry::units::UnitScale,
+        ifc_model::EntityId,
+        ifc_geometry::RepresentationPurpose,
+    )
+        -> ifc_geometry::GeometryResult<Option<ifc_geometry::BodyDescription>>;
     type Profile = fn(
         &ifc_model::Model,
         &ifc_geometry::units::UnitScale,
         ifc_model::EntityId,
     ) -> ifc_geometry::GeometryResult<ifc_geometry::ProfileDescription>;
     let describe: Describe = ifc_geometry::body_description;
+    let describe_for: DescribeFor = ifc_geometry::body_description_for;
     let profile: Profile = ifc_geometry::describe_profile;
 
     let model = ifc_model::Model::new();
     let units = ifc_geometry::units::UnitScale::SI;
     assert!(describe(&model, &units, ifc_model::EntityId(1)).is_err());
+    assert!(describe_for(
+        &model,
+        &units,
+        ifc_model::EntityId(1),
+        ifc_geometry::RepresentationPurpose::Reference
+    )
+    .is_err());
     assert!(profile(&model, &units, ifc_model::EntityId(1)).is_err());
 }
 

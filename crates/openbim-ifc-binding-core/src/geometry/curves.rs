@@ -71,7 +71,7 @@ impl IfcModel {
     /// (#458), or, with `None`, of every product that has a shape, in id
     /// order. `representation` is `Plan` by default in the hosts (the best
     /// drawing curves), or `Axis`, `FootPrint`, `Annotation`, `Body`,
-    /// `Surface`. Chord budget: one millimetre.
+    /// `Surface`, `Reference`. Chord budget: one millimetre.
     ///
     /// Refused as a whole as [`Self::product_meshes`] is: `unsupported-schema`,
     /// `feature-disabled` without the `mesh` feature, and `invalid-value`
