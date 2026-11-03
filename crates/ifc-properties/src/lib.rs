@@ -117,7 +117,8 @@ pub use quantity::{
     set_quantity_value, Comparison, ComputedQuantity, QuantityExtras, Tolerance,
 };
 pub use quantity::{
-    quantity_set, quantity_sets, stated_unit, Quantity, QuantityKind, QuantitySet, UnresolvedValue,
+    quantity_set, quantity_sets, quantity_sets_by_object, stated_unit, AttachedQuantitySets,
+    Quantity, QuantityKind, QuantitySet, UnresolvedValue,
 };
 pub use query::{
     properties_of, property_value, resolved_properties, ResolvedProperties, ResolvedSet, Source,

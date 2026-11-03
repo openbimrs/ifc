@@ -45,11 +45,16 @@ pub enum PropertyAnomaly {
         rejected: EntityId,
     },
     /// Two properties of the same name in one property set, or two property
-    /// templates of the same name in one set or complex template.
+    /// templates of the same name in one set or complex template, or two
+    /// quantities of the same name in one `IfcElementQuantity`.
     ///
     /// Forbidden in IFC4 (`IfcPropertySet.UniquePropertyNames`) and IFC2X3
     /// (`WR32`). [`PropertySet::property`](crate::PropertySet::property)
-    /// answers with the first in `HasProperties` order. For templates,
+    /// answers with the first in `HasProperties` order. For quantities the
+    /// rule is `UniqueQuantityNames` in IFC4 and later; IFC2X3 has none.
+    /// [`quantity_sets_by_object`](crate::quantity_sets_by_object) reports
+    /// them, and [`QuantitySet::quantity`](crate::QuantitySet::quantity)
+    /// answers with the first. For templates,
     /// `IfcPropertySetTemplate` and `IfcComplexPropertyTemplate` both carry
     /// `UniquePropertyNames`; `set` is then the template, and the first
     /// template in `HasPropertyTemplates` order is the one a check uses.
