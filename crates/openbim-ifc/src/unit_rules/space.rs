@@ -334,6 +334,16 @@ pub(crate) fn pcurve_surface<R: Records + ?Sized>(
     let Some(surface) = reference(schema, model, pcurve, "BasisSurface") else {
         return Err((pcurve, type_of(model, pcurve)));
     };
+    length_surface(schema, model, surface)
+}
+
+/// Whether `surface` is parameterised by lengths in both directions, else
+/// the surface and its type.
+pub(crate) fn length_surface<R: Records + ?Sized>(
+    schema: &Schema,
+    model: &R,
+    surface: EntityId,
+) -> Result<(), (EntityId, Arc<str>)> {
     let both = surface_at(schema, model, surface, Direction::U, 0)
         .ok()
         .zip(surface_at(schema, model, surface, Direction::V, 0).ok());

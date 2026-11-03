@@ -12,6 +12,7 @@
 //! already in the model's units.
 
 mod guard;
+mod values;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -113,6 +114,41 @@ impl<'m> SiInput<'m> {
     pub(super) fn convert(&mut self, view: &Overlay<'_>, mut op: AuthorOp) -> Result<AuthorOp, F> {
         self.guard(view, &op)?;
         match &mut op {
+            AuthorOp::Create {
+                type_name,
+                attributes,
+            }
+            | AuthorOp::Spatial {
+                type_name,
+                attributes,
+                ..
+            }
+            | AuthorOp::Product {
+                type_name,
+                attributes,
+                ..
+            }
+            | AuthorOp::TypeObject {
+                type_name,
+                attributes,
+                ..
+            } => self.attributes(view, type_name, None, attributes)?,
+            AuthorOp::ReassignClass {
+                entity,
+                type_name,
+                attributes,
+                ..
+            } => self.attributes(view, type_name, Some(*entity), attributes)?,
+            AuthorOp::Project { attributes, .. } => {
+                self.attributes(view, "IFCPROJECT", None, attributes)?;
+            }
+            AuthorOp::Edit { entity, attributes } => {
+                // A missing entity is the planner's to refuse.
+                if let Some(record) = view.get(*entity) {
+                    let entity_type = record.type_name.clone();
+                    self.attributes(view, &entity_type, Some(*entity), attributes)?;
+                }
+            }
             AuthorOp::Placement { location, .. } => {
                 for coordinate in location.iter_mut() {
                     *coordinate = self.length(*coordinate)?;
@@ -133,41 +169,54 @@ impl<'m> SiInput<'m> {
     /// A length of a point's coordinates, from SI into the project length
     /// unit.
     fn length(&mut self, value: f64) -> Result<f64, F> {
-        self.convert_number(value, LENGTH, None, POINT, "Coordinates")
-    }
-
-    /// `value` in SI as the unit that applies to `measure` (with `unit` the
-    /// explicit one, if stated) has it.
-    fn convert_number(
-        &mut self,
-        value: f64,
-        measure: &str,
-        unit: Option<EntityId>,
-        entity_type: &str,
-        attribute: &str,
-    ) -> Result<f64, F> {
-        let failed = |error| F::UnitConversion {
-            entity_type: entity_type.to_owned(),
-            attribute: attribute.to_owned(),
-            measure: measure.to_owned(),
-            error: Box::new(error),
-        };
         if !value.is_finite() {
-            return Err(failed(UnitConversionError::NonFinite { value }));
+            return Err(self.unconverted(
+                LENGTH,
+                POINT,
+                "Coordinates",
+                UnitConversionError::NonFinite { value },
+            ));
         }
-        let key = (Arc::<str>::from(measure.to_ascii_uppercase()), unit);
-        let conversion = match self.conversions.get(&key) {
-            Some(conversion) => *conversion,
-            None => {
-                let conversion = si_conversion(self.model, measure, unit).map_err(failed)?;
-                self.conversions.insert(key, conversion);
-                conversion
-            }
-        };
+        let conversion = self.resolve(LENGTH, None, POINT, "Coordinates")?;
         Ok(if conversion.is_identity() {
             value
         } else {
             conversion.apply(value)
         })
+    }
+
+    fn unconverted(
+        &self,
+        measure: &str,
+        entity_type: &str,
+        attribute: &str,
+        error: UnitConversionError,
+    ) -> F {
+        F::UnitConversion {
+            entity_type: entity_type.to_owned(),
+            attribute: attribute.to_owned(),
+            measure: measure.to_owned(),
+            error: Box::new(error),
+        }
+    }
+
+    /// The conversion from SI to the unit that applies to `measure`, with
+    /// `unit` the explicit one, if stated; resolved once per measure and unit
+    /// against the base model.
+    fn resolve(
+        &mut self,
+        measure: &str,
+        unit: Option<EntityId>,
+        entity_type: &str,
+        attribute: &str,
+    ) -> Result<UnitConversion, F> {
+        let key = (Arc::<str>::from(measure.to_ascii_uppercase()), unit);
+        if let Some(conversion) = self.conversions.get(&key) {
+            return Ok(*conversion);
+        }
+        let conversion = si_conversion(self.model, measure, unit)
+            .map_err(|error| self.unconverted(measure, entity_type, attribute, error))?;
+        self.conversions.insert(key, conversion);
+        Ok(conversion)
     }
 }

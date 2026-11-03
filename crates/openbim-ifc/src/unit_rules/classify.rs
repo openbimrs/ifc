@@ -19,6 +19,11 @@
 //! TC1, IFC4 ADD2 TC1 and IFC4X3 ADD2, has a row; a release adding one
 //! fails the test until it is reviewed.
 
+// The SI items (`si_measure`, `UNMAPPED_MEASURES`, `Declared::Select.member`)
+// are read by authoring batches only; length conversion alone leaves them
+// unused.
+#![cfg_attr(not(feature = "authoring"), allow(dead_code))]
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -337,10 +342,11 @@ pub(crate) enum SiRole {
     Refuse,
 }
 
-/// Scalar measures `ifc_properties::measure_unit_type` has no unit for,
-/// reviewed against the `EXPRESS` schemas under `references/ifc-spec/`
-/// (`IFC2X3_TC1.exp`, `IFC4.exp`, `IFC4X3_ADD2.exp`): each is `REAL`, and
-/// no `IfcUnitEnum` or `IfcDerivedUnitEnum` constant applies to it.
+/// Measures `ifc_properties::measure_unit_type` has no unit for, reviewed
+/// against the `EXPRESS` schemas under `references/ifc-spec/`
+/// (`IFC2X3_TC1.exp`, `IFC4.exp`, `IFC4X3_ADD2.exp`): each scalar one is
+/// `REAL`, and no `IfcUnitEnum` or `IfcDerivedUnitEnum` constant applies to
+/// it.
 ///
 /// - `IfcMonetaryMeasure`: an amount in the `IfcMonetaryUnit` of the
 ///   context; a currency has no SI factor.
@@ -349,6 +355,9 @@ pub(crate) enum SiRole {
 ///   0..14): numbers on a logarithmic scale, with no SI factor. Their unit
 ///   constants are in `IfcDerivedUnitEnum`; they are unmapped because
 ///   `ifc-properties` lists them as logarithmic.
+/// - `IfcCompoundPlaneAngleMeasure` (a list of integers; degrees, minutes,
+///   seconds and millionths of a second, whatever the project's plane angle
+///   unit): kept. Not scalar, so not part of the completeness scan.
 /// - `IfcContextDependentMeasure`: in an `IfcContextDependentUnit`, which
 ///   states no factor into SI, so it is refused.
 /// - `IfcThermalConductivityMeasure`: no `IfcDerivedUnitEnum` constant is
@@ -362,6 +371,7 @@ pub(crate) const UNMAPPED_MEASURES: &[(&str, SiRole)] = &[
     ("IFCSOUNDPOWERLEVELMEASURE", SiRole::Unchanged),
     ("IFCSOUNDPRESSURELEVELMEASURE", SiRole::Unchanged),
     ("IFCPHMEASURE", SiRole::Unchanged),
+    ("IFCCOMPOUNDPLANEANGLEMEASURE", SiRole::Unchanged),
     ("IFCCONTEXTDEPENDENTMEASURE", SiRole::Refuse),
     ("IFCTHERMALCONDUCTIVITYMEASURE", SiRole::Refuse),
 ];
