@@ -32,7 +32,7 @@
 //! # Values that are not measures
 //!
 //! Every `REAL` and `IfcParameterValue` attribute of the three releases is
-//! reviewed in `classify.rs`, and a test fails when a release declares one
+//! reviewed in `unit_rules/classify.rs`, and a test fails when a release declares one
 //! the table does not list:
 //!
 //! - **Unitless, kept:** direction ratios, the `Scale` of a
@@ -107,8 +107,6 @@
 //! one rounding of the original; units that differ only by prefixes convert
 //! by an exact power of ten.
 #[cfg(feature = "properties")]
-mod classify;
-#[cfg(feature = "properties")]
 mod georef;
 #[cfg(feature = "properties")]
 mod ops;
@@ -116,8 +114,6 @@ mod ops;
 mod report;
 #[cfg(feature = "properties")]
 mod scope;
-#[cfg(feature = "properties")]
-mod space;
 #[cfg(feature = "properties")]
 mod target;
 #[cfg(feature = "properties")]

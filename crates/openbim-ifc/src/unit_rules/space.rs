@@ -39,12 +39,14 @@
 
 use std::sync::Arc;
 
-use ifc_model::{EntityId, Model, Value};
+use ifc_model::{EntityId, Value};
 use ifc_schema::Schema;
+
+use super::Records;
 
 /// A parameter direction's unit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Space {
+pub(crate) enum Space {
     /// Unitless (an angle, a knot, a multiple, an ordinal): kept.
     Unitless,
     /// A length in the project unit: rescaled.
@@ -52,18 +54,18 @@ pub(super) enum Space {
 }
 
 /// Why a parameter space is undefined: the host and the reason.
-pub(super) type Undefined = (EntityId, Arc<str>, Arc<str>);
+pub(crate) type Undefined = (EntityId, Arc<str>, Arc<str>);
 
 const DEPTH: usize = 64;
 
 /// The value of attribute `name` of `entity`, by the release's layout.
-pub(super) fn attribute<'m>(
+pub(crate) fn attribute<'m, R: Records + ?Sized>(
     schema: &Schema,
-    model: &'m Model,
+    model: &'m R,
     entity: EntityId,
     name: &str,
 ) -> Option<&'m Value> {
-    let record = model.get(entity)?;
+    let record = model.record(entity)?;
     let slot = (0..schema.attribute_count(&record.type_name)).find(|slot| {
         schema
             .attribute_at(&record.type_name, *slot)
@@ -73,9 +75,9 @@ pub(super) fn attribute<'m>(
 }
 
 /// The entity attribute `name` of `entity` refers to.
-pub(super) fn reference(
+pub(crate) fn reference<R: Records + ?Sized>(
     schema: &Schema,
-    model: &Model,
+    model: &R,
     entity: EntityId,
     name: &str,
 ) -> Option<EntityId> {
@@ -85,24 +87,28 @@ pub(super) fn reference(
     }
 }
 
-fn type_of(model: &Model, id: EntityId) -> Arc<str> {
+fn type_of<R: Records + ?Sized>(model: &R, id: EntityId) -> Arc<str> {
     model
-        .get(id)
+        .record(id)
         .map_or_else(|| "(missing)".into(), |entity| entity.type_name.clone())
 }
 
-fn undefined(model: &Model, id: EntityId, detail: &str) -> Undefined {
+fn undefined<R: Records + ?Sized>(model: &R, id: EntityId, detail: &str) -> Undefined {
     (id, type_of(model, id), detail.into())
 }
 
 /// The parameter space of curve `curve`.
-pub(super) fn curve(schema: &Schema, model: &Model, curve: EntityId) -> Result<Space, Undefined> {
+pub(crate) fn curve<R: Records + ?Sized>(
+    schema: &Schema,
+    model: &R,
+    curve: EntityId,
+) -> Result<Space, Undefined> {
     curve_at(schema, model, curve, 0)
 }
 
-fn curve_at(
+fn curve_at<R: Records + ?Sized>(
     schema: &Schema,
-    model: &Model,
+    model: &R,
     id: EntityId,
     depth: usize,
 ) -> Result<Space, Undefined> {
@@ -113,7 +119,7 @@ fn curve_at(
             "the curve chain is deeper than the budget",
         ));
     }
-    let Some(entity) = model.get(id) else {
+    let Some(entity) = model.record(id) else {
         return Err(undefined(model, id, "the curve does not exist"));
     };
     let is_a = |ancestor| schema.is_a(&entity.type_name, ancestor);
@@ -152,9 +158,9 @@ fn curve_at(
     }
 }
 
-fn composite(
+fn composite<R: Records + ?Sized>(
     schema: &Schema,
-    model: &Model,
+    model: &R,
     id: EntityId,
     depth: usize,
 ) -> Result<Space, Undefined> {
@@ -166,7 +172,7 @@ fn composite(
         let Value::Ref(segment) = segment else {
             return Err(undefined(model, id, "a segment is not a reference"));
         };
-        let Some(record) = model.get(*segment) else {
+        let Some(record) = model.record(*segment) else {
             return Err(undefined(model, *segment, "the segment does not exist"));
         };
         if schema.is_a(&record.type_name, "IFCREPARAMETRISEDCOMPOSITECURVESEGMENT") {
@@ -198,7 +204,7 @@ fn composite(
 
 /// Which direction of a surface's parameter space.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Direction {
+pub(crate) enum Direction {
     /// `u`.
     U,
     /// `v`.
@@ -206,18 +212,18 @@ pub(super) enum Direction {
 }
 
 /// The parameter space of surface `surface` in `direction`.
-pub(super) fn surface(
+pub(crate) fn surface<R: Records + ?Sized>(
     schema: &Schema,
-    model: &Model,
+    model: &R,
     surface: EntityId,
     direction: Direction,
 ) -> Result<Space, Undefined> {
     surface_at(schema, model, surface, direction, 0)
 }
 
-fn surface_at(
+fn surface_at<R: Records + ?Sized>(
     schema: &Schema,
-    model: &Model,
+    model: &R,
     id: EntityId,
     direction: Direction,
     depth: usize,
@@ -229,7 +235,7 @@ fn surface_at(
             "the surface chain is deeper than the budget",
         ));
     }
-    let Some(entity) = model.get(id) else {
+    let Some(entity) = model.record(id) else {
         return Err(undefined(model, id, "the surface does not exist"));
     };
     let is_a = |ancestor| schema.is_a(&entity.type_name, ancestor);
@@ -274,8 +280,12 @@ fn surface_at(
 }
 
 /// The curve an arbitrary profile is drawn by.
-fn profile_curve(schema: &Schema, model: &Model, profile: EntityId) -> Option<EntityId> {
-    let record = model.get(profile)?;
+fn profile_curve<R: Records + ?Sized>(
+    schema: &Schema,
+    model: &R,
+    profile: EntityId,
+) -> Option<EntityId> {
+    let record = model.record(profile)?;
     if schema.is_a(&record.type_name, "IFCARBITRARYOPENPROFILEDEF") {
         reference(schema, model, profile, "Curve")
     } else if schema.is_a(&record.type_name, "IFCARBITRARYCLOSEDPROFILEDEF") {
@@ -288,9 +298,9 @@ fn profile_curve(schema: &Schema, model: &Model, profile: EntityId) -> Option<En
 /// The surface whose parameter space an `IfcPcurve` is drawn in, when its
 /// coordinates are all lengths (a plane, also through a trimmed or bounded
 /// plane); otherwise that surface and its type.
-pub(super) fn pcurve_surface(
+pub(crate) fn pcurve_surface<R: Records + ?Sized>(
     schema: &Schema,
-    model: &Model,
+    model: &R,
     pcurve: EntityId,
 ) -> Result<(), (EntityId, Arc<str>)> {
     let Some(surface) = reference(schema, model, pcurve, "BasisSurface") else {

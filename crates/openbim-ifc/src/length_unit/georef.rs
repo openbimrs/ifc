@@ -37,9 +37,9 @@ use ifc_model::{Entity, EntityId, Model, Transaction, Value};
 use ifc_properties::{SchemaVersion, UnitConversion};
 use ifc_schema::Schema;
 
-use super::classify::{Classifier, Measure};
 use super::report::{ConvertedKind, KeptReason, LengthUnitRefusal, RefusalReason};
-use super::space::{attribute, reference};
+use crate::unit_rules::classify::{Classifier, Measure};
+use crate::unit_rules::space::{attribute, reference};
 
 /// What georeferencing asks of the walk.
 #[derive(Default)]

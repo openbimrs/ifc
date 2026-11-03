@@ -8,16 +8,17 @@ use ifc_model::{EntityId, Model, Transaction, Value};
 use ifc_properties::{ExactPropertyError, SchemaVersion, UnitConversion};
 use ifc_schema::Schema;
 
-use super::classify::{
-    lookup, Classifier, Declared, Host, Measure, RealRole, PARAMETER_HOSTS, REVIEWED_REALS,
-};
 use super::georef::{self, GeorefPlan};
 use super::report::{
     ConvertedKind, KeptReason, LengthUnitError, LengthUnitRefusal, RefusalReason, Tally,
 };
-use super::scope::{rule, Governed, Rule, Scope};
-use super::space::{self, reference, Direction, Space};
+use super::scope::{Governed, Scope};
 use super::target::TargetUnits;
+use crate::unit_rules::classify::{
+    lookup, Classifier, Declared, Host, Measure, RealRole, PARAMETER_HOSTS, REVIEWED_REALS,
+};
+use crate::unit_rules::governing::{rule, Rule};
+use crate::unit_rules::space::{self, reference, Direction, Space};
 
 /// What one slot of an entity type is, computed once per type.
 #[derive(Clone)]

@@ -409,6 +409,12 @@ pub use material_fill::{
 // `properties` item by item; its exports join the property exports above.
 mod length_unit;
 
+// The release tables length conversion (#469) and SI input (#638) share:
+// which declared types are measures, which attributes state a unit, and the
+// parameter space of a curve or surface. An inner `#![cfg]` gates it on
+// `properties`.
+mod unit_rules;
+
 // Writing property and quantity values (#123) joins the exact resolver and
 // release-bound writers of `ifc-properties` with the PSD/QTO catalog of
 // `ifc-template-catalog`, siblings under ADR 0003. The module gates itself

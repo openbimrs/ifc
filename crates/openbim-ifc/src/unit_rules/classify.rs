@@ -22,7 +22,7 @@ use ifc_schema::{Schema, TypeKind};
 
 /// What a numeric value of a type means for the conversion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Measure {
+pub(crate) enum Measure {
     /// In the project length unit.
     Length,
     /// In the project area unit.
@@ -35,7 +35,7 @@ pub(super) enum Measure {
 
 /// What an attribute's declared type is.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum Declared {
+pub(crate) enum Declared {
     /// A defined or simple type: an untyped number is this measure, or
     /// nothing to convert.
     Plain(Option<Measure>),
@@ -51,7 +51,7 @@ pub(super) enum Declared {
 
 /// The role of a reviewed `REAL` attribute.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum RealRole {
+pub(crate) enum RealRole {
     /// A ratio, direction, weight or factor: unchanged.
     Unitless,
     /// A length stated as a `REAL`.
@@ -68,7 +68,7 @@ pub(super) enum RealRole {
 
 /// Every `REAL`, `NUMBER` and `IfcReal` attribute of IFC2X3 TC1, IFC4 ADD2
 /// TC1 and IFC4X3 ADD2, by declaring entity.
-pub(super) const REVIEWED_REALS: &[(&str, &str, RealRole)] = &[
+pub(crate) const REVIEWED_REALS: &[(&str, &str, RealRole)] = &[
     // A dimensionless multiplier of the transformed lengths.
     (
         "IFCCARTESIANTRANSFORMATIONOPERATOR",
@@ -167,7 +167,7 @@ pub(super) const REVIEWED_REALS: &[(&str, &str, RealRole)] = &[
 
 /// Where an `IfcParameterValue` gets its meaning.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Host {
+pub(crate) enum Host {
     /// Always unitless.
     Unitless,
     /// In the parameter space of the curve this attribute names.
@@ -182,7 +182,7 @@ pub(super) enum Host {
 
 /// Every attribute of the three releases that can hold an
 /// `IfcParameterValue` other than as an `IfcValue`, by declaring entity.
-pub(super) const PARAMETER_HOSTS: &[(&str, &str, Host)] = &[
+pub(crate) const PARAMETER_HOSTS: &[(&str, &str, Host)] = &[
     ("IFCTRIMMEDCURVE", "Trim1", Host::Curve("BasisCurve")),
     ("IFCTRIMMEDCURVE", "Trim2", Host::Curve("BasisCurve")),
     ("IFCSWEPTDISKSOLID", "StartParam", Host::Curve("Directrix")),
@@ -294,7 +294,7 @@ pub(super) const PARAMETER_HOSTS: &[(&str, &str, Host)] = &[
 
 /// The row of `table` for an attribute of `entity_type`: declared by the
 /// entity itself or a supertype.
-pub(super) fn lookup<T: Copy>(
+pub(crate) fn lookup<T: Copy>(
     schema: &Schema,
     table: &[(&str, &str, T)],
     entity_type: &str,
@@ -309,7 +309,7 @@ pub(super) fn lookup<T: Copy>(
 }
 
 /// Classifies type names against one release, caching each answer.
-pub(super) struct Classifier {
+pub(crate) struct Classifier {
     version: SchemaVersion,
     schema: &'static Schema,
     measures: HashMap<Arc<str>, Option<Measure>>,
@@ -317,7 +317,7 @@ pub(super) struct Classifier {
 }
 
 impl Classifier {
-    pub(super) fn new(version: SchemaVersion, schema: &'static Schema) -> Self {
+    pub(crate) fn new(version: SchemaVersion, schema: &'static Schema) -> Self {
         Self {
             version,
             schema,
@@ -326,13 +326,13 @@ impl Classifier {
         }
     }
 
-    pub(super) fn schema(&self) -> &'static Schema {
+    pub(crate) fn schema(&self) -> &'static Schema {
         self.schema
     }
 
     /// What a number of the named type measures, if anything the
     /// conversion touches.
-    pub(super) fn measure(&mut self, type_name: &str) -> Option<Measure> {
+    pub(crate) fn measure(&mut self, type_name: &str) -> Option<Measure> {
         if let Some(known) = self.measures.get(type_name) {
             return *known;
         }
@@ -377,7 +377,7 @@ impl Classifier {
     }
 
     /// What an attribute's declared type is.
-    pub(super) fn declared(&mut self, type_name: &str) -> Declared {
+    pub(crate) fn declared(&mut self, type_name: &str) -> Declared {
         if let Some(known) = self.declared.get(type_name) {
             return known.clone();
         }
