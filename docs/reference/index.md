@@ -10,7 +10,7 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
-| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.39.7 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
+| [`openbim-ifc`](./crates/openbim-ifc) | <span class="status-implemented">Implemented</span> | 0.40.0 | Facade for the openBIM IFC crates: pick codecs and domains as features. |
 
 ## Model, codecs, schema, authoring and validation
 
@@ -35,7 +35,7 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 | [`ifc-element-type`](./crates/ifc-element-type) | <span class="status-implemented">Implemented</span> | 0.4.2 | Element, resource, and process type definitions: the IfcTypeObject catalogue. |
 | [`ifc-material`](./crates/ifc-material) | <span class="status-implemented">Implemented</span> | 0.6.4 | Material definitions: layer sets, profile sets, constituents, usage. |
 | [`ifc-occurrence`](./crates/ifc-occurrence) | <span class="status-implemented">Implemented</span> | 0.4.2 | Built element and distribution occurrence classes and their type pairing. |
-| [`ifc-properties`](./crates/ifc-properties) | <span class="status-implemented">Implemented</span> | 0.10.4 | Property sets, quantities, and unit resolution. No geometry. |
+| [`ifc-properties`](./crates/ifc-properties) | <span class="status-implemented">Implemented</span> | 0.10.5 | Property sets, quantities, and unit resolution. No geometry. |
 | [`ifc-resource`](./crates/ifc-resource) | <span class="status-implemented">Implemented</span> | 0.5.2 | Construction resources: labour, equipment, material, crew, subcontract. |
 | [`ifc-schedule`](./crates/ifc-schedule) | <span class="status-implemented">Implemented</span> | 0.5.2 | IFC scheduling: IfcTask/IfcWorkSchedule, sequencing, 4D linkage. |
 | [`ifc-spatial`](./crates/ifc-spatial) | <span class="status-implemented">Implemented</span> | 0.6.2 | IFC spatial containment and objectified relationship traversal: project, site, building, storey, element. |
@@ -50,7 +50,7 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 | Crate | Status | Latest release | Description |
 | --- | --- | --- | --- |
 | [`ifc-alignment`](./crates/ifc-alignment) | <span class="status-implemented">Implemented</span> | 0.11.0 | IFC4x3 linear positioning: alignments, referents, linear placement, spirals. |
-| [`ifc-geometry`](./crates/ifc-geometry) | <span class="status-partial">Partial</span> | 0.32.1 | IFC semantic views lowered into the format-neutral geometry DAG. |
+| [`ifc-geometry`](./crates/ifc-geometry) | <span class="status-partial">Partial</span> | 0.33.0 | IFC semantic views lowered into the format-neutral geometry DAG. |
 | [`ifc-georef`](./crates/ifc-georef) | <span class="status-implemented">Implemented</span> | 0.8.2 | Georeferencing: map conversion, coordinate reference systems, site placement. |
 
 ## Language bindings

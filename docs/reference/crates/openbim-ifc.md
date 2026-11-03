@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.39.7 (2026-11-03) |
+| Latest release | 0.40.0 (2026-11-03) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -103,33 +103,36 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.39.7 (2026-11-03):
+Latest release, 0.40.0 (2026-11-03):
 
-### Added (#614, #616)
+### Changed (#615)
 
-- Re-exports `Diagnostic`, `DiagnosticKind`, `SourcePosition`, the
-  `diagnostic` module and, with `step`, `ReadFailure` and `SyntaxLocation`.
+- `project_style_units` and the bindings' `resolve_unit` resolve project units in a lenient model whose damage does not reach the unit records. `georeferencing`, `FillResolver::new` and the material fill functions built on it, door and window operation reads and length-unit changes still refuse any diagnostic.
 
-### Fixed (#617)
+Semver: patch.
 
-- Through ifc-step, `next_id` after a read is above every declared and
-  referenced id.
+### Added (#651)
 
-Semver: patch (additive)
+- With `geometry-select`: `body_description_for(model, units, product, purpose)`, `BodyItemBounds`, and the `Reference` representation purpose from ifc-geometry, so an IFC4 Reference View opening's void is described, with a tessellated item's exact bounds.
 
-### Added (#455)
+### Changed (#651)
 
-- With `material` and `geometry-select`: `material_layer_bounds(model, product)`: the boundary planes of each material layer of a layered wall, slab or plate in its object frame, in metres, with each layer's material; `Ok(None)` when the product's material is no `IfcMaterialLayerSetUsage`; `LayerBoundsError`.
+- `body_description` now refuses a tessellated Body item that lowering refuses (index 0 or past the end, dangling or 2D coordinates), and a Body TIN with void or hole flags fails the whole description.
+
+Semver: minor (new refusals in `body_description`; additive API).
+
+### Added (#659)
+
+- With `colour`: `ColourResolver::product_decider` and `ColourResolver::item_deciders` name what decides a product's or a Body item's surface colour, by the same rules as `product_colour` and `item_colours` (#596's included): `ColourDecider::ItemStyle`, `Material` (the one `IfcMaterial`, also while it states no style), `Materials` (a layer, profile, list or constituent set whose materials are all unstyled or styled alike) or `Nothing`; an ambiguous material set refuses both with the same `ColourError::AmbiguousMaterial`. `ColourError::DecidersDiffer`: Body items that agree on a colour through different deciders (compared by identity: the same style assigned the same way, the same material). `item_colours` now reads `item_deciders`; its results are unchanged.
 
 Semver: patch (additive).
 
-### Added (#487)
+### Documentation (#656)
 
-- Property edits can read their numbers in SI (#487): `InputUnits` (`Raw`, the default, writes as given; `Si` converts), `PropertyEditOptions`, `stage_property_edits_with` and `apply_property_edits_with`, and `PropertyEditFailure::UnitConversion`. A real of a measure with a verified unit is converted into the property's stated unit, else the project unit; a project that declares none is refused, as are unmapped measures, offset units and non-finite numbers. The existing functions are unchanged.
-- Through `ifc-properties`: `properties::si_conversion`, `si_to_project` and `ConversionUnit::coherent_si`. (#487) Semver: patch (additive).
+- `ColourResolver::item_colours` documents its index-by-index pairing with
+  `ifc::geometry::compile::compile_product_item_meshes`, which a new test
+  holds.
 
-### Added (#483)
-
-- `AuthorOp::ReassignClass` changes an `IfcObject`'s class in place in a checked batch, keeping its id, file position, `GlobalId` and relationships, with exact undo. Attributes move by name; a carried value the new class does not admit (a `PredefinedType` outside its enumeration) is refused; set attributes the new class lacks are refused with `AuthoringFailure::AttributesDropped` unless `ReassignClassOptions::drop_unmapped`; a relationship the new class cannot hold is refused (`WrongReferenceType`, `RelationshipLost`, `InverseCardinality`, and `TypeRuleChanged` for a typed object whose type rule would change). `ReassignReport` in `AuthoringOutcome::reassignments` and `StagedAuthoring::reassignments` names what was dropped. `WHERE` rules are not evaluated, neither the entity's nor its referrers' (a `.PHYSICAL.` `IfcRelSpaceBoundary` accepts a wall moved to `IfcVirtualElement`). A class with fewer attributes than the record is refused with `UnsupportedReassignment` (#634).
+Semver: patch. No code change.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

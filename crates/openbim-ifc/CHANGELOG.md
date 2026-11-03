@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-11-03
+
 ### Changed (#615)
 
 - `project_style_units` and the bindings' `resolve_unit` resolve project units in a lenient model whose damage does not reach the unit records. `georeferencing`, `FillResolver::new` and the material fill functions built on it, door and window operation reads and length-unit changes still refuse any diagnostic.
@@ -1494,7 +1496,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.39.7...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.40.0...HEAD
+[0.40.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.40.0
 [0.39.7]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.7
 [0.39.6]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.6
 [0.39.5]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.5
