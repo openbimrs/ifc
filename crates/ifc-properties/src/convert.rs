@@ -9,7 +9,9 @@
 //! the exact, release-bound resolver), or without one from an SI name and
 //! prefix ([`ConversionUnit::si`]), a named conversion-based unit
 //! ([`ConversionUnit::named`], IFC4 Table 673 with exact factors) or text
-//! ([`ConversionUnit::parse`]).
+//! ([`ConversionUnit::parse`]). [`ConversionUnit::coherent_si`] is the
+//! coherent SI unit of given dimensions, the source of a conversion from SI
+//! values.
 //!
 //! [`unit_conversion`] between two units checks that their dimensions are
 //! equal and gives the [`UnitConversion`] that takes a value from one to the
@@ -165,6 +167,22 @@ impl ConversionUnit {
             dimensions: unit.dimensions,
             mantissa: unit.mantissa,
             decimal_exponent: unit.decimal_exponent,
+            offset: 0.0,
+        }
+    }
+
+    /// The coherent SI unit of `dimensions`: factor 1 into SI base units, no
+    /// offset. A value in it is the SI value itself, so
+    /// [`unit_conversion`] from it takes SI input into any unit of the same
+    /// dimensions.
+    #[must_use]
+    pub fn coherent_si(dimensions: [i32; 7]) -> Self {
+        Self {
+            name: "coherent SI".into(),
+            unit_type: None,
+            dimensions,
+            mantissa: 1.0,
+            decimal_exponent: 0,
             offset: 0.0,
         }
     }
@@ -552,6 +570,26 @@ mod tests {
         // value * 0.001 is not always the correctly rounded quotient.
         assert_ne!(9.0 * 0.001, 0.009);
         assert_eq!(conversion.apply(9.0), 0.009);
+    }
+
+    #[test]
+    fn the_coherent_si_unit_has_factor_one() {
+        let length = ConversionUnit::coherent_si([1, 0, 0, 0, 0, 0, 0]);
+        let to = |from: &ConversionUnit, spec: &str| unit_conversion(from, &parse(spec)).unwrap();
+        assert_eq!(to(&length, "MILLIMETRE").apply(1.234), 1234.0);
+        assert!(to(&length, "METRE").is_identity());
+        let mass = ConversionUnit::coherent_si([0, 1, 0, 0, 0, 0, 0]);
+        assert!(to(&mass, "KILOGRAM").is_identity());
+        assert_eq!(to(&mass, "GRAM").apply(2.5), 2500.0);
+        let kelvin = ConversionUnit::coherent_si([0, 0, 0, 0, 1, 0, 0]);
+        assert_eq!(
+            convert_value(273.15, &kelvin, &parse("DEGREE_CELSIUS")).unwrap(),
+            0.0
+        );
+        assert!(matches!(
+            unit_conversion(&length, &parse("SQUARE_METRE")),
+            Err(UnitConversionError::DimensionMismatch { .. })
+        ));
     }
 
     #[test]
