@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-11-03
+
 ### Added (#614)
 
 - `Diagnostic::kind` (`DiagnosticKind`), `instance` (the skipped, duplicated
@@ -225,7 +227,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-model-v0.4.5...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-model-v0.4.6...HEAD
+[0.4.6]: https://github.com/openbimrs/ifc/releases/tag/ifc-model-v0.4.6
 [0.4.5]: https://github.com/openbimrs/ifc/releases/tag/ifc-model-v0.4.5
 [0.4.4]: https://github.com/openbimrs/ifc/releases/tag/ifc-model-v0.4.4
 [0.4.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-model-v0.4.3

@@ -12,13 +12,7 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
-## [0.39.6] - 2026-11-03
-
-### Added (#624)
-
-- With `style` and `properties`: `material_fills_by_context(model, material)`, `material_fill_for_view(model, material, target_view)`, and `FillResolver`, which binds the release and resolves the project units once for many materials.
-
-Semver: patch (additive).
+## [0.39.7] - 2026-11-03
 
 ### Added (#614, #616)
 
@@ -46,6 +40,14 @@ Semver: patch (additive).
 ### Added (#483)
 
 - `AuthorOp::ReassignClass` changes an `IfcObject`'s class in place in a checked batch, keeping its id, file position, `GlobalId` and relationships, with exact undo. Attributes move by name; a carried value the new class does not admit (a `PredefinedType` outside its enumeration) is refused; set attributes the new class lacks are refused with `AuthoringFailure::AttributesDropped` unless `ReassignClassOptions::drop_unmapped`; a relationship the new class cannot hold is refused (`WrongReferenceType`, `RelationshipLost`, `InverseCardinality`, and `TypeRuleChanged` for a typed object whose type rule would change). `ReassignReport` in `AuthoringOutcome::reassignments` and `StagedAuthoring::reassignments` names what was dropped. `WHERE` rules are not evaluated, neither the entity's nor its referrers' (a `.PHYSICAL.` `IfcRelSpaceBoundary` accepts a wall moved to `IfcVirtualElement`). A class with fewer attributes than the record is refused with `UnsupportedReassignment` (#634).
+
+## [0.39.6] - 2026-11-03
+
+### Added (#624)
+
+- With `style` and `properties`: `material_fills_by_context(model, material)`, `material_fill_for_view(model, material, target_view)`, and `FillResolver`, which binds the release and resolves the project units once for many materials.
+
+Semver: patch (additive).
 
 ## [0.39.5] - 2026-10-30
 
@@ -1462,7 +1464,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.39.6...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.39.7...HEAD
+[0.39.7]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.7
 [0.39.6]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.6
 [0.39.5]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.5
 [0.39.4]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.4
