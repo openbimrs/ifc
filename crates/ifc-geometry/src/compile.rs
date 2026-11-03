@@ -49,12 +49,16 @@
 
 mod bounds;
 mod items;
+mod layers;
 mod output;
 mod window;
 
 #[cfg(feature = "compile-reference-backend")]
 pub use items::compile_product_item_meshes;
 pub use items::{compile_product_item_meshes_with, ItemMesh};
+#[cfg(feature = "compile-reference-backend")]
+pub use layers::compile_product_layer_meshes;
+pub use layers::{compile_product_layer_meshes_with, LayerMesh, LayerMeshes};
 #[cfg(feature = "compile-reference-backend")]
 pub use output::{compile_product_curves, compile_product_mesh_for, compile_product_polylines};
 pub use output::{

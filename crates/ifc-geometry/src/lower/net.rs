@@ -269,21 +269,115 @@ pub fn lower_product_net_with(
     product: EntityId,
     options: NetOptions,
 ) -> GeometryResult<Option<NetLowering>> {
+    Ok(lower_net_in_frame(session, product, options, false)?.map(|inner| inner.net))
+}
+
+/// A body lowered in its host's frame, with the placement that takes it to
+/// world coordinates (#455).
+///
+/// `local` is the host's gross Body, or its net Body when openings were
+/// subtracted, as the nodes of the host's own frame: the planes of a layer
+/// stack are stated there, so a cut made on it keeps what the file states.
+#[derive(Debug, Clone)]
+pub(crate) struct LocalBody {
+    /// The body in the host's frame.
+    pub(crate) local: NodeId,
+    /// The host's world transform, `None` when it is the identity.
+    pub(crate) to_world: Option<Transform3>,
+    /// The gross Body in world coordinates.
+    pub(crate) gross: NodeId,
+    /// The net lowering, `None` for a gross request.
+    pub(crate) net: Option<NetLowering>,
+}
+
+/// The Body of `product` in its own frame: gross, or net when `net` is set.
+///
+/// `Ok(None)` when the product has no Body. A net body that falls back to
+/// world coordinates (an opening shares no placement chain with its host) is
+/// [`GeometryError::Unsupported`]: a plane stated in the host's frame is not
+/// moved to another one.
+pub(crate) fn lower_body_in_host_frame(
+    session: &mut LoweringSession<'_>,
+    product: EntityId,
+    net: Option<NetOptions>,
+) -> GeometryResult<Option<LocalBody>> {
+    let Some(options) = net else {
+        let Some(frame) = NetFrame::for_host(session, product, &[])? else {
+            return Ok(None);
+        };
+        let to_world = frame.to_world();
+        let Some(local) = frame.lower_host(session, product)? else {
+            return Ok(None);
+        };
+        let gross = place(session, local, to_world, product)?;
+        return Ok(Some(LocalBody {
+            local,
+            to_world,
+            gross,
+            net: None,
+        }));
+    };
+    let Some(inner) = lower_net_in_frame(session, product, options, true)? else {
+        return Ok(None);
+    };
+    if !inner.host_frame {
+        return Err(GeometryError::Unsupported {
+            entity: product,
+            type_name: type_name_of(session, product),
+            detail: "an opening shares no placement chain with its host, so the net body is \
+                     in world coordinates and a layer stack in the host's frame cannot cut it",
+        });
+    }
+    Ok(Some(LocalBody {
+        local: inner.local_root,
+        to_world: inner.to_world,
+        gross: inner.net.gross,
+        net: Some(inner.net),
+    }))
+}
+
+/// A net lowering and what it was lowered in.
+struct NetInner {
+    net: NetLowering,
+    /// The net result in the host's frame (the world root when
+    /// `host_frame` is false).
+    local_root: NodeId,
+    to_world: Option<Transform3>,
+    host_frame: bool,
+}
+
+/// The net lowering of [`lower_product_net_with`], keeping the host-frame
+/// root. `always_host` lowers an opening-less, boolean-less Body in the
+/// host's frame too, instead of in world coordinates.
+fn lower_net_in_frame(
+    session: &mut LoweringSession<'_>,
+    product: EntityId,
+    options: NetOptions,
+    always_host: bool,
+) -> GeometryResult<Option<NetInner>> {
     let voidings = voidings_of(session.model(), product);
     // A Body with a boolean or a clip is lowered in the product's frame even
     // without openings (#655); any other opening-less Body stays in world
     // coordinates, unchanged.
-    if voidings.is_empty() && !boolean_body::body_holds_boolean(session.model(), product) {
+    if !always_host
+        && voidings.is_empty()
+        && !boolean_body::body_holds_boolean(session.model(), product)
+    {
         let Some(gross) =
             lower_product_representation(session, product, RepresentationPurpose::Body)?
         else {
             return Ok(None);
         };
-        return Ok(Some(NetLowering {
-            gross,
-            subtractions: Vec::new(),
-            taken_as_applied: Vec::new(),
-            root: gross,
+        return Ok(Some(NetInner {
+            net: NetLowering {
+                gross,
+                subtractions: Vec::new(),
+                taken_as_applied: Vec::new(),
+                root: gross,
+            },
+            local_root: gross,
+            to_world: None,
+            host_frame: false,
         }));
     }
     // The host's frame when it has no openings (#655) or every opening shares
@@ -292,9 +386,11 @@ pub fn lower_product_net_with(
         return Ok(None);
     };
     let to_world = frame.to_world();
+    let host_frame = matches!(frame, NetFrame::Host { .. });
     let Some(local_gross) = frame.lower_host(session, product)? else {
         return Ok(None);
     };
+    let mut local_root = local_gross;
     let gross = place(session, local_gross, to_world, product)?;
 
     // Split lazily: a host whose openings are all taken as applied has
@@ -364,6 +460,7 @@ pub fn lower_product_net_with(
                 .node_for(voiding.relation, GeometryNode::Collection(heads.clone()))
                 .map_err(refuse)?,
         };
+        local_root = result;
         subtractions.push(Subtraction {
             opening: voiding.opening,
             relation: voiding.relation,
@@ -373,11 +470,16 @@ pub fn lower_product_net_with(
     }
 
     let root = subtractions.last().map_or(gross, |step| step.result);
-    Ok(Some(NetLowering {
-        gross,
-        subtractions,
-        taken_as_applied,
-        root,
+    Ok(Some(NetInner {
+        net: NetLowering {
+            gross,
+            subtractions,
+            taken_as_applied,
+            root,
+        },
+        local_root,
+        to_world,
+        host_frame,
     }))
 }
 
@@ -440,7 +542,7 @@ const REFERENCE: &str = "Reference";
 /// Anything else (a curve, a surface, an open shell lowered as a surface
 /// model) bounds no volume, so it is refused naming `owner` rather than
 /// dropped: dropping part of a body would under-cut or over-report.
-fn solid_parts(
+pub(crate) fn solid_parts(
     session: &mut LoweringSession<'_>,
     root: NodeId,
     owner: EntityId,
@@ -514,7 +616,7 @@ fn ends_in_solid(session: &LoweringSession<'_>, mut node: NodeId) -> bool {
 }
 
 /// `node` under `outer`, or `node` itself when there is no outer transform.
-fn place(
+pub(crate) fn place(
     session: &mut LoweringSession<'_>,
     node: NodeId,
     outer: Option<Transform3>,
@@ -532,14 +634,21 @@ fn place(
     }
 }
 
-fn degenerate(session: &LoweringSession<'_>, entity: EntityId, detail: &str) -> GeometryError {
-    let type_name = session
+fn type_name_of(session: &LoweringSession<'_>, entity: EntityId) -> String {
+    session
         .model()
         .get(entity)
-        .map_or_else(String::new, |e| e.type_name.to_string());
+        .map_or_else(String::new, |e| e.type_name.to_string())
+}
+
+pub(crate) fn degenerate(
+    session: &LoweringSession<'_>,
+    entity: EntityId,
+    detail: &str,
+) -> GeometryError {
     GeometryError::Degenerate {
         entity,
-        type_name,
+        type_name: type_name_of(session, entity),
         detail: detail.to_string(),
     }
 }
