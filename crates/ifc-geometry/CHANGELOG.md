@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#660)
+
+- With `compile`: `compile_profile_outline_with` (and `compile_profile_outline` with the reference backend), an arbitrary profile's outline whose `IfcArcIndex` segments are chord-sampled by the backend within `tolerance`, authored points kept exactly, each arc reported (`SampledArc`) with its bound (the backend's, plus the snap of its end vertices to the authored points, which must lie within `tolerance`). `profile_outline` stays exact and still refuses arcs.
+
+Semver: patch.
+
 ## [0.33.0] - 2026-11-03
 
 ### Added (#651)
