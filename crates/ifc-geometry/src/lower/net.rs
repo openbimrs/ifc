@@ -106,6 +106,7 @@ use crate::input::representation::{ProductShape, Representation};
 use crate::lower::session::NodeShape;
 use crate::lower::{lower_product_representation, LoweringSession, RepresentationPurpose};
 
+mod boolean_body;
 mod frame;
 
 use frame::NetFrame;
@@ -261,7 +262,10 @@ pub fn lower_product_net_with(
     options: NetOptions,
 ) -> GeometryResult<Option<NetLowering>> {
     let voidings = voidings_of(session.model(), product);
-    if voidings.is_empty() {
+    // A Body with a boolean or a clip is lowered in the product's frame even
+    // without openings (#655); any other opening-less Body stays in world
+    // coordinates, unchanged.
+    if voidings.is_empty() && !boolean_body::body_holds_boolean(session.model(), product) {
         let Some(gross) =
             lower_product_representation(session, product, RepresentationPurpose::Body)?
         else {
@@ -274,8 +278,8 @@ pub fn lower_product_net_with(
             root: gross,
         }));
     }
-    // The host's frame when every opening shares a placement chain with the
-    // host, else world coordinates as before (#388).
+    // The host's frame when it has no openings (#655) or every opening shares
+    // a placement chain with it, else world coordinates (#388).
     let Some(frame) = NetFrame::for_host(session, product, &voidings)? else {
         return Ok(None);
     };
