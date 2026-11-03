@@ -12,6 +12,20 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#455)
+
+- `layer_set_reference`, `LayerSetReference` and `LayerBoundaries`: where an
+  `IfcMaterialLayerSetUsage` measures its layers from, and the exact boundary
+  planes of its stack, in the product's object frame and metres. AXIS2 reads
+  a straight `IfcPolyline` Axis of an `IfcWall` or `IfcWallStandardCase` and
+  needs the extrusion perpendicular to the local y axis; AXIS3 reads the
+  `Position` z of the `IfcExtrudedAreaSolid` of an `IfcSlab`, `IfcPlate` or
+  their standard cases, independent of `ExtrudedDirection`. The body must be
+  one extrusion, optionally clipped by `IfcBooleanClippingResult`. AXIS1,
+  other classes, other bodies and other axis curves are refused as
+  `Unsupported`; a zero-extent axis or an extrusion in the profile plane is
+  `Degenerate`.
+
 ## [0.32.0] - 2026-10-28
 
 ### Changed (#585)
