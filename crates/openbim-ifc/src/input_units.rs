@@ -69,6 +69,25 @@ impl PropertyEditOptions {
     }
 }
 
+/// Options of `stage_authoring_with` and `apply_authoring_with` (#638).
+#[cfg(feature = "authoring")]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct AuthoringOptions {
+    /// How the batch's numbers are read.
+    pub input_units: InputUnits,
+}
+
+#[cfg(feature = "authoring")]
+impl AuthoringOptions {
+    /// These options with `input_units` set.
+    #[must_use]
+    pub const fn with_input_units(mut self, input_units: InputUnits) -> Self {
+        self.input_units = input_units;
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -77,6 +96,17 @@ mod tests {
     fn numbers_are_read_raw_unless_si_is_asked_for() {
         assert_eq!(InputUnits::default(), InputUnits::Raw);
         let options = PropertyEditOptions::default();
+        assert_eq!(options.input_units, InputUnits::Raw);
+        assert_eq!(
+            options.with_input_units(InputUnits::Si).input_units,
+            InputUnits::Si
+        );
+    }
+
+    #[cfg(feature = "authoring")]
+    #[test]
+    fn a_batch_reads_raw_unless_si_is_asked_for() {
+        let options = AuthoringOptions::default();
         assert_eq!(options.input_units, InputUnits::Raw);
         assert_eq!(
             options.with_input_units(InputUnits::Si).input_units,

@@ -113,6 +113,9 @@ mod remove;
 mod report;
 mod represent;
 mod shape_type;
+#[cfg(feature = "properties")]
+mod si;
+mod si_refusal;
 
 use ifc_model::{EntityId, Model, Transaction, Value};
 use ifc_schema::Schema;
@@ -128,8 +131,21 @@ pub use report::{
     CopiedEntity, CopyReport, KeepReason, KeptEntity, ReassignReport, RemovalReport, RemovedEntity,
 };
 
+#[cfg(feature = "properties")]
+use crate::input_units::{AuthoringOptions, InputUnits};
 use overlay::Overlay;
 use plan::Planner;
+
+/// The SI input items the crate root re-exports by glob (#638), so the root
+/// names none of them under a `properties` gate: the refusal type is plain
+/// data and always exists, so the glob is never empty.
+pub(crate) mod si_input {
+    pub use super::si_refusal::SiInputRefusal;
+    #[cfg(feature = "properties")]
+    pub use super::{apply_authoring_with, stage_authoring_with};
+    #[cfg(feature = "properties")]
+    pub use crate::input_units::AuthoringOptions;
+}
 
 /// The first id of the handle range: `HANDLE_BASE + i` names the entity
 /// operation `i` of the batch produced. 2^62, so a handle fits every host's
@@ -203,6 +219,50 @@ pub fn stage_authoring(
     ops: &[AuthorOp],
     seed: u128,
 ) -> Result<StagedAuthoring, AuthoringError> {
+    stage(model, schema, ops, seed, &mut |_, op| Ok(op))
+}
+
+/// [`stage_authoring`] reading the batch's numbers as `options` say (#638).
+///
+/// With [`InputUnits::Si`] every number the operations state is an SI value,
+/// converted into the unit that applies before the operation runs (see the
+/// module documentation); `InputUnits::Raw` is [`stage_authoring`].
+///
+/// # Errors
+///
+/// As [`stage_authoring`]; with `Si`, [`AuthoringFailure::UnitConversion`]
+/// for a number that cannot be converted and [`AuthoringFailure::SiInput`]
+/// for a batch or operation SI input refuses.
+#[cfg(feature = "properties")]
+pub fn stage_authoring_with(
+    model: &Model,
+    schema: &Schema,
+    ops: &[AuthorOp],
+    seed: u128,
+    options: &AuthoringOptions,
+) -> Result<StagedAuthoring, AuthoringError> {
+    match options.input_units {
+        InputUnits::Si => {
+            let mut si = si::SiInput::new(model, schema)
+                .map_err(|failure| AuthoringError::at(None, failure))?;
+            stage(model, schema, ops, seed, &mut |view, op| {
+                si.convert(view, op)
+            })
+        }
+        InputUnits::Raw => stage_authoring(model, schema, ops, seed),
+    }
+}
+
+/// The operations' conversion between handle resolution and planning.
+type Convert<'a> = dyn FnMut(&Overlay<'_>, AuthorOp) -> Result<AuthorOp, AuthoringFailure> + 'a;
+
+fn stage(
+    model: &Model,
+    schema: &Schema,
+    ops: &[AuthorOp],
+    seed: u128,
+    convert: &mut Convert<'_>,
+) -> Result<StagedAuthoring, AuthoringError> {
     let next_id = model.next_id().0;
     if next_id > HANDLE_BASE {
         return Err(AuthoringError::at(
@@ -213,6 +273,7 @@ pub fn stage_authoring(
     let mut planner = Planner::new(schema, Overlay::new(model), seed);
     for (index, op) in ops.iter().enumerate() {
         let op = resolve(op.clone(), index, &planner.ids)
+            .and_then(|op| convert(&planner.view, op))
             .map_err(|failure| AuthoringError::at(Some(index), failure))?;
         let id = planner
             .run(index, op)
@@ -243,6 +304,10 @@ pub fn apply_authoring(
     seed: u128,
 ) -> Result<AuthoringOutcome, AuthoringError> {
     let staged = stage_authoring(model, schema, ops, seed)?;
+    commit(model, staged)
+}
+
+fn commit(model: &mut Model, staged: StagedAuthoring) -> Result<AuthoringOutcome, AuthoringError> {
     let applied = staged
         .transaction
         .commit(model)
@@ -256,6 +321,25 @@ pub fn apply_authoring(
         reassignments: staged.reassignments,
         revision: applied.revision,
     })
+}
+
+/// [`apply_authoring`] reading the batch's numbers as `options` say (#638):
+/// [`stage_authoring_with`], then the commit.
+///
+/// # Errors
+///
+/// As [`stage_authoring_with`] and [`apply_authoring`]. The model is
+/// unchanged on every error.
+#[cfg(feature = "properties")]
+pub fn apply_authoring_with(
+    model: &mut Model,
+    schema: &Schema,
+    ops: &[AuthorOp],
+    seed: u128,
+    options: &AuthoringOptions,
+) -> Result<AuthoringOutcome, AuthoringError> {
+    let staged = stage_authoring_with(model, schema, ops, seed, options)?;
+    commit(model, staged)
 }
 
 /// An append planned and staged but not committed (#479).

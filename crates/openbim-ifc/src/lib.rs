@@ -264,6 +264,8 @@ pub mod validate;
 mod authoring;
 #[cfg(feature = "authoring")]
 pub use {
+    // SI input to batches (#638): empty without `properties`.
+    authoring::si_input::*,
     authoring::{
         apply_append, apply_authoring, authoring_handle, stage_append, stage_authoring,
         AppendOptions, AppendOutcome, AssignTypeOptions, AuthorOp, AuthoringError,
