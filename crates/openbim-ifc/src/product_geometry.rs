@@ -27,6 +27,7 @@ use ifc_model::{EntityId, Model};
 mod colour;
 mod curves;
 mod graph;
+mod layer_meshes;
 mod layers;
 mod mesh;
 #[cfg(feature = "colour")]
@@ -37,6 +38,8 @@ pub use colour::{
 pub use curves::{product_curves, NonCurveItem, ProductCurves, ProductPolyline, SkippedItem};
 #[cfg(feature = "geometry-wire")]
 pub use graph::{product_graphs, ProductGraph};
+#[cfg(all(feature = "material", feature = "mesh"))]
+pub use layer_meshes::{material_layer_meshes, LayerBody, MaterialLayerMesh, MaterialLayerMeshes};
 #[cfg(feature = "material")]
 pub use layers::{material_layer_bounds, BoundedLayer, LayerBounds, LayerBoundsError};
 #[cfg(feature = "mesh")]

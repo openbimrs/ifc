@@ -39,6 +39,12 @@ Semver: patch (a refusal lifted).
 
 Semver: patch (additive).
 
+### Added (#455)
+
+- With `material` and `mesh`: `material_layer_meshes(model, product, body)`: a mesh per material layer of a layered wall, slab or plate, gross or net, in the product's frame, with its layer and material (`MaterialLayerMeshes`, `MaterialLayerMesh`); the layer volumes add up to the Body. `LayerBody` is re-exported to choose gross or net.
+
+Semver: patch (additive).
+
 ## [0.40.0] - 2026-11-03
 
 ### Changed (#615)
