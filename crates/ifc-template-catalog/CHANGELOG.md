@@ -12,6 +12,10 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed
+
+- The corrected profiles give `Pset_ElementAssemblyCommon`, `Pset_CivilElementCommon`, `Pset_SpatialZoneCommon` (IFC4, IFC4X3), `Pset_MarineFacilityTransportation` and 11 IFC4X3 `Qto_*` sets the applicable entity their published XML omits (patches NEH-IFC4-PSD-0001..0003, NEH-IFC4X3-PSD-0002..0005, NEH-IFC4X3-QTO-0001..0011, #622). `Pset_ElectricFlowStorageDevicePHistory` stays empty because no buildingSMART source names its entity. The official snapshots, container and TSV exports are unchanged; the TSVs still show the published empty `applicable_entity`.
+
 ## [0.4.3] - 2026-10-28
 
 ### Changed
