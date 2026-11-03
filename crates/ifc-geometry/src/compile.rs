@@ -48,9 +48,13 @@
 //! [backend-compare]: https://github.com/openbimrs/ifc/tree/main/crates/ifc-geometry/examples/backend_compare
 
 mod bounds;
+mod items;
 mod output;
 mod window;
 
+#[cfg(feature = "compile-reference-backend")]
+pub use items::compile_product_item_meshes;
+pub use items::{compile_product_item_meshes_with, ItemMesh};
 #[cfg(feature = "compile-reference-backend")]
 pub use output::{compile_product_curves, compile_product_mesh_for, compile_product_polylines};
 pub use output::{
