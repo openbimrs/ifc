@@ -4,7 +4,8 @@
 //!
 //! - `edit.rs`: schema-agnostic edit operations (`set_attribute`, `retype`,
 //!   `truncate_attributes`, `remove`) — the mutable counterpart to `insert`/`push`.
-//! - `transaction.rs`: preflight and atomic commit.
+//! - `transaction.rs`: preflight and atomic commit; truncations and the header
+//!   are staged beside the edits, not as `Edit` variants.
 //! - `conflict.rs`: ID/reference/index conflict diagnostics.
 //!
 //! - `step.rs`: crate-private primitive writes stored as their own inverse.

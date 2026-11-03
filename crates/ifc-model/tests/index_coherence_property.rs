@@ -401,6 +401,9 @@ fn stage_random(rng: &mut Rng, tx: &mut Transaction, shadow: &Shadow) {
             }
         }
     }
+    if rng.chance(30) {
+        tx.truncate(random_id(rng), rng.below(4) as usize);
+    }
 }
 
 #[derive(Debug, Default)]
@@ -424,6 +427,7 @@ fn transaction(rng: &mut Rng, model: &mut Model, shadow: &mut Shadow, tally: &mu
 
     let before = snapshot(model);
     let edits = tx.edits().to_vec();
+    let truncations: Vec<_> = tx.truncations().collect();
     match tx.commit(model) {
         Ok(applied) => {
             assert!(!stale, "{at}: a stale transaction committed");
@@ -434,6 +438,9 @@ fn transaction(rng: &mut Rng, model: &mut Model, shadow: &mut Shadow, tally: &mu
                     created.push(*id);
                 }
                 shadow.apply(edit);
+            }
+            for (id, len) in truncations {
+                shadow.truncate_attributes(id, len);
             }
             assert_eq!(applied.created, created, "{at}: Applied::created");
             assert_eq!(

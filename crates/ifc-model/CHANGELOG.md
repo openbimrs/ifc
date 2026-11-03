@@ -12,6 +12,18 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#634)
+
+- `Model::truncate_attributes(id, len)`: shortens a record and returns the
+  dropped tail; recorded like every write, so undo, redo and `preview`
+  restore it exactly.
+- `Transaction::truncate(id, len)` and `Transaction::truncations`: shorten a
+  record after the edits and before the header. `Conflict::TruncationMissingTarget`,
+  `Conflict::WriteBeyondTruncation`. A removal referenced only from a dropped
+  slot does not dangle.
+
+Semver: patch (additive).
+
 ## [0.4.6] - 2026-11-03
 
 ### Added (#614)

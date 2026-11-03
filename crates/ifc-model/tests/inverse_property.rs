@@ -221,6 +221,9 @@ fn transaction(rng: &mut Rng, model: &mut Model) {
             }
         }
     }
+    if rng.chance(30) {
+        tx.truncate(id(rng), rng.below(4) as usize);
+    }
     if rng.chance(40) {
         tx.set_header(header(rng));
     }

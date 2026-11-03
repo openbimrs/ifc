@@ -63,6 +63,8 @@
 //! assert!(tx.commit(&mut model).is_ok());
 //! ```
 
+use std::collections::BTreeMap;
+
 use ahash::{AHashMap, AHashSet};
 
 use crate::entity::Entity;
@@ -124,6 +126,9 @@ pub struct Transaction {
     /// A header replacement. Not an [`Edit`] variant: `Edit` is matched
     /// exhaustively downstream.
     header: Option<Header>,
+    /// Record shortenings, applied after the edits and before the header.
+    /// Not an [`Edit`] variant either, for the same reason as `header`.
+    truncations: BTreeMap<EntityId, usize>,
 }
 
 impl Transaction {
@@ -135,6 +140,7 @@ impl Transaction {
             next_id: model.next_id().0,
             edits: Vec::new(),
             header: None,
+            truncations: BTreeMap::new(),
         }
     }
 
@@ -144,7 +150,8 @@ impl Transaction {
         self.revision
     }
 
-    /// The staged edits, in the order they were added.
+    /// The staged edits, in the order they were added. Truncations are not
+    /// edits: see [`Transaction::truncations`].
     #[must_use]
     pub fn edits(&self) -> &[Edit] {
         &self.edits
@@ -153,10 +160,10 @@ impl Transaction {
     /// Whether anything is staged.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.edits.is_empty() && self.header.is_none()
+        self.edits.is_empty() && self.header.is_none() && self.truncations.is_empty()
     }
 
-    /// Number of staged edits.
+    /// Number of staged edits; truncations and the header are not counted.
     #[must_use]
     pub fn len(&self) -> usize {
         self.edits.len()
@@ -219,6 +226,25 @@ impl Transaction {
     pub fn set_header(&mut self, header: Header) -> &mut Self {
         self.header = Some(header);
         self
+    }
+
+    /// Stage shortening `id`'s record to its first `len` attributes, applied
+    /// after every edit and before the header. Staging `id` again replaces
+    /// the length.
+    ///
+    /// The record may be one the batch creates. A `len` at or past the
+    /// record's length at that point drops nothing. A [`Edit::SetAttribute`]
+    /// at a slot of `len` or more is refused
+    /// ([`Conflict::WriteBeyondTruncation`]); references held only in dropped
+    /// slots do not keep a removed entity alive.
+    pub fn truncate(&mut self, id: EntityId, len: usize) -> &mut Self {
+        self.truncations.insert(id, len);
+        self
+    }
+
+    /// The staged truncations as `(id, len)`, in ascending id.
+    pub fn truncations(&self) -> impl Iterator<Item = (EntityId, usize)> + '_ {
+        self.truncations.iter().map(|(id, len)| (*id, *len))
     }
 
     /// The staged header replacement, if any.
@@ -287,7 +313,12 @@ impl Transaction {
                             id: *id,
                         });
                     }
+                    let kept = self.truncations.get(id).copied().unwrap_or(usize::MAX);
                     for (slot, attribute) in entity.attributes.iter().enumerate() {
+                        // A dropped slot is never stored.
+                        if slot >= kept {
+                            break;
+                        }
                         // A slot overwritten later in the same batch is not
                         // what will be stored, so checking it would reject a
                         // batch that is actually coherent.
@@ -304,6 +335,17 @@ impl Transaction {
                             id: *id,
                         });
                         continue;
+                    }
+                    if let Some(&len) = self.truncations.get(id) {
+                        if *slot >= len {
+                            conflicts.push(Conflict::WriteBeyondTruncation {
+                                edit: index,
+                                id: *id,
+                                slot: *slot,
+                                len,
+                            });
+                            continue;
+                        }
                     }
                     // Only the winning write for a slot is checked; an earlier
                     // superseded one never reaches the model.
@@ -364,6 +406,14 @@ impl Transaction {
                     if removed.contains(&referrer.from) {
                         continue;
                     }
+                    // A slot the referrer's truncation drops holds nothing.
+                    if self
+                        .truncations
+                        .get(&referrer.from)
+                        .is_some_and(|len| referrer.slot >= *len)
+                    {
+                        continue;
+                    }
                     // A slot being rewritten in this batch is governed by the
                     // new value, which the per-edit check already validated.
                     if writes
@@ -379,6 +429,13 @@ impl Transaction {
                         slot: referrer.slot,
                     });
                 }
+            }
+        }
+
+        // --- a truncation needs a record to shorten ----------------------
+        for id in self.truncations.keys() {
+            if !exists(*id) {
+                conflicts.push(Conflict::TruncationMissingTarget { id: *id });
             }
         }
 
@@ -420,6 +477,11 @@ impl Transaction {
                     }
                 }
             }
+        }
+
+        // Preflight proved every target exists.
+        for (id, len) in self.truncations {
+            model.truncate_attributes(id, len);
         }
 
         if let Some(header) = self.header {
