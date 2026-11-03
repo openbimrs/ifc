@@ -20,6 +20,7 @@ use super::super::refs::{nonempty_refs_at, ref_at};
 use super::super::release::Release;
 use super::super::value::{select_accepts_entity, select_accepts_type, typed_payload_matches};
 use super::super::ExactPropertyError;
+use super::damage::Damage;
 use super::ExactUnitError;
 use crate::unit::prefix_exponent;
 use crate::unit::si::{
@@ -51,17 +52,19 @@ pub(crate) struct Resolved {
     pub(crate) decimal_exponent: i32,
 }
 
-pub(crate) struct Resolver<'m> {
+pub(crate) struct Resolver<'m, 'd> {
     model: &'m Model,
     release: Release,
+    damage: &'d Damage,
     chain: Vec<EntityId>,
 }
 
-impl<'m> Resolver<'m> {
-    pub(crate) fn new(model: &'m Model, release: Release) -> Self {
+impl<'m, 'd> Resolver<'m, 'd> {
+    pub(super) fn new(model: &'m Model, release: Release, damage: &'d Damage) -> Self {
         Self {
             model,
             release,
+            damage,
             chain: Vec::new(),
         }
     }
@@ -84,6 +87,7 @@ impl<'m> Resolver<'m> {
             .model
             .get(unit)
             .ok_or(ExactPropertyError::MissingReference { from, to: unit })?;
+        self.damage.check(unit)?;
         self.release.require_exact_slots(unit, entity)?;
         if !select_accepts_entity(self.release.schema, "IFCUNIT", &entity.type_name) {
             return Err(unsupported(unit, entity));
@@ -238,6 +242,7 @@ impl<'m> Resolver<'m> {
             .model
             .get(id)
             .ok_or(ExactPropertyError::MissingReference { from, to: id })?;
+        self.damage.check(id)?;
         self.release.require_exact_slots(id, entity)?;
         Ok(entity)
     }

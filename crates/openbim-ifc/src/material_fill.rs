@@ -15,7 +15,7 @@
 use std::fmt;
 
 use ifc_model::{EntityId, Model};
-use ifc_properties::{exact_unit, ExactUnitError};
+use ifc_properties::{exact_unit, ExactPropertyError, ExactUnitError};
 use ifc_schema::SchemaVersion;
 use ifc_style::{
     ContextFill, ContextFillResult, MaterialFill, StyleError, StyleIndex, StyleUnits, StyleView,
@@ -64,7 +64,8 @@ impl std::error::Error for MaterialFillError {}
 /// A model without an `IfcProject`, or whose project assigns no unit of
 /// that type, leaves the factor `None`: [`ifc_style::StyleUnits`] refuses a
 /// hatch measure that needs it. [`FillResolver`] resolves them once for many
-/// materials.
+/// materials. Unlike the fills, the units tolerate reader damage that does
+/// not reach the unit records (#615).
 ///
 /// # Errors
 ///
@@ -115,6 +116,16 @@ impl<'m> FillResolver<'m> {
         let schema = ifc_schema::for_version(version).map_err(|_| unsupported())?;
         let styles =
             StyleIndex::new(StyleView::new(model, schema)).map_err(MaterialFillError::Style)?;
+        // A skipped record may have been a style, so any diagnostic refuses
+        // here, though the units alone tolerate unrelated damage (#615).
+        if !model.diagnostics().is_empty() {
+            return Err(MaterialFillError::ProjectUnit {
+                measure: "IFCLENGTHMEASURE",
+                error: ExactUnitError::Structure(ExactPropertyError::IncompleteModel {
+                    diagnostics: model.diagnostics().len(),
+                }),
+            });
+        }
         let units = project_style_units(model)?;
         Ok(Self { styles, units })
     }
