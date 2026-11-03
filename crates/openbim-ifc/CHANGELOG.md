@@ -34,6 +34,14 @@ Semver: minor (new refusals in `body_description`; additive API).
 
 Semver: patch (additive).
 
+### Documentation (#656)
+
+- `ColourResolver::item_colours` documents its index-by-index pairing with
+  `ifc::geometry::compile::compile_product_item_meshes`, which a new test
+  holds.
+
+Semver: patch. No code change.
+
 ## [0.39.7] - 2026-11-03
 
 ### Added (#614, #616)

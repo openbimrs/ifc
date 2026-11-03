@@ -122,6 +122,13 @@ as an exact boolean and reports which openings it removed; an opening that
 cannot be removed is `GeometryError::OpeningNotSubtracted` naming it, never a
 quietly uncut mesh. See [ADR 0014](/adr/0014-net-geometry-is-an-explicit-request).
 
+**Per item.** `compile_product_item_meshes` meshes each leaf item of a Body on
+its own, in authored order with every `IfcMappedItem` expanded, so index `i`
+names the same item as index `i` of `ColourResolver::item_colours`. The meshes
+are gross and world-space. The call is all or nothing: any leaf that does not
+lower or compile refuses it, naming the product. Net per item is open work
+(#665).
+
 **Collapsed faces are refused unless you opt in.** An `IfcPolyLoop` with
 fewer than three distinct edges, e.g. `(A, A, B, B)`, encloses no area, and
 by default it refuses the whole brep, naming the loop. A consumer that would
