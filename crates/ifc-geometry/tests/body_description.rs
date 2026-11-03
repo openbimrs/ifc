@@ -9,6 +9,8 @@
 
 #[path = "body_description/profiles.rs"]
 mod profiles;
+#[path = "body_description/purpose.rs"]
+mod purpose;
 #[path = "body_description/refusals.rs"]
 mod refusals;
 #[path = "body_description/step.rs"]
@@ -578,6 +580,10 @@ fn a_mapped_tessellation_reports_the_handedness_of_its_mapping() {
     assert_eq!(mirrored.kind, BodyKind::Tessellated);
     assert!(mirrored.swept.is_none());
     assert_eq!(mirrored.is_mirrored(), Some(true));
+    // The triangle (0,0)-(1,0)-(0,1) mirrored in y: bounds follow the mapping.
+    let bounds = mirrored.bounds.expect("a tessellation has bounds");
+    assert!(close(bounds.min, [0.0, -1.0, 0.0]), "{bounds:?}");
+    assert!(close(bounds.max, [1.0, 0.0, 0.0]), "{bounds:?}");
 }
 
 /// Mirrors compose: a mirrored map inside a mirrored map is not mirrored.
@@ -618,4 +624,6 @@ fn a_direct_item_reports_the_product_frame() {
     assert!(item.mapped_by.is_empty());
     assert_eq!(item.is_mirrored(), Some(false));
     assert!(close([item.item_world.determinant()], [1.0]));
+    // Only a tessellation has bounds.
+    assert!(item.bounds.is_none());
 }
