@@ -207,7 +207,10 @@ pub enum ExactResolution {
 #[non_exhaustive]
 pub enum ExactPropertyError {
     /// The model carries STEP-level diagnostics, so exactness cannot be
-    /// guaranteed; count of diagnostics is reported for context.
+    /// guaranteed; count of diagnostics is reported for context. Unit
+    /// resolution raises it only for a diagnostic it cannot classify, a
+    /// duplicate id the reader could not attribute, a skipped record without
+    /// an id, or no project after a skipped record (#615).
     IncompleteModel {
         /// Number of diagnostics recorded against the model.
         diagnostics: usize,

@@ -12,6 +12,16 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#615)
+
+- Unit resolution (`exact_unit`, `exact_project_unit`, `resolve_unit`, `convert_between`, `si_conversion`, `si_to_project`) no longer refuses a model for any reader diagnostic; it refuses only damage it reaches. A record it reads that the reader skipped is `MissingReference`; one the reader reported by id (a duplicate id, or a skipped record while another record holds its id) is the new `ExactUnitError::DamagedRecord`; no `IfcProject` after skipped records is `IncompleteModel`, not `NoProject`. `IncompleteModel` also remains for a diagnostic of a kind it does not classify, a duplicate id the reader could not attribute, and a skipped record without an id (it may have been a damaged duplicate of a unit record). A REAL read without its decimal point and a dangling reference elsewhere no longer refuse. One surviving `IfcProject` is trusted, since every release requires one (`IfcSingleProjectInstance`: IFC2X3_TC1.exp:9563, IFC4.exp:12392, IFC4X3_ADD2.exp:13977); a skipped second project is not detected (#627). Property resolution and `exact_schema` still refuse any diagnostic: a skipped record may have been a relationship.
+
+### Added (#615)
+
+- `ExactUnitError::DamagedRecord { entity, diagnostic }`.
+
+Semver: patch.
+
 ## [0.10.4] - 2026-11-03
 
 ### Added (#487)

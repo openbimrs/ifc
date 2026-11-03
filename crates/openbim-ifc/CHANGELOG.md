@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#615)
+
+- `project_style_units` and the bindings' `resolve_unit` resolve project units in a lenient model whose damage does not reach the unit records. `georeferencing`, `FillResolver::new` and the material fill functions built on it, door and window operation reads and length-unit changes still refuse any diagnostic.
+
+Semver: patch.
+
 ## [0.39.7] - 2026-11-03
 
 ### Added (#614, #616)
