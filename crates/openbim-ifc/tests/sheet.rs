@@ -144,6 +144,21 @@ fn export_reads_every_column_in_every_release() {
     });
 }
 
+#[cfg(feature = "sheet-xlsx")]
+#[test]
+fn xlsx_export_is_byte_stable() {
+    each_release(|name, _, model, schema| {
+        let sheet = exported(&model, schema, &SheetOptions::default());
+        let first = sheet.write(SheetFormat::Xlsx).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(2100));
+        let second = sheet.write(SheetFormat::Xlsx).unwrap();
+        assert!(
+            first == second,
+            "{name}: the workbook differs between exports"
+        );
+    });
+}
+
 #[test]
 fn an_unchanged_table_imports_as_a_no_op_in_every_format() {
     each_release(|name, _, mut model, schema| {
