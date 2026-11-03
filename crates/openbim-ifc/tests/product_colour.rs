@@ -5,8 +5,8 @@
 #![cfg(all(feature = "step", feature = "colour"))]
 
 use ifc::{
-    product_colours, Codec, ColourError, ColourResolver, ColourSource, EntityId, Model, StepCodec,
-    SurfaceColour,
+    product_colours, Codec, ColourDecider, ColourError, ColourResolver, ColourSource, EntityId,
+    Model, StepCodec, SurfaceColour,
 };
 
 const RED: ([f64; 3], f64) = ([0.8, 0.1, 0.1], 0.25);
@@ -435,5 +435,342 @@ fn a_malformed_style_assignment_refuses_only_the_products_it_reaches() {
         }
         // The resolver itself accepts the model.
         assert!(ColourResolver::new(&model).is_ok());
+    }
+}
+
+const PLAIN_TOO: &str = "#904=IFCMATERIAL('Plain too',$,$);\n";
+
+/// The deciders and the colours never disagree, for `product`.
+fn assert_agrees(resolver: &ColourResolver<'_>, product: EntityId) {
+    let colour = resolver.product_colour(product);
+    match resolver.product_decider(product) {
+        Ok(decider) => assert_eq!(colour, Ok(decider.colour()), "{product}"),
+        Err(ColourError::DecidersDiffer { .. }) => assert!(colour.is_ok(), "{product}"),
+        Err(error) => assert_eq!(colour, Err(error), "{product}"),
+    }
+    let by_colour: Result<Vec<_>, _> = resolver.item_deciders(product).map(|items| {
+        items
+            .into_iter()
+            .map(|(item, decider)| (item, decider.colour()))
+            .collect()
+    });
+    assert_eq!(resolver.item_colours(product), by_colour, "{product}");
+}
+
+fn decider(resolver: &ColourResolver<'_>, model: &Model, name: &str) -> ColourDecider {
+    let product = product(model, name);
+    resolver
+        .product_decider(product)
+        .unwrap_or_else(|error| panic!("{name}: {error}"))
+}
+
+#[test]
+fn the_material_that_decides_is_named_styled_or_not() {
+    for name in ["material_colour.ifc", "material_colour_ifc4x3.ifc"] {
+        let model = fixture(name);
+        let resolver = ColourResolver::new(&model).unwrap();
+        let plain = material(&model, "Plain");
+        let decided = decider(&resolver, &model, "PLAIN");
+        assert_eq!(
+            decided,
+            ColourDecider::Material {
+                material: plain,
+                colour: None
+            }
+        );
+        assert_eq!(decided.materials(), [plain]);
+
+        let red = material(&model, "Red");
+        let only = decider(&resolver, &model, "MATERIAL");
+        assert_eq!(
+            only,
+            ColourDecider::Material {
+                material: red,
+                colour: resolver
+                    .product_colour(product(&model, "MATERIAL"))
+                    .unwrap()
+            }
+        );
+        assert!(only.colour().is_some());
+
+        let green = material(&model, "Green");
+        for green_one in [
+            "LAYER_SET",
+            "PROFILE_SET",
+            "CONSTITUENT_FRAME",
+            "TYPE_MATERIAL",
+        ] {
+            let decided = decider(&resolver, &model, green_one);
+            assert!(
+                matches!(decided, ColourDecider::Material { material, colour: Some(_) } if material == green),
+                "{name} {green_one}: {decided:?}"
+            );
+        }
+        for item in ["ITEM_OVER_MATERIAL", "LAYER_OVER_MATERIAL"] {
+            let decided = decider(&resolver, &model, item);
+            assert!(matches!(decided, ColourDecider::ItemStyle(_)), "{item}");
+            assert!(decided.materials().is_empty());
+        }
+    }
+    let model = fixture("material_colour_ifc2x3.ifc");
+    let resolver = ColourResolver::new(&model).unwrap();
+    assert!(matches!(
+        decider(&resolver, &model, "MATERIAL"),
+        ColourDecider::Material { material, .. } if material == self::material(&model, "Red")
+    ));
+    assert!(matches!(
+        decider(&resolver, &model, "MATERIAL_LIST"),
+        ColourDecider::Material { material, .. } if material == self::material(&model, "Green")
+    ));
+    assert!(matches!(
+        decider(&resolver, &model, "ITEM_OVER_MATERIAL"),
+        ColourDecider::ItemStyle(_)
+    ));
+}
+
+#[test]
+fn several_materials_decide_together_under_the_colour_rule() {
+    let model = layered(PLAIN_TOO, "#45", "#904");
+    let resolver = ColourResolver::new(&model).unwrap();
+    let wall = product(&model, "MULTI_LAYER");
+    let plain = material(&model, "Plain");
+    let plain_too = material(&model, "Plain too");
+    assert_eq!(
+        resolver.product_decider(wall),
+        Ok(ColourDecider::Materials {
+            definition: EntityId(129),
+            materials: vec![plain, plain_too],
+            colour: None
+        })
+    );
+
+    let model = layered(RED_TWIN, "#24", "#900");
+    let resolver = ColourResolver::new(&model).unwrap();
+    let wall = product(&model, "MULTI_LAYER");
+    let decided = resolver.product_decider(wall).unwrap();
+    assert!(matches!(
+        decided,
+        ColourDecider::Materials {
+            colour: Some(_),
+            ..
+        }
+    ));
+    assert_eq!(Ok(decided.colour()), resolver.product_colour(wall));
+
+    for (first, second) in [("#24", "#45"), ("#24", "#31")] {
+        let model = layered("", first, second);
+        let resolver = ColourResolver::new(&model).unwrap();
+        let wall = product(&model, "MULTI_LAYER");
+        let decided = resolver.product_decider(wall);
+        assert!(matches!(
+            decided,
+            Err(ColourError::AmbiguousMaterial { .. })
+        ));
+        assert_eq!(resolver.product_colour(wall), decided.map(|d| d.colour()));
+    }
+
+    let model = constituted(PLAIN_TOO, "#45", "#904");
+    let resolver = ColourResolver::new(&model).unwrap();
+    assert_eq!(
+        decider(&resolver, &model, "PLAIN"),
+        ColourDecider::Materials {
+            definition: EntityId(951),
+            materials: vec![material(&model, "Plain"), material(&model, "Plain too")],
+            colour: None
+        }
+    );
+}
+
+#[test]
+fn constituents_decide_per_item() {
+    let model = fixture("material_colour.ifc");
+    let resolver = ColourResolver::new(&model).unwrap();
+    let two = product(&model, "CONSTITUENT_TWO_PARTS");
+    let deciders = resolver.item_deciders(two).unwrap();
+    let [(_, frame), (_, glazing)] = deciders.as_slice() else {
+        panic!("two items");
+    };
+    assert!(
+        matches!(frame, ColourDecider::Material { material, colour: Some(_) }
+        if *material == self::material(&model, "Green"))
+    );
+    assert!(
+        matches!(glazing, ColourDecider::Material { material, colour: Some(_) }
+        if *material == self::material(&model, "Glass"))
+    );
+    let differ = ColourError::ItemsDiffer {
+        product: two,
+        items: deciders.iter().map(|(item, _)| *item).collect(),
+    };
+    assert_eq!(resolver.product_decider(two), Err(differ.clone()));
+    assert_eq!(resolver.product_colour(two), Err(differ));
+}
+
+#[test]
+fn items_agreeing_through_different_materials_have_no_one_decider() {
+    let model = edited_all(&[
+        (
+            "#149=IFCMATERIALCONSTITUENT('Frame',$,#31,$,$);",
+            "#149=IFCMATERIALCONSTITUENT('Frame',$,#45,$,$);",
+        ),
+        (
+            "#150=IFCMATERIALCONSTITUENT('Glazing',$,#38,$,$);",
+            "#150=IFCMATERIALCONSTITUENT('Glazing',$,#904,$,$);",
+        ),
+        ("ENDSEC;\nEND-ISO", &format!("{PLAIN_TOO}ENDSEC;\nEND-ISO")),
+    ]);
+    let resolver = ColourResolver::new(&model).unwrap();
+    let two = product(&model, "CONSTITUENT_TWO_PARTS");
+    let plain = material(&model, "Plain");
+    let plain_too = material(&model, "Plain too");
+    assert_eq!(resolver.product_colour(two), Ok(None));
+    assert_eq!(
+        resolver.product_decider(two),
+        Err(ColourError::DecidersDiffer {
+            product: two,
+            items: vec![EntityId(173), EntityId(180)]
+        })
+    );
+    let items: Vec<_> = resolver
+        .item_deciders(two)
+        .unwrap()
+        .into_iter()
+        .map(|(_, decider)| decider)
+        .collect();
+    assert_eq!(
+        items,
+        [
+            ColourDecider::Material {
+                material: plain,
+                colour: None
+            },
+            ColourDecider::Material {
+                material: plain_too,
+                colour: None
+            }
+        ]
+    );
+    assert_eq!(
+        decider(&resolver, &model, "CONSTITUENT_FRAME"),
+        ColourDecider::Material {
+            material: plain,
+            colour: None
+        }
+    );
+}
+
+/// `material_colour.ifc` with every `(from, to)` edit applied.
+fn edited_all(edits: &[(&str, &str)]) -> Model {
+    let path = format!(
+        "{}/../../test/fixtures/synthetic-colour/material_colour.ifc",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let mut text = std::fs::read_to_string(path).expect("fixture");
+    for (from, to) in edits {
+        text = replaced(&text, from, to);
+    }
+    StepCodec.read_bytes(text.as_bytes()).expect("parses")
+}
+
+#[test]
+fn deciders_never_disagree_with_colours() {
+    let mut models: Vec<Model> = [
+        "material_colour.ifc",
+        "material_colour_ifc4x3.ifc",
+        "material_colour_ifc2x3.ifc",
+    ]
+    .into_iter()
+    .map(fixture)
+    .collect();
+    models.extend([
+        layered(PLAIN_TOO, "#45", "#904"),
+        layered(RED_TWIN, "#24", "#900"),
+        layered("", "#24", "#45"),
+        layered("", "#24", "#31"),
+        constituted(PLAIN_TOO, "#45", "#904"),
+        constituted(RED_TWIN, "#24", "#900"),
+        constituted("", "#24", "#31"),
+    ]);
+    for model in &models {
+        let resolver = ColourResolver::new(model).unwrap();
+        let products = product_colours(model, None);
+        assert!(!products.is_empty());
+        for (product, _) in products {
+            assert_agrees(&resolver, product);
+        }
+    }
+
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../test/fixtures/synthetic-bindings/binding_geometry.ifc"
+    );
+    let model = StepCodec.read_bytes(&std::fs::read(path).unwrap()).unwrap();
+    let resolver = ColourResolver::new(&model).unwrap();
+    for (product, _) in product_colours(&model, None) {
+        assert_agrees(&resolver, product);
+        assert_eq!(
+            resolver.product_decider(product),
+            Ok(ColourDecider::Nothing)
+        );
+    }
+
+    let model = fixture("material_colour.ifc");
+    let resolver = ColourResolver::new(&model).unwrap();
+    let storey = EntityId(20);
+    assert_eq!(resolver.product_decider(storey), Ok(ColourDecider::Nothing));
+    assert_eq!(resolver.product_colour(storey), Ok(None));
+}
+
+/// The two-constituent window with `edits` applied (RED_TWIN added).
+fn window(edits: &[(&str, &str)]) -> Model {
+    let end = format!("{RED_TWIN}ENDSEC;\nEND-ISO");
+    let mut all = vec![("ENDSEC;\nEND-ISO", end.as_str())];
+    all.extend_from_slice(edits);
+    edited_all(&all)
+}
+
+#[test]
+fn equal_colours_through_different_deciders_differ() {
+    let frame = "#149=IFCMATERIALCONSTITUENT('Frame',$,#31,$,$);";
+    let glazing = "#150=IFCMATERIALCONSTITUENT('Glazing',$,#38,$,$);";
+    let cases = [
+        // (a) Red and its twin: two materials of one colour.
+        window(&[
+            (frame, "#149=IFCMATERIALCONSTITUENT('Frame',$,#24,$,$);"),
+            (glazing, "#150=IFCMATERIALCONSTITUENT('Glazing',$,#900,$,$);"),
+        ]),
+        // (b) Two different styled items of one surface style.
+        window(&[(
+            "ENDSEC;\nEND-ISO",
+            "#905=IFCSTYLEDITEM(#173,(#27),$);\n#906=IFCSTYLEDITEM(#180,(#27),$);\nENDSEC;\nEND-ISO",
+        )]),
+        // (c) An item style and a material of the same colour.
+        window(&[
+            (glazing, "#150=IFCMATERIALCONSTITUENT('Glazing',$,#24,$,$);"),
+            (
+                "ENDSEC;\nEND-ISO",
+                "#905=IFCSTYLEDITEM(#173,(#27),$);\nENDSEC;\nEND-ISO",
+            ),
+        ]),
+    ];
+    for (n, model) in cases.iter().enumerate() {
+        let resolver = ColourResolver::new(model).unwrap();
+        let two = product(model, "CONSTITUENT_TWO_PARTS");
+        assert!(
+            matches!(resolver.product_colour(two), Ok(Some(_))),
+            "case {n}: {:?}",
+            resolver.product_colour(two)
+        );
+        assert_eq!(
+            resolver.product_decider(two),
+            Err(ColourError::DecidersDiffer {
+                product: two,
+                items: vec![EntityId(173), EntityId(180)]
+            }),
+            "case {n}"
+        );
+        for (id, _) in product_colours(model, None) {
+            assert_agrees(&resolver, id);
+        }
     }
 }

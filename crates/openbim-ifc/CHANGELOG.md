@@ -28,6 +28,12 @@ Semver: patch.
 
 Semver: minor (new refusals in `body_description`; additive API).
 
+### Added (#659)
+
+- With `colour`: `ColourResolver::product_decider` and `ColourResolver::item_deciders` name what decides a product's or a Body item's surface colour, by the same rules as `product_colour` and `item_colours` (#596's included): `ColourDecider::ItemStyle`, `Material` (the one `IfcMaterial`, also while it states no style), `Materials` (a layer, profile, list or constituent set whose materials are all unstyled or styled alike) or `Nothing`; an ambiguous material set refuses both with the same `ColourError::AmbiguousMaterial`. `ColourError::DecidersDiffer`: Body items that agree on a colour through different deciders (compared by identity: the same style assigned the same way, the same material). `item_colours` now reads `item_deciders`; its results are unchanged.
+
+Semver: patch (additive).
+
 ## [0.39.7] - 2026-11-03
 
 ### Added (#614, #616)

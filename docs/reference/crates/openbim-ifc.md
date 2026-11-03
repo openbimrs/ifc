@@ -30,7 +30,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `authoring` |  | Schema-checked authoring (`ifc-author`) and the checked authoring batch (`apply_authoring`), against the releases the build names. |
 | `classification` |  | [`ifc-classification`](./ifc-classification): Classification systems, document references, libraries, external references. |
 | `codecs` |  | Both codecs: STEP and ifcXML. |
-| `colour` |  | The surface colour of each product's Body (`product_colours`): the item's styled item, its styled presentation layer, else its material's styled representation (layer, profile and constituent sets resolved per item), with the source and a typed refusal. Kernel-free. |
+| `colour` |  | The surface colour of each product's Body (`product_colours`): the item's styled item, its styled presentation layer, else its material's styled representation (layer, profile and constituent sets resolved per item), with the source and a typed refusal; and what decides it, a material also while unstyled (`ColourResolver::product_decider`). Kernel-free. |
 | `constraint` |  | [`ifc-constraint`](./ifc-constraint): Bounded IFC4 metric, objective, and constraint relationships. |
 | `control` |  | [`ifc-control`](./ifc-control): Bounded IFC control semantics: permits, project orders, action requests, and performance history. |
 | `cost` |  | [`ifc-cost`](./ifc-cost): Cost semantics as a borrowed view over the IFC model. |

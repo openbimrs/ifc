@@ -65,6 +65,21 @@
 //! (one painted, one not, or two colours) are
 //! [`ColourError::ItemsDiffer`] for the product.
 //!
+//! # What decides the colour
+//!
+//! [`ColourResolver::item_deciders`] and [`ColourResolver::product_decider`]
+//! name what decides the colour by the rules above: [`ColourDecider::ItemStyle`]
+//! (step 1), [`ColourDecider::Material`] (the one `IfcMaterial`, named also
+//! while it states no style), [`ColourDecider::Materials`] (a set, list or
+//! constituent set whose materials are all unstyled or styled alike) or
+//! [`ColourDecider::Nothing`]. `item_colours` reads `item_deciders`, so the
+//! two never disagree. An ambiguous material set refuses both with the same
+//! [`ColourError::AmbiguousMaterial`]. Items that agree on a colour through
+//! different deciders have no one decider for the product:
+//! [`ColourError::DecidersDiffer`]. Deciders are the same by identity: two
+//! items styled by different `IfcStyledItem`s, or by an item style and a
+//! material, differ even when their colours are equal.
+//!
 //! # Cost
 //!
 //! A subset costs the subset (#608). Style, material and shape-aspect
@@ -78,6 +93,7 @@
 #![cfg(feature = "colour")]
 
 mod aspects;
+mod decider;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -93,6 +109,7 @@ use ifc_model::{Entity, EntityId, Model, Value};
 use ifc_schema::{Schema, SchemaVersion};
 use ifc_style::{StyleError, StyleIndex, StyleView};
 
+pub use decider::ColourDecider;
 pub use ifc_style::{ColourSource, SurfaceColour};
 
 /// How deep mapped items and boolean operands are followed.
@@ -137,6 +154,15 @@ pub enum ColourError {
         /// Its Body's items, in representation order.
         items: Vec<EntityId>,
     },
+    /// The product's Body items agree on a colour, but not on what decides
+    /// it (an item style and a material, or two materials): no one decider
+    /// stands for the product.
+    DecidersDiffer {
+        /// The product.
+        product: EntityId,
+        /// Its Body's items, in representation order.
+        items: Vec<EntityId>,
+    },
 }
 
 impl fmt::Display for ColourError {
@@ -161,6 +187,11 @@ impl fmt::Display for ColourError {
             Self::ItemsDiffer { product, items } => write!(
                 f,
                 "the {} Body items of {product} resolve to different colours",
+                items.len()
+            ),
+            Self::DecidersDiffer { product, items } => write!(
+                f,
+                "the {} Body items of {product} agree on a colour but not on what decides it",
                 items.len()
             ),
         }
@@ -193,6 +224,16 @@ impl From<MaterialError> for ColourError {
 impl From<GeometryError> for ColourError {
     fn from(error: GeometryError) -> Self {
         Self::Geometry(error)
+    }
+}
+
+/// Whether two item colours are alike: both none, or the same rgb and
+/// transparency.
+fn same_colour(a: &Option<SurfaceColour>, b: &Option<SurfaceColour>) -> bool {
+    match (a, b) {
+        (None, None) => true,
+        (Some(a), Some(b)) => a.rgb == b.rgb && a.transparency == b.transparency,
+        _ => false,
     }
 }
 
@@ -336,12 +377,7 @@ impl<'m> ColourResolver<'m> {
         let Some((_, first)) = colours.first() else {
             return Ok(None);
         };
-        let same = |a: &Option<SurfaceColour>, b: &Option<SurfaceColour>| match (a, b) {
-            (None, None) => true,
-            (Some(a), Some(b)) => a.rgb == b.rgb && a.transparency == b.transparency,
-            _ => false,
-        };
-        if colours.iter().all(|(_, colour)| same(colour, first)) {
+        if colours.iter().all(|(_, colour)| same_colour(colour, first)) {
             Ok(*first)
         } else {
             Err(ColourError::ItemsDiffer {
@@ -366,59 +402,11 @@ impl<'m> ColourResolver<'m> {
         &self,
         product: EntityId,
     ) -> Result<Vec<(EntityId, Option<SurfaceColour>)>, ColourError> {
-        let mut made = None;
-        self.leaves(product)?
+        Ok(self
+            .item_deciders(product)?
             .into_iter()
-            .map(|leaf| {
-                let colour = self.leaf_colour(product, &leaf, &mut made)?;
-                Ok((leaf.item, colour))
-            })
-            .collect()
-    }
-
-    fn leaf_colour(
-        &self,
-        product: EntityId,
-        leaf: &Leaf,
-        made: &mut Option<Made>,
-    ) -> Result<Option<SurfaceColour>, ColourError> {
-        // 1. The item, then a boolean's first operand, then the enclosing
-        //    mapped items.
-        let mut item = leaf.item;
-        for _ in 0..MAX_DEPTH {
-            if let Some(colour) = self.styles.item_colour(item)? {
-                return Ok(Some(colour));
-            }
-            let entity = self.entity(item, item)?;
-            if !self.schema.is_a(&entity.type_name, "IfcBooleanResult") {
-                break;
-            }
-            item = self.reference(item, entity, "FirstOperand")?;
-        }
-        for &mapped in &leaf.mapped {
-            if let Some(colour) = self.styles.item_colour(mapped)? {
-                return Ok(Some(colour));
-            }
-        }
-        // 2. The material, resolved once per product.
-        if made.is_none() {
-            *made = Some(self.made_of(product)?);
-        }
-        match made.as_ref().expect("resolved above") {
-            Made::Nothing => Ok(None),
-            Made::One(material) => Ok(self.material_colour(*material)?),
-            Made::Several {
-                definition,
-                materials,
-            } => self.agreed(leaf.item, *definition, materials),
-            Made::Constituents { set, parts } => {
-                let materials = self.constituent(leaf, parts)?;
-                match materials.as_slice() {
-                    [material] => Ok(self.material_colour(*material)?),
-                    _ => self.agreed(leaf.item, *set, &materials),
-                }
-            }
-        }
+            .map(|(item, decider)| (item, decider.colour()))
+            .collect())
     }
 
     /// The colour `materials` (ascending, distinct) agree on: none when no
