@@ -63,7 +63,9 @@
 //! the product's colour is the colour its items agree on.
 //! [`ColourResolver::item_colours`] gives every item's; items that differ
 //! (one painted, one not, or two colours) are
-//! [`ColourError::ItemsDiffer`] for the product.
+//! [`ColourError::ItemsDiffer`] for the product. A viewer that colours per
+//! item meshes per item too, with
+//! `ifc::geometry::compile::compile_product_item_meshes` (#656).
 //!
 //! # What decides the colour
 //!
@@ -390,6 +392,11 @@ impl<'m> ColourResolver<'m> {
     /// The colour of each item of `product`'s Body, in representation
     /// order with mapped representations expanded: `(item, colour)`.
     /// Empty when the product has no Body.
+    ///
+    /// Lines up index by index with
+    /// `ifc::geometry::compile::compile_product_item_meshes`: the same item
+    /// at each index. That call also carries the mapped path, outermost
+    /// first (#656).
     ///
     /// # Errors
     ///

@@ -43,6 +43,16 @@ itself.
   the slot (`axiolid-mesh-compile` 0.3.31 up to at least 0.3.40 kept one
   in world coordinates). The gross path is unchanged (#657).
 
+### Added (#656)
+
+- `compile::compile_product_item_meshes` and `compile_product_item_meshes_with`,
+  returning `ItemMesh { item, mapped_by, mesh, closure }`: one world-space
+  gross mesh per leaf item of a product's Body, mapped items expanded, in the
+  order `ColourResolver::item_colours` lists them. Any item that does not
+  lower or compile refuses the call.
+
+Semver: patch (additive).
+
 ## [0.32.1] - 2026-11-03
 
 ### Added (#455)

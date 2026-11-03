@@ -10,6 +10,8 @@ pub mod csg;
 pub mod curve;
 pub mod dispatch;
 pub mod halfspace;
+#[cfg(feature = "compile")]
+pub(crate) mod items;
 pub mod mapped;
 pub mod net;
 pub mod point;
