@@ -121,7 +121,9 @@ pub use quantity::{
     Quantity, QuantityKind, QuantitySet, UnresolvedValue,
 };
 pub use query::{
-    properties_of, property_value, resolved_properties, ResolvedProperties, ResolvedSet, Source,
+    properties_of, property_value, quantities_of, quantity_value, resolved_properties,
+    resolved_quantities, ResolvedProperties, ResolvedQuantities, ResolvedQuantitySet, ResolvedSet,
+    Source,
 };
 pub use template::{
     property_set_template, property_set_template_checked, property_set_templates,

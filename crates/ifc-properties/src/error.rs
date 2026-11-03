@@ -29,11 +29,13 @@ pub enum PropertyAnomaly {
         /// The `IfcRelDefinesByType` that was rejected.
         relation: EntityId,
     },
-    /// Two property sets of the same name on one owner.
+    /// Two property sets, or two quantity sets, of the same name on one owner.
     ///
     /// IFC4 forbids it on both occurrences (`IfcObject.UniquePropertySetNames`)
     /// and types (`IfcTypeObject.UniquePropertySetNames`); IFC2X3 states no
-    /// such rule. Either way the resolved view is keyed by name, so the set
+    /// such rule. No release forbids two same-named quantity sets, since
+    /// `UniquePropertySetNames` counts only `IfcPropertySet`. Either way the
+    /// resolved view is keyed by name, so the set
     /// with the lower id is kept and the other is reported here rather than
     /// silently overwriting it.
     DuplicateSetName {
