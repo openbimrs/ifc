@@ -10,7 +10,7 @@ fn corrected_profile_is_explicit_and_official_snapshot_stays_unchanged() {
     let corrected = corrected_catalog(CatalogEdition::Ifc4Add2Tc1).unwrap();
     assert_eq!(official.profile(), CatalogProfile::Official);
     assert_eq!(corrected.profile(), CatalogProfile::Corrected);
-    assert_eq!(corrected.applied_patches().len(), 3);
+    assert_eq!(corrected.applied_patches().len(), 6);
     let official_qto = official.get("Qto_WallBaseQuantities").unwrap();
     let corrected_qto = corrected.get("Qto_WallBaseQuantities").unwrap();
     assert_eq!(official_qto.applicability.len(), 1);
@@ -52,7 +52,7 @@ fn ifc4x3_corrected_profile_adds_the_documented_stationing_member() {
     let official = official_catalog(CatalogEdition::Ifc4x3Add2).unwrap();
     let corrected = corrected_catalog(CatalogEdition::Ifc4x3Add2).unwrap();
     assert_eq!(corrected.profile(), CatalogProfile::Corrected);
-    assert_eq!(corrected.applied_patches().len(), 1);
+    assert_eq!(corrected.applied_patches().len(), 16);
     let pair = |name: &str, ty: &str| (name.to_owned(), ty.to_owned());
     assert_eq!(
         stationing_members(&official),

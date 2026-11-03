@@ -4,6 +4,9 @@
 
 use ifc::property_catalog::catalog::CatalogProfile;
 use ifc::property_catalog::definition::CatalogEdition;
+use ifc::property_catalog::query::{
+    ApplicabilityContext, ApplicabilityTarget, ExactEntityHierarchy,
+};
 use ifc::{release_catalog, ReleaseCatalogError, SchemaVersion};
 
 fn read(version: SchemaVersion) -> (CatalogEdition, CatalogProfile) {
@@ -65,4 +68,20 @@ fn unreadable_names_its_edition() {
         error.to_string(),
         "the Ifc4Add2Tc1 catalog cannot be read: damaged"
     );
+}
+
+/// The published PSD XML names no entity for the set (#622); the release
+/// catalog's corrected profile does.
+#[test]
+fn element_assembly_common_applies_to_an_element_assembly() {
+    let target = ApplicabilityTarget::new("IfcElementAssembly", Some("USERDEFINED"))
+        .with_context(ApplicabilityContext::Occurrence);
+    for version in [SchemaVersion::Ifc4, SchemaVersion::Ifc4x3] {
+        let catalog = release_catalog(version).expect("the release has a catalog");
+        let applies = catalog
+            .applicable_to(&target, &ExactEntityHierarchy)
+            .into_iter()
+            .any(|template| template.name == "Pset_ElementAssemblyCommon");
+        assert!(applies, "{version:?}");
+    }
 }
