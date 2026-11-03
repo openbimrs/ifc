@@ -17,7 +17,9 @@ use std::fmt;
 use ifc_model::{EntityId, Model};
 use ifc_properties::{exact_unit, ExactUnitError};
 use ifc_schema::SchemaVersion;
-use ifc_style::{ContextFill, MaterialFill, StyleError, StyleIndex, StyleUnits, StyleView};
+use ifc_style::{
+    ContextFill, ContextFillResult, MaterialFill, StyleError, StyleIndex, StyleUnits, StyleView,
+};
 
 /// Why a material's fills or a bare fill area style could not be resolved.
 #[derive(Debug, Clone, PartialEq)]
@@ -61,8 +63,8 @@ impl std::error::Error for MaterialFillError {}
 ///
 /// A model without an `IfcProject`, or whose project assigns no unit of
 /// that type, leaves the factor `None`: [`ifc_style::StyleUnits`] refuses a
-/// hatch measure that needs it. Call this once to resolve many materials
-/// with [`ifc_style::StyleIndex::material_fill`].
+/// hatch measure that needs it. [`FillResolver`] resolves them once for many
+/// materials.
 ///
 /// # Errors
 ///
@@ -80,22 +82,122 @@ pub fn project_style_units(model: &Model) -> Result<StyleUnits, MaterialFillErro
         .map_err(MaterialFillError::Style)
 }
 
-/// Run `resolve` on a [`StyleIndex`] over `model`, with the project units.
-fn with_index<T>(
-    model: &Model,
-    resolve: impl FnOnce(&StyleIndex<'_, '_>, StyleUnits) -> Result<T, StyleError>,
-) -> Result<T, MaterialFillError> {
-    let declared = &model.header().schema;
-    let unsupported = || MaterialFillError::UnsupportedSchema {
-        schema: declared.join(","),
-    };
-    let [token] = declared.as_slice() else {
-        return Err(unsupported());
-    };
-    let version = SchemaVersion::from_header_token(token).ok_or_else(unsupported)?;
-    let schema = ifc_schema::for_version(version).map_err(|_| unsupported())?;
-    let index = StyleIndex::new(StyleView::new(model, schema)).map_err(MaterialFillError::Style)?;
-    resolve(&index, project_style_units(model)?).map_err(MaterialFillError::Style)
+/// A model's style lookups bound to its release, with the project units
+/// resolved once, for the fills of many materials (#624).
+///
+/// Each free function of this module builds one and asks it once; keep a
+/// resolver to ask for many materials without rebuilding the index or
+/// resolving the units again.
+#[derive(Debug, Clone)]
+pub struct FillResolver<'m> {
+    styles: StyleIndex<'m, 'static>,
+    units: StyleUnits,
+}
+
+impl<'m> FillResolver<'m> {
+    /// Bind `model`'s release and project units.
+    ///
+    /// # Errors
+    ///
+    /// [`MaterialFillError::UnsupportedSchema`] when the `FILE_SCHEMA` pins
+    /// no one release this build bundles; [`MaterialFillError::Style`] when
+    /// the style index cannot be built or a unit factor is refused;
+    /// [`MaterialFillError::ProjectUnit`] as [`project_style_units`].
+    pub fn new(model: &'m Model) -> Result<Self, MaterialFillError> {
+        let declared = &model.header().schema;
+        let unsupported = || MaterialFillError::UnsupportedSchema {
+            schema: declared.join(","),
+        };
+        let [token] = declared.as_slice() else {
+            return Err(unsupported());
+        };
+        let version = SchemaVersion::from_header_token(token).ok_or_else(unsupported)?;
+        let schema = ifc_schema::for_version(version).map_err(|_| unsupported())?;
+        let styles =
+            StyleIndex::new(StyleView::new(model, schema)).map_err(MaterialFillError::Style)?;
+        let units = project_style_units(model)?;
+        Ok(Self { styles, units })
+    }
+
+    /// The project units every fill is scaled by.
+    #[must_use]
+    pub fn units(&self) -> StyleUnits {
+        self.units
+    }
+
+    /// The style lookups, for questions this resolver does not wrap.
+    #[must_use]
+    pub fn styles(&self) -> &StyleIndex<'m, 'static> {
+        &self.styles
+    }
+
+    /// As the free function [`material_fill`].
+    ///
+    /// # Errors
+    ///
+    /// [`MaterialFillError::Style`], as [`material_fill`].
+    pub fn material_fill(
+        &self,
+        material: EntityId,
+    ) -> Result<Option<MaterialFill>, MaterialFillError> {
+        self.styles
+            .material_fill(material, self.units)
+            .map_err(MaterialFillError::Style)
+    }
+
+    /// As the free function [`material_fills`].
+    ///
+    /// # Errors
+    ///
+    /// [`MaterialFillError::Style`], as [`material_fills`].
+    pub fn material_fills(
+        &self,
+        material: EntityId,
+    ) -> Result<Vec<ContextFill>, MaterialFillError> {
+        self.styles
+            .material_fills(material, self.units)
+            .map_err(MaterialFillError::Style)
+    }
+
+    /// As the free function [`material_fills_by_context`].
+    ///
+    /// # Errors
+    ///
+    /// [`MaterialFillError::Style`], as [`material_fills_by_context`].
+    pub fn material_fills_by_context(
+        &self,
+        material: EntityId,
+    ) -> Result<Vec<ContextFillResult>, MaterialFillError> {
+        self.styles
+            .material_fills_by_context(material, self.units)
+            .map_err(MaterialFillError::Style)
+    }
+
+    /// As the free function [`material_fill_for_view`].
+    ///
+    /// # Errors
+    ///
+    /// [`MaterialFillError::Style`], as [`material_fill_for_view`].
+    pub fn material_fill_for_view(
+        &self,
+        material: EntityId,
+        target_view: &str,
+    ) -> Result<Option<MaterialFill>, MaterialFillError> {
+        self.styles
+            .material_fill_for_view(material, target_view, self.units)
+            .map_err(MaterialFillError::Style)
+    }
+
+    /// As the free function [`fill_area_style`].
+    ///
+    /// # Errors
+    ///
+    /// [`MaterialFillError::Style`], as [`fill_area_style`].
+    pub fn fill_area_style(&self, style: EntityId) -> Result<MaterialFill, MaterialFillError> {
+        self.styles
+            .fill_area_style(style, self.units)
+            .map_err(MaterialFillError::Style)
+    }
 }
 
 /// The cut fill `material` states, as hatch line families in metres and
@@ -103,7 +205,8 @@ fn with_index<T>(
 ///
 /// The model's `FILE_SCHEMA` must pin one release this build bundles; the
 /// project units come from [`project_style_units`]. A material that states
-/// different fills per view is ambiguous here: use [`material_fills`].
+/// different fills per view is ambiguous here: use [`material_fills`], or
+/// [`material_fill_for_view`] for one view.
 ///
 /// # Errors
 ///
@@ -116,7 +219,7 @@ pub fn material_fill(
     model: &Model,
     material: EntityId,
 ) -> Result<Option<MaterialFill>, MaterialFillError> {
-    with_index(model, |index, units| index.material_fill(material, units))
+    FillResolver::new(model)?.material_fill(material)
 }
 
 /// The fills `material` states per representation context, in metres and
@@ -126,12 +229,45 @@ pub fn material_fill(
 /// # Errors
 ///
 /// As [`material_fill`]; [`StyleError::AmbiguousFill`] is owned by the
-/// representation or context whose fills differ.
+/// representation or context whose fills differ. One refused context fails
+/// the whole call; [`material_fills_by_context`] keeps refusals apart.
 pub fn material_fills(
     model: &Model,
     material: EntityId,
 ) -> Result<Vec<ContextFill>, MaterialFillError> {
-    with_index(model, |index, units| index.material_fills(material, units))
+    FillResolver::new(model)?.material_fills(material)
+}
+
+/// What `material` states per representation context, with a refusal that
+/// belongs to one context kept in that context's entry
+/// ([`StyleIndex::material_fills_by_context`], #624).
+///
+/// # Errors
+///
+/// As [`material_fill`] for the schema and units; [`MaterialFillError::Style`]
+/// only for refusals no context owns (see
+/// [`StyleIndex::material_fills_by_context`]).
+pub fn material_fills_by_context(
+    model: &Model,
+    material: EntityId,
+) -> Result<Vec<ContextFillResult>, MaterialFillError> {
+    FillResolver::new(model)?.material_fills_by_context(material)
+}
+
+/// The fill `material` states in the contexts whose `TargetView` is
+/// `target_view` (`"SECTION_VIEW"`), in metres and radians
+/// ([`StyleIndex::material_fill_for_view`], #624).
+///
+/// # Errors
+///
+/// As [`material_fill`]; [`StyleError::UnknownTargetView`] for a literal that
+/// is no `IfcGeometricProjectionEnum` member.
+pub fn material_fill_for_view(
+    model: &Model,
+    material: EntityId,
+    target_view: &str,
+) -> Result<Option<MaterialFill>, MaterialFillError> {
+    FillResolver::new(model)?.material_fill_for_view(material, target_view)
 }
 
 /// The fill a bare `IfcFillAreaStyle` states, in metres and radians
@@ -142,5 +278,5 @@ pub fn material_fills(
 /// As [`material_fill`]; [`StyleError::WrongEntityType`] when `style` is no
 /// `IfcFillAreaStyle`.
 pub fn fill_area_style(model: &Model, style: EntityId) -> Result<MaterialFill, MaterialFillError> {
-    with_index(model, |index, units| index.fill_area_style(style, units))
+    FillResolver::new(model)?.fill_area_style(style)
 }

@@ -5,7 +5,8 @@
 
 use ifc::style::{HatchLine, MaterialFill, StyleError};
 use ifc::{
-    fill_area_style, material_fill, material_fills, project_style_units, Codec, EntityId,
+    fill_area_style, material_fill, material_fill_for_view, material_fills,
+    material_fills_by_context, project_style_units, Codec, EntityId, FillResolver,
     MaterialFillError, Model, StepCodec,
 };
 
@@ -162,4 +163,104 @@ fn model_style(model: &Model, name: &str) -> EntityId {
         .find(|(_, entity)| entity.text(0) == Some(name))
         .map(|(id, _)| id)
         .unwrap()
+}
+
+#[test]
+fn a_refused_view_leaves_the_section_fill_readable() {
+    let metric = fixture("material_fill.ifc");
+    let id = material(&metric, "CutAndTiledProjection");
+    let entries = material_fills_by_context(&metric, id).unwrap();
+    assert_eq!(entries.len(), 2);
+    assert_eq!(entries[0].target_view.as_deref(), Some("SECTION_VIEW"));
+    assert!(entries[0].fill.is_ok());
+    assert_eq!(entries[1].target_view.as_deref(), Some("ELEVATION_VIEW"));
+    assert!(matches!(
+        entries[1].fill,
+        Err(StyleError::UnsupportedFill { .. })
+    ));
+    let section = material_fill_for_view(&metric, id, "SECTION_VIEW")
+        .unwrap()
+        .unwrap();
+    assert_eq!(section.name.as_deref(), Some("Section fill"));
+    assert!(matches!(
+        material_fills(&metric, id),
+        Err(MaterialFillError::Style(StyleError::UnsupportedFill { .. }))
+    ));
+    assert!(matches!(
+        material_fill_for_view(&metric, id, "TOP_VIEW"),
+        Err(MaterialFillError::Style(
+            StyleError::UnknownTargetView { .. }
+        ))
+    ));
+}
+
+#[test]
+fn one_resolver_serves_many_materials() {
+    for name in ["material_fill.ifc", "material_fill_mm_deg.ifc"] {
+        let model = fixture(name);
+        let resolver = FillResolver::new(&model).unwrap();
+        assert_eq!(resolver.units(), project_style_units(&model).unwrap());
+        for material_name in [
+            "Concrete",
+            "Insulation",
+            "Scaled",
+            "Layered",
+            "CutAndProjection",
+            "CutAndTiledProjection",
+            "Tiled",
+            "Plain",
+        ] {
+            let Some((id, _)) = model
+                .of_type("IFCMATERIAL")
+                .find(|(_, entity)| entity.text(0) == Some(material_name))
+            else {
+                continue;
+            };
+            assert_eq!(
+                resolver.material_fill(id),
+                material_fill(&model, id),
+                "{name} {material_name}"
+            );
+            assert_eq!(
+                resolver.material_fills(id),
+                material_fills(&model, id),
+                "{name} {material_name}"
+            );
+            assert_eq!(
+                resolver.material_fills_by_context(id),
+                material_fills_by_context(&model, id),
+                "{name} {material_name}"
+            );
+            assert_eq!(
+                resolver.material_fill_for_view(id, "SECTION_VIEW"),
+                material_fill_for_view(&model, id, "SECTION_VIEW"),
+                "{name} {material_name}"
+            );
+        }
+        if name == "material_fill.ifc" {
+            let style = model_style(&model, "Library pattern");
+            assert_eq!(
+                resolver.fill_area_style(style),
+                fill_area_style(&model, style)
+            );
+            assert!(resolver
+                .styles()
+                .material_fill(material(&model, "Plain"), resolver.units())
+                .unwrap()
+                .is_none());
+        }
+    }
+    let unknown = without_project("IFC9", "#9", "#9=IFCCOLOURRGB($,0.1,0.2,0.3);\n");
+    assert!(matches!(
+        FillResolver::new(&unknown),
+        Err(MaterialFillError::UnsupportedSchema { .. })
+    ));
+    let unread = without_project("IFC4X1", "#9", "#9=IFCCOLOURRGB($,0.1,0.2,0.3);\n");
+    assert!(matches!(
+        FillResolver::new(&unread),
+        Err(MaterialFillError::ProjectUnit {
+            measure: "IFCLENGTHMEASURE",
+            ..
+        })
+    ));
 }
