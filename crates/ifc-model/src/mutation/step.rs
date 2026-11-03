@@ -52,6 +52,9 @@ pub(crate) enum Step {
         type_name: Arc<str>,
         bucket: usize,
     },
+    /// Restores the id floor: the highest id `push` has handed out or
+    /// `reserve_ids_through` has reserved.
+    IdFloor { max_id: u64 },
     /// Restores the header.
     Header(Box<Header>),
 }
@@ -184,6 +187,11 @@ impl Step {
                     type_name: current,
                     bucket: current_bucket,
                 }
+            }
+            Step::IdFloor { max_id } => {
+                let current = model.max_id();
+                model.set_max_id(max_id);
+                Step::IdFloor { max_id: current }
             }
             Step::Header(header) => {
                 let current = std::mem::replace(model.header_raw(), *header);

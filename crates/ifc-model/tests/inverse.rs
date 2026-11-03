@@ -406,3 +406,67 @@ fn an_unbalanced_begin_inside_record_still_returns_its_own_inverse() {
     inverse.apply(&mut model).unwrap();
     assert_eq!(state(&model), before);
 }
+
+#[test]
+fn reserve_ids_through_raises_the_next_id_and_a_lower_call_is_a_no_op() {
+    let mut model = Model::new();
+    model.push(Entity::new("IFCWALL", vec![]));
+    model.reserve_ids_through(EntityId(40));
+    assert_eq!(model.next_id(), EntityId(41));
+    assert_eq!(model.push(Entity::new("IFCWALL", vec![])), EntityId(41));
+
+    let revision = model.revision();
+    model.reserve_ids_through(EntityId(40));
+    model.reserve_ids_through(EntityId(1));
+    assert_eq!(model.revision(), revision, "a no-op keeps the revision");
+    model.reserve_ids_through(EntityId(60));
+    assert_ne!(model.revision(), revision);
+}
+
+#[test]
+fn undo_restores_the_floor_and_redo_raises_it_again() {
+    let mut model = Model::new();
+    model.push(Entity::new("IFCWALL", vec![]));
+    let undo = Inverse::record(&mut model, |m| m.reserve_ids_through(EntityId(900))).1;
+    assert_eq!(model.next_id(), EntityId(901));
+    let (restored, redo) = undo.apply(&mut model).expect("fresh inverse applies");
+    assert_eq!(model.next_id(), EntityId(2));
+    assert_eq!(
+        restored,
+        Restored::default(),
+        "a floor is not an entity change"
+    );
+    redo.apply(&mut model).expect("redo applies");
+    assert_eq!(model.next_id(), EntityId(901));
+}
+
+#[test]
+fn a_transaction_opened_before_a_floor_raise_is_refused_stale() {
+    let mut model = Model::new();
+    let mut tx = Transaction::new(&model);
+    tx.create(Entity::new("IFCWALL", vec![]));
+    model.reserve_ids_through(EntityId(10));
+    assert!(tx.commit(&mut model).is_err());
+}
+
+#[test]
+#[should_panic(expected = "no free entity id")]
+fn next_id_does_not_wrap_after_the_highest_id() {
+    let mut model = Model::new();
+    model.insert(EntityId(u64::MAX), Entity::new("IFCWALL", vec![]));
+    let _ = model.next_id();
+}
+
+#[test]
+#[should_panic(expected = "no free entity id")]
+fn push_does_not_wrap_after_the_highest_id() {
+    let mut model = Model::new();
+    model.insert(EntityId(u64::MAX), Entity::new("IFCWALL", vec![]));
+    model.push(Entity::new("IFCWALL", vec![]));
+}
+
+#[test]
+#[should_panic(expected = "cannot reserve every entity id")]
+fn reserving_the_highest_id_is_refused() {
+    Model::new().reserve_ids_through(EntityId(u64::MAX));
+}

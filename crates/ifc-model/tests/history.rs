@@ -161,3 +161,16 @@ fn a_history_does_not_undo_on_another_model() {
     history.undo(&mut a).unwrap();
     assert!(a.is_empty());
 }
+
+#[test]
+fn undoing_a_tracked_floor_frees_the_ids_and_redo_reserves_them_again() {
+    let mut model = Model::new();
+    let mut history = History::new(8);
+    history.track(&mut model, |m| m.push(wall(1)));
+    history.track(&mut model, |m| m.reserve_ids_through(EntityId(900)));
+    assert_eq!(model.next_id(), EntityId(901));
+    history.undo(&mut model).unwrap();
+    assert_eq!(model.next_id(), EntityId(2));
+    history.redo(&mut model).unwrap();
+    assert_eq!(model.next_id(), EntityId(901));
+}

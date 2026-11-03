@@ -20,6 +20,14 @@ everything released before per-crate changelogs began.
   `with_byte_range`, `with_position`, `with_instance`, `with_referrer`,
   `with_excerpt`. `warning` and `unlocated` build `DiagnosticKind::Other`.
 
+### Added (#617)
+
+- `Model::reserve_ids_through(id)`: `push`, `next_id` and transactions never
+  hand out `id` or a lower id. Recorded like every write, so undo, redo and
+  `preview` restore the previous next id.
+
+Semver: patch (additive)
+
 ### Changed (#614)
 
 - A diagnostic with a position displays its line and column.
