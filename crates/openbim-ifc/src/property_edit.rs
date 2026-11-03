@@ -78,6 +78,7 @@ mod emit;
 mod guid;
 mod holder;
 mod plan;
+mod si;
 mod template;
 mod value;
 

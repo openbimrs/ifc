@@ -9,7 +9,10 @@
 use std::collections::BTreeMap;
 
 use ifc_model::{EntityId, Model, ReverseIndex, Value};
-use ifc_properties::{exact_schema, ExactPropertyError, PropertyIndex, QuantityKind};
+use ifc_properties::{
+    exact_schema, ExactPropertyError, ExactUnitError, PropertyIndex, QuantityKind,
+    UnitConversionError,
+};
 
 use super::checks::{
     agree, check_set_template, check_template, default_form, describe_payload, same_value,
@@ -17,6 +20,7 @@ use super::checks::{
 };
 use super::edit::{PropertyEdit, PropertyEditError, PropertyEditFailure, SetType};
 use super::holder::{holding, sole_member, Holder, Link, Release};
+use super::si::SiInput;
 use super::template::{template, SetTemplate};
 use super::value::{check_ifc_value, describe, quantity_number, wrapper};
 use crate::input_units::InputUnits;
@@ -108,6 +112,8 @@ pub(super) struct Planner<'m> {
     templates: BTreeMap<String, Option<SetTemplate>>,
     /// Per edit: the draft and member name a Set wrote; `None` for a Remove.
     pub(super) results: Vec<Option<(usize, String)>>,
+    /// The SI converter; `None` when numbers are read as given.
+    si: Option<SiInput<'m>>,
 }
 
 impl<'m> Planner<'m> {
@@ -120,11 +126,6 @@ impl<'m> Planner<'m> {
             edit: None,
             failure,
         };
-        if input_units != InputUnits::Raw {
-            return Err(batch(PropertyEditFailure::Unsupported(
-                "SI input is not converted yet".to_owned(),
-            )));
-        }
         let version = exact_schema(model).map_err(|e| batch(PropertyEditFailure::Resolve(e)))?;
         let schema = ifc_schema::for_version(version).map_err(|_| {
             batch(PropertyEditFailure::Resolve(
@@ -143,6 +144,7 @@ impl<'m> Planner<'m> {
             index: BTreeMap::new(),
             templates: BTreeMap::new(),
             results: Vec::new(),
+            si: (input_units == InputUnits::Si).then(|| SiInput::new(model, version)),
         })
     }
 
@@ -231,6 +233,7 @@ impl<'m> Planner<'m> {
                     MemberState::InPlace { id, form, .. } => (*form, Some(*id)),
                     MemberState::Fresh { form, source, .. } => (*form, *source),
                 };
+                let value = &self.input_value(form, value, source)?;
                 self.check_value(form, value, source)?;
                 if let Some(member) = member_template {
                     check_template(self.release, set, name, member, form, value, false)?;
@@ -288,6 +291,7 @@ impl<'m> Planner<'m> {
                         set_type.entity()
                     )));
                 }
+                let value = &self.input_value(form, value, source)?;
                 if let Some(member) = member_template {
                     check_template(self.release, set, name, member, form, value, true)?;
                 }
@@ -490,6 +494,62 @@ impl<'m> Planner<'m> {
                 }
             },
         })
+    }
+
+    /// The `Unit` the existing member `source` states: that of a single,
+    /// list or quantity, and of an enumerated value's enumeration. `$` and
+    /// an absent member state none; any other `Unit` is malformed.
+    fn stated_unit(
+        &self,
+        form: Form,
+        source: Option<EntityId>,
+        measure: &str,
+    ) -> Result<Option<EntityId>, PropertyEditFailure> {
+        let (model, release) = (self.model, self.release);
+        let malformed = |entity| PropertyEditFailure::UnitConversion {
+            measure: measure.to_owned(),
+            error: UnitConversionError::Resolve(ExactUnitError::MalformedUnit {
+                entity,
+                attribute: "Unit",
+            }),
+        };
+        let Some(source) = source else {
+            return Ok(None);
+        };
+        let holder = match form {
+            Form::Enumerated => match release.attribute(model, source, "EnumerationReference") {
+                Some(Value::Ref(id)) => *id,
+                _ => return Ok(None),
+            },
+            _ => source,
+        };
+        match release.attribute(model, holder, "Unit") {
+            None | Some(Value::Null) => Ok(None),
+            Some(Value::Ref(id)) => Ok(Some(*id)),
+            Some(_) => Err(malformed(holder)),
+        }
+    }
+
+    /// `value` as the batch reads its numbers: converted from SI into the
+    /// unit that applies to the member, or as given.
+    fn input_value(
+        &mut self,
+        form: Form,
+        value: &Value,
+        source: Option<EntityId>,
+    ) -> Result<Value, PropertyEditFailure> {
+        if self.si.is_none() {
+            return Ok(value.clone());
+        }
+        let measure = match value {
+            Value::List(items) => items.first().and_then(wrapper),
+            other => wrapper(other),
+        };
+        let unit = self.stated_unit(form, source, measure.unwrap_or_default())?;
+        match &mut self.si {
+            Some(si) => si.convert(form, value, unit),
+            None => Ok(value.clone()),
+        }
     }
 
     /// The release's checks of `value` written as `form`, against the
