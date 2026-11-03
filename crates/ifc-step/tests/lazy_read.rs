@@ -95,6 +95,8 @@ fn conversion_failures_are_the_eager_errors() {
     let cases = [
         "#1=IFCX(99999999999999999999);\n",
         "#1=IFCX(#99999999999999999999);\n",
+        "#1=IFCX(#18446744073709551615);\n",
+        "#18446744073709551615=IFCX(1);\n",
         "#99999999999999999999=IFCX(1);\n",
         "#1=(IFCA(1)IFCB(2));\n",
         "#1=IFCX((1,IFCY(99999999999999999999)));\n",
@@ -113,7 +115,7 @@ fn conversion_failures_are_the_eager_errors() {
     }
     // The boundaries themselves are fine.
     let ok =
-        wrap("#18446744073709551615=IFCX(9223372036854775807,-9223372036854775808,1.0E+400);\n");
+        wrap("#18446744073709551614=IFCX(9223372036854775807,-9223372036854775808,1.0E+400);\n");
     let model = StepCodec.read_bytes(&ok).expect("in range");
     assert_eq!(snapshot(&Ok(model)), snapshot(&eager().read_bytes(&ok)));
 }

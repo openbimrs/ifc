@@ -48,6 +48,15 @@ pub(crate) enum Bytes {
 }
 
 impl Bytes {
+    /// The bytes as an owned buffer: handed back as they are when owned,
+    /// copied when mapped.
+    pub(crate) fn into_vec(self) -> Vec<u8> {
+        match self {
+            Self::Owned(bytes) => bytes,
+            Self::Mapped(map) => map.to_vec(),
+        }
+    }
+
     fn as_slice(&self) -> &[u8] {
         match self {
             Self::Owned(bytes) => bytes,
@@ -100,6 +109,14 @@ pub(crate) fn is_lazy(options: ParseOptions) -> bool {
 
 /// Reads `bytes` lazily under `options`, which [`is_lazy`] accepts.
 pub(crate) fn read(bytes: Bytes, options: ParseOptions) -> Result<Model, StepError> {
+    read_or_return(bytes, options).map_err(|(error, _)| error)
+}
+
+/// [`read`], handing the bytes back with the error.
+pub(crate) fn read_or_return(
+    bytes: Bytes,
+    options: ParseOptions,
+) -> Result<Model, (StepError, Bytes)> {
     debug_assert!(is_lazy(options));
     let source = Arc::new(StepSource { bytes, options });
     if let Some(model) = index(&source) {
@@ -108,7 +125,13 @@ pub(crate) fn read(bytes: Bytes, options: ParseOptions) -> Result<Model, StepErr
     // Some record did not validate. The eager reader reports it exactly as
     // it always has -- and should it accept the file after all, its model
     // is the right answer.
-    parser::parse(source.bytes.as_slice(), options)
+    parser::parse(source.bytes.as_slice(), options).map_err(|error| {
+        // `index` failed before it built a model, so nothing else holds the
+        // source.
+        let source = Arc::try_unwrap(source)
+            .unwrap_or_else(|_| unreachable!("no model exists when the read fails"));
+        (error, source.bytes)
+    })
 }
 
 /// Inputs below this size validate on one thread: spawning costs more than
@@ -137,20 +160,24 @@ fn index(source: &Arc<StepSource>) -> Option<Model> {
     model.reserve(frames.len());
     parser::apply_header(model.header_mut(), scanned.header().standard());
     let mut diagnostics = Vec::new();
-    for (span, (id, name, found)) in frames.iter().zip(records) {
+    let mut floor = 0;
+    for (span, (id, name, found, refs)) in frames.iter().zip(records) {
         model.insert_lazy(id, &name, span.start..span.end);
         diagnostics.extend(found);
+        floor = floor.max(refs);
     }
     // After the records and in file order, as the eager read reports them.
-    for found in &diagnostics {
-        model.push_diagnostic(parser::diagnostic(input, found));
+    for diagnostic in parser::diagnostics(input, &diagnostics, source.options, &model) {
+        model.push_diagnostic(diagnostic);
     }
+    parser::reserve_through(&mut model, floor);
     Some(model)
 }
 
 /// One validated record: its id, its type name as parsed (borrowed from
-/// the input unless the source had to be rewritten) and its diagnostics.
-type Validated<'a> = (EntityId, Cow<'a, str>, Vec<openbim_step::Diagnostic>);
+/// the input unless the source had to be rewritten), its diagnostics and the
+/// highest id it references.
+type Validated<'a> = (EntityId, Cow<'a, str>, Vec<openbim_step::Diagnostic>, u64);
 
 /// Parses and validates every framed record under `options`, or `None` if
 /// any record fails.
@@ -162,11 +189,11 @@ fn validate_all<'a>(
 ) -> Option<Vec<Validated<'a>>> {
     let one = |span: &Span| -> Option<Validated<'a>> {
         let (record, found) = parser::decode(input, *span, options).ok()?;
-        let id = parser::validate(&record).ok()?;
+        let (id, refs) = parser::validate(&record).ok()?;
         let openbim_step::Instance::Simple(record) = record.instance else {
             return None;
         };
-        Some((id, record.name, found))
+        Some((id, record.name, found, refs))
     };
     if threads <= 1 || frames.len() < 2 {
         return frames.iter().map(one).collect();

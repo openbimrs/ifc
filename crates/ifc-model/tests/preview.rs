@@ -340,3 +340,17 @@ fn a_panicking_write_inside_a_preview_is_rolled_back() {
         assert_eq!(model.revision(), revision);
     }
 }
+
+#[test]
+fn a_preview_restores_a_reserved_id_floor_and_the_revision() {
+    let (mut model, _) = seeded();
+    let before = state(&model);
+    let revision = model.revision();
+    model.preview(|m| {
+        m.reserve_ids_through(EntityId(500));
+        assert_eq!(m.next_id(), EntityId(501));
+    });
+    assert_eq!(state(&model), before);
+    assert_eq!(model.next_id(), EntityId(5));
+    assert_eq!(model.revision(), revision);
+}

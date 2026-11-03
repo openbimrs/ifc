@@ -239,8 +239,13 @@ impl Model {
     }
 
     /// Append an entity, allocating the next free id.
+    ///
+    /// # Panics
+    ///
+    /// When every id up to `u64::MAX` is taken or reserved: there is no next
+    /// id, and wrapping to `#0` would hand out an id nothing may have.
     pub fn push(&mut self, entity: Entity) -> EntityId {
-        let id = EntityId(self.max_id + 1);
+        let id = self.next_id();
         self.insert(id, entity);
         id
     }
@@ -271,8 +276,43 @@ impl Model {
     ///
     /// A transaction reserves ids from here so several creates in one batch
     /// cannot collide with each other or with existing entities.
+    ///
+    /// # Panics
+    ///
+    /// When `u64::MAX` is taken or reserved: there is no next id.
     pub fn next_id(&self) -> EntityId {
-        EntityId(self.max_id + 1)
+        let next = self
+            .max_id
+            .checked_add(1)
+            .expect("no free entity id above u64::MAX");
+        EntityId(next)
+    }
+
+    /// Raises the next free id so that `id` and every lower id stay taken.
+    ///
+    /// `push`, `next_id` and transactions never hand out `id` or a lower id.
+    /// A codec calls this after a read with the highest id the source
+    /// declared or referenced, so a new entity cannot take the id of a record
+    /// that was dropped or of a reference that points nowhere. A no-op when
+    /// `id` is not above every id the model has seen. Otherwise it is a
+    /// structural change: it bumps [`Model::revision`] and, while a recording
+    /// is open, keeps the previous floor like every other write.
+    ///
+    /// # Panics
+    ///
+    /// For `u64::MAX`, after which no id would be left to hand out.
+    pub fn reserve_ids_through(&mut self, id: EntityId) {
+        assert!(id.0 < u64::MAX, "cannot reserve every entity id");
+        if id.0 <= self.max_id {
+            return;
+        }
+        if self.is_recording() {
+            self.record(Step::IdFloor {
+                max_id: self.max_id,
+            });
+        }
+        self.max_id = id.0;
+        self.revision = next_revision();
     }
 
     /// Look up one entity, decoding it first if it was loaded lazily.

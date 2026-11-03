@@ -146,6 +146,7 @@ impl Inverse {
                     restored.header = true;
                     continue;
                 }
+                Step::IdFloor { .. } => continue,
                 Step::Remove { id } => (*id, Some(false)),
                 Step::Insert { id, .. } => (*id, Some(true)),
                 Step::Replace { id, .. } | Step::Slot { id, .. } | Step::Retype { id, .. } => {

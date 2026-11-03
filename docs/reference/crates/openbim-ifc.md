@@ -111,4 +111,16 @@ Latest release, 0.39.6 (2026-11-03):
 
 Semver: patch (additive).
 
+### Added (#614, #616)
+
+- Re-exports `Diagnostic`, `DiagnosticKind`, `SourcePosition`, the
+  `diagnostic` module and, with `step`, `ReadFailure` and `SyntaxLocation`.
+
+### Fixed (#617)
+
+- Through ifc-step, `next_id` after a read is above every declared and
+  referenced id.
+
+Semver: patch (additive)
+
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

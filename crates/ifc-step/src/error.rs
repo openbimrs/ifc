@@ -1,10 +1,14 @@
 //! Why a STEP parse failed at the IFC adapter boundary.
 
+use std::fmt;
+
 use ifc_model::{EntityId, ModelError};
+
+use crate::SyntaxLocation;
 use thiserror::Error;
 
 /// Failures specific to reading or writing IFC STEP text.
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, Error)]
 #[non_exhaustive]
 pub enum StepError {
     /// The bytes do not begin with the ISO-10303-21 magic.
@@ -115,5 +119,55 @@ impl From<StepError> for ModelError {
             )),
             StepError::Io(message) => ModelError::Io(message),
         }
+    }
+}
+
+/// A refused read, with the input it refused handed back.
+///
+/// `try_read_owned` takes the buffer; on failure the caller gets it back
+/// uncopied, so it can locate the error in it or read it again under another
+/// policy.
+#[derive(Clone)]
+#[non_exhaustive]
+pub struct ReadFailure {
+    /// Why the read failed.
+    pub error: ModelError,
+    /// The input, as it was passed in.
+    pub bytes: Vec<u8>,
+}
+
+impl ReadFailure {
+    /// Where in [`ReadFailure::bytes`] the error is, for a syntax error.
+    #[must_use]
+    pub fn location(&self) -> Option<SyntaxLocation> {
+        SyntaxLocation::locate(&self.bytes, &self.error)
+    }
+}
+
+impl fmt::Debug for ReadFailure {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ReadFailure")
+            .field("error", &self.error)
+            .field("bytes", &format_args!("<{} bytes>", self.bytes.len()))
+            .finish()
+    }
+}
+
+impl fmt::Display for ReadFailure {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.error.fmt(formatter)
+    }
+}
+
+impl std::error::Error for ReadFailure {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.error.source()
+    }
+}
+
+impl From<ReadFailure> for ModelError {
+    fn from(failure: ReadFailure) -> Self {
+        failure.error
     }
 }

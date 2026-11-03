@@ -112,3 +112,14 @@ is never reissued, so it can only miss.
 Consequence: the revision is not monotonic for code running inside the
 closure, which sees revisions that are gone after it returns. An `Inverse` or
 `Transaction` made inside the closure after a write is stale afterwards.
+
+## Amendment (2026-11-03): `reserve_ids_through` is a recorded primitive write (#617)
+
+A codec that reads a file with dropped or dangling records must keep their
+ids out of reach of `push`, so it raises the next free id after the read
+(`Model::reserve_ids_through`). That changes `next_id`, which an authoring
+batch derives its ids and `GlobalId`s from, so it is a primitive write like
+the others: while a recording is open it keeps the previous floor
+(`Step::IdFloor`), and undo, redo and `preview` restore it. It bumps the
+revision when it raises the floor and does nothing when the floor is already
+at or above the given id.

@@ -58,7 +58,8 @@ class Smoke(unittest.TestCase):
         previous = self.model.set_attribute(1, 2, Text("Renamed"))
         self.assertEqual(previous, Text("Wall"))
         point = self.model.add("IfcCartesianPoint", [List([Real(1.5), Real(-2.0)])])
-        self.assertEqual(point, 7)
+        # #5 references the undeclared #9, so new ids start above it (#617).
+        self.assertEqual(point, 10)
         again = IfcModel.parse(self.model.write())
         self.assertEqual(again.attribute(1, 2), Text("Renamed"))
         self.assertEqual(again.attributes(point), [List((Real(1.5), Real(-2.0)))])

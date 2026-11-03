@@ -16,7 +16,7 @@
 //! without that copy. [`StepReader::eager`] restores decode-everything-now.
 
 use crate::lazy::{self, Bytes};
-use crate::{parser, writer};
+use crate::{parser, writer, ReadFailure};
 use ifc_model::{Codec, Model, ModelError};
 use openbim_step::{is_step_file, OnMalformed, ParseOptions};
 use std::io::Write;
@@ -135,6 +135,45 @@ impl StepReader {
         parser::parse(&map, self.options).map_err(Into::into)
     }
 
+    /// Reads `bytes` like [`Codec::read_owned`] and, when the read fails,
+    /// hands the buffer back with the error.
+    ///
+    /// The buffer is not copied either way: a failed read returns the very
+    /// allocation that was passed in, so the caller can locate the error in
+    /// it ([`ReadFailure::location`]) or read it again under another policy.
+    ///
+    /// # Errors
+    ///
+    /// As [`Codec::read_owned`], in a [`ReadFailure`].
+    pub fn try_read_owned(&self, bytes: Vec<u8>) -> Result<Model, ReadFailure> {
+        let fail = |error: ModelError, bytes| ReadFailure { error, bytes };
+        if !is_step_file(&bytes) {
+            return Err(fail(wrong_format(), bytes));
+        }
+        if self.is_lazy() {
+            return lazy::read_or_return(Bytes::Owned(bytes), self.options)
+                .map_err(|(error, bytes)| fail(error.into(), bytes.into_vec()));
+        }
+        parser::parse(&bytes, self.options).map_err(|error| fail(error.into(), bytes))
+    }
+
+    /// Whether [`Codec::read_bytes`] accepts `bytes`, and its error when it
+    /// does not, without building a model.
+    ///
+    /// Exact, not a heuristic: the error is the one `read_bytes` returns for
+    /// the same input under the same options, and `Ok` means `read_bytes`
+    /// succeeds. Locate a syntax error with [`SyntaxLocation::locate`](crate::SyntaxLocation::locate).
+    ///
+    /// # Errors
+    ///
+    /// The error `read_bytes` would return.
+    pub fn check(&self, bytes: &[u8]) -> Result<(), ModelError> {
+        if !is_step_file(bytes) {
+            return Err(wrong_format());
+        }
+        parser::check_input(bytes, self.options).map_err(Into::into)
+    }
+
     fn is_lazy(&self) -> bool {
         !self.eager && lazy::is_lazy(self.options)
     }
@@ -150,6 +189,17 @@ impl StepReader {
     #[must_use]
     pub const fn options(&self) -> ParseOptions {
         self.options
+    }
+}
+
+impl StepCodec {
+    /// As [`StepReader::try_read_owned`], strict.
+    ///
+    /// # Errors
+    ///
+    /// As [`Codec::read_owned`], in a [`ReadFailure`].
+    pub fn try_read_owned(&self, bytes: Vec<u8>) -> Result<Model, ReadFailure> {
+        StepReader::new(ParseOptions::strict()).try_read_owned(bytes)
     }
 }
 

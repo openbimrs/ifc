@@ -12,6 +12,42 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#614)
+
+- A read's diagnostics carry their kind, the instance at fault, the record
+  holding a dangling reference, their line and column and a quote of up to
+  120 characters of the bytes they cover.
+
+Semver: patch (additive)
+
+### Added (#616)
+
+- `StepReader::try_read_owned` and `StepCodec::try_read_owned`: on failure
+  the input comes back uncopied in a `ReadFailure` with the error.
+  `SyntaxLocation`: line, column and a quote of at most 120 characters of the
+  offending line (`ReadFailure::location`, `SyntaxLocation::locate`).
+  `StepReader::check(bytes)`: whether `read_bytes` would succeed, and its
+  error, without building a model.
+
+Semver: patch (additive)
+
+### Fixed (#616)
+
+- A strict read refusing a record the IFC model cannot represent reports that
+  record's byte offset instead of 0. `StepError` implements `Clone`.
+
+Semver: patch
+
+### Fixed (#617)
+
+- After a read, `Model::next_id` is above every id the file declared, skipped
+  records included, and every id it references, so a new entity never takes
+  the id of a dangling reference or a skipped record. Applies to strict
+  reads too. `u64::MAX` is no instance id: a strict read refuses it, a
+  lenient read skips the record.
+
+Semver: patch
+
 ## [0.6.2] - 2026-10-28
 
 ### Changed
