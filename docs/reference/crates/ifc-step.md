@@ -29,7 +29,8 @@ substrate and `ifc_model::Model` plus IFC codec detection and I/O policy.
 | Module | Role |
 | --- | --- |
 | `codec` | `StepCodec`/`StepReader`: detection, parse policy, I/O |
-| `error` | STEP-specific failure modes |
+| `error` | STEP-specific failure modes, `ReadFailure` |
+| `location` | Lines, columns and quotes of the source: `SyntaxLocation`, diagnostics |
 | `parser` | Generic exchange to IFC record model |
 | `writer` | IFC record model to physical file |
 
