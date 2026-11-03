@@ -24,7 +24,7 @@ redo are built on that.
 
 - While a recording is open (`Model::begin_recording`), each primitive write
   (`insert`, `insert_lazy`, `push`, `set_attribute`, `set_attributes`,
-  `retype`, `remove`, `header_mut`) keeps the write that undoes it, including
+  `truncate_attributes`, `retype`, `remove`, `header_mut`) keeps the write that undoes it, including
   the position in file order and in the type bucket.
 - `Inverse` owns those steps. Applying it restores the model and returns the
   redo `Inverse`.
@@ -123,3 +123,21 @@ the others: while a recording is open it keeps the previous floor
 (`Step::IdFloor`), and undo, redo and `preview` restore it. It bumps the
 revision when it raises the floor and does nothing when the floor is already
 at or above the given id.
+
+## Amendment (2026-11-03): `truncate_attributes` is a recorded primitive write; `Transaction::truncate` is a side field (#634)
+
+Reassigning a record to a class with fewer attributes has to shorten it.
+`Model::truncate_attributes(id, len)` is a primitive write like the others:
+while a recording is open it keeps one `Step::Slot` per dropped slot,
+pushed in descending order so the reversed undo restores ascending from
+`len`. The redo of each step truncates again, so no new `Step` variant is
+needed. It bumps the revision once and does nothing when the record has `len`
+attributes or fewer.
+
+`Transaction::truncate(id, len)` stages it in its own field beside the
+header, applied after the edits and before the header, and not as an `Edit`
+variant, for the reason the header is not one: `Edit` is matched exhaustively
+downstream. Preflight adds `Conflict::TruncationMissingTarget` (the record
+will not exist) and `Conflict::WriteBeyondTruncation` (an edit writes a slot
+the truncation drops); a reference in a dropped slot is neither checked on a
+create nor counted as a referrer when a removal is checked.
