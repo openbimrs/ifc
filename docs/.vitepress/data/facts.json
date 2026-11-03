@@ -205,10 +205,10 @@
           "url": "https://crates.io/crates/ifc-properties"
         }
       ],
-      "released": "0.10.2",
-      "released_date": "2026-10-28",
+      "released": "0.10.3",
+      "released_date": "2026-11-03",
       "status": "implemented",
-      "version": "0.10.2"
+      "version": "0.10.3"
     },
     "ifc-resource": {
       "description": "Construction resources: labour, equipment, material, crew, subcontract.",
@@ -310,10 +310,10 @@
           "url": "https://crates.io/crates/ifc-style"
         }
       ],
-      "released": "0.6.4",
-      "released_date": "2026-10-30",
+      "released": "0.6.5",
+      "released_date": "2026-11-03",
       "status": "implemented",
-      "version": "0.6.4"
+      "version": "0.6.5"
     },
     "ifc-systems": {
       "description": "Distribution systems, ports, and connectivity between elements.",
@@ -355,10 +355,10 @@
           "url": "https://crates.io/crates/ifc-template-catalog"
         }
       ],
-      "released": "0.4.3",
-      "released_date": "2026-10-28",
+      "released": "0.4.4",
+      "released_date": "2026-11-03",
       "status": "implemented",
-      "version": "0.4.3"
+      "version": "0.4.4"
     },
     "ifc-validate": {
       "description": "Schema conformance: WHERE rules, cardinality, GUID and reference integrity.",
@@ -400,10 +400,10 @@
           "url": "https://crates.io/crates/openbim-ifc"
         }
       ],
-      "released": "0.39.5",
-      "released_date": "2026-10-30",
+      "released": "0.39.6",
+      "released_date": "2026-11-03",
       "status": "implemented",
-      "version": "0.39.5"
+      "version": "0.39.6"
     },
     "openbim-ifc-binding-core": {
       "description": "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python).",

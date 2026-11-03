@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-11-03
+
 ### Fixed
 
 - The corrected profiles give `Pset_ElementAssemblyCommon`, `Pset_CivilElementCommon`, `Pset_SpatialZoneCommon` (IFC4, IFC4X3), `Pset_MarineFacilityTransportation` and 11 IFC4X3 `Qto_*` sets the applicable entity their published XML omits (patches NEH-IFC4-PSD-0001..0003, NEH-IFC4X3-PSD-0002..0005, NEH-IFC4X3-QTO-0001..0011, #622). `Pset_ElectricFlowStorageDevicePHistory` stays empty because no buildingSMART source names its entity. The official snapshots, container and TSV exports are unchanged; the TSVs still show the published empty `applicable_entity`.
@@ -127,7 +129,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-template-catalog-v0.4.3...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-template-catalog-v0.4.4...HEAD
+[0.4.4]: https://github.com/openbimrs/ifc/releases/tag/ifc-template-catalog-v0.4.4
 [0.4.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-template-catalog-v0.4.3
 [0.4.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-template-catalog-v0.4.2
 [0.4.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-template-catalog-v0.4.1

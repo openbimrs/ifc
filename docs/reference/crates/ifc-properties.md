@@ -11,7 +11,7 @@ Property sets, quantities, and unit resolution. No geometry.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.10.2 (2026-10-28) |
+| Latest release | 0.10.3 (2026-11-03) |
 | Registries | [crates.io `ifc-properties`](https://crates.io/crates/ifc-properties) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_properties/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-properties) |
@@ -44,10 +44,29 @@ standard Psets are data here rather than hand-written tables.
 
 ## Changes
 
-Latest release, 0.10.2 (2026-10-28):
+Latest release, 0.10.3 (2026-11-03):
+
+### Added
+
+- Quantity sets resolved per object, as property sets already were (#578):
+  `quantity_sets_by_object` with `AttachedQuantitySets` (both attachment
+  routes, each set tagged `Attachment::Occurrence` or `Attachment::Type`),
+  and `resolved_quantities`, `quantities_of`, `quantity_value` with
+  `ResolvedQuantitySet` and `ResolvedQuantities`. An occurrence inherits the
+  quantity sets of its type; a same-named occurrence set wins as a whole and
+  the type set is kept as `shadowed`. Property sets and quantity sets are
+  separate namespaces. Units are not resolved by the view: combine a
+  quantity's stated unit with `exact_unit`. Two quantities of one name in a
+  set are reported as `DuplicatePropertyName`, and two same-named quantity
+  sets on one owner as `DuplicateSetName`. `MissingDefinition`, `TypedTwice`
+  and the `IfcRelDefinesByType` anomalies appear in the lists of both the
+  property and the quantity view.
 
 ### Changed
 
-- Copyright holder in NOTICE and licence texts is rheonda.
+- `property_sets_by_object` and `quantity_sets_by_object` follow the two
+  attachment routes through one traversal, and
+  `resolved_properties`/`resolved_quantities` share one precedence rule;
+  property answers and anomaly order are unchanged.
 
 Full history: [`crates/ifc-properties/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-properties/CHANGELOG.md)

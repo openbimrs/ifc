@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-11-03
+
 ### Added
 
 - Quantity sets resolved per object, as property sets already were (#578):
@@ -802,7 +804,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-properties-v0.10.2...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-properties-v0.10.3...HEAD
+[0.10.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.10.3
 [0.10.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.10.2
 [0.10.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.10.1
 [0.10.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.10.0
