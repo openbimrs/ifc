@@ -38,7 +38,7 @@ const MAPPED: &str = "mapped-item";
 const REPRESENTATION: &str = "representation";
 
 /// Chain kind reported when a mapping graph closes on itself.
-const KIND: &str = "mapped item";
+pub(crate) const KIND: &str = "mapped item";
 
 /// Attribute index of `Items` on `IfcRepresentation`.
 const REPRESENTATION_ITEMS: usize = 3;
@@ -68,6 +68,38 @@ fn lower_mapped_item_inner(
     id: EntityId,
     world: Transform,
 ) -> GeometryResult<NodeId> {
+    let occurrence = mapped_occurrence(session, id, world)?;
+
+    // The source subtree is lowered in the map's own space. Keeping the world
+    // frame OUT of the shared subtree is what lets many occurrences reuse it;
+    // the per-occurrence placement rides on the Instance transform instead.
+    let source = lower_representation(session, occurrence.representation)?;
+
+    session.node_for(
+        id,
+        GeometryNode::Instance(Instance {
+            source,
+            transform: occurrence.placement.to_geom(),
+        }),
+    )
+}
+
+/// One `IfcMappedItem` resolved: the map's representation and the placement of
+/// this occurrence.
+pub(crate) struct MappedOccurrence {
+    /// The `IfcRepresentation` the map's `MappedRepresentation` names.
+    pub(crate) representation: EntityId,
+    /// `world . MappingTarget . MappingOrigin`, in metres.
+    pub(crate) placement: Transform,
+}
+
+/// Resolve source, target, map, origin and representation of a mapped item and
+/// compose its placement under `frame`.
+pub(crate) fn mapped_occurrence(
+    session: &LoweringSession<'_>,
+    id: EntityId,
+    frame: Transform,
+) -> GeometryResult<MappedOccurrence> {
     let entity = session.entity(id, id)?;
     let item = MappedItem::new(id, entity);
     let source_ref = item.mapping_source()?;
@@ -89,19 +121,19 @@ fn lower_mapped_item_inner(
     let origin = axis_placement_transform(session.model(), origin_ref, origin_entity)?
         .to_metres(session.units());
 
-    // The source subtree is lowered in the map's own space. Keeping the world
-    // frame OUT of the shared subtree is what lets many occurrences reuse it;
-    // the per-occurrence placement rides on the Instance transform instead.
-    let source = lower_representation(session, representation)?;
+    Ok(MappedOccurrence {
+        representation,
+        placement: frame.compose(&target).compose(&origin),
+    })
+}
 
-    let placement = world.compose(&target).compose(&origin);
-    session.node_for(
-        id,
-        GeometryNode::Instance(Instance {
-            source,
-            transform: placement.to_geom(),
-        }),
-    )
+/// The `Items` of an `IfcRepresentation`, in authored order.
+pub(crate) fn representation_items(
+    session: &LoweringSession<'_>,
+    id: EntityId,
+) -> GeometryResult<Vec<EntityId>> {
+    let slots = session.slots(id)?;
+    slots.req_ref_list(REPRESENTATION_ITEMS, "Items")
 }
 
 /// Lower every item of an `IfcRepresentation` into one collection node.
@@ -129,8 +161,7 @@ fn lower_representation_inner(
     session: &mut LoweringSession<'_>,
     id: EntityId,
 ) -> GeometryResult<NodeId> {
-    let slots = session.slots(id)?;
-    let items = slots.req_ref_list(REPRESENTATION_ITEMS, "Items")?;
+    let items = representation_items(session, id)?;
 
     let mut members = Vec::with_capacity(items.len());
     for item in items {
