@@ -8,8 +8,8 @@
 //! | Module | Role |
 //! | --- | --- |
 //! | [`codec`] | [`StepCodec`]/[`StepReader`]: detection, parse policy, I/O |
-//! | [`error`] | STEP-specific failure modes |
-//! | `location` | Lines, columns and quotes of the source for diagnostics |
+//! | [`error`] | STEP-specific failure modes, [`ReadFailure`] |
+//! | `location` | Lines, columns and quotes of the source: [`SyntaxLocation`], diagnostics |
 //! | `parser` | Generic exchange to IFC record model |
 //! | `writer` | IFC record model to physical file |
 
@@ -22,8 +22,9 @@ mod parser;
 mod writer;
 
 pub use codec::{StepCodec, StepReader};
-pub use error::StepError;
+pub use error::{ReadFailure, StepError};
 pub use index::Index;
+pub use location::SyntaxLocation;
 pub use openbim_step::is_step_file;
 /// Malformed-record policy, re-exported so consumers need not depend on
 /// `openbim-step` directly to configure a reader.

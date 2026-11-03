@@ -4,10 +4,15 @@
 //! bytes, the column counts the Unicode characters of the line before the
 //! offset, decoding invalid UTF-8 as U+FFFD. [`positions`] answers many
 //! offsets in one forward pass instead of one scan from the start each.
+//! [`SyntaxLocation`] places one failure and quotes the line it is on.
 
 use std::ops::Range;
 
-use ifc_model::SourcePosition;
+use std::fmt;
+
+use ifc_model::{ModelError, SourcePosition};
+
+use crate::StepError;
 
 /// Most characters of the source a diagnostic quotes.
 pub(crate) const EXCERPT_CHARS: usize = 120;
@@ -72,6 +77,122 @@ pub(crate) fn plain(c: char) -> char {
         ' '
     } else {
         c
+    }
+}
+
+/// Where a read failed: the byte offset, its line and column and a quote of
+/// the offending line.
+///
+/// The quote is the whole line when it fits in 120 characters.
+/// A longer line is cut to a window of 120 characters around the
+/// offset, with `…` on each cut end. Line breaks and tabs are spaces.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SyntaxLocation {
+    offset: usize,
+    position: SourcePosition,
+    excerpt: String,
+    excerpt_column: usize,
+}
+
+impl SyntaxLocation {
+    /// The location of byte `offset` in `input`, clamped to its length.
+    #[must_use]
+    pub fn at(input: &[u8], offset: usize) -> Self {
+        let offset = offset.min(input.len());
+        let position = positions(input, &[offset])[0];
+        let line_start = input[..offset]
+            .iter()
+            .rposition(|byte| *byte == b'\n')
+            .map_or(0, |at| at + 1);
+        let line_end = input[offset..]
+            .iter()
+            .position(|byte| *byte == b'\n')
+            .map_or(input.len(), |at| offset + at);
+        let mut line = &input[line_start..line_end];
+        if let Some(rest) = line.strip_suffix(b"\r") {
+            line = rest;
+        }
+        let chars: Vec<char> = String::from_utf8_lossy(line).chars().map(plain).collect();
+        let column = position.column();
+        let (excerpt, excerpt_column) = if chars.len() <= EXCERPT_CHARS {
+            (chars.iter().collect(), column)
+        } else {
+            let start = (column - 1)
+                .saturating_sub(EXCERPT_CHARS / 2)
+                .min(chars.len() - EXCERPT_CHARS);
+            let end = start + EXCERPT_CHARS;
+            let mut text = String::new();
+            if start > 0 {
+                text.push('…');
+            }
+            text.extend(&chars[start..end]);
+            if end < chars.len() {
+                text.push('…');
+            }
+            (text, column - start + usize::from(start > 0))
+        };
+        // A position at the end of the line points one past its last char.
+        let excerpt_column = excerpt_column.min(excerpt.chars().count() + 1);
+        Self {
+            offset,
+            position,
+            excerpt,
+            excerpt_column,
+        }
+    }
+
+    /// The location of a syntax error in `input`; `None` for any other
+    /// error.
+    #[must_use]
+    pub fn locate(input: &[u8], error: &ModelError) -> Option<Self> {
+        match error {
+            ModelError::Syntax { offset, .. } => Some(Self::at(input, *offset)),
+            _ => None,
+        }
+    }
+
+    /// The location of a STEP error that names a byte offset
+    /// ([`StepError::Syntax`], [`StepError::MissingEntityId`],
+    /// [`StepError::RealWithoutDecimalPoint`]); `None` for any other.
+    #[must_use]
+    pub fn of_step_error(input: &[u8], error: &StepError) -> Option<Self> {
+        match error {
+            StepError::Syntax { offset, .. }
+            | StepError::MissingEntityId { offset }
+            | StepError::RealWithoutDecimalPoint { offset, .. } => Some(Self::at(input, *offset)),
+            _ => None,
+        }
+    }
+
+    /// Byte offset into the input.
+    #[must_use]
+    pub const fn offset(&self) -> usize {
+        self.offset
+    }
+
+    /// Line and column of the offset.
+    #[must_use]
+    pub const fn position(&self) -> SourcePosition {
+        self.position
+    }
+
+    /// The quoted line, or the window of it around the offset.
+    #[must_use]
+    pub fn excerpt(&self) -> &str {
+        &self.excerpt
+    }
+
+    /// 1-based column of the offset within [`SyntaxLocation::excerpt`],
+    /// counted in characters, a leading `…` included.
+    #[must_use]
+    pub const fn excerpt_column(&self) -> usize {
+        self.excerpt_column
+    }
+}
+
+impl fmt::Display for SyntaxLocation {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}: {}", self.position, self.excerpt)
     }
 }
 

@@ -48,6 +48,15 @@ pub(crate) enum Bytes {
 }
 
 impl Bytes {
+    /// The bytes as an owned buffer: handed back as they are when owned,
+    /// copied when mapped.
+    pub(crate) fn into_vec(self) -> Vec<u8> {
+        match self {
+            Self::Owned(bytes) => bytes,
+            Self::Mapped(map) => map.to_vec(),
+        }
+    }
+
     fn as_slice(&self) -> &[u8] {
         match self {
             Self::Owned(bytes) => bytes,
@@ -100,6 +109,14 @@ pub(crate) fn is_lazy(options: ParseOptions) -> bool {
 
 /// Reads `bytes` lazily under `options`, which [`is_lazy`] accepts.
 pub(crate) fn read(bytes: Bytes, options: ParseOptions) -> Result<Model, StepError> {
+    read_or_return(bytes, options).map_err(|(error, _)| error)
+}
+
+/// [`read`], handing the bytes back with the error.
+pub(crate) fn read_or_return(
+    bytes: Bytes,
+    options: ParseOptions,
+) -> Result<Model, (StepError, Bytes)> {
     debug_assert!(is_lazy(options));
     let source = Arc::new(StepSource { bytes, options });
     if let Some(model) = index(&source) {
@@ -108,7 +125,13 @@ pub(crate) fn read(bytes: Bytes, options: ParseOptions) -> Result<Model, StepErr
     // Some record did not validate. The eager reader reports it exactly as
     // it always has -- and should it accept the file after all, its model
     // is the right answer.
-    parser::parse(source.bytes.as_slice(), options)
+    parser::parse(source.bytes.as_slice(), options).map_err(|error| {
+        // `index` failed before it built a model, so nothing else holds the
+        // source.
+        let source = Arc::try_unwrap(source)
+            .unwrap_or_else(|_| unreachable!("no model exists when the read fails"));
+        (error, source.bytes)
+    })
 }
 
 /// Inputs below this size validate on one thread: spawning costs more than

@@ -20,6 +20,17 @@ everything released before per-crate changelogs began.
 
 Semver: patch (additive)
 
+### Added (#616)
+
+- `StepReader::try_read_owned` and `StepCodec::try_read_owned`: on failure
+  the input comes back uncopied in a `ReadFailure` with the error.
+  `SyntaxLocation`: line, column and a quote of at most 120 characters of the
+  offending line (`ReadFailure::location`, `SyntaxLocation::locate`).
+  `StepReader::check(bytes)`: whether `read_bytes` would succeed, and its
+  error, without building a model.
+
+Semver: patch (additive)
+
 ### Fixed (#616)
 
 - A strict read refusing a record the IFC model cannot represent reports that

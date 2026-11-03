@@ -63,6 +63,53 @@ pub(crate) fn parse(input: &[u8], options: ParseOptions) -> Result<Model, StepEr
     Ok(model)
 }
 
+/// Whether [`parse`] would accept `input` under `options`, and its error
+/// when not, without building a model.
+///
+/// The same events, the same recovery policy and the same relocation as
+/// [`parse`]; each record is [`validate`]d where [`parse`] converts it, and
+/// the two refuse exactly the same records.
+pub(crate) fn check_input(input: &[u8], options: ParseOptions) -> Result<(), StepError> {
+    let mut sink = CheckSink {
+        recovering: options.on_malformed_record == OnMalformed::Skip,
+        error: None,
+        records: 0,
+        failed: None,
+    };
+    openbim_step::parse_events_borrowed(input, &mut sink, options)
+        .map_err(|error| StepError::from_step(input, error))?;
+    match (sink.error, sink.failed) {
+        (Some(error), Some((index, id))) => Err(locate(input, error, index, &id)),
+        (Some(error), None) => Err(error),
+        (None, _) => Ok(()),
+    }
+}
+
+/// Validates records as the parser emits them; see [`check_input`].
+struct CheckSink {
+    recovering: bool,
+    error: Option<StepError>,
+    records: usize,
+    failed: Option<(usize, String)>,
+}
+
+impl<'a> openbim_step::EventSink<Text<'a>> for CheckSink {
+    fn event(&mut self, event: openbim_step::Event<Text<'a>>) {
+        let openbim_step::Event::DataRecord(instance) = event else {
+            return;
+        };
+        self.records += 1;
+        // Recovery skips a refused record, as `ModelSink` does.
+        if self.recovering || self.error.is_some() {
+            return;
+        }
+        if let Err(error) = validate(&instance) {
+            self.failed = Some((self.records - 1, instance.id.as_str().to_string()));
+            self.error = Some(error);
+        }
+    }
+}
+
 /// Puts a conversion error at the offset of the record it concerns.
 ///
 /// Conversion works on parsed records, which carry no offset, so such an error
