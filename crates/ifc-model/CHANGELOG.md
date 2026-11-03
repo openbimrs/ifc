@@ -12,6 +12,20 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#614)
+
+- `Diagnostic::kind` (`DiagnosticKind`), `instance` (the skipped, duplicated
+  or missing id), `referrer` (the record holding a dangling reference),
+  `position` (`SourcePosition`) and `excerpt`; `Diagnostic::new` with
+  `with_byte_range`, `with_position`, `with_instance`, `with_referrer`,
+  `with_excerpt`. `warning` and `unlocated` build `DiagnosticKind::Other`.
+
+### Changed (#614)
+
+- A diagnostic with a position displays its line and column.
+
+Semver: patch (Display text changes)
+
 ## [0.4.5] - 2026-10-29
 
 ### Added (#608)
