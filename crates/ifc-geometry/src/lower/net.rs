@@ -51,6 +51,12 @@
 //! `frame` module says how the relative placement is composed and when it is
 //! not.
 //!
+//! A host no opening voids is lowered the same way when an item of its Body
+//! is a boolean, a clip or an `IfcCsgSolid` (#655), so `gross` and `root`
+//! are both `Instance(host world, body in its frame)`. Any other opening-less
+//! Body stays in world coordinates. A boolean under an `IfcMappedItem`
+//! already runs in the map's frame under the mapped item's `Instance`.
+//!
 //! # Refusal, not a quiet gross body
 //!
 //! Every per-opening failure becomes [`GeometryError::OpeningNotSubtracted`]
@@ -191,8 +197,9 @@ impl NetOptions {
 #[non_exhaustive]
 pub struct NetLowering {
     /// The host's gross Body, before any subtraction, in world space. With
-    /// openings to cut, since #388 usually an `Instance` of the host's world
-    /// transform above the Body lowered in the host's frame.
+    /// openings to cut, or with a boolean, a clip or an `IfcCsgSolid`
+    /// among its Body's items (#655), usually an `Instance` of the host's world transform above the
+    /// Body lowered in the host's frame.
     pub gross: NodeId,
     /// One entry per opening, in the order they are subtracted.
     pub subtractions: Vec<Subtraction>,
@@ -204,9 +211,10 @@ pub struct NetLowering {
     pub taken_as_applied: Vec<TakenAsApplied>,
     /// The net result: the last subtraction, or `gross` when there are none.
     ///
-    /// Since #388 a subtraction's result is usually an `Instance` of the
-    /// host's world transform above the `Difference` nodes, which run in the
-    /// host's frame; see the module documentation.
+    /// With openings to cut, or with a boolean, a clip or an `IfcCsgSolid`
+    /// among its Body's items (#655), usually an `Instance` of the host's world transform above the
+    /// `Difference` nodes, which run in the host's frame; see the module
+    /// documentation.
     pub root: NodeId,
 }
 

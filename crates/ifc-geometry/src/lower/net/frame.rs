@@ -87,6 +87,8 @@ impl NetFrame {
     /// Decide the frame for `host` voided by `voidings`; `Ok(None)` when the
     /// host has no Body.
     ///
+    /// With no voidings it is the host's own frame with no openings (#655).
+    ///
     /// Errors resolving the host's own world frame are returned as the gross
     /// lowering would return them. An opening whose relative placement does
     /// not compose selects [`NetFrame::World`], where the opening's own

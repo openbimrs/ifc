@@ -24,6 +24,25 @@ everything released before per-crate changelogs began.
 
 Semver: minor (new refusals for malformed face sets and TIN voids in `body_description`).
 
+Semver: breaking (0.x minor). No public item is added, removed or changed in
+signature, but `NetLowering::root` and `gross` of a product with a boolean or
+clip in its Body and no opening is now an `Instance` where it was the boolean
+itself.
+
+### Changed (#655)
+
+- `lower_product_net` and `lower_product_net_with` lower a product no
+  opening voids in its own frame when an item of its Body is an
+  `IfcBooleanResult`, an `IfcBooleanClippingResult` or an `IfcCsgSolid`;
+  `gross` and `root` are one `Instance` of its world transform. Other
+  opening-less Bodies are unchanged.
+
+### Fixed
+
+- The turned wall with a flush polygonal clip meshes net without a lid over
+  the slot (`axiolid-mesh-compile` 0.3.31 up to at least 0.3.40 kept one
+  in world coordinates). The gross path is unchanged (#657).
+
 ## [0.32.1] - 2026-11-03
 
 ### Added (#455)
