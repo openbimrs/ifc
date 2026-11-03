@@ -23,7 +23,11 @@ ADD2 (feature `embedded`, default). Corrected overlays exist for IFC4 ADD2
 TC1 and IFC4X3 ADD2; IFC2X3 TC1 has the official profile only. Official
 artifacts are never rewritten: the IFC4X3 overlay adds
 `Pset_Stationing.HasIncreasingStation`, which the published ADD2
-documentation lists and the PSD XML the snapshot is built from omits.
+documentation lists and the PSD XML the snapshot is built from omits. The
+corrected profiles also give 3 of the 4 IFC4 sets and all 15 IFC4X3 sets the
+PSD XML leaves without an applicable entity the entity their evidence names;
+`Pset_ElectricFlowStorageDevicePHistory` stays empty because no buildingSMART
+source names its entity. The TSVs keep the published empty value.
 
 ## Snapshot format
 
