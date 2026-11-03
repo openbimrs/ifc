@@ -12,6 +12,15 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#634)
+
+- `AuthorOp::ReassignClass` reassigns a stored entity to a class with fewer
+  attributes than its record (IFC2X3 `IfcSlab` or `IfcDoor` to `IfcWall`); the
+  record is shortened in the transaction with exact undo, redo and replay.
+  `UnsupportedReassignment` is no longer raised for it.
+
+Semver: patch (a refusal lifted).
+
 ## [0.40.0] - 2026-11-03
 
 ### Changed (#615)
