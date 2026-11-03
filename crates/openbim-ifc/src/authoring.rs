@@ -27,6 +27,47 @@
 //! another entity holds. An edit checks the whole edited record again, as
 //! `ifc-author`'s `EntityEditor` does.
 //!
+//! # SI input
+//!
+//! With `properties`, `apply_authoring_with` and `stage_authoring_with`
+//! take `AuthoringOptions`: under `InputUnits::Si` the numbers an operation
+//! states are SI values and are converted before the operation runs; the
+//! default, `InputUnits::Raw`, is [`apply_authoring`]. Units are resolved by
+//! `ifc-properties` against the model as it was before the batch, so a batch
+//! cannot create the project or its units and read numbers in SI at once; a
+//! raw batch creates those first.
+//!
+//! - **Converted:** the attribute values of `Create`, `Edit`, `ReassignClass`,
+//!   `Project`, `Spatial`, `Product` and `TypeObject`, a `Placement`'s
+//!   location (its axes are directions) and a `CopyProduct`'s
+//!   [`CopyPlacement::Offset`]. Each goes into the unit that applies: the
+//!   explicit unit of the property, quantity or `IfcMeasureWithUnit` the
+//!   number belongs to, else the project unit of its measure. Numbers the
+//!   planner derives or copies are not converted.
+//! - **How a number is read:** a typed measure by its type name, an untyped
+//!   number by the attribute's declared type (the single numeric member of a
+//!   `SELECT`), as the release's tables classify it. Reviewed `REAL`
+//!   attributes follow their role (a precision is a length, an attenuation an
+//!   inverse length, a ratio is kept). An `IfcParameterValue` follows its
+//!   curve's or surface's parameter space, read through the batch: lengths and
+//!   plane angles convert, unitless parameters are kept. Monetary and
+//!   logarithmic measures, and a compound plane angle, pass unchanged. A
+//!   temperature difference (`IfcStructuralLoadTemperature.DeltaT*`) converts
+//!   by the unit's factor alone, never its offset.
+//! - **Refused:** `AuthoringFailure::UnitConversion` when no unit applies
+//!   (a project without one of the type, an offset unit, a non-finite number,
+//!   a measure with no unit mapping), and `AuthoringFailure::SiInput` with a
+//!   `SiInputRefusal` for an unsupported or mismatched release, an
+//!   `IfcProjectLibrary` with units, an operation that changes the units
+//!   (the unit assignment, a unit, the measure behind a conversion-based
+//!   unit, a value holder's `Unit` or enumeration, removing or retyping a
+//!   context that states the units, any `Purge`), a model with an
+//!   `IfcPcurve` off a plane, a unit created in the batch, a value
+//!   whose unit another record states, a parameter space with no single unit
+//!   (composite curves with arcs), an ambiguous untyped `SELECT` value,
+//!   map conversions, polynomial and texture generator parameters. Nothing
+//!   is staged on a refusal.
+//!
 //! # Cost
 //!
 //! Staging a batch costs the batch, not the model, once the model has its
@@ -224,7 +265,7 @@ pub fn stage_authoring(
 
 /// [`stage_authoring`] reading the batch's numbers as `options` say (#638).
 ///
-/// With [`InputUnits::Si`] every number the operations state is an SI value,
+/// With `InputUnits::Si` every number the operations state is an SI value,
 /// converted into the unit that applies before the operation runs (see the
 /// module documentation); `InputUnits::Raw` is [`stage_authoring`].
 ///
