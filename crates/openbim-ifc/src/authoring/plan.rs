@@ -10,7 +10,7 @@ use ifc_schema::Schema;
 use super::check::{build, recheck, relations};
 use super::identity::{derived_global_id, Scope};
 use super::overlay::Overlay;
-use super::report::{CopyReport, RemovalReport};
+use super::report::{CopyReport, ReassignReport, RemovalReport};
 use super::{AssignTypeOptions, AuthorOp, AuthoringFailure as F, NamedValues};
 
 /// The batch's state: the overlay, and what each operation produced.
@@ -33,6 +33,10 @@ pub(super) struct Planner<'m, 's> {
     pub(super) copies: Vec<Option<CopyReport>>,
     /// The copy report of the operation running now.
     copy_report: Option<CopyReport>,
+    /// Per operation run so far, the report of a reassignment (#483).
+    pub(super) reassignments: Vec<Option<ReassignReport>>,
+    /// The reassignment report of the operation running now.
+    reassign_report: Option<ReassignReport>,
     /// `GlobalId`s the batch wrote.
     batch_global_ids: HashMap<Arc<str>, EntityId>,
     /// Relationships whose whole record a type assignment checked: further
@@ -56,6 +60,8 @@ impl<'m, 's> Planner<'m, 's> {
             report: None,
             copies: Vec::new(),
             copy_report: None,
+            reassignments: Vec::new(),
+            reassign_report: None,
             batch_global_ids: HashMap::new(),
             rechecked: HashSet::new(),
         }
@@ -71,6 +77,8 @@ impl<'m, 's> Planner<'m, 's> {
         self.reports.push(report);
         let copied = self.copy_report.take();
         self.copies.push(copied);
+        let reassigned = self.reassign_report.take();
+        self.reassignments.push(reassigned);
         Ok(produced)
     }
 
@@ -192,6 +200,16 @@ impl<'m, 's> Planner<'m, 's> {
                 let (copy, report) = self.copy_entity(entity, &policy)?;
                 self.copy_report = Some(report);
                 Some(copy)
+            }
+            AuthorOp::ReassignClass {
+                entity,
+                type_name,
+                attributes,
+                options,
+            } => {
+                self.reassign_report =
+                    Some(self.reassign_class(entity, &type_name, attributes, options)?);
+                Some(entity)
             }
         })
     }

@@ -265,6 +265,36 @@ impl RemoveProductOptions {
     }
 }
 
+/// What [`AuthorOp::ReassignClass`](super::AuthorOp::ReassignClass) does
+/// where the reassignment would otherwise be refused (#483). [`Self::new`]
+/// (the default) refuses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
+pub struct ReassignClassOptions {
+    /// Drop the set attributes the new class does not declare or derives,
+    /// naming them in the [`ReassignReport`](super::ReassignReport). Off:
+    /// the reassignment is refused with
+    /// [`AttributesDropped`](super::AuthoringFailure::AttributesDropped).
+    pub drop_unmapped: bool,
+}
+
+impl ReassignClassOptions {
+    /// Refuse a reassignment that would drop an attribute: the default.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            drop_unmapped: false,
+        }
+    }
+
+    /// With [`Self::drop_unmapped`] set.
+    #[must_use]
+    pub const fn drop_unmapped(mut self, drop: bool) -> Self {
+        self.drop_unmapped = drop;
+        self
+    }
+}
+
 /// What [`AuthorOp::Purge`](super::AuthorOp::Purge) removes.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 #[non_exhaustive]

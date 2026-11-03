@@ -96,6 +96,24 @@ fn a_history_of_batches_gives_the_same_answers_with_and_without_kept_indexes() {
         }],
     );
 
+    // Walls change class in place; the class change undoes with the batch.
+    let reassigned: Vec<EntityId> = lab.model.ids_of_type("IFCWALL")[30..35].to_vec();
+    let ops: Vec<AuthorOp> = reassigned
+        .iter()
+        .map(|wall| AuthorOp::ReassignClass {
+            entity: *wall,
+            type_name: "IfcWallStandardCase".into(),
+            attributes: vec![],
+            options: ReassignClassOptions::new(),
+        })
+        .collect();
+    lab.apply("reassign five walls", &ops);
+    assert_eq!(lab.model.ids_of_type("IFCWALLSTANDARDCASE"), reassigned);
+    lab.undo("undo the reassignment");
+    assert!(lab.model.ids_of_type("IFCWALLSTANDARDCASE").is_empty());
+    lab.redo("redo the reassignment");
+    assert_eq!(lab.model.ids_of_type("IFCWALLSTANDARDCASE"), reassigned);
+
     // A batch whose last operation repeats a GlobalId.
     let held = lab
         .model

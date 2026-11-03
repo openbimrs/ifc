@@ -3,8 +3,8 @@
 use ifc_model::{EntityId, Value};
 
 use super::{
-    AssignTypeOptions, CopyPolicy, CopyProductOptions, OwnerHistoryOp, PurgeOptions, RelateOptions,
-    RemoveProductOptions,
+    AssignTypeOptions, CopyPolicy, CopyProductOptions, OwnerHistoryOp, PurgeOptions,
+    ReassignClassOptions, RelateOptions, RemoveProductOptions,
 };
 
 /// Attribute values by name, in the order the caller set them. Names match
@@ -383,6 +383,40 @@ pub enum AuthorOp {
         /// What it copies and what it shares.
         policy: CopyPolicy,
     },
+    /// Change an `IfcObject`'s class in place (#483): the entity keeps its
+    /// id, file position, `GlobalId` and relationships, and the change
+    /// undoes exactly. Produces the entity; the batch outcome carries a
+    /// [`ReassignReport`](super::ReassignReport).
+    ///
+    /// Attributes move to the new class by name (`IfcColumn` to
+    /// `IfcColumnStandardCase`); `attributes` set values over those carried.
+    /// A set attribute the new class does not declare, or derives, is
+    /// refused with [`AttributesDropped`] unless
+    /// [`ReassignClassOptions::drop_unmapped`]. A relationship the new class
+    /// cannot hold is refused: [`WrongReferenceType`], [`RelationshipLost`],
+    /// [`InverseCardinality`], and [`TypeRuleChanged`] for a typed object
+    /// whose type rule would change. A class with fewer attributes than the
+    /// stored record is refused with [`UnsupportedReassignment`]. `WHERE`
+    /// rules are not evaluated, neither the entity's nor its referrers'
+    /// (an `IfcRelSpaceBoundary` of `.PHYSICAL.` accepts a wall moved to
+    /// `IfcVirtualElement`).
+    ///
+    /// [`AttributesDropped`]: super::AuthoringFailure::AttributesDropped
+    /// [`WrongReferenceType`]: super::AuthoringFailure::WrongReferenceType
+    /// [`RelationshipLost`]: super::AuthoringFailure::RelationshipLost
+    /// [`InverseCardinality`]: super::AuthoringFailure::InverseCardinality
+    /// [`TypeRuleChanged`]: super::AuthoringFailure::TypeRuleChanged
+    /// [`UnsupportedReassignment`]: super::AuthoringFailure::UnsupportedReassignment
+    ReassignClass {
+        /// The `IfcObject` to reassign; keeps its id. Produces it.
+        entity: EntityId,
+        /// The new class, any case (`IfcColumnStandardCase`).
+        type_name: String,
+        /// Attributes of the new class to set over those carried by name.
+        attributes: NamedValues,
+        /// What to do where the reassignment would otherwise be refused.
+        options: ReassignClassOptions,
+    },
 }
 
 impl AuthorOp {
@@ -394,6 +428,7 @@ impl AuthorOp {
             Self::Create { .. } | Self::OwnerHistory(_) | Self::Purge(_) => {}
             Self::Edit { entity, .. }
             | Self::Remove { entity }
+            | Self::ReassignClass { entity, .. }
             | Self::RemoveProduct {
                 product: entity, ..
             } => ids.push(entity),
@@ -483,6 +518,7 @@ impl AuthorOp {
         match self {
             Self::Create { attributes, .. }
             | Self::Edit { attributes, .. }
+            | Self::ReassignClass { attributes, .. }
             | Self::Project { attributes, .. }
             | Self::Spatial { attributes, .. }
             | Self::Product { attributes, .. }

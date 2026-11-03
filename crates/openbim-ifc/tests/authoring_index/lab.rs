@@ -3,8 +3,8 @@
 pub(crate) use ifc::{
     apply_authoring, authoring_handle, name_based_guid, stage_authoring, AssignTypeOptions,
     AuthorOp, AuthoringFailure, Codec, CopyProductOptions, Entity, EntityId, History, Model,
-    PurgeOptions, RelateOptions, RemoveProductOptions, ReverseIndex, Schema, SchemaVersion,
-    StepCodec, Value,
+    PurgeOptions, ReassignClassOptions, RelateOptions, RemoveProductOptions, ReverseIndex, Schema,
+    SchemaVersion, StepCodec, Value,
 };
 
 pub(crate) fn text(s: &str) -> Value {
@@ -210,11 +210,12 @@ pub(crate) fn stage_both(model: &Model, schema: &Schema, ops: &[AuthorOp], at: &
         Ok(staged) => (
             true,
             format!(
-                "{:?}\n{:?}\n{:?}\n{:?}",
+                "{:?}\n{:?}\n{:?}\n{:?}\n{:?}",
                 staged.transaction.edits(),
                 staged.ids,
                 staged.reports,
-                staged.copies
+                staged.copies,
+                staged.reassignments
             ),
         ),
         Err(error) => (false, format!("{error:?}")),
@@ -303,6 +304,12 @@ impl Lab {
             probes.push(vec![AuthorOp::CopyProduct {
                 product: first,
                 options: CopyProductOptions::new(),
+            }]);
+            probes.push(vec![AuthorOp::ReassignClass {
+                entity: first,
+                type_name: "IfcWallStandardCase".into(),
+                attributes: vec![],
+                options: ReassignClassOptions::new(),
             }]);
             // A GlobalId another wall holds.
             let held = model

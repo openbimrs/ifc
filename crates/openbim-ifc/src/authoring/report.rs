@@ -133,3 +133,19 @@ pub struct CopiedEntity {
     /// Its type, as the file writes it (`IFCWALL`).
     pub type_name: String,
 }
+
+/// What [`AuthorOp::ReassignClass`](super::AuthorOp::ReassignClass) did
+/// (#483).
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ReassignReport {
+    /// The reassigned entity; it keeps its id.
+    pub entity: EntityId,
+    /// Its class before, in the schema's spelling (`IfcColumn`).
+    pub from: String,
+    /// Its class now, in the schema's spelling.
+    pub to: String,
+    /// The set attributes dropped, in the old class's slot order; empty
+    /// unless [`ReassignClassOptions::drop_unmapped`](super::ReassignClassOptions::drop_unmapped).
+    pub dropped: Vec<String>,
+}

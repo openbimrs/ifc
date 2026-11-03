@@ -9,9 +9,9 @@
 //! # Cost
 //!
 //! Reads of the base model go through the indexes it keeps (its reverse
-//! index, ADR 0023). The overlay keeps two of its own over the batch's
-//! records: who references a target, and which created entities have a
-//! type. Every lookup then costs the answer plus the batch's own records
+//! index, ADR 0023). The overlay keeps three of its own over the batch's
+//! records: who references a target, which created entities have a type,
+//! and which base entities were retyped to a class. Every lookup then costs the answer plus the batch's own records
 //! that match, never the size of the model or of the batch (#587).
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -34,6 +34,10 @@ pub(super) struct Overlay<'m> {
     batch_referrers: HashMap<EntityId, BTreeSet<EntityId>>,
     /// Per exact stored type name, the entities the batch created.
     created_by_type: HashMap<Arc<str>, BTreeSet<EntityId>>,
+    /// Per upper-case class, the base entities whose changed record has that
+    /// class and the base's differs. The transaction retypes them (ADR 0010,
+    /// 0022), so they leave their old bucket and join the new one's end.
+    retyped: HashMap<Arc<str>, BTreeSet<EntityId>>,
     /// Per record and slot, the references its list holds, read on the first
     /// membership question and dropped when the record is rewritten.
     lists: HashMap<EntityId, HashMap<usize, HashSet<EntityId>>>,
@@ -49,6 +53,7 @@ impl<'m> Overlay<'m> {
             removed: BTreeSet::new(),
             batch_referrers: HashMap::new(),
             created_by_type: HashMap::new(),
+            retyped: HashMap::new(),
             lists: HashMap::new(),
         }
     }
@@ -107,8 +112,10 @@ impl<'m> Overlay<'m> {
         } else {
             if let Some(old) = self.changed.remove(&id) {
                 self.unlink(id, &old);
+                self.unretype(id, &old);
             }
             self.link(id, &entity);
+            self.retype_to(id, &entity);
             self.changed.insert(id, entity);
         }
     }
@@ -121,6 +128,7 @@ impl<'m> Overlay<'m> {
         } else {
             if let Some(old) = self.changed.remove(&id) {
                 self.unlink(id, &old);
+                self.unretype(id, &old);
             }
             self.removed.insert(id);
         }
@@ -217,13 +225,50 @@ impl<'m> Overlay<'m> {
         }
     }
 
-    /// Ids of every entity of exactly `type_name` (upper case).
+    /// Whether the base entity `id` is of another class than `entity`.
+    fn differs_from_base(&self, id: EntityId, entity: &Entity) -> bool {
+        self.base
+            .get(id)
+            .is_some_and(|base| !base.type_name.eq_ignore_ascii_case(&entity.type_name))
+    }
+
+    /// Index the changed record `entity` of the base entity `id` as retyped,
+    /// when its class differs from the base's.
+    fn retype_to(&mut self, id: EntityId, entity: &Entity) {
+        if self.differs_from_base(id, entity) {
+            self.retyped
+                .entry(entity.type_name.to_ascii_uppercase().into())
+                .or_default()
+                .insert(id);
+        }
+    }
+
+    fn unretype(&mut self, id: EntityId, old: &Entity) {
+        if self.differs_from_base(id, old) {
+            let key = old.type_name.to_ascii_uppercase();
+            if let Some(ids) = self.retyped.get_mut(key.as_str()) {
+                ids.remove(&id);
+                if ids.is_empty() {
+                    self.retyped.remove(key.as_str());
+                }
+            }
+        }
+    }
+
+    /// Ids of every entity of exactly `type_name` (upper case): the base's
+    /// not removed or retyped away, the created, then the retyped to it, the
+    /// order the committed model's bucket holds them in.
     pub(super) fn ids_of_type(&self, type_name: &str) -> Vec<EntityId> {
         self.base
             .ids_of_type(type_name)
             .iter()
             .copied()
             .filter(|id| !self.removed.contains(id))
+            .filter(|id| {
+                self.changed
+                    .get(id)
+                    .is_none_or(|entity| entity.type_name.eq_ignore_ascii_case(type_name))
+            })
             .chain(
                 self.created_by_type
                     .get(type_name)
@@ -231,6 +276,7 @@ impl<'m> Overlay<'m> {
                     .flatten()
                     .copied(),
             )
+            .chain(self.retyped.get(type_name).into_iter().flatten().copied())
             .collect()
     }
 
@@ -311,16 +357,49 @@ impl<'m> Overlay<'m> {
         );
     }
 
+    /// The oracle for `retyped`: a scan of the changed records must find the
+    /// same retypes the maintained index holds.
+    #[cfg(debug_assertions)]
+    fn check_retyped(&self) {
+        let mut scanned: HashMap<Arc<str>, BTreeSet<EntityId>> = HashMap::new();
+        for (id, entity) in &self.changed {
+            if self.differs_from_base(*id, entity) {
+                scanned
+                    .entry(entity.type_name.to_ascii_uppercase().into())
+                    .or_default()
+                    .insert(*id);
+            }
+        }
+        assert_eq!(
+            scanned, self.retyped,
+            "the maintained retypes differ from a scan"
+        );
+    }
+
     /// One transaction holding every staged change.
     pub(super) fn into_transaction(self) -> Transaction {
         #[cfg(debug_assertions)]
-        self.check_batch_referrers();
+        {
+            self.check_batch_referrers();
+            self.check_retyped();
+        }
         let mut tx = Transaction::new(self.base);
         for (id, entity) in self.created {
             tx.stage(Edit::Create { id, entity });
         }
         for (id, entity) in self.changed {
             let before = self.base.get(id).map(|e| e.attributes.as_slice());
+            debug_assert!(
+                before.is_none_or(|b| b.len() <= entity.attributes.len()),
+                "{id}: a changed record is never shorter than the base's"
+            );
+            if self
+                .base
+                .get(id)
+                .is_some_and(|base| !base.type_name.eq_ignore_ascii_case(&entity.type_name))
+            {
+                tx.retype(id, Arc::clone(&entity.type_name));
+            }
             for (slot, value) in entity.attributes.into_iter().enumerate() {
                 if before.and_then(|b| b.get(slot)) != Some(&value) {
                     tx.set_attribute(id, slot, value);
@@ -343,3 +422,6 @@ pub(super) fn holds(values: &[Value], target: EntityId) -> bool {
         _ => false,
     })
 }
+
+#[cfg(test)]
+mod tests;
