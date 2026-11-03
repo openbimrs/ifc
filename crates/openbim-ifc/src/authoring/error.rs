@@ -53,6 +53,69 @@ pub enum AuthoringFailure {
     },
     /// The entity an operation edits or removes does not exist.
     MissingEntity(EntityId),
+    /// A reassignment would drop set attributes the new class does not
+    /// declare or derives (#483).
+    AttributesDropped {
+        /// The entity.
+        entity: EntityId,
+        /// Its class.
+        from: String,
+        /// The new class.
+        to: String,
+        /// The set attributes of `from` that would be lost.
+        attributes: Vec<String>,
+    },
+    /// A reassignment the transaction model cannot stage (#483).
+    UnsupportedReassignment {
+        /// The entity.
+        entity: EntityId,
+        /// Its class.
+        from: String,
+        /// The new class.
+        to: String,
+        /// Why.
+        detail: String,
+    },
+    /// A relationship relates the entity as an end the new class does not
+    /// declare (#483).
+    RelationshipLost {
+        /// The entity.
+        entity: EntityId,
+        /// The relationship.
+        relationship: EntityId,
+        /// The inverse attribute of the old class the relationship fills.
+        inverse: String,
+        /// The new class.
+        to: String,
+    },
+    /// The entity as the new class would break the bounds of an inverse
+    /// attribute the new class declares (#483).
+    InverseCardinality {
+        /// The entity.
+        entity: EntityId,
+        /// The new class.
+        to: String,
+        /// The inverse attribute.
+        inverse: String,
+        /// The referrers found.
+        found: usize,
+        /// The declared lower bound.
+        lower: u64,
+        /// The declared upper bound; `None` for `?`.
+        upper: Option<u64>,
+    },
+    /// A typed object would fall under another type rule than its type
+    /// object is checked by, which the batch cannot check (#483).
+    TypeRuleChanged {
+        /// The object.
+        object: EntityId,
+        /// Its type object (the relationship, if it has no relating end).
+        type_object: EntityId,
+        /// The rule the old class falls under (`IfcWall.CorrectTypeAssigned`).
+        from_rule: Option<String>,
+        /// The rule the new class falls under.
+        to_rule: String,
+    },
     /// A value references an entity that does not exist.
     MissingReference {
         /// The entity being written.
@@ -339,6 +402,56 @@ impl fmt::Display for AuthoringFailure {
                 detail,
             } => write!(f, "`{entity}.{attribute}`: {detail}"),
             Self::MissingEntity(id) => write!(f, "no entity {id}"),
+            Self::AttributesDropped {
+                entity,
+                from,
+                to,
+                attributes,
+            } => write!(
+                f,
+                "{entity} as {to} would drop {from}'s {}, which {to} does not declare or derives; \
+                 set ReassignClassOptions::drop_unmapped to drop them",
+                attributes.join(", ")
+            ),
+            Self::UnsupportedReassignment {
+                entity,
+                from,
+                to,
+                detail,
+            } => write!(f, "cannot reassign {entity} from {from} to {to}: {detail}"),
+            Self::RelationshipLost {
+                entity,
+                relationship,
+                inverse,
+                to,
+            } => write!(
+                f,
+                "{relationship} relates {entity} as {inverse}, which {to} does not declare; \
+                 remove or edit the relationship first"
+            ),
+            Self::InverseCardinality {
+                entity,
+                to,
+                inverse,
+                found,
+                lower,
+                upper,
+            } => write!(
+                f,
+                "{entity} as {to} would have {found} {inverse}; {to} requires [{lower}:{}]",
+                upper.map_or_else(|| "?".to_owned(), |upper| upper.to_string())
+            ),
+            Self::TypeRuleChanged {
+                object,
+                type_object,
+                from_rule,
+                to_rule,
+            } => write!(
+                f,
+                "{object} is typed by {type_object}; as the new class it falls under {to_rule}, \
+                 not {}, which the batch cannot check: unassign the type first",
+                from_rule.as_deref().unwrap_or("no type rule")
+            ),
             Self::MissingReference {
                 entity,
                 attribute,

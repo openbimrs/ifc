@@ -5,7 +5,8 @@
 //! propagation of a type's representations, material usage and
 //! predefined type to the objects it is assigned to (#480), and
 //! assembling, assigning, unassigning, copying and removing shape
-//! representations (#481), applied as one transaction.
+//! representations (#481), and changing an object's class in place (#483),
+//! applied as one transaction.
 //!
 //! A batch is a list of [`AuthorOp`]s run in order against the model as the
 //! operations before them leave it, then committed as one
@@ -104,6 +105,7 @@ mod place;
 mod plan;
 mod propagate;
 mod purge;
+mod reassign;
 mod rebase;
 mod relate;
 mod release;
@@ -119,10 +121,12 @@ pub use error::{AuthoringError, AuthoringFailure};
 pub use op::{AuthorOp, NamedValues};
 pub use options::{
     AppendOptions, AssignTypeOptions, CopyPlacement, CopyPolicy, CopyProductOptions, GlobalIdMode,
-    LayerAxis, OwnerHistoryOp, PredefinedTypeMode, PurgeOptions, RelateOptions,
-    RemoveProductOptions, ReuseOptions,
+    LayerAxis, OwnerHistoryOp, PredefinedTypeMode, PurgeOptions, ReassignClassOptions,
+    RelateOptions, RemoveProductOptions, ReuseOptions,
 };
-pub use report::{CopiedEntity, CopyReport, KeepReason, KeptEntity, RemovalReport, RemovedEntity};
+pub use report::{
+    CopiedEntity, CopyReport, KeepReason, KeptEntity, ReassignReport, RemovalReport, RemovedEntity,
+};
 
 use overlay::Overlay;
 use plan::Planner;
@@ -154,6 +158,9 @@ pub struct StagedAuthoring {
     /// Per operation, what an [`AuthorOp::CopyProduct`] or
     /// [`AuthorOp::CopyEntity`] would copy (#479).
     pub copies: Vec<Option<CopyReport>>,
+    /// Per operation, what an [`AuthorOp::ReassignClass`] would change and
+    /// drop (#483).
+    pub reassignments: Vec<Option<ReassignReport>>,
 }
 
 /// What a committed batch did.
@@ -175,6 +182,9 @@ pub struct AuthoringOutcome {
     /// Per operation, what an [`AuthorOp::CopyProduct`] or
     /// [`AuthorOp::CopyEntity`] copied, original by original (#479).
     pub copies: Vec<Option<CopyReport>>,
+    /// Per operation, what an [`AuthorOp::ReassignClass`] changed and
+    /// dropped (#483).
+    pub reassignments: Vec<Option<ReassignReport>>,
     /// The model revision after the commit.
     pub revision: u64,
 }
@@ -213,6 +223,7 @@ pub fn stage_authoring(
         ids: planner.ids,
         reports: planner.reports,
         copies: planner.copies,
+        reassignments: planner.reassignments,
         transaction: planner.view.into_transaction(),
     })
 }
@@ -242,6 +253,7 @@ pub fn apply_authoring(
         removed: applied.removed.into_iter().map(|(id, _)| id).collect(),
         reports: staged.reports,
         copies: staged.copies,
+        reassignments: staged.reassignments,
         revision: applied.revision,
     })
 }
