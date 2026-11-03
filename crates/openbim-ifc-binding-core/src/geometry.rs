@@ -404,6 +404,7 @@ fn colour_refusal(error: &ifc::ColourError) -> GeometryRefusal {
         E::Geometry(error) => return refusal(error),
         E::AmbiguousMaterial { item, .. } => ("ambiguous", Some(*item)),
         E::ItemsDiffer { product, .. } => ("ambiguous", Some(*product)),
+        E::DecidersDiffer { product, .. } => ("ambiguous", Some(*product)),
         E::UnsupportedSchema { .. } => ("unsupported", None),
         E::Style(S::AmbiguousStyleAssignment { item, .. }) => ("ambiguous", Some(*item)),
         E::Style(S::AmbiguousSurfaceColour { owner, .. }) => ("ambiguous", Some(*owner)),
