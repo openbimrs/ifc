@@ -137,20 +137,24 @@ fn index(source: &Arc<StepSource>) -> Option<Model> {
     model.reserve(frames.len());
     parser::apply_header(model.header_mut(), scanned.header().standard());
     let mut diagnostics = Vec::new();
-    for (span, (id, name, found)) in frames.iter().zip(records) {
+    let mut floor = 0;
+    for (span, (id, name, found, refs)) in frames.iter().zip(records) {
         model.insert_lazy(id, &name, span.start..span.end);
         diagnostics.extend(found);
+        floor = floor.max(refs);
     }
     // After the records and in file order, as the eager read reports them.
     for diagnostic in parser::diagnostics(input, &diagnostics, source.options, &model) {
         model.push_diagnostic(diagnostic);
     }
+    parser::reserve_through(&mut model, floor);
     Some(model)
 }
 
 /// One validated record: its id, its type name as parsed (borrowed from
-/// the input unless the source had to be rewritten) and its diagnostics.
-type Validated<'a> = (EntityId, Cow<'a, str>, Vec<openbim_step::Diagnostic>);
+/// the input unless the source had to be rewritten), its diagnostics and the
+/// highest id it references.
+type Validated<'a> = (EntityId, Cow<'a, str>, Vec<openbim_step::Diagnostic>, u64);
 
 /// Parses and validates every framed record under `options`, or `None` if
 /// any record fails.
@@ -162,11 +166,11 @@ fn validate_all<'a>(
 ) -> Option<Vec<Validated<'a>>> {
     let one = |span: &Span| -> Option<Validated<'a>> {
         let (record, found) = parser::decode(input, *span, options).ok()?;
-        let id = parser::validate(&record).ok()?;
+        let (id, refs) = parser::validate(&record).ok()?;
         let openbim_step::Instance::Simple(record) = record.instance else {
             return None;
         };
-        Some((id, record.name, found))
+        Some((id, record.name, found, refs))
     };
     if threads <= 1 || frames.len() < 2 {
         return frames.iter().map(one).collect();

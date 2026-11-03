@@ -40,6 +40,7 @@ pub(crate) fn parse(input: &[u8], options: ParseOptions) -> Result<Model, StepEr
         header: openbim_step::HeaderSection::default(),
         recovering: options.on_malformed_record == OnMalformed::Skip,
         error: None,
+        floor: 0,
     };
     let diagnostics = openbim_step::parse_events_borrowed(input, &mut sink, options)
         .map_err(|error| StepError::from_step(input, error))?;
@@ -53,7 +54,31 @@ pub(crate) fn parse(input: &[u8], options: ParseOptions) -> Result<Model, StepEr
     for diagnostic in self::diagnostics(input, &diagnostics, options, &model) {
         model.push_diagnostic(diagnostic);
     }
+    reserve_through(&mut model, sink.floor);
     Ok(model)
+}
+
+/// Keeps new entities off every id the source declared or referenced.
+///
+/// `floor` is the highest id the records declared (skipped ones included) or
+/// referenced; the highest id a diagnostic names is added. Without this a
+/// dropped record's id, or the id a dangling reference points at, would be
+/// handed out by `push` and silently capture the reference.
+pub(crate) fn reserve_through(model: &mut Model, floor: u64) {
+    let named = model
+        .diagnostics()
+        .iter()
+        .flat_map(|d| [d.instance(), d.referrer()])
+        .flatten()
+        .map(|id| id.0)
+        .filter(|id| *id != u64::MAX)
+        .max()
+        .unwrap_or(0);
+    // `u64::MAX` is no model id (see `model_id`); never reserve it.
+    let floor = floor.max(named).min(u64::MAX - 1);
+    if floor > 0 {
+        model.reserve_ids_through(EntityId(floor));
+    }
 }
 
 /// Decodes the record framed by `span` under `options`, as the lazy reader
@@ -96,7 +121,7 @@ pub(crate) fn diagnostics(
         .map(|(found, position)| {
             let span = found.span();
             let range = span.start..span.end;
-            let own = found.instance().and_then(|id| id.as_str().parse().ok());
+            let own = found.instance().and_then(|id| model_id(id.as_str()));
             let (kind, instance, referrer) = match found.kind() {
                 StepKind::SkippedRecord => (
                     DiagnosticKind::SkippedRecord,
@@ -142,7 +167,7 @@ pub(crate) fn diagnostics(
 /// The id of the record framed by `span`, decoded under `options`.
 fn referrer(input: &[u8], span: Span, options: ParseOptions) -> Option<EntityId> {
     let (record, _) = decode(input, span, options).ok()?;
-    record.id.as_str().parse().ok().map(EntityId)
+    model_id(record.id.as_str()).map(EntityId)
 }
 
 /// The id a skipped record starts with: `#` and the longest run of ASCII
@@ -156,12 +181,7 @@ pub(crate) fn skipped_instance(input: &[u8], span: Span) -> Option<EntityId> {
     let bytes = input.get(span.start..span.end)?;
     let digits = bytes.strip_prefix(b"#")?;
     let run = digits.iter().take_while(|b| b.is_ascii_digit()).count();
-    std::str::from_utf8(&digits[..run])
-        .ok()?
-        .parse()
-        .ok()
-        .filter(|id| *id != u64::MAX)
-        .map(EntityId)
+    model_id(std::str::from_utf8(&digits[..run]).ok()?).map(EntityId)
 }
 
 /// Converts records into the model as the parser emits them.
@@ -174,6 +194,8 @@ struct ModelSink {
     header: openbim_step::HeaderSection,
     recovering: bool,
     error: Option<StepError>,
+    /// The highest id declared or referenced so far.
+    floor: u64,
 }
 
 impl<'a> openbim_step::EventSink<Text<'a>> for ModelSink {
@@ -204,14 +226,17 @@ impl ModelSink {
         // Under the recovery policy that is the same class of problem as a
         // damaged record and is reported rather than fatal.
         let id_text = instance.id.as_str().to_string();
-        match convert(instance) {
+        if let Some(declared) = model_id(&id_text) {
+            self.floor = self.floor.max(declared);
+        }
+        match convert_noting(instance, &mut self.floor) {
             Ok((id, entity)) => self.model.insert(id, entity),
             Err(error) if self.recovering => {
                 let mut skipped = Diagnostic::new(
                     DiagnosticKind::SkippedRecord,
                     format!("skipped unrepresentable record #{id_text}: {error}"),
                 );
-                if let Ok(id) = id_text.parse() {
+                if let Some(id) = model_id(&id_text) {
                     skipped = skipped.with_instance(EntityId(id));
                 }
                 self.model.push_diagnostic(skipped);
@@ -224,11 +249,19 @@ impl ModelSink {
 pub(crate) fn convert(
     instance: openbim_step::DataRecord<Text<'_>>,
 ) -> Result<(EntityId, Entity), StepError> {
+    convert_noting(instance, &mut 0)
+}
+
+/// [`convert`], raising `refs` to the highest reference id it meets.
+fn convert_noting(
+    instance: openbim_step::DataRecord<Text<'_>>,
+    refs: &mut u64,
+) -> Result<(EntityId, Entity), StepError> {
     let id = instance_id(&instance.id)?;
     let Instance::Simple(record) = instance.instance else {
         return Err(complex());
     };
-    let attributes = values(record.parameters)?;
+    let attributes = values(record.parameters, refs)?;
     Ok((id, Entity::new(upper_arc(record.name), attributes)))
 }
 
@@ -239,23 +272,29 @@ pub(crate) fn convert(
 /// exactly the same records. They share every fallible step -- the id, the
 /// simple-instance rule, integers, reals and references go through the same
 /// helpers -- and `tests/lazy_read.rs` checks the agreement on the corpus.
+///
+/// Returns the record's id and the highest id it references (0 for none).
 pub(crate) fn validate(
     instance: &openbim_step::DataRecord<Text<'_>>,
-) -> Result<EntityId, StepError> {
+) -> Result<(EntityId, u64), StepError> {
     let id = instance_id(&instance.id)?;
+    let mut refs = 0;
     for parameter in &simple(instance)?.parameters {
-        check(parameter)?;
+        check(parameter, &mut refs)?;
     }
-    Ok(id)
+    Ok((id, refs))
 }
 
-fn check(parameter: &Parameter<Text<'_>>) -> Result<(), StepError> {
+fn check(parameter: &Parameter<Text<'_>>, refs: &mut u64) -> Result<(), StepError> {
     match parameter {
         Parameter::Integer(value) => integer(value).map(drop),
         Parameter::Real(value) => real(value).map(drop),
-        Parameter::Ref(id) => reference(id).map(drop),
-        Parameter::List(items) => items.iter().try_for_each(check),
-        Parameter::Typed { value, .. } => check(value),
+        Parameter::Ref(id) => {
+            *refs = (*refs).max(reference(id)?.0);
+            Ok(())
+        }
+        Parameter::List(items) => items.iter().try_for_each(|item| check(item, refs)),
+        Parameter::Typed { value, .. } => check(value, refs),
         Parameter::Null
         | Parameter::Derived
         | Parameter::Bool(_)
@@ -266,11 +305,16 @@ fn check(parameter: &Parameter<Text<'_>>) -> Result<(), StepError> {
     }
 }
 
+/// An instance id as the record model holds it: a `u64` below `u64::MAX`,
+/// because the next free id above `u64::MAX` does not exist.
+fn model_id(text: &str) -> Option<u64> {
+    text.parse().ok().filter(|id| *id != u64::MAX)
+}
+
 fn instance_id(id: &openbim_step::InstanceId) -> Result<EntityId, StepError> {
-    id.as_str()
-        .parse()
+    model_id(id.as_str())
         .map(EntityId)
-        .map_err(|_| StepError::Syntax {
+        .ok_or_else(|| StepError::Syntax {
             offset: 0,
             detail: "instance id exceeds the IFC record model range".into(),
         })
@@ -304,10 +348,9 @@ fn real(value: &str) -> Result<f64, StepError> {
 }
 
 fn reference(id: &openbim_step::InstanceId) -> Result<EntityId, StepError> {
-    id.as_str()
-        .parse()
+    model_id(id.as_str())
         .map(EntityId)
-        .map_err(|_| StepError::Syntax {
+        .ok_or_else(|| StepError::Syntax {
             offset: 0,
             detail: "reference id exceeds the IFC record model range".into(),
         })
@@ -405,15 +448,15 @@ pub(crate) fn apply_header(header: &mut ifc_model::header::Header, source: Stand
 /// and the parser grows its buffers by doubling. Every entity would then
 /// keep up to twice the memory its attributes need for the life of the
 /// model -- measured at +14-41% resident on real files.
-fn values(parameters: Box<[Parameter<Text<'_>>]>) -> Result<Vec<Value>, StepError> {
+fn values(parameters: Box<[Parameter<Text<'_>>]>, refs: &mut u64) -> Result<Vec<Value>, StepError> {
     let mut out = Vec::with_capacity(parameters.len());
     for parameter in parameters.into_vec() {
-        out.push(parameter_to_value(parameter)?);
+        out.push(parameter_to_value(parameter, refs)?);
     }
     Ok(out)
 }
 
-fn parameter_to_value(parameter: Parameter<Text<'_>>) -> Result<Value, StepError> {
+fn parameter_to_value(parameter: Parameter<Text<'_>>, refs: &mut u64) -> Result<Value, StepError> {
     Ok(match parameter {
         Parameter::Null => Value::Null,
         Parameter::Derived => Value::Derived,
@@ -424,11 +467,15 @@ fn parameter_to_value(parameter: Parameter<Text<'_>>) -> Result<Value, StepError
         Parameter::Text(value) => Value::Text(Arc::from(&*value)),
         Parameter::Binary(value) => Value::Binary(Arc::from(&*value)),
         Parameter::Enum(value) => Value::Enum(upper_arc(value)),
-        Parameter::Ref(id) => Value::Ref(reference(&id)?),
-        Parameter::List(items) => Value::List(values(items)?),
+        Parameter::Ref(id) => {
+            let id = reference(&id)?;
+            *refs = (*refs).max(id.0);
+            Value::Ref(id)
+        }
+        Parameter::List(items) => Value::List(values(items, refs)?),
         Parameter::Typed { type_name, value } => Value::Typed {
             type_name: upper_arc(type_name),
-            value: Box::new(parameter_to_value(*value)?),
+            value: Box::new(parameter_to_value(*value, refs)?),
         },
     })
 }

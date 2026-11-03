@@ -20,6 +20,16 @@ everything released before per-crate changelogs began.
 
 Semver: patch (additive)
 
+### Fixed (#617)
+
+- After a read, `Model::next_id` is above every id the file declared, skipped
+  records included, and every id it references, so a new entity never takes
+  the id of a dangling reference or a skipped record. Applies to strict
+  reads too. `u64::MAX` is no instance id: a strict read refuses it, a
+  lenient read skips the record.
+
+Semver: patch
+
 ## [0.6.2] - 2026-10-28
 
 ### Changed

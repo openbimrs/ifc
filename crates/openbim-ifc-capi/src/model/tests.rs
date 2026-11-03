@@ -156,7 +156,8 @@ fn an_edit_and_an_added_entity_survive_writing() {
         )
     };
     assert_eq!(status, OpenbimIfcStatus::Ok);
-    assert_eq!(id, 4);
+    // The fixture references #9 without declaring it; the new id stays above it (#617).
+    assert_eq!(id, 10);
 
     let mut required = 0;
     // SAFETY: size query.
@@ -174,7 +175,7 @@ fn an_edit_and_an_added_entity_survive_writing() {
         (nodes[0].kind, &strings[..]),
         (OPENBIM_IFC_KIND_TEXT, &b"Renamed"[..])
     );
-    let (nodes, _) = attribute(reparsed, 4, 0);
+    let (nodes, _) = attribute(reparsed, 10, 0);
     assert_eq!(
         (nodes[0].kind, nodes[0].child_count),
         (OPENBIM_IFC_KIND_LIST, 2)
