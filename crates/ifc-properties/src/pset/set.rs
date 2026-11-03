@@ -28,13 +28,9 @@ use ifc_model::{EntityId, Model, Value};
 
 use crate::error::PropertyAnomaly;
 use crate::nesting::Nesting;
+use crate::pset::attach::sets_by_object;
 use crate::pset::scalar::{read_property, Property};
 
-/// `IfcRelDefinesByProperties`: objects at slot 4, definition at slot 5.
-const REL_RELATED_OBJECTS: usize = 4;
-const REL_RELATING_DEFINITION: usize = 5;
-/// `IfcTypeObject.HasPropertySets`.
-const TYPE_HAS_PROPERTY_SETS: usize = 5;
 /// `IfcPropertySet.HasProperties`.
 const SET_HAS_PROPERTIES: usize = 4;
 /// `IfcRoot.Name` / `Description`.
@@ -136,28 +132,6 @@ pub fn property_set_checked(
     Some((set, anomalies))
 }
 
-/// Read each property set once, however many objects share it, keeping
-/// its anomalies for one report.
-#[derive(Default)]
-struct SetCache {
-    sets: BTreeMap<EntityId, Option<PropertySet>>,
-    anomalies: BTreeMap<EntityId, Vec<PropertyAnomaly>>,
-}
-
-impl SetCache {
-    fn get(&mut self, model: &Model, id: EntityId) -> Option<PropertySet> {
-        if let Some(set) = self.sets.get(&id) {
-            return set.clone();
-        }
-        let read = property_set_checked(model, id).map(|(set, anomalies)| {
-            self.anomalies.insert(id, anomalies);
-            set
-        });
-        self.sets.insert(id, read.clone());
-        read
-    }
-}
-
 /// Property sets found on each object, with how each one was attached.
 pub type AttachedSets = BTreeMap<EntityId, Vec<(Attachment, PropertySet)>>;
 
@@ -171,90 +145,8 @@ pub type AttachedSets = BTreeMap<EntityId, Vec<(Attachment, PropertySet)>>;
 /// relationships whose targets are missing from the file, and, once per set,
 /// the members [`property_set_checked`] could not resolve.
 pub fn property_sets_by_object(model: &Model) -> (AttachedSets, Vec<PropertyAnomaly>) {
-    let mut out: AttachedSets = BTreeMap::new();
-    let mut anomalies = Vec::new();
-    let mut cache = SetCache::default();
-    // Which entities are type objects, from the IFC4 table as always, or
-    // the newest bundled one in a build without it (#306).
-    let (_, schema) = crate::baseline::table(None);
-
-    // Route 1: IfcRelDefinesByProperties, for occurrences.
-    for &id in model.ids_of_type("IFCRELDEFINESBYPROPERTIES") {
-        let Some(rel) = model.get(id) else { continue };
-        let Some(definition) = rel
-            .attributes
-            .get(REL_RELATING_DEFINITION)
-            .and_then(one_ref)
-        else {
-            continue;
-        };
-        let Some(set) = cache.get(model, definition) else {
-            // Quantity sets travel this relationship too and are read by the
-            // quantity module; only note a definition that is not in the file.
-            if model.get(definition).is_none() {
-                anomalies.push(PropertyAnomaly::MissingDefinition {
-                    relationship: id,
-                    definition,
-                });
-            }
-            continue;
-        };
-        for object in rel
-            .attributes
-            .get(REL_RELATED_OBJECTS)
-            .and_then(refs)
-            .unwrap_or_default()
-        {
-            let Some(target) = model.get(object) else {
-                anomalies.push(PropertyAnomaly::MissingObject {
-                    relationship: id,
-                    object,
-                });
-                continue;
-            };
-            // The WHERE rule: a type object must not appear here.
-            if schema.is_a(&target.type_name.to_ascii_uppercase(), "IFCTYPEOBJECT") {
-                anomalies.push(PropertyAnomaly::TypeAttachedByRelationship {
-                    relationship: id,
-                    type_object: object,
-                });
-            }
-            out.entry(object)
-                .or_default()
-                .push((Attachment::Occurrence, set.clone()));
-        }
-    }
-
-    // Route 2: IfcTypeObject.HasPropertySets, a direct attribute.
-    for (type_name, _) in model.type_histogram() {
-        let upper = type_name.to_ascii_uppercase();
-        if !schema.is_a(&upper, "IFCTYPEOBJECT") {
-            continue;
-        }
-        for &id in model.ids_of_type(&upper) {
-            let Some(entity) = model.get(id) else {
-                continue;
-            };
-            for set_id in entity
-                .attributes
-                .get(TYPE_HAS_PROPERTY_SETS)
-                .and_then(refs)
-                .unwrap_or_default()
-            {
-                if let Some(set) = cache.get(model, set_id) {
-                    out.entry(id).or_default().push((Attachment::Type, set));
-                }
-            }
-        }
-    }
-
-    for sets in out.values_mut() {
-        sets.sort_by_key(|(_, set)| set.id);
-    }
-    // Member anomalies, once per set and in set-id order.
-    for found in cache.anomalies.into_values() {
-        anomalies.extend(found);
-    }
+    let (out, mut anomalies) =
+        sets_by_object(model, property_set_checked, |set: &PropertySet| set.id);
     // A set shared by many objects is checked once.
     let mut unique: BTreeMap<EntityId, &PropertySet> = BTreeMap::new();
     for (_, set) in out.values().flatten() {
@@ -290,20 +182,6 @@ fn duplicate_property_names(set: &PropertySet, anomalies: &mut Vec<PropertyAnoma
 fn text(value: &Value) -> Option<Arc<str>> {
     match value.unwrap_typed() {
         Value::Text(t) => Some(t.clone()),
-        _ => None,
-    }
-}
-
-fn one_ref(value: &Value) -> Option<EntityId> {
-    match value.unwrap_typed() {
-        Value::Ref(id) => Some(*id),
-        _ => None,
-    }
-}
-
-fn refs(value: &Value) -> Option<Vec<EntityId>> {
-    match value {
-        Value::List(items) => Some(items.iter().filter_map(one_ref).collect()),
         _ => None,
     }
 }

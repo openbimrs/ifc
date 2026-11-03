@@ -4,6 +4,7 @@
 //! ## Internal split
 //!
 //! - `set.rs`: IfcPropertySet and relationships.
+//! - `attach.rs`: the two attachment routes, shared with the quantity view.
 //! - `scalar.rs`: single/bounded/list/enumerated values.
 //! - `complex.rs`: nested complex properties.
 //! - `root_authoring.rs`: release-bound `IfcRoot` writers and their
@@ -14,6 +15,7 @@
 //! - `value_form.rs`: the typed form every authored `IfcValue` is written
 //!   in (#215).
 
+pub(crate) mod attach;
 mod complex;
 pub(crate) mod scalar;
 mod set;
