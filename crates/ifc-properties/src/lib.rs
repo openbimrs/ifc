@@ -16,7 +16,7 @@
 //! | `unit` | Unit assignment, prefixes and conversion-based units |
 //! | `convert` | Conversion between units, named conversion units, length formatting |
 //! | `value` | `IfcValue` measure types and their interpretation |
-//! | `query` | Lookup helpers: property by name, pset by element |
+//! | `query` | Per-object resolution of property and quantity sets with type inheritance; lookup by name |
 //! | `nesting` | Bounded, cycle-aware traversal of complex properties and quantities |
 //! | `error` | Why a property lookup failed |
 //!
@@ -117,10 +117,13 @@ pub use quantity::{
     set_quantity_value, Comparison, ComputedQuantity, QuantityExtras, Tolerance,
 };
 pub use quantity::{
-    quantity_set, quantity_sets, stated_unit, Quantity, QuantityKind, QuantitySet, UnresolvedValue,
+    quantity_set, quantity_sets, quantity_sets_by_object, stated_unit, AttachedQuantitySets,
+    Quantity, QuantityKind, QuantitySet, UnresolvedValue,
 };
 pub use query::{
-    properties_of, property_value, resolved_properties, ResolvedProperties, ResolvedSet, Source,
+    properties_of, property_value, quantities_of, quantity_value, resolved_properties,
+    resolved_quantities, ResolvedProperties, ResolvedQuantities, ResolvedQuantitySet, ResolvedSet,
+    Source,
 };
 pub use template::{
     property_set_template, property_set_template_checked, property_set_templates,

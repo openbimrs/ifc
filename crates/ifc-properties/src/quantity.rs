@@ -6,6 +6,7 @@
 //! ## Internal split
 //!
 //! - `set.rs`: IfcElementQuantity.
+//! - `by_object.rs`: quantity sets by the object carrying them.
 //! - `simple.rs`: length/area/volume/count/time/weight, with or without a
 //!   readable value.
 //! - `complex.rs`: nested physical complex quantities.
@@ -13,6 +14,7 @@
 //! - `release.rs`: the declared release's layout those updates write.
 //! - `validation.rs`: units/dimensions/formula consistency.
 
+mod by_object;
 mod complex;
 mod edit;
 pub(crate) mod release;
@@ -20,6 +22,7 @@ mod set;
 mod simple;
 mod validation;
 
+pub use by_object::{quantity_sets_by_object, AttachedQuantitySets};
 pub use edit::{
     add_quantity_to_set, create_quantity, create_quantity_with, set_description, set_name,
     set_quantity_value, QuantityExtras,
