@@ -12,6 +12,16 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#677)
+
+- `ColourResolver::product_decider` compares item styles by their
+  `IfcSurfaceStyle` alone: items each with their own `IfcStyledItem` of one
+  shared surface style now yield `ColourDecider::ItemStyle` (the first item's)
+  instead of `DecidersDiffer`. Different surface styles of equal colour still
+  differ.
+
+Semver: patch.
+
 ### Changed (#634)
 
 - `AuthorOp::ReassignClass` reassigns a stored entity to a class with fewer
