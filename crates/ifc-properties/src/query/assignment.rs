@@ -29,12 +29,12 @@ use std::collections::BTreeMap;
 use ifc_model::{EntityId, Model, Value};
 
 use crate::error::PropertyAnomaly;
-use crate::pset::{property_sets_by_object, AttachedSets, Attachment, PropertySet};
+use crate::pset::{property_sets_by_object, Attachment, PropertySet};
 
 const REL_TYPE_RELATED_OBJECTS: usize = 4;
 const REL_TYPE_RELATING_TYPE: usize = 5;
 
-/// Where a resolved property set came from.
+/// Where a resolved property or quantity set came from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Source {
     /// Stated directly on the occurrence.
@@ -68,21 +68,76 @@ pub type ResolvedProperties = BTreeMap<EntityId, Vec<ResolvedSet>>;
 /// ordering or hash iteration.
 pub fn resolved_properties(model: &Model) -> (ResolvedProperties, Vec<PropertyAnomaly>) {
     let (direct, mut anomalies) = property_sets_by_object(model);
-    let types = type_assignments(model, &mut anomalies);
+    let out = resolve(model, &direct, &mut anomalies)
+        .into_iter()
+        .map(|(object, sets)| {
+            let sets = sets
+                .into_iter()
+                .map(|p| ResolvedSet {
+                    source: p.source,
+                    set: p.set,
+                    shadowed: p.shadowed.map(|(source, set)| {
+                        Box::new(ResolvedSet {
+                            source,
+                            set,
+                            shadowed: None,
+                        })
+                    }),
+                })
+                .collect();
+            (object, sets)
+        })
+        .collect();
+    (out, anomalies)
+}
 
-    // Every object that has properties of its own or a type that does.
+/// A set that carries an id and a name, so precedence can key it.
+pub(super) trait NamedSet: Clone {
+    fn set_id(&self) -> EntityId;
+    fn set_name(&self) -> Option<&str>;
+}
+
+impl NamedSet for PropertySet {
+    fn set_id(&self) -> EntityId {
+        self.id
+    }
+
+    fn set_name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+}
+
+/// A set that won its name for one object, and the type set it overrode.
+pub(super) struct Precedence<S> {
+    pub(super) source: Source,
+    pub(super) set: S,
+    pub(super) shadowed: Option<(Source, S)>,
+}
+
+/// Apply precedence to the sets attached to each object and its type.
+///
+/// Anomalies for type assignments and for same-named sets on one owner are
+/// appended to `anomalies`.
+pub(super) fn resolve<S: NamedSet>(
+    model: &Model,
+    direct: &BTreeMap<EntityId, Vec<(Attachment, S)>>,
+    anomalies: &mut Vec<PropertyAnomaly>,
+) -> BTreeMap<EntityId, Vec<Precedence<S>>> {
+    let types = type_assignments(model, anomalies);
+
+    // Every object that has sets of its own or a type that does.
     let mut objects: Vec<EntityId> = direct.keys().copied().collect();
     objects.extend(types.keys().copied());
     objects.sort_unstable();
     objects.dedup();
 
-    duplicate_set_names(&direct, &mut anomalies);
+    duplicate_set_names(direct, anomalies);
 
-    let mut out: BTreeMap<EntityId, Vec<ResolvedSet>> = BTreeMap::new();
+    let mut out: BTreeMap<EntityId, Vec<Precedence<S>>> = BTreeMap::new();
     for object in objects {
         // Type sets first, so occurrence sets can overwrite by name. Within
         // one source, sets arrive in id order and the first of a name wins.
-        let mut by_name: BTreeMap<String, ResolvedSet> = BTreeMap::new();
+        let mut by_name: BTreeMap<String, Precedence<S>> = BTreeMap::new();
         if let Some(&type_id) = types.get(&object) {
             for (attachment, set) in direct.get(&type_id).into_iter().flatten() {
                 // A type's own sets are what an occurrence inherits. Sets
@@ -95,7 +150,7 @@ pub fn resolved_properties(model: &Model) -> (ResolvedProperties, Vec<PropertyAn
                 }
                 by_name.insert(
                     key(set),
-                    ResolvedSet {
+                    Precedence {
                         source: Source::Type(type_id),
                         set: set.clone(),
                         shadowed: None,
@@ -115,10 +170,10 @@ pub fn resolved_properties(model: &Model) -> (ResolvedProperties, Vec<PropertyAn
             {
                 continue;
             }
-            let shadowed = by_name.remove(&key(set)).map(Box::new);
+            let shadowed = by_name.remove(&key(set)).map(|r| (r.source, r.set));
             by_name.insert(
                 key(set),
-                ResolvedSet {
+                Precedence {
                     source: Source::Occurrence,
                     set: set.clone(),
                     shadowed,
@@ -129,7 +184,7 @@ pub fn resolved_properties(model: &Model) -> (ResolvedProperties, Vec<PropertyAn
             out.insert(object, by_name.into_values().collect());
         }
     }
-    (out, anomalies)
+    out
 }
 
 /// Report every owner holding two same-named sets through one route.
@@ -139,7 +194,10 @@ pub fn resolved_properties(model: &Model) -> (ResolvedProperties, Vec<PropertyAn
 /// does. An occurrence set overriding a same-named type set is precedence,
 /// not a duplicate, and is not reported. Sets arrive in id order, so the
 /// kept set is the one resolution keeps.
-fn duplicate_set_names(direct: &AttachedSets, anomalies: &mut Vec<PropertyAnomaly>) {
+fn duplicate_set_names<S: NamedSet>(
+    direct: &BTreeMap<EntityId, Vec<(Attachment, S)>>,
+    anomalies: &mut Vec<PropertyAnomaly>,
+) {
     for (&owner, sets) in direct {
         let mut kept: BTreeMap<(bool, String), EntityId> = BTreeMap::new();
         for (attachment, set) in sets {
@@ -148,10 +206,10 @@ fn duplicate_set_names(direct: &AttachedSets, anomalies: &mut Vec<PropertyAnomal
                 Some(&first) => anomalies.push(PropertyAnomaly::DuplicateSetName {
                     owner,
                     kept: first,
-                    rejected: set.id,
+                    rejected: set.set_id(),
                 }),
                 None => {
-                    kept.insert(slot, set.id);
+                    kept.insert(slot, set.set_id());
                 }
             }
         }
@@ -238,10 +296,10 @@ fn type_assignments(
 /// `ExistsName` requires one, so the fallback only fires on malformed files.
 /// Keying those by id keeps them distinct instead of collapsing every
 /// unnamed set into one bucket.
-fn key(set: &PropertySet) -> String {
-    match &set.name {
+fn key<S: NamedSet>(set: &S) -> String {
+    match set.set_name() {
         Some(name) => name.to_string(),
-        None => format!("#{}", set.id.0),
+        None => format!("#{}", set.set_id().0),
     }
 }
 
