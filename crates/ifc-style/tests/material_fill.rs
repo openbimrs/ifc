@@ -434,3 +434,117 @@ fn a_bare_style_resolves_and_a_non_fill_is_refused() {
         );
     }
 }
+
+#[test]
+fn a_refused_view_leaves_the_section_fill_readable() {
+    for name in ["material_fill.ifc", "material_fill_ifc4x3.ifc"] {
+        let model = fixture(name);
+        let id = material(&model, "CutAndTiledProjection");
+        let index = StyleIndex::new(StyleView::new(&model, schema_of(&model))).unwrap();
+        let tiles = StyleError::UnsupportedFill {
+            style: named(&model, "IFCFILLAREASTYLE", 0, "Tiled cut"),
+            entity: member(&model, "Tiled cut", 0),
+            construct: "IfcFillAreaStyleTiles".to_owned(),
+        };
+        let entries = index.material_fills_by_context(id, StyleUnits::SI).unwrap();
+        assert_eq!(entries.len(), 2, "{name}");
+        assert_eq!(entries[0].target_view.as_deref(), Some("SECTION_VIEW"));
+        let section = entries[0].fill.as_ref().unwrap();
+        assert_eq!(section.name.as_deref(), Some("Section fill"), "{name}");
+        assert_eq!(section.background, Some([0.7; 3]), "{name}");
+        assert!(near(section.lines[0].spacing, 0.005), "{name}");
+        assert_eq!(entries[1].target_view.as_deref(), Some("ELEVATION_VIEW"));
+        assert_eq!(entries[1].fill, Err(tiles.clone()), "{name}");
+        assert_eq!(index.material_fills(id, StyleUnits::SI), Err(tiles.clone()));
+        assert_eq!(index.material_fill(id, StyleUnits::SI), Err(tiles.clone()));
+        let view = index
+            .material_fill_for_view(id, "SECTION_VIEW", StyleUnits::SI)
+            .unwrap()
+            .unwrap();
+        assert_eq!(view.name.as_deref(), Some("Section fill"), "{name}");
+        assert_eq!(
+            index.material_fill_for_view(id, "ELEVATION_VIEW", StyleUnits::SI),
+            Err(tiles),
+            "{name}"
+        );
+    }
+}
+
+/// `material_fills` and `material_fills_by_context` agree on `model`: on an
+/// `Ok` the same contexts with equal fields, on an error an error or a
+/// refused entry.
+fn assert_agree(name: &str, model: &Model) {
+    let index = StyleIndex::new(StyleView::new(model, schema_of(model))).unwrap();
+    for (id, _) in model.of_type("IFCMATERIAL") {
+        let by_context = index.material_fills_by_context(id, StyleUnits::SI);
+        match index.material_fills(id, StyleUnits::SI) {
+            Ok(fills) => {
+                let entries = by_context.unwrap();
+                assert_eq!(fills.len(), entries.len(), "{name} {id:?}");
+                for (fill, entry) in fills.iter().zip(&entries) {
+                    assert_eq!(fill.representation, entry.representation);
+                    assert_eq!(fill.context, entry.context);
+                    assert_eq!(fill.identifier, entry.identifier);
+                    assert_eq!(fill.context_type, entry.context_type);
+                    assert_eq!(fill.target_view, entry.target_view);
+                    assert_eq!(
+                        fill.user_defined_target_view,
+                        entry.user_defined_target_view
+                    );
+                    assert_eq!(fill.parent_context, entry.parent_context);
+                    assert_eq!(Ok(&fill.fill), entry.fill.as_ref(), "{name} {id:?}");
+                }
+            }
+            Err(error) => {
+                if let Ok(entries) = by_context {
+                    assert!(
+                        entries.iter().any(|entry| entry.fill.is_err()),
+                        "{name} {id:?}: {error}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn per_context_results_agree_with_material_fills() {
+    for name in RELEASES {
+        assert_agree(name, &fixture(name));
+    }
+    // A refused representation whose ContextOfItems is no context: the
+    // whole call fails with a different error than `material_fills`.
+    let source = "ISO-10303-21;\nHEADER;FILE_DESCRIPTION((''),'2;1');\
+         FILE_NAME('','',(''),(''),'','','');FILE_SCHEMA(('IFC4'));ENDSEC;\nDATA;\n\
+         #1=IFCMATERIAL('M',$,$);\n#2=IFCCARTESIANPOINT((0.,0.));\n\
+         #3=IFCAXIS2PLACEMENT2D(#2,$);\n\
+         #4=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Plan',2,1.E-05,#3,$);\n\
+         #10=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#4,$,.SECTION_VIEW.,$);\n\
+         #20=IFCFILLAREASTYLE('Grey',(#22),.T.);\n#22=IFCCOLOURRGB($,0.5,0.5,0.5);\n\
+         #24=IFCFILLAREASTYLE('Tiled',(#25),.T.);\n\
+         #25=IFCFILLAREASTYLETILES((#27,#27),(#28),1.);\n\
+         #26=IFCDIRECTION((1.,0.));\n#27=IFCVECTOR(#26,0.01);\n\
+         #28=IFCSTYLEDITEM($,(#29),$);\n#29=IFCCURVESTYLE($,$,$,$,$);\n\
+         #5=IFCMATERIALDEFINITIONREPRESENTATION($,$,(#30,#31),#1);\n\
+         #30=IFCSTYLEDREPRESENTATION(#10,'Style','Material',(#40));\n\
+         #31=IFCSTYLEDREPRESENTATION(#20,'Style','Material',(#41));\n\
+         #40=IFCSTYLEDITEM($,(#20),$);\n#41=IFCSTYLEDITEM($,(#24),$);\n\
+         ENDSEC;\nEND-ISO-10303-21;\n";
+    let refused = StepCodec.read_bytes(source.as_bytes()).expect("parses");
+    assert_agree("refused", &refused);
+    let index = StyleIndex::new(StyleView::new(&refused, schema_of(&refused))).unwrap();
+    assert!(matches!(
+        index.material_fills(EntityId(1), StyleUnits::SI),
+        Err(StyleError::UnsupportedFill {
+            style: EntityId(24),
+            ..
+        })
+    ));
+    assert!(matches!(
+        index.material_fills_by_context(EntityId(1), StyleUnits::SI),
+        Err(StyleError::ReferenceType {
+            target: EntityId(20),
+            ..
+        })
+    ));
+}

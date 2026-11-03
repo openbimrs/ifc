@@ -39,6 +39,9 @@ fills in millimetres and degrees):
 |                | grey background) and `ELEVATION_VIEW` ('Elevation fill': 20 mm    |
 |                | hatching): different per view, so `material_fill` is ambiguous    |
 |                | and `material_fills` gives both.                                  |
+| `CutAndTiledProjection` | `SECTION_VIEW` 'Section fill' beside an `ELEVATION_VIEW`  |
+|                | 'Tiled cut' (not in IFC2X3): the section fill stays readable      |
+|                | where `material_fills` is refused (#624).                         |
 | (bare style)   | 'Library pattern': a hatching at 0.5 rad on a (0.8) background,   |
 |                | referenced by nothing.                                            |
 
@@ -315,7 +318,8 @@ def build(schema, label, minimal=False, **units):
     b.material("Layered", [(b.model, layered_model), (b.plan, layered_plan)])
     b.material("Shared", [(b.model, b.insulation()), (b.plan, b.insulation())])
     if not b.ifc2x3:
-        b.material("Tiled", [(b.plan, b.tiled())])
+        tiled = b.tiled()
+        b.material("Tiled", [(b.plan, tiled)])
     b.material("External", [(b.plan, b.external())])
     b.material("ByLayer", [(b.plan, b.by_layer())])
     b.material("Dashed", [(b.plan, b.dashed())])
@@ -331,6 +335,9 @@ def build(schema, label, minimal=False, **units):
     elevation = b.fill("Elevation fill", [b.continuous_hatch(0.02)])
     b.material("CutAndProjection", [(sub["SECTION_VIEW"], section),
                                     (sub["ELEVATION_VIEW"], elevation)])
+    if not b.ifc2x3:
+        b.material("CutAndTiledProjection", [(sub["SECTION_VIEW"], section),
+                                             (sub["ELEVATION_VIEW"], tiled)])
     b.fill("Library pattern", [b.continuous_hatch(0.003, 0.5),
                                b.colour(0.8, 0.8, 0.8)])
     b.material("Plain")

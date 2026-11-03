@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#624)
+
+- With `style` and `properties`: `material_fills_by_context(model, material)`, `material_fill_for_view(model, material, target_view)`, and `FillResolver`, which binds the release and resolves the project units once for many materials.
+
+Semver: patch (additive).
+
 ## [0.39.5] - 2026-10-30
 
 ### Added (#597)

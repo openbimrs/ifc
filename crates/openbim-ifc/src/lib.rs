@@ -362,7 +362,8 @@ pub use georeference::{georeferencing, GeoreferencingError};
 mod material_fill;
 #[cfg(all(feature = "style", feature = "properties"))]
 pub use material_fill::{
-    fill_area_style, material_fill, material_fills, project_style_units, MaterialFillError,
+    fill_area_style, material_fill, material_fill_for_view, material_fills,
+    material_fills_by_context, project_style_units, FillResolver, MaterialFillError,
 };
 
 // Converting a model's length unit (#469) reads every attribute against the

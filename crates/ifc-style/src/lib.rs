@@ -66,7 +66,8 @@ pub use curve_style::{CurveStyle, CurveStyleFont, CurveStyleFontPattern};
 pub use error::{StyleError, StyleResult};
 pub use extent::{PlanarBox, PlanarExtent};
 pub use fill_style::{
-    ContextFill, FillAreaStyle, FillAreaStyleHatching, FillAreaStyleTiles, HatchLine, MaterialFill,
+    ContextFill, ContextFillResult, FillAreaStyle, FillAreaStyleHatching, FillAreaStyleTiles,
+    HatchLine, MaterialFill,
 };
 pub use layer::PresentationLayer;
 pub use light::{
