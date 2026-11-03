@@ -16,7 +16,7 @@ use std::path::PathBuf;
 
 use ifc::{
     apply_authoring, authoring_handle, stage_authoring, AuthorOp, AuthoringError, AuthoringFailure,
-    AuthoringOutcome, Codec, EntityId, Model, ReassignClassOptions, Schema, SchemaVersion,
+    AuthoringOutcome, Codec, EntityId, History, Model, ReassignClassOptions, Schema, SchemaVersion,
     StepCodec, Value,
 };
 
@@ -414,6 +414,49 @@ fn an_inverse_the_new_class_requires_must_be_filled() {
     );
 }
 
+#[test]
+fn an_inverse_upper_bound_is_enforced() {
+    let (mut model, _) = scene();
+    let storey = model.ids_of_type("IFCBUILDINGSTOREY")[0];
+    let containment = |structure: EntityId| {
+        create(
+            "IfcRelContainedInSpatialStructure",
+            vec![
+                (
+                    "RelatedElements",
+                    Value::List(vec![Value::Ref(authoring_handle(0))]),
+                ),
+                ("RelatingStructure", Value::Ref(structure)),
+            ],
+        )
+    };
+    let ops = [
+        product(
+            "IfcProxy",
+            None,
+            vec![("ProxyType", enumeration("PRODUCT"))],
+        ),
+        create("IfcBuildingStorey", vec![("Name", text("Second"))]),
+        containment(storey),
+        containment(authoring_handle(1)),
+        AuthorOp::ReassignClass {
+            entity: authoring_handle(0),
+            type_name: "IfcAnnotation".into(),
+            attributes: vec![],
+            options: ReassignClassOptions::new().drop_unmapped(true),
+        },
+    ];
+    let error = apply(&mut model, ifc4(), &ops).expect_err("refused");
+    assert!(
+        matches!(
+            &*error.failure,
+            AuthoringFailure::InverseCardinality { inverse, found: 2, lower: 0, upper: Some(1), .. }
+                if inverse == "ContainedInStructure"
+        ),
+        "{error:?}"
+    );
+}
+
 fn read(name: &str) -> Model {
     let path = format!(
         "{}/../../test/fixtures/synthetic-relations/{name}",
@@ -488,6 +531,93 @@ fn refusals_leave_the_model_unchanged() {
     }
 }
 
+const FIXTURES: [(&str, SchemaVersion); 3] = [
+    ("cascade_ifc2x3.ifc", SchemaVersion::Ifc2x3),
+    ("cascade_ifc4.ifc", SchemaVersion::Ifc4),
+    ("cascade_ifc4x3.ifc", SchemaVersion::Ifc4x3),
+];
+
+fn bytes(model: &Model) -> Vec<u8> {
+    StepCodec.write_bytes(model).expect("writes")
+}
+
+/// Wall A #20, typed by #66, contained, voided and classified, becomes a
+/// standard case; undo, redo and replay give the exact bytes.
+#[test]
+fn undo_redo_and_replay_are_byte_identical() {
+    for (name, version) in FIXTURES {
+        let schema = ifc::schema::for_version(version).unwrap();
+        let mut model = read(name);
+        let original = bytes(&model);
+        let ops = [reassign(EntityId(20), "IfcWallStandardCase", vec![])];
+        let mut history = History::new(8);
+        history
+            .track(&mut model, |m| apply_authoring(m, schema, &ops, 5))
+            .unwrap_or_else(|error| panic!("{name}: {error}"));
+        let after = bytes(&model);
+        let expected = String::from_utf8(original.clone())
+            .unwrap()
+            .replace("#20=IFCWALL(", "#20=IFCWALLSTANDARDCASE(")
+            .into_bytes();
+        assert_eq!(after, expected, "{name}: the output");
+
+        history.undo(&mut model).unwrap();
+        assert_eq!(bytes(&model), original, "{name}: undo");
+        history.redo(&mut model).unwrap();
+        assert_eq!(bytes(&model), after, "{name}: redo");
+        history.undo(&mut model).unwrap();
+        apply_authoring(&mut model, schema, &ops, 5).unwrap();
+        assert_eq!(bytes(&model), after, "{name}: replay");
+    }
+}
+
+#[test]
+fn ifc2x3_has_no_type_rule() {
+    let to_slab = |predefined: bool| {
+        reassign(
+            EntityId(20),
+            "IfcSlab",
+            if predefined {
+                vec![("PredefinedType", enumeration("FLOOR"))]
+            } else {
+                vec![]
+            },
+        )
+    };
+    let mut model = read("cascade_ifc2x3.ifc");
+    let schema = ifc::schema::for_version(SchemaVersion::Ifc2x3).unwrap();
+    assert_eq!(model.get(EntityId(20)).unwrap().attributes.len(), 8);
+    let original = bytes(&model);
+    let mut history = History::new(4);
+    history
+        .track(&mut model, |m| apply(m, schema, &[to_slab(false)]))
+        .expect("IFC2X3 has no type rule");
+    assert_eq!(class(&model, EntityId(20)), "IFCSLAB");
+    assert_eq!(model.get(EntityId(20)).unwrap().attributes.len(), 9);
+    history.undo(&mut model).unwrap();
+    assert_eq!(bytes(&model), original, "undo restores the shorter record");
+
+    for (name, version) in [
+        ("cascade_ifc4.ifc", SchemaVersion::Ifc4),
+        ("cascade_ifc4x3.ifc", SchemaVersion::Ifc4x3),
+    ] {
+        let schema = ifc::schema::for_version(version).unwrap();
+        let mut model = read(name);
+        let failure = refusal(&mut model, schema, to_slab(true));
+        assert!(
+            matches!(
+                &failure,
+                AuthoringFailure::TypeRuleChanged { object, type_object, from_rule, to_rule }
+                    if *object == EntityId(20)
+                        && *type_object == EntityId(66)
+                        && from_rule.as_deref() == Some("IfcWall.CorrectTypeAssigned")
+                        && to_rule == "IfcSlab.CorrectTypeAssigned"
+            ),
+            "{name}: {failure:?}"
+        );
+    }
+}
+
 fn spec_root() -> Option<PathBuf> {
     let crate_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     [
@@ -522,7 +652,12 @@ fn every_type_rule_is_labelled_as_the_batch_reads_it() {
         let mut found = 0;
         for entity in normative.entities() {
             for rule in &entity.where_rules {
-                if rule.expression.contains("IsTypedBy") {
+                let typed = rule.expression.contains("IsTypedBy")
+                    || rule.expression.contains("RelatingType");
+                // IFC2X3 `IfcObject.WR1` is the one rule over the type
+                // relationship there; it is not a type-assignment rule.
+                let allowed = entity.name == "IfcObject" && rule.label == "WR1";
+                if typed && !allowed {
                     found += 1;
                     assert!(
                         ["CorrectTypeAssigned", "CorrectStyleAssigned"]
@@ -537,7 +672,7 @@ fn every_type_rule_is_labelled_as_the_batch_reads_it() {
         assert_eq!(
             found > 0,
             rules,
-            "{version:?}: {found} rules over IsTypedBy"
+            "{version:?}: {found} rules over the type relationship"
         );
     }
 }
