@@ -2,6 +2,8 @@
 
 use ifc_model::EntityId;
 
+use crate::error::StyleResult;
+
 /// A material's cut fill: one `IfcFillAreaStyle` resolved into hatch lines
 /// in metres and radians (`StyleIndex::material_fill`).
 ///
@@ -76,4 +78,30 @@ pub struct ContextFill {
     pub parent_context: Option<EntityId>,
     /// The fill.
     pub fill: MaterialFill,
+}
+
+/// What a material states in one representation context
+/// (`StyleIndex::material_fills_by_context`): the context, and its fill or
+/// the refusal that belongs to this context alone.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct ContextFillResult {
+    /// The lowest `IfcStyledRepresentation` of the material in this context
+    /// that states a fill or was refused.
+    pub representation: EntityId,
+    /// Its `ContextOfItems`.
+    pub context: EntityId,
+    /// The context's `ContextIdentifier`, when authored.
+    pub identifier: Option<String>,
+    /// The context's `ContextType`, when authored.
+    pub context_type: Option<String>,
+    /// `TargetView` of an `IfcGeometricRepresentationSubContext` without the
+    /// dots (`"SECTION_VIEW"`); `None` for any other context.
+    pub target_view: Option<String>,
+    /// `UserDefinedTargetView` of a sub-context, when authored.
+    pub user_defined_target_view: Option<String>,
+    /// `ParentContext` of a sub-context; `None` for any other context.
+    pub parent_context: Option<EntityId>,
+    /// The context's fill, or why this context was refused.
+    pub fill: StyleResult<MaterialFill>,
 }

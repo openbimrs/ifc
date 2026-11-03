@@ -1,11 +1,12 @@
-//! The cut fill of a material (#597); see [`StyleIndex::material_fill`].
+//! The cut fill of a material (#597), per context and per view (#624); see
+//! [`StyleIndex::material_fill`].
 
 use std::cmp::Ordering;
 
 use ifc_model::EntityId;
 
 use crate::error::{StyleError, StyleResult};
-use crate::fill_style::{resolve_fill, ContextFill, HatchLine, MaterialFill};
+use crate::fill_style::{resolve_fill, ContextFill, ContextFillResult, HatchLine, MaterialFill};
 use crate::units::StyleUnits;
 
 use super::StyleIndex;
@@ -22,7 +23,8 @@ impl StyleIndex<'_, '_> {
     /// hatch lines (as a set, compared exactly); the first one, in
     /// ascending order of representation and item, is returned.
     /// A material that states different fills per context (cut and
-    /// projection) is ambiguous here: see [`StyleIndex::material_fills`].
+    /// projection) is ambiguous here: see [`StyleIndex::material_fills`] and
+    /// [`StyleIndex::material_fill_for_view`].
     ///
     /// # Errors
     ///
@@ -59,7 +61,11 @@ impl StyleIndex<'_, '_> {
     /// `SECTION_VIEW` sub-context and a projection fill in an
     /// `ELEVATION_VIEW` one. [`StyleIndex::material_fill`] over the same
     /// material refuses that as [`StyleError::AmbiguousFill`]: use this
-    /// method for per-view fills.
+    /// method for per-view fills, or [`StyleIndex::material_fill_for_view`]
+    /// for one view.
+    ///
+    /// One refused context fails the whole call;
+    /// [`StyleIndex::material_fills_by_context`] keeps refusals apart.
     ///
     /// Fills agree as in `material_fill`, but only within a context: the
     /// styled items of one representation must agree, then the
@@ -78,7 +84,6 @@ impl StyleIndex<'_, '_> {
         material: EntityId,
         units: StyleUnits,
     ) -> StyleResult<Vec<ContextFill>> {
-        let view = self.view();
         // (context, its representations' fills), in order of first sight.
         let mut contexts: Vec<(EntityId, Vec<(EntityId, MaterialFill)>)> = Vec::new();
         for representation in self.representations_of(material)? {
@@ -89,9 +94,7 @@ impl StyleIndex<'_, '_> {
             else {
                 continue;
             };
-            let context = view
-                .record(representation, "IfcStyledRepresentation")?
-                .required_ref("ContextOfItems", "IfcRepresentationContext")?;
+            let context = self.context_of(representation)?;
             match contexts.iter_mut().find(|(id, _)| *id == context) {
                 Some((_, found)) => found.push((representation, fill)),
                 None => contexts.push((context, vec![(representation, fill)])),
@@ -104,47 +107,156 @@ impl StyleIndex<'_, '_> {
             let Some(fill) = agree_fill(context, fills)? else {
                 continue;
             };
-            let record = view.record(context, "IfcRepresentationContext")?;
-            let sub = view
-                .schema
-                .is_a(record.type_name(), "IfcGeometricRepresentationSubContext");
-            let (target_view, user_defined_target_view, parent_context) = if sub {
-                let target = record.required_enum("TargetView")?.trim_matches('.');
-                if !PROJECTIONS.contains(&target) {
-                    return Err(StyleError::InvalidValue {
-                        entity: record.type_name().to_owned(),
-                        id: context,
-                        attribute: "TargetView",
-                        value: target.to_owned(),
-                    });
-                }
-                (
-                    Some(target.to_owned()),
-                    record
-                        .optional_text("UserDefinedTargetView")?
-                        .map(str::to_owned),
-                    Some(
-                        record
-                            .required_ref("ParentContext", "IfcGeometricRepresentationContext")?,
-                    ),
-                )
-            } else {
-                (None, None, None)
-            };
+            let described = self.describe_context(context)?;
             out.push(ContextFill {
                 representation,
                 context,
-                identifier: record
-                    .optional_text("ContextIdentifier")?
-                    .map(str::to_owned),
-                context_type: record.optional_text("ContextType")?.map(str::to_owned),
-                target_view,
-                user_defined_target_view,
-                parent_context,
+                identifier: described.identifier,
+                context_type: described.context_type,
+                target_view: described.target_view,
+                user_defined_target_view: described.user_defined_target_view,
+                parent_context: described.parent_context,
                 fill,
             });
         }
         Ok(out)
+    }
+
+    /// What `material` states per representation context, like
+    /// [`StyleIndex::material_fills`], but a refusal that belongs to one
+    /// context stays in that context's entry: one [`ContextFillResult`] for
+    /// each context that carries a fill area style or was refused, in order
+    /// of the lowest `IfcStyledRepresentation` in it that states a fill or
+    /// was refused.
+    ///
+    /// Within a context the first refusal, in ascending order of
+    /// representation, is the entry's; a later representation cannot
+    /// replace it. Fills agree as in `material_fills`.
+    ///
+    /// When `material_fills` returns `Ok`, this returns the same contexts
+    /// in the same order, each `Ok` with equal fields. When it returns an
+    /// error, this returns an error, or at least one refused entry.
+    ///
+    /// # Errors
+    ///
+    /// Only refusals no context owns fail the call: the definitions and
+    /// their `Representations` (a member that is no `IfcStyledRepresentation`
+    /// included), the `ContextOfItems` of a representation that states a fill
+    /// or was refused, and the record of a context that has an entry
+    /// (`ContextIdentifier`, `ContextType`, a missing or invalid `TargetView`,
+    /// `UserDefinedTargetView`, `ParentContext`). Everything else lands in
+    /// [`ContextFillResult::fill`]: the errors of a representation's items
+    /// and styles, [`StyleError::AmbiguousFill`] owned by a styled item, a
+    /// representation, or a context whose representations differ.
+    pub fn material_fills_by_context(
+        &self,
+        material: EntityId,
+        units: StyleUnits,
+    ) -> StyleResult<Vec<ContextFillResult>> {
+        struct Pending {
+            context: EntityId,
+            representation: EntityId,
+            state: StyleResult<Vec<MaterialFill>>,
+        }
+        let mut contexts: Vec<Pending> = Vec::new();
+        for representation in self.representations_of(material)? {
+            let resolved = self
+                .representation_fills(representation, units)
+                .and_then(|fills| agree_fill(representation, fills));
+            if matches!(resolved, Ok(None)) {
+                continue;
+            }
+            let context = self.context_of(representation)?;
+            let index = match contexts.iter().position(|p| p.context == context) {
+                Some(index) => index,
+                None => {
+                    contexts.push(Pending {
+                        context,
+                        representation,
+                        state: Ok(Vec::new()),
+                    });
+                    contexts.len() - 1
+                }
+            };
+            let pending = &mut contexts[index];
+            match resolved {
+                Ok(Some(fill)) => {
+                    if let Ok(fills) = &mut pending.state {
+                        fills.push(fill);
+                    }
+                }
+                Ok(None) => {}
+                Err(error) => {
+                    if pending.state.is_ok() {
+                        pending.state = Err(error);
+                    }
+                }
+            }
+        }
+        let mut out = Vec::new();
+        for Pending {
+            context,
+            representation,
+            state,
+        } in contexts
+        {
+            let Some(fill) = state
+                .and_then(|fills| agree_fill(context, fills))
+                .transpose()
+            else {
+                continue;
+            };
+            let described = self.describe_context(context)?;
+            out.push(ContextFillResult {
+                representation,
+                context,
+                identifier: described.identifier,
+                context_type: described.context_type,
+                target_view: described.target_view,
+                user_defined_target_view: described.user_defined_target_view,
+                parent_context: described.parent_context,
+                fill,
+            });
+        }
+        Ok(out)
+    }
+
+    /// The fill `material` states in the representation contexts whose
+    /// `TargetView` is `target_view` (`"SECTION_VIEW"`, without dots): the
+    /// fill they agree on, `None` when no such context carries one.
+    ///
+    /// A plain `IfcGeometricRepresentationContext` matches no view, not even
+    /// `MODEL_VIEW`; `USERDEFINED` matches every user-defined sub-context
+    /// without comparing `UserDefinedTargetView`. Fills agree as in
+    /// [`StyleIndex::material_fill`], so contexts that differ give
+    /// [`StyleError::AmbiguousFill`] owned by the material.
+    ///
+    /// # Errors
+    ///
+    /// [`StyleError::UnknownTargetView`] (before anything is read) when
+    /// `target_view` is no `IfcGeometricProjectionEnum` literal: the match is
+    /// exact and case-sensitive. The refusal of the first matching context
+    /// that was refused, and the whole-call errors of
+    /// [`StyleIndex::material_fills_by_context`]. A refusal in a context of
+    /// another view does not matter here.
+    pub fn material_fill_for_view(
+        &self,
+        material: EntityId,
+        target_view: &str,
+        units: StyleUnits,
+    ) -> StyleResult<Option<MaterialFill>> {
+        if !PROJECTIONS.contains(&target_view) {
+            return Err(StyleError::UnknownTargetView {
+                value: target_view.to_owned(),
+            });
+        }
+        let mut fills = Vec::new();
+        for entry in self.material_fills_by_context(material, units)? {
+            if entry.target_view.as_deref() == Some(target_view) {
+                fills.push(entry.fill?);
+            }
+        }
+        agree_fill(material, fills)
     }
 
     /// The fill a bare `IfcFillAreaStyle` states, as [`StyleIndex::material_fill`]
@@ -174,6 +286,52 @@ impl StyleIndex<'_, '_> {
         found.sort_unstable();
         found.dedup();
         Ok(found)
+    }
+
+    /// The `ContextOfItems` of `representation`.
+    fn context_of(&self, representation: EntityId) -> StyleResult<EntityId> {
+        self.view()
+            .record(representation, "IfcStyledRepresentation")?
+            .required_ref("ContextOfItems", "IfcRepresentationContext")
+    }
+
+    /// The identifying attributes of `context`, and for a sub-context its
+    /// projection and parent.
+    fn describe_context(&self, context: EntityId) -> StyleResult<Described> {
+        let view = self.view();
+        let record = view.record(context, "IfcRepresentationContext")?;
+        let sub = view
+            .schema
+            .is_a(record.type_name(), "IfcGeometricRepresentationSubContext");
+        let (target_view, user_defined_target_view, parent_context) = if sub {
+            let target = record.required_enum("TargetView")?.trim_matches('.');
+            if !PROJECTIONS.contains(&target) {
+                return Err(StyleError::InvalidValue {
+                    entity: record.type_name().to_owned(),
+                    id: context,
+                    attribute: "TargetView",
+                    value: target.to_owned(),
+                });
+            }
+            (
+                Some(target.to_owned()),
+                record
+                    .optional_text("UserDefinedTargetView")?
+                    .map(str::to_owned),
+                Some(record.required_ref("ParentContext", "IfcGeometricRepresentationContext")?),
+            )
+        } else {
+            (None, None, None)
+        };
+        Ok(Described {
+            identifier: record
+                .optional_text("ContextIdentifier")?
+                .map(str::to_owned),
+            context_type: record.optional_text("ContextType")?.map(str::to_owned),
+            target_view,
+            user_defined_target_view,
+            parent_context,
+        })
     }
 
     /// The fill of each styled item of `representation` that states one,
@@ -210,8 +368,6 @@ impl StyleIndex<'_, '_> {
     }
 }
 
-/// The first of `found` when every fill agrees, `None` when empty, else
-/// ambiguous.
 /// `IfcGeometricProjectionEnum`, the same in every release.
 const PROJECTIONS: [&str; 9] = [
     "GRAPH_VIEW",
@@ -225,6 +381,17 @@ const PROJECTIONS: [&str; 9] = [
     "NOTDEFINED",
 ];
 
+/// The attributes of a representation context a [`ContextFill`] reports.
+struct Described {
+    identifier: Option<String>,
+    context_type: Option<String>,
+    target_view: Option<String>,
+    user_defined_target_view: Option<String>,
+    parent_context: Option<EntityId>,
+}
+
+/// The first of `found` when every fill agrees, `None` when empty, else
+/// ambiguous.
 fn agree_fill(owner: EntityId, found: Vec<MaterialFill>) -> StyleResult<Option<MaterialFill>> {
     let Some(first) = found.first() else {
         return Ok(None);

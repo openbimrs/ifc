@@ -172,6 +172,13 @@ pub enum StyleError {
         /// The offending value.
         value: f64,
     },
+    /// A target view asked for is no `IfcGeometricProjectionEnum` literal
+    /// (`StyleIndex::material_fill_for_view`).
+    #[error("{value:?} is no IfcGeometricProjectionEnum literal")]
+    UnknownTargetView {
+        /// The literal asked for.
+        value: String,
+    },
 }
 
 /// The result type returned by this crate's projection and authoring operations.
