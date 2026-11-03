@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#614)
+
+- A read's diagnostics carry their kind, the instance at fault, the record
+  holding a dangling reference, their line and column and a quote of up to
+  120 characters of the bytes they cover.
+
+Semver: patch (additive)
+
 ## [0.6.2] - 2026-10-28
 
 ### Changed

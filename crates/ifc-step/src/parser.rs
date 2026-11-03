@@ -7,10 +7,12 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
+use crate::location;
 use crate::StepError;
-use ifc_model::{Diagnostic, Entity, EntityId, Model, Value};
+use ifc_model::{Diagnostic, DiagnosticKind, Entity, EntityId, Model, Value};
 use openbim_step::{
-    DiagnosticKind, Instance, OnMalformed, Parameter, ParseOptions, StandardHeader,
+    DiagnosticKind as StepKind, Instance, OnMalformed, Parameter, ParseOptions, Span,
+    StandardHeader,
 };
 
 /// Borrowed parser events: text is a slice of the input unless the source
@@ -24,7 +26,7 @@ type Text<'a> = Cow<'a, str>;
 /// which [`StepError::from_step`] names, and a parse with
 /// `ParseOptions::accept_real_without_point` (part of
 /// `ParseOptions::lenient()`) reads it with a diagnostic, which
-/// [`diagnostic`] words.
+/// [`diagnostics`] words.
 pub(crate) fn parse(input: &[u8], options: ParseOptions) -> Result<Model, StepError> {
     // Records are converted as they arrive rather than collected first.
     // openbim_step::parse_with builds a Vec of every DataRecord, so the
@@ -48,8 +50,8 @@ pub(crate) fn parse(input: &[u8], options: ParseOptions) -> Result<Model, StepEr
     apply_header(model.header_mut(), sink.header.standard());
     // Diagnostics are only available once the parse finishes, so they are
     // appended after the records rather than interleaved with them.
-    for found in &diagnostics {
-        model.push_diagnostic(diagnostic(input, found));
+    for diagnostic in self::diagnostics(input, &diagnostics, options, &model) {
+        model.push_diagnostic(diagnostic);
     }
     Ok(model)
 }
@@ -71,22 +73,95 @@ pub(crate) fn decode(
         .map_err(|error| StepError::from_step(input, error))
 }
 
-/// A substrate diagnostic over `input` as a model diagnostic, located at
-/// the bytes it covers. A REAL read without its decimal point quotes the
-/// token as written.
-pub(crate) fn diagnostic(input: &[u8], found: &openbim_step::Diagnostic) -> Diagnostic {
-    let span = found.span();
-    let range = span.start..span.end;
-    match (found.kind(), input.get(range.clone())) {
-        (DiagnosticKind::RealWithoutPoint, Some(token)) => Diagnostic::warning(
-            range,
-            format!(
-                "read REAL `{}` without the decimal point ISO 10303-21 requires",
-                String::from_utf8_lossy(token)
-            ),
-        ),
-        _ => Diagnostic::warning(range, found.detail()),
-    }
+/// Substrate diagnostics over `input` as model diagnostics, in order.
+///
+/// Each carries its kind, the bytes it covers, their line and column and a
+/// quote of them. The instance at fault is the substrate's when it names
+/// one; a skipped record's is read from its bytes. A dangling reference
+/// names the missing id as its instance and the record holding it, decoded
+/// from the span under `options`, as its referrer. `model` holds the records
+/// that were read. A REAL read without its
+/// decimal point quotes the token as written.
+pub(crate) fn diagnostics(
+    input: &[u8],
+    found: &[openbim_step::Diagnostic],
+    options: ParseOptions,
+    model: &Model,
+) -> Vec<Diagnostic> {
+    let starts: Vec<usize> = found.iter().map(|d| d.span().start).collect();
+    let positions = location::positions(input, &starts);
+    found
+        .iter()
+        .zip(positions)
+        .map(|(found, position)| {
+            let span = found.span();
+            let range = span.start..span.end;
+            let own = found.instance().and_then(|id| id.as_str().parse().ok());
+            let (kind, instance, referrer) = match found.kind() {
+                StepKind::SkippedRecord => (
+                    DiagnosticKind::SkippedRecord,
+                    own.map(EntityId).or_else(|| {
+                        // An id the model holds belongs to a record that was
+                        // read, so the bytes did not begin the skipped one.
+                        skipped_instance(input, span).filter(|id| !model.contains(*id))
+                    }),
+                    None,
+                ),
+                StepKind::DuplicateId => (DiagnosticKind::DuplicateId, own.map(EntityId), None),
+                StepKind::DanglingReference => (
+                    DiagnosticKind::DanglingReference,
+                    own.map(EntityId),
+                    referrer(input, span, options),
+                ),
+                StepKind::RealWithoutPoint => (DiagnosticKind::RealWithoutPoint, None, None),
+                _ => (DiagnosticKind::Other, None, None),
+            };
+            let excerpt = location::excerpt_of(input, range.clone());
+            let detail = match (found.kind(), input.get(range.clone())) {
+                (StepKind::RealWithoutPoint, Some(token)) => format!(
+                    "read REAL `{}` without the decimal point ISO 10303-21 requires",
+                    String::from_utf8_lossy(token)
+                ),
+                _ => found.detail().to_owned(),
+            };
+            let mut diagnostic = Diagnostic::new(kind, detail)
+                .with_byte_range(range)
+                .with_position(position)
+                .with_excerpt(excerpt);
+            if let Some(id) = instance {
+                diagnostic = diagnostic.with_instance(id);
+            }
+            if let Some(id) = referrer {
+                diagnostic = diagnostic.with_referrer(id);
+            }
+            diagnostic
+        })
+        .collect()
+}
+
+/// The id of the record framed by `span`, decoded under `options`.
+fn referrer(input: &[u8], span: Span, options: ParseOptions) -> Option<EntityId> {
+    let (record, _) = decode(input, span, options).ok()?;
+    record.id.as_str().parse().ok().map(EntityId)
+}
+
+/// The id a skipped record starts with: `#` and the longest run of ASCII
+/// digits right after it. `None` when the bytes do not start so, the number
+/// overflows `u64` or it is `u64::MAX`, which no id may be (the next free id
+/// would overflow).
+///
+/// TODO(#627): the substrate names no instance for a skipped record; use its
+/// own once it does.
+pub(crate) fn skipped_instance(input: &[u8], span: Span) -> Option<EntityId> {
+    let bytes = input.get(span.start..span.end)?;
+    let digits = bytes.strip_prefix(b"#")?;
+    let run = digits.iter().take_while(|b| b.is_ascii_digit()).count();
+    std::str::from_utf8(&digits[..run])
+        .ok()?
+        .parse()
+        .ok()
+        .filter(|id| *id != u64::MAX)
+        .map(EntityId)
 }
 
 /// Converts records into the model as the parser emits them.
@@ -132,9 +207,14 @@ impl ModelSink {
         match convert(instance) {
             Ok((id, entity)) => self.model.insert(id, entity),
             Err(error) if self.recovering => {
-                self.model.push_diagnostic(Diagnostic::unlocated(format!(
-                    "skipped unrepresentable record #{id_text}: {error}"
-                )));
+                let mut skipped = Diagnostic::new(
+                    DiagnosticKind::SkippedRecord,
+                    format!("skipped unrepresentable record #{id_text}: {error}"),
+                );
+                if let Ok(id) = id_text.parse() {
+                    skipped = skipped.with_instance(EntityId(id));
+                }
+                self.model.push_diagnostic(skipped);
             }
             Err(error) => self.error = Some(error),
         }

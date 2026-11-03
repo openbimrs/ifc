@@ -9,6 +9,7 @@
 //! | --- | --- |
 //! | [`codec`] | [`StepCodec`]/[`StepReader`]: detection, parse policy, I/O |
 //! | [`error`] | STEP-specific failure modes |
+//! | `location` | Lines, columns and quotes of the source for diagnostics |
 //! | `parser` | Generic exchange to IFC record model |
 //! | `writer` | IFC record model to physical file |
 
@@ -16,6 +17,7 @@ pub mod codec;
 pub mod error;
 mod index;
 mod lazy;
+mod location;
 mod parser;
 mod writer;
 

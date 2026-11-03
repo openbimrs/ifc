@@ -8,6 +8,13 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (#614)
+
+- A diagnostic string with a position reads "warning at line L, column C
+  (bytes a..b): ...".
+
+Semver: patch (Display text changes)
+
 ## [0.1.20] - 2026-10-28
 
 ### Changed (#585)

@@ -142,8 +142,8 @@ fn index(source: &Arc<StepSource>) -> Option<Model> {
         diagnostics.extend(found);
     }
     // After the records and in file order, as the eager read reports them.
-    for found in &diagnostics {
-        model.push_diagnostic(parser::diagnostic(input, found));
+    for diagnostic in parser::diagnostics(input, &diagnostics, source.options, &model) {
+        model.push_diagnostic(diagnostic);
     }
     Some(model)
 }
