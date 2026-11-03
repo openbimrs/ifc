@@ -8,7 +8,10 @@
 
 use std::path::PathBuf;
 
-use ifc::{body_description, geometry::units, BodyKind, ProfileParameters, SweepPath};
+use ifc::{
+    body_description, body_description_for, geometry::units, BodyKind, ProfileParameters,
+    RepresentationPurpose, SweepPath,
+};
 use ifc_model::EntityId;
 
 /// `synthetic_profile_families.ifc` product #89: thirteen extrusions, the
@@ -44,4 +47,35 @@ fn the_facade_describes_a_steel_section_body() {
     };
     assert_eq!(direction_world, [0.0, 0.0, 1.0]);
     assert!((depth - 1.0).abs() < 1e-12);
+}
+
+/// `reference_view_openings.ifc` opening #47 (O1) carries only a `Reference`
+/// void: the Body call finds nothing, the Reference call its item and bounds.
+#[test]
+fn the_facade_describes_a_reference_view_opening() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test/fixtures/synthetic-lowering/reference_view_openings.ifc");
+    let model = ifc::read_path(&path).expect("fixture parses");
+    let scale = units::resolve(&model).expect("project units");
+    assert!(body_description(&model, &scale, EntityId(47))
+        .expect("describes")
+        .is_none());
+
+    let reference = body_description_for(
+        &model,
+        &scale,
+        EntityId(47),
+        RepresentationPurpose::Reference,
+    )
+    .expect("describes")
+    .expect("has a reference");
+    let item = reference.sole_item().expect("one item");
+    assert_eq!(item.item, EntityId(41));
+    let bounds = item.bounds.expect("a tessellation has bounds");
+    for (actual, expected) in bounds.min.iter().zip([1.5, 0.0, 0.5]) {
+        assert!((actual - expected).abs() < 1e-9, "{:?}", bounds.min);
+    }
+    for (actual, expected) in bounds.max.iter().zip([2.5, 0.2, 2.5]) {
+        assert!((actual - expected).abs() < 1e-9, "{:?}", bounds.max);
+    }
 }
