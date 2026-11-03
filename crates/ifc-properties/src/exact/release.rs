@@ -62,6 +62,12 @@ pub(super) fn validate_model(model: &Model) -> Result<Release, ExactPropertyErro
             diagnostics: model.diagnostics().len(),
         });
     }
+    bind_release(model)
+}
+
+/// The release the header declares, without judging the reader's
+/// diagnostics: unit resolution classifies those itself (#615).
+pub(super) fn bind_release(model: &Model) -> Result<Release, ExactPropertyError> {
     match model.header().schema.as_slice() {
         [] => Err(ExactPropertyError::MissingSchema),
         // Each release listed here is verified for exact resolution: IFC2X3

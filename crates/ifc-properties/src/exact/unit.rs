@@ -5,12 +5,33 @@
 //! either to an exact conversion into SI base units, or refuses. Every table
 //! it reads belongs to the release `FILE_SCHEMA` declares.
 //!
+//! ## Lenient models (#615)
+//!
+//! Unit resolution does not refuse a model for having reader diagnostics. It
+//! refuses damage it reaches: a record it reads that the reader skipped is
+//! `MissingReference`; one the reader reported by id (a duplicate id) is
+//! [`ExactUnitError::DamagedRecord`]; no `IfcProject` after a skipped record
+//! is `IncompleteModel`, not `NoProject`, because the skipped record may have
+//! been the project. A REAL read without its decimal point and a dangling
+//! reference elsewhere change no unit record and are ignored. A diagnostic of
+//! a kind not classified here refuses the model. Property resolution and
+//! `exact_schema` still refuse any diagnostic: a skipped record may have been
+//! a relationship.
+//!
+//! One surviving `IfcProject` is trusted as the project. Every release
+//! constrains a file to one (`IfcSingleProjectInstance`: IFC2X3_TC1.exp:9563,
+//! IFC4.exp:12392, IFC4X3_ADD2.exp:13977), so a second project the reader
+//! skipped is not detected (TODO(#627)).
+//!
 //! ## Internal split
 //!
+//! - `damage.rs`: the reader's diagnostics, classified by kind for a lenient
+//!   model (#615).
 //! - `resolve.rs`: one unit entity to its SI scale and dimensions, following
 //!   conversion chains and derived elements under a depth budget.
 //! - `from_si.rs`: SI input to the unit that applies (#487).
 
+mod damage;
 mod from_si;
 mod resolve;
 
@@ -21,9 +42,10 @@ use ifc_schema::{for_version, SchemaVersion};
 
 use super::measure::{measure_unit, MeasureUnit};
 use super::refs::{ref_at, refs_at};
-use super::release::{validate_model, Release};
+use super::release::{bind_release, Release};
 use super::value::select_accepts_entity;
 use super::ExactPropertyError;
+use damage::Damage;
 use resolve::{declared_unit_type, Resolver};
 
 pub use from_si::{si_conversion, si_to_project};
@@ -55,9 +77,12 @@ pub struct ExactUnit {
 #[non_exhaustive]
 pub enum ExactUnitError {
     /// The model, or a record the resolution traversed, failed a check that
-    /// [`crate::exact_property`] applies the same way: diagnostics, header,
-    /// missing references, slot arity, malformed aggregates, or a construct
-    /// the declared release does not define.
+    /// [`crate::exact_property`] applies the same way: header, missing
+    /// references, slot arity, malformed aggregates, or a construct the
+    /// declared release does not define. Reader diagnostics refuse only as
+    /// `IncompleteModel` when a diagnostic is of an unclassified kind, a
+    /// duplicate id the reader could not attribute, a skipped record without
+    /// an id, or when no `IfcProject` is left after a skipped record (#615).
     Structure(ExactPropertyError),
     /// The declared release defines no type of this name.
     MeasureNotInSchema {
@@ -83,9 +108,24 @@ pub enum ExactUnitError {
         /// The explicit unit.
         unit: EntityId,
     },
+    /// The reader reported a record this resolution reads (#615): the file
+    /// defines the id more than once and the model keeps one of the records,
+    /// or a lenient read skipped a record with this id while another record
+    /// holds it. The record the model holds cannot be shown to be the one the
+    /// file meant.
+    DamagedRecord {
+        /// The record the resolution reached.
+        entity: EntityId,
+        /// Position in `Model::diagnostics()` of the first diagnostic naming
+        /// it.
+        diagnostic: usize,
+    },
     /// The model has no `IfcProject` to take a default unit from.
     NoProject,
     /// The model has several `IfcProject`s, so no one project default applies.
+    /// A single project is trusted: every release requires one
+    /// (`IfcSingleProjectInstance`), so a skipped second project goes
+    /// undetected.
     MultipleProjects {
         /// The first project.
         first: EntityId,
@@ -207,13 +247,15 @@ impl std::error::Error for ExactUnitError {}
 /// # Errors
 ///
 /// Any [`ExactUnitError`]: the answer is refused whenever the unit is
-/// missing, ambiguous, inconsistent, cyclic, or not convertible exactly.
+/// missing, ambiguous, inconsistent, cyclic, or not convertible exactly, or
+/// when the reader reported a record the resolution reads
+/// ([`ExactUnitError::DamagedRecord`]).
 pub fn exact_unit(
     model: &Model,
     measure_type: &str,
     explicit_unit: Option<EntityId>,
 ) -> Result<ExactUnit, ExactUnitError> {
-    let release = validate_model(model)?;
+    let release = bind_release(model)?;
     let target = measure_unit(release, measure_type)?;
     let Some(expected) = target.unit_type().cloned() else {
         if let Some(unit) = explicit_unit {
@@ -227,11 +269,12 @@ pub fn exact_unit(
             offset: 0.0,
         });
     };
+    let damage = Damage::of(model)?;
     let (unit, from_project) = match explicit_unit {
         Some(unit) => (unit, false),
-        None => (project_unit(model, release, &expected)?, true),
+        None => (project_unit(model, release, &damage, &expected)?, true),
     };
-    let resolved = Resolver::new(model, release).resolve(unit)?;
+    let resolved = Resolver::new(model, release, &damage).resolve(unit)?;
     if !resolved.unit_type.eq_ignore_ascii_case(&expected) {
         return Err(ExactUnitError::UnitTypeMismatch {
             unit,
@@ -252,10 +295,11 @@ pub fn exact_unit(
 fn project_unit(
     model: &Model,
     release: Release,
+    damage: &Damage,
     unit_type: &Arc<str>,
 ) -> Result<EntityId, ExactUnitError> {
     let project = match model.ids_of_type("IFCPROJECT") {
-        [] => return Err(ExactUnitError::NoProject),
+        [] => return Err(damage.no_project()),
         [project] => *project,
         [first, second, ..] => {
             return Err(ExactUnitError::MultipleProjects {
@@ -265,6 +309,7 @@ fn project_unit(
         }
     };
     let entity = model.get(project).expect("type index is current");
+    damage.check(project)?;
     release.require_exact_slots(project, entity)?;
     let slot = release
         .schema
@@ -286,6 +331,7 @@ fn project_unit(
             from: project,
             to: assignment,
         })?;
+    damage.check(assignment)?;
     release.require_exact_slots(assignment, assignment_entity)?;
     if !assignment_entity.is_type("IFCUNITASSIGNMENT") {
         return Err(ExactUnitError::UnsupportedUnit {
@@ -302,6 +348,7 @@ fn project_unit(
                 from: assignment,
                 to: unit,
             })?;
+        damage.check(unit)?;
         release.require_exact_slots(unit, unit_entity)?;
         if !select_accepts_entity(release.schema, "IFCUNIT", &unit_entity.type_name) {
             return Err(ExactUnitError::UnsupportedUnit {
@@ -333,11 +380,18 @@ fn project_unit(
 ///
 /// [`ExactUnitError::NoProject`], [`ExactUnitError::MultipleProjects`],
 /// [`ExactUnitError::NoProjectUnit`] when the assignment has none of that
-/// type, [`ExactUnitError::DuplicateProjectUnit`], and the structural
-/// refusals of [`exact_unit`].
+/// type, [`ExactUnitError::DuplicateProjectUnit`],
+/// [`ExactUnitError::DamagedRecord`], and the structural refusals of
+/// [`exact_unit`].
 pub fn exact_project_unit(model: &Model, unit_type: &str) -> Result<EntityId, ExactUnitError> {
-    let release = validate_model(model)?;
-    project_unit(model, release, &Arc::from(unit_type.to_ascii_uppercase()))
+    let release = bind_release(model)?;
+    let damage = Damage::of(model)?;
+    project_unit(
+        model,
+        release,
+        &damage,
+        &Arc::from(unit_type.to_ascii_uppercase()),
+    )
 }
 
 /// What unit a measure type takes in a release: none, a named unit of an
@@ -403,15 +457,18 @@ pub fn measure_unit_type(
 /// [`UnitConversionError::OffsetUnit`] for an
 /// `IfcConversionBasedUnitWithOffset` (#110), and
 /// [`UnitConversionError::Resolve`] for every other refusal of the exact
-/// resolver (missing, malformed or cyclic units, an unknown prefix ...).
+/// resolver (missing, malformed, cyclic or reader-damaged units, an unknown
+/// prefix ...).
 pub fn resolve_unit(model: &Model, unit: EntityId) -> Result<ConversionUnit, UnitConversionError> {
-    let release = validate_model(model).map_err(ExactUnitError::from)?;
+    let release = bind_release(model).map_err(ExactUnitError::from)?;
+    let damage = Damage::of(model)?;
     let entity = model.get(unit).ok_or(ExactUnitError::Structure(
         ExactPropertyError::MissingReference {
             from: unit,
             to: unit,
         },
     ))?;
+    damage.check(unit)?;
     let is_a = |ancestor| release.schema.is_a(&entity.type_name, ancestor);
     if is_a("IFCMONETARYUNIT") {
         return Err(UnitConversionError::MonetaryUnit { unit });
@@ -419,7 +476,7 @@ pub fn resolve_unit(model: &Model, unit: EntityId) -> Result<ConversionUnit, Uni
     if is_a("IFCCONTEXTDEPENDENTUNIT") {
         return Err(UnitConversionError::ContextDependentUnit { unit });
     }
-    let resolved = Resolver::new(model, release).resolve(unit)?;
+    let resolved = Resolver::new(model, release, &damage).resolve(unit)?;
     let (mantissa, decimal_exponent) =
         normalise_decimal(resolved.mantissa, resolved.decimal_exponent);
     Ok(ConversionUnit {

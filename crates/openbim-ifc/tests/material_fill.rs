@@ -264,3 +264,70 @@ fn one_resolver_serves_many_materials() {
         })
     ));
 }
+
+/// An IFC4 millimetre project (#10), with `rest` after it (#615).
+fn lenient_project(project: &str, rest: &str) -> Model {
+    let source = format!(
+        "ISO-10303-21;\nHEADER;FILE_DESCRIPTION((''),'2;1');\
+         FILE_NAME('','',(''),(''),'','','');FILE_SCHEMA(('IFC4'));ENDSEC;\nDATA;\n\
+         #1=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);\n\
+         #2=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);\n\
+         #9=IFCUNITASSIGNMENT((#1,#2));\n{project}{rest}\
+         ENDSEC;\nEND-ISO-10303-21;\n"
+    );
+    StepCodec::lenient()
+        .read_bytes(source.as_bytes())
+        .expect("lenient read")
+}
+
+#[test]
+fn project_units_resolve_beside_an_unrelated_skipped_record() {
+    let model = lenient_project(
+        "#10=IFCPROJECT('p',$,'P',$,$,$,$,$,#9);\n",
+        "#17\n XXSITE('x',$);\n#18=IFCRELAGGREGATES('r',$,$,$,#10,(#17));\n",
+    );
+    assert_eq!(model.diagnostics().len(), 1);
+    let units = project_style_units(&model).unwrap();
+    let length = units.metres_per_length().expect("length unit");
+    assert!((length - 0.001).abs() < 1e-15, "{length}");
+}
+
+#[test]
+fn a_skipped_project_is_an_error_not_an_absent_unit() {
+    let model = lenient_project("#10=XXPROJECT(;\n", "");
+    assert!(matches!(
+        project_style_units(&model),
+        Err(MaterialFillError::ProjectUnit {
+            measure: "IFCLENGTHMEASURE",
+            error: ifc::properties::ExactUnitError::Structure(
+                ifc::properties::ExactPropertyError::IncompleteModel { diagnostics: 1 }
+            ),
+        })
+    ));
+}
+
+#[test]
+fn the_material_fills_refuse_a_skipped_record() {
+    // A skipped record may have been a style; only the units tolerate it.
+    let model = lenient_project(
+        "#10=IFCPROJECT('p',$,'P',$,$,$,$,$,#9);\n",
+        "#17\n XXSITE('x',$);\n",
+    );
+    let refused = |result: Result<_, MaterialFillError>| {
+        matches!(
+            result.map(|_: Option<MaterialFill>| ()),
+            Err(MaterialFillError::ProjectUnit {
+                error: ifc::properties::ExactUnitError::Structure(
+                    ifc::properties::ExactPropertyError::IncompleteModel { diagnostics: 1 }
+                ),
+                ..
+            })
+        )
+    };
+    assert!(refused(material_fill(&model, EntityId(1))));
+    assert!(matches!(
+        FillResolver::new(&model),
+        Err(MaterialFillError::ProjectUnit { .. })
+    ));
+    assert!(project_style_units(&model).is_ok());
+}

@@ -241,7 +241,9 @@ length, are not evaluated here; that is validation's job, and the rule may be
 [unsupported](#what-is-reported-as-unsupported). Only the rules that decide
 how a composite value reads are enforced, since without them there is no one
 reading. Resolving `unit_id` to a
-project unit is a separate call (`exact_unit`). Quantities are authored
+project unit is a separate call (`exact_unit`), which unlike property
+resolution also works on a lenient model whose damage does not reach the
+unit records. Quantities are authored
 assertions and are never recomputed from geometry.
 
 ## IDS lives elsewhere

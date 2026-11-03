@@ -26,7 +26,7 @@ use ifc_georef::{
     resolve_property_set_georeferencing, GeorefError, GeorefView, ProjectToMap,
 };
 use ifc_model::{EntityId, Model};
-use ifc_properties::{exact_unit, ExactUnitError};
+use ifc_properties::{exact_unit, ExactPropertyError, ExactUnitError};
 use ifc_schema::{for_version, SchemaVersion};
 
 /// Why a model's coordinate operations could not be resolved.
@@ -142,7 +142,18 @@ fn declared_ifc2x3(model: &Model) -> Option<&str> {
 }
 
 /// The project length unit's exact metre scale.
+///
+/// Unit resolution alone tolerates reader damage away from the unit records
+/// (#615), but a skipped record may have been the operation, so any
+/// diagnostic refuses here.
 fn project_length_scale(model: &Model) -> Result<f64, GeoreferencingError> {
+    if !model.diagnostics().is_empty() {
+        return Err(GeoreferencingError::ProjectLengthUnit(
+            ExactUnitError::Structure(ExactPropertyError::IncompleteModel {
+                diagnostics: model.diagnostics().len(),
+            }),
+        ));
+    }
     let unit = exact_unit(model, "IFCLENGTHMEASURE", None)
         .map_err(GeoreferencingError::ProjectLengthUnit)?;
     if unit.offset != 0.0 {

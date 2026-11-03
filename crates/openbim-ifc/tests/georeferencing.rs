@@ -153,3 +153,21 @@ fn an_unresolvable_project_unit_is_refused_not_assumed() {
         Err(GeoreferencingError::ProjectLengthUnit(_))
     ));
 }
+
+#[test]
+fn a_skipped_record_refuses_every_operation() {
+    // A skipped record may have been an operation or its CRS (#615).
+    let text = MILLIMETRE_IFC4.replace("ENDSEC;\nEND", "#17\n XXSITE('x',$);\nENDSEC;\nEND");
+    let model = StepCodec::lenient()
+        .read_bytes(text.as_bytes())
+        .expect("lenient read");
+    assert_eq!(model.diagnostics().len(), 1);
+    assert_eq!(
+        georeferencing(&model),
+        Err(GeoreferencingError::ProjectLengthUnit(
+            ifc::properties::ExactUnitError::Structure(
+                ifc::properties::ExactPropertyError::IncompleteModel { diagnostics: 1 }
+            )
+        ))
+    );
+}
