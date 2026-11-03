@@ -16,7 +16,7 @@
 //! | `unit` | Unit assignment, prefixes and conversion-based units |
 //! | `convert` | Conversion between units, named conversion units, length formatting |
 //! | `value` | `IfcValue` measure types and their interpretation |
-//! | `query` | Lookup helpers: property by name, pset by element |
+//! | `query` | Per-object resolution of property and quantity sets with type inheritance; lookup by name |
 //! | `nesting` | Bounded, cycle-aware traversal of complex properties and quantities |
 //! | `error` | Why a property lookup failed |
 //!
