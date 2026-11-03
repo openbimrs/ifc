@@ -176,6 +176,11 @@ pub fn lower_linear_extrusion(
     )
 }
 
+mod trim;
+pub(crate) use trim::trim_converter;
+
+#[cfg(test)]
+mod revolution_tests;
 #[cfg(test)]
 mod tests;
 
@@ -200,31 +205,6 @@ fn placed_frame(
 /// Convert one length-valued scalar into metres.
 fn to_metres(session: &LoweringSession<'_>, value: f64) -> f64 {
     value * session.units().length_to_metres
-}
-
-/// Choose the unit factor for a trim parameter by basis-surface family.
-///
-/// A revolved or conic direction is parameterised by angle; a plane by length.
-/// Returning a closure keeps the decision at the one place that knows the
-/// basis type, instead of leaking a bool to every caller.
-pub(crate) fn trim_converter(
-    session: &LoweringSession<'_>,
-    entity: EntityId,
-    basis_kind: &str,
-) -> GeometryResult<impl Fn(f64) -> f64> {
-    let angular = matches!(
-        basis_kind,
-        "IFCCYLINDRICALSURFACE"
-            | "IFCSPHERICALSURFACE"
-            | "IFCTOROIDALSURFACE"
-            | "IFCSURFACEOFREVOLUTION"
-    );
-    let factor = if angular {
-        session.units().radians_per_unit(entity)?
-    } else {
-        session.units().length_to_metres
-    };
-    Ok(move |value: f64| value * factor)
 }
 
 /// Read an `IfcCartesianPoint`'s three coordinates, as written.
@@ -464,6 +444,9 @@ fn swept_generatrix(
 /// wrong one still yields a surface -- just one revolved about the wrong line.
 /// The axis origin is a length and converts; the direction is placed by the
 /// linear part only so an off-origin frame does not translate it.
+///
+/// `Position` (#547) is composed into the frame for the generatrix and the
+/// axis alike.
 pub fn lower_revolution(
     session: &mut LoweringSession<'_>,
     id: EntityId,
@@ -472,18 +455,31 @@ pub fn lower_revolution(
     let entity = session.entity(id, id)?;
     let view = SurfaceOfRevolution::new(id, entity);
 
-    let swept_curve = swept_generatrix(session, id, view.swept_curve_ref()?, frame)?;
+    // An optional Position places the whole surface, axis included, as it does
+    // for the linear extrusion. A conforming generatrix is 2D (WR12) and lies
+    // in XY until `Position` places it.
+    let placed = match view.position_ref() {
+        Some(position_id) => {
+            let position = session.entity(id, position_id)?;
+            let local = axis_placement_transform(session.model(), position_id, position)?
+                .to_metres(session.units());
+            frame.compose(&local)
+        }
+        None => frame,
+    };
+
+    let swept_curve = swept_generatrix(session, id, view.swept_curve_ref()?, placed)?;
 
     let axis_id = view.axis_position_ref()?;
     let axis_entity = session.entity(id, axis_id)?;
     let axis = Axis1Placement::new(axis_id, axis_entity);
     let raw_origin = axis.location(session.model())?;
-    let origin = frame.apply([
+    let origin = placed.apply([
         to_metres(session, raw_origin[0]),
         to_metres(session, raw_origin[1]),
         to_metres(session, raw_origin[2]),
     ]);
-    let direction = frame.apply_direction(axis.axis(session.model())?);
+    let direction = placed.apply_direction(axis.axis(session.model())?);
 
     session.node_for(
         id,
@@ -497,10 +493,12 @@ pub fn lower_revolution(
 
 /// Lower an `IfcRectangularTrimmedSurface` into a parameter-space trim.
 ///
-/// The trim parameters are NOT lengths. On a conic or revolved direction they
-/// are angles in the model's plane-angle unit, which is degrees in many real
-/// exports; on a plane they are lengths. Scaling everything by the length
-/// factor turns a 90-degree patch into a sliver and still renders.
+/// The trim parameters are NOT all lengths. A revolution or conic direction
+/// is an angle in the model's plane-angle unit, which is degrees in many real
+/// exports; a plane, and a cylinder's axis, are lengths; a revolved surface's
+/// `v` is its generatrix's own parameter. Scaling everything by one factor
+/// turns a 90-degree patch into a sliver, or a cylinder's height into radians,
+/// and still renders (#589).
 pub fn lower_rectangular_trimmed(
     session: &mut LoweringSession<'_>,
     id: EntityId,
@@ -512,15 +510,14 @@ pub fn lower_rectangular_trimmed(
     let basis = lower_surface_node(session, basis_id, frame)?;
     let rect = view.rectangle()?;
 
-    let basis_kind = session.type_name(basis_id)?.to_ascii_uppercase();
-    let convert = trim_converter(session, id, &basis_kind)?;
+    let (convert_u, convert_v) = trim_converter(session, id, basis_id)?;
 
     session.node_for(
         id,
         GeometryNode::SurfaceRelation(SurfaceRelation::RectangularTrimmed {
             basis,
-            u: (convert(rect.u1), convert(rect.u2)),
-            v: (convert(rect.v1), convert(rect.v2)),
+            u: (convert_u(rect.u1), convert_u(rect.u2)),
+            v: (convert_v(rect.v1), convert_v(rect.v2)),
             u_sense: rect.usense,
             v_sense: rect.vsense,
         }),
