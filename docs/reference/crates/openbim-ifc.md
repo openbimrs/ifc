@@ -48,7 +48,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | `ifc4x3` |  | The schema API with the bundled IFC4X3 ADD2 table. |
 | `ifcxml` |  | [`ifc-xml`](./ifc-xml): ifcXML (ISO 10303-28) codec for the IFC model. |
 | `js-random` |  | Random `GlobalId`s (`new_guid`) and batch seeds (`fresh_seed`) on `wasm32-unknown-unknown` from the JavaScript host's `crypto.getRandomValues`; without it both refuse there; native targets always have them. |
-| `material` |  | [`ifc-material`](./ifc-material): Material definitions: layer sets, profile sets, constituents, usage. |
+| `material` |  | Material views (`ifc-material`): layer sets, profile sets, constituents, usage; together with `geometry-select`, each layered wall's, slab's or plate's material layer bounds in its object frame (`material_layer_bounds`). |
 | `material-templates` |  | Material views together with the property template catalogue. |
 | `mesh` |  | Triangle meshes per product (`product_meshes`, `product_meshes_for` a representation purpose, with solid or surface closure) and polylines of curve representations (`product_curves`: Axis, FootPrint, annotation curves, each with a certified chord bound) through `ifc-geometry`'s reference compile backend: positions relative to each product's world placement, its surface colour (`colour`), a typed refusal per product. Opt-in; links an execution provider (ADR 0004, ADR 0012). |
 | `occurrence` |  | [`ifc-occurrence`](./ifc-occurrence): Built element and distribution occurrence classes and their type pairing. |
@@ -122,5 +122,11 @@ Semver: patch (additive).
   referenced id.
 
 Semver: patch (additive)
+
+### Added (#455)
+
+- With `material` and `geometry-select`: `material_layer_bounds(model, product)`: the boundary planes of each material layer of a layered wall, slab or plate in its object frame, in metres, with each layer's material; `Ok(None)` when the product's material is no `IfcMaterialLayerSetUsage`; `LayerBoundsError`.
+
+Semver: patch (additive).
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

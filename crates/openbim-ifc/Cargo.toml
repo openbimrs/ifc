@@ -42,6 +42,7 @@ geometry-wire = "Each product's Body as Axiolid's neutral geometry graph (`produ
 mesh = "Triangle meshes per product (`product_meshes`, `product_meshes_for` a representation purpose, with solid or surface closure) and polylines of curve representations (`product_curves`: Axis, FootPrint, annotation curves, each with a certified chord bound) through `ifc-geometry`'s reference compile backend: positions relative to each product's world placement, its surface colour (`colour`), a typed refusal per product. Opt-in; links an execution provider (ADR 0004, ADR 0012)."
 colour = "The surface colour of each product's Body (`product_colours`): the item's styled item, its styled presentation layer, else its material's styled representation (layer, profile and constituent sets resolved per item), with the source and a typed refusal. Kernel-free."
 geometry-select = "Representation selection only: contexts, plan/body choice, placements and units, with no geometry kernel."
+material = "Material views (`ifc-material`): layer sets, profile sets, constituents, usage; together with `geometry-select`, each layered wall's, slab's or plate's material layer bounds in its object frame (`material_layer_bounds`)."
 material-templates = "Material views together with the property template catalogue."
 property-catalog = "The PSD/QTO template catalogue (`ifc-template-catalog`), every edition embedded."
 property-catalog-runtime = "The PSD/QTO template catalogue installed at runtime from pinned per-edition snapshot files; nothing embedded."

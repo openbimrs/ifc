@@ -32,6 +32,12 @@ Semver: patch (additive).
 
 Semver: patch (additive)
 
+### Added (#455)
+
+- With `material` and `geometry-select`: `material_layer_bounds(model, product)`: the boundary planes of each material layer of a layered wall, slab or plate in its object frame, in metres, with each layer's material; `Ok(None)` when the product's material is no `IfcMaterialLayerSetUsage`; `LayerBoundsError`.
+
+Semver: patch (additive).
+
 ## [0.39.5] - 2026-10-30
 
 ### Added (#597)

@@ -128,6 +128,8 @@ pub use input::material_usage::{
     MaterialProfileGeometry, MaterialProfileSetUsageGeometry,
     MaterialProfileSetUsageTaperingGeometry,
 };
+// Where a layer set usage measures its layers from, for walls and slabs (#455).
+pub use input::layers::{layer_set_reference, LayerBoundaries, LayerSetReference};
 pub use input::representation::{
     select_plan_representation, select_product_representation, select_shape_representation,
     ProductShape, Representation, RepresentationPurpose, PLAN_IDENTIFIERS, SOLID_IDENTIFIERS,

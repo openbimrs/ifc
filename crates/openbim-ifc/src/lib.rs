@@ -313,7 +313,8 @@ pub use ifc_geometry::{product_world_transform, products_world_transforms};
 // reference backend (#328, ADR 0021): the language bindings' geometry. The
 // module gates itself on `geometry-select` with an inner `#![cfg]`, its
 // `mesh` submodule on `mesh` (it links an execution provider, ADR 0004),
-// and its `colour` submodule (#449) on `colour`.
+// its `colour` submodule (#449) on `colour`, and its `layers` submodule
+// (#455) on `material`.
 mod product_geometry;
 #[cfg(feature = "geometry-select")]
 pub use product_geometry::*;

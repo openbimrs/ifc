@@ -18,6 +18,11 @@ placement. Net geometry
 IFC4 Reference View opening that has only a `Reference` representation as
 already applied (`lower_product_net_with`).
 
+For a layered wall, slab or plate, `layer_set_reference` reads what an
+`IfcMaterialLayerSetUsage` is measured from (the wall's Axis polyline or the
+slab's profile plane) and `LayerSetReference::boundaries` turns the usage's
+offset and thicknesses into exact boundary planes in metres.
+
 ```bash
 cargo add ifc-geometry
 ```

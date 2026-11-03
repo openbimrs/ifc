@@ -182,6 +182,15 @@ const EXPECTED: &[(&str, u64)] = &[
         "synthetic-georef/map_conversion_ifc4.ifc",
         0x09612b07b5ecb5a5,
     ),
+    ("synthetic-layers/material_layers.ifc", 0x45acf7edb0cb6b77),
+    (
+        "synthetic-layers/material_layers_ifc2x3.ifc",
+        0x38ca71b3d281aa7d,
+    ),
+    (
+        "synthetic-layers/material_layers_ifc4x3.ifc",
+        0x45acf7edb0cb6b77,
+    ),
     (
         "synthetic-lowering/curve_bounded_plane_composite.ifc",
         0xd2e9db04c4a6771f,
