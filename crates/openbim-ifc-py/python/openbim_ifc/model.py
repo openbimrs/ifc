@@ -337,8 +337,8 @@ class IfcModel(ModelAccess):
         (#458), for ``ids`` or every product with a shape. ``representation``
         is ``"Plan"`` (the best drawing curves: ``Plan``, ``Annotation``,
         ``FootPrint``, then ``Axis``, preferring a ``PLAN_VIEW`` context),
-        or ``"Axis"``, ``"FootPrint"``, ``"Annotation"``, ``"Body"`` or
-        ``"Surface"``; another name raises ``invalid-value``. A product
+        or ``"Axis"``, ``"FootPrint"``, ``"Annotation"``, ``"Body"``,
+        ``"Surface"`` or ``"Reference"``; another name raises ``invalid-value``. A product
         whose curves cannot be compiled carries a typed ``refusal``: a
         curve the reference compiler has no certified polyline for (an
         implicit curve, an offset of an offset) is ``unsupported``;

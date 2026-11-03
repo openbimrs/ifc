@@ -607,7 +607,7 @@ once into an `OpenbimIfcCurves` set, read and freed as a mesh set is.
 `representation` is UTF-8: `Plan` (the best drawing curves: `Plan`, then
 `Annotation`, `FootPrint` and `Axis`, preferring one in a `PLAN_VIEW`
 context), or one `RepresentationIdentifier`, `Axis`, `FootPrint`,
-`Annotation`, `Body` or `Surface`; another name is `INVALID_VALUE`.
+`Annotation`, `Body`, `Surface` or `Reference`; another name is `INVALID_VALUE`.
 `openbim_ifc_v0_1_curves_records` returns a `ProductCurves` record per
 product (id, global id, type name, transform, vertex count, polylines,
 refusal, skipped), each polyline a `ProductPolyline` record (curve, first vertex,

@@ -1342,7 +1342,7 @@ Compile the curves of each product's `representation` as polylines
 handle to `out_curves`. `representation` is `representation_len` bytes
 of UTF-8: `Plan` (the best drawing curves: `Plan`, `Annotation`,
 `FootPrint`, then `Axis`, preferring a `PLAN_VIEW` context), `Axis`,
-`FootPrint`, `Annotation`, `Body` or `Surface`. Read the set with
+`FootPrint`, `Annotation`, `Body`, `Surface` or `Reference`. Read the set with
 `openbim_ifc_v0_1_curves_records` and `_curves_positions`; destroy it
 with `openbim_ifc_v0_1_curves_destroy`. The chord budget is one
 millimetre.
@@ -1414,7 +1414,7 @@ OpenbimIfcStatus openbim_ifc_v0_1_model_product_meshes_for(OpenbimIfcModel model
 As `openbim_ifc_v0_1_model_product_meshes`, meshing each product's
 `representation` (#458): `representation_len` bytes of UTF-8 at
 `representation`, one of `Body` (as the call above), `Plan`, `Axis`,
-`FootPrint`, `Annotation` or `Surface`. Its surfaces and solids are one
+`FootPrint`, `Annotation`, `Surface` or `Reference`. Its surfaces and solids are one
 mesh, whose record's closure says `solid` or `surface`; its curves are
 left to `openbim_ifc_v0_1_model_product_curves`. A product without the
 representation, or with curves only, has an empty mesh and no refusal.

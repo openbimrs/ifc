@@ -137,7 +137,7 @@ pub unsafe extern "C" fn openbim_ifc_v0_1_model_product_meshes(
 /// As [`openbim_ifc_v0_1_model_product_meshes`], meshing each product's
 /// `representation` (#458): `representation_len` bytes of UTF-8 at
 /// `representation`, one of `Body` (as the call above), `Plan`, `Axis`,
-/// `FootPrint`, `Annotation` or `Surface`. Its surfaces and solids are one
+/// `FootPrint`, `Annotation`, `Surface` or `Reference`. Its surfaces and solids are one
 /// mesh, whose record's closure says `solid` or `surface`; its curves are
 /// left to `openbim_ifc_v0_1_model_product_curves`. A product without the
 /// representation, or with curves only, has an empty mesh and no refusal.

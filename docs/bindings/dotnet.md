@@ -416,7 +416,7 @@ curve, refusal, skipped items) and `float[] Positions`, every polyline's vertice
 turn, relative to its transform. `representation` is `"Plan"` by default
 (the best drawing curves: `Plan`, then `Annotation`, `FootPrint` and
 `Axis`, preferring one in a `PLAN_VIEW` context), or `"Axis"`,
-`"FootPrint"`, `"Annotation"`, `"Body"`, `"Surface"`; another throws
+`"FootPrint"`, `"Annotation"`, `"Body"`, `"Surface"`, `"Reference"`; another throws
 `invalid-value`. Each `ProductPolyline` names its slice (`FirstVertex`,
 `VertexCount`), whether it is `Closed`, the IFC `Curve`, and
 `ChordBound`, the certified bound in metres on how far the exact curve
@@ -827,7 +827,7 @@ and `MeshedProduct` included, from its XML documentation comments.
 | `IReadOnlyList<ProductPlacement> ProductPlacements(IReadOnlyList<ulong>? ids = null)` | Each product's world placement (a column-major 4x4 in metres) and the Body representation a viewer draws, for `ids` or, when null, every product with a shape, in id order (#328). |
 | `IReadOnlyList<ProductGraph> ProductGeometry(IReadOnlyList<ulong>? ids = null, GeometryEncoding encoding = GeometryEncoding.Json)` | Each product's Body as Axiolid's neutral geometry graph (#367), for `ids` or, when null, every product with a shape, in id order, encoded as `encoding` in Axiolid's wire format (1.0; 1.1 when a station carries a seam-snapping window, 1.2 when a run's sections do, 1.3 when an offset run continues to a basis end the kernel measures, 1.4 when a polygonal bounded half-space clips). |
 | `IReadOnlyList<MeshedProduct> ProductMeshes(IReadOnlyList<ulong>? ids = null)` | Each product's Body as triangles from the reference backend, for `ids` or, when null, every product with a shape, in id order (#328). |
-| `IReadOnlyList<MeshedProduct> ProductMeshes(IReadOnlyList<ulong>? ids, string representation)` | The surfaces and solids of each product's `representation` as one mesh (#458): `Body` as `ProductMeshes(IReadOnlyList{ulong})`, or `Surface`, `Plan`, `Axis`, `FootPrint`, `Annotation`. |
+| `IReadOnlyList<MeshedProduct> ProductMeshes(IReadOnlyList<ulong>? ids, string representation)` | The surfaces and solids of each product's `representation` as one mesh (#458): `Body` as `ProductMeshes(IReadOnlyList{ulong})`, or `Surface`, `Plan`, `Axis`, `FootPrint`, `Annotation`, `Reference`. |
 | `IReadOnlyList<CurvedProduct> ProductCurves(IReadOnlyList<ulong>? ids = null, string representation = "Plan")` | The curves of each product's `representation` as polylines from the reference backend (#458), for `ids` or, when null, every product with a shape, in id order. |
 | `IReadOnlyList<PropertySet> PropertySets(ulong id)` | The property sets, quantity sets and predefined property sets of object `id`: its own first, then those its type object holds, an occurrence property overriding an inherited one of the same name. |
 | `IReadOnlyList<ObjectPropertySets> PropertySetsMany(IReadOnlyList<ulong>? ids = null)` | `PropertySets` of each of `ids`, in that order, or, when null, of every object definition (`IfcObjectDefinition` and its subtypes) in file order, in one pass (#358). |

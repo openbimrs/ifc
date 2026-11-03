@@ -26,7 +26,7 @@ pub type OpenbimIfcCurves = u64;
 /// handle to `out_curves`. `representation` is `representation_len` bytes
 /// of UTF-8: `Plan` (the best drawing curves: `Plan`, `Annotation`,
 /// `FootPrint`, then `Axis`, preferring a `PLAN_VIEW` context), `Axis`,
-/// `FootPrint`, `Annotation`, `Body` or `Surface`. Read the set with
+/// `FootPrint`, `Annotation`, `Body`, `Surface` or `Reference`. Read the set with
 /// `openbim_ifc_v0_1_curves_records` and `_curves_positions`; destroy it
 /// with `openbim_ifc_v0_1_curves_destroy`. The chord budget is one
 /// millimetre.
