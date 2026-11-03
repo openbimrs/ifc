@@ -20,6 +20,13 @@ everything released before per-crate changelogs began.
 
 Semver: patch (additive)
 
+### Fixed (#616)
+
+- A strict read refusing a record the IFC model cannot represent reports that
+  record's byte offset instead of 0. `StepError` implements `Clone`.
+
+Semver: patch
+
 ### Fixed (#617)
 
 - After a read, `Model::next_id` is above every id the file declared, skipped

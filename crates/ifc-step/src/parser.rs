@@ -41,11 +41,16 @@ pub(crate) fn parse(input: &[u8], options: ParseOptions) -> Result<Model, StepEr
         recovering: options.on_malformed_record == OnMalformed::Skip,
         error: None,
         floor: 0,
+        records: 0,
+        failed: None,
     };
     let diagnostics = openbim_step::parse_events_borrowed(input, &mut sink, options)
         .map_err(|error| StepError::from_step(input, error))?;
     if let Some(error) = sink.error {
-        return Err(error);
+        return Err(match sink.failed {
+            Some((index, id)) => locate(input, error, index, &id),
+            None => error,
+        });
     }
     let mut model = sink.model;
     apply_header(model.header_mut(), sink.header.standard());
@@ -56,6 +61,23 @@ pub(crate) fn parse(input: &[u8], options: ParseOptions) -> Result<Model, StepEr
     }
     reserve_through(&mut model, sink.floor);
     Ok(model)
+}
+
+/// Puts a conversion error at the offset of the record it concerns.
+///
+/// Conversion works on parsed records, which carry no offset, so such an error
+/// says offset 0. The failing record is the `index`-th data record; `scan`
+/// frames the same records, and the id guards against a disagreement.
+fn locate(input: &[u8], error: StepError, index: usize, id: &str) -> StepError {
+    let StepError::Syntax { detail, .. } = error else {
+        return error;
+    };
+    let offset = openbim_step::scan(input)
+        .ok()
+        .and_then(|scanned| scanned.records().nth(index)?.ok())
+        .filter(|record| record.id.as_str() == id)
+        .map_or(0, |record| record.span.start);
+    StepError::Syntax { offset, detail }
 }
 
 /// Keeps new entities off every id the source declared or referenced.
@@ -196,6 +218,10 @@ struct ModelSink {
     error: Option<StepError>,
     /// The highest id declared or referenced so far.
     floor: u64,
+    /// Data records seen so far.
+    records: usize,
+    /// Position and id text of the record whose conversion failed.
+    failed: Option<(usize, String)>,
 }
 
 impl<'a> openbim_step::EventSink<Text<'a>> for ModelSink {
@@ -226,6 +252,7 @@ impl ModelSink {
         // Under the recovery policy that is the same class of problem as a
         // damaged record and is reported rather than fatal.
         let id_text = instance.id.as_str().to_string();
+        self.records += 1;
         if let Some(declared) = model_id(&id_text) {
             self.floor = self.floor.max(declared);
         }
@@ -241,7 +268,10 @@ impl ModelSink {
                 }
                 self.model.push_diagnostic(skipped);
             }
-            Err(error) => self.error = Some(error),
+            Err(error) => {
+                self.failed = Some((self.records - 1, id_text));
+                self.error = Some(error);
+            }
         }
     }
 }

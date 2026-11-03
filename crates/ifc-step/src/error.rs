@@ -4,7 +4,7 @@ use ifc_model::{EntityId, ModelError};
 use thiserror::Error;
 
 /// Failures specific to reading or writing IFC STEP text.
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, Error)]
 #[non_exhaustive]
 pub enum StepError {
     /// The bytes do not begin with the ISO-10303-21 magic.

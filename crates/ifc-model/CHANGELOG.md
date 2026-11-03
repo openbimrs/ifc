@@ -28,6 +28,12 @@ everything released before per-crate changelogs began.
 
 Semver: patch (additive)
 
+### Added (#616)
+
+- `ModelError` implements `Clone`.
+
+Semver: patch (additive)
+
 ### Changed (#614)
 
 - A diagnostic with a position displays its line and column.

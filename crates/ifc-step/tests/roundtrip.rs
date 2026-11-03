@@ -216,3 +216,32 @@ fn unicode_names_survive_a_roundtrip() {
     let wall2 = reparsed.of_type("IFCWALL").next().unwrap().1;
     assert_eq!(wall2.text(2), Some("\u{30d3}\u{30eb}"));
 }
+
+#[test]
+fn a_refused_conversion_reports_the_offset_of_its_record() {
+    let framing = |records: &str| {
+        format!(
+            "ISO-10303-21;HEADER;FILE_DESCRIPTION(('x'),'2;1');FILE_NAME('x','',(),(),'','','');FILE_SCHEMA(('IFC4'));ENDSEC;DATA;{records}ENDSEC;END-ISO-10303-21;"
+        )
+    };
+    for bad in [
+        "#2=(A($)B($));",
+        "#2=A(123456789012345678901234567890);",
+        "#184467440737095516160=A($);",
+        "#2=A(#184467440737095516160);",
+    ] {
+        let text = framing(&format!("#1=OK($);\n{bad}\n#3=OK($);"));
+        let at = text.find(bad).unwrap();
+        for codec in [
+            StepCodec.read_bytes(text.as_bytes()),
+            ifc_step::StepReader::new(ifc_step::ParseOptions::strict())
+                .eager()
+                .read_bytes(text.as_bytes()),
+        ] {
+            match codec.unwrap_err() {
+                ifc_model::ModelError::Syntax { offset, .. } => assert_eq!(offset, at, "{bad}"),
+                other => panic!("{bad}: {other:?}"),
+            }
+        }
+    }
+}

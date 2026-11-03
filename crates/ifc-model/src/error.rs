@@ -8,7 +8,7 @@ use thiserror::Error;
 /// Codec-specific detail is carried as a message rather than a nested error
 /// type: this crate must not depend on any codec, so it cannot name their
 /// error types.
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, Error)]
 #[non_exhaustive]
 pub enum ModelError {
     /// Underlying I/O failure.
