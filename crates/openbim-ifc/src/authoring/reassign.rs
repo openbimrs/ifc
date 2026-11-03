@@ -14,10 +14,9 @@
 //!    builder refuses a `PredefinedType` outside the new enumeration.
 //! 4. The caller's `attributes` replace carried values. The record passes the
 //!    checks of a created one; a `GlobalId` is claimed only if overridden.
-//! 5. A transaction cannot shorten a record: a base entity whose new class
-//!    declares fewer attributes than the record holds is refused with
-//!    `UnsupportedReassignment` (#634). An entity the batch created is simply
-//!    rebuilt.
+//! 5. A class that declares fewer attributes than the stored record shortens
+//!    it: the overlay stages the shorter record as a truncation, applied
+//!    after the edits, so undo, redo and replay stay exact (#634).
 //! 6. Every referrer is checked against the new class: its attribute must
 //!    accept it, it must not fill an inverse of the old class the new one
 //!    lacks, and every inverse the new class adds must stay within bounds.
@@ -91,20 +90,6 @@ impl Planner<'_, '_> {
                 expected: from_slots.len(),
                 found: old.attributes.len(),
             }));
-        }
-        let held = self.view.base().get(id).map_or(0, |e| e.attributes.len());
-        if to_slots.len() < held {
-            // TODO(#634)
-            return Err(F::UnsupportedReassignment {
-                entity: id,
-                from: from.to_owned(),
-                to: to.to_owned(),
-                detail: format!(
-                    "{to} declares {} attributes and the record holds {held}; \
-                     a transaction cannot shorten a record",
-                    to_slots.len()
-                ),
-            });
         }
         let overridden = attributes
             .iter()
