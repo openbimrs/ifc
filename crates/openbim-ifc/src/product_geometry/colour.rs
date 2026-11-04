@@ -78,9 +78,11 @@
 //! two never disagree. An ambiguous material set refuses both with the same
 //! [`ColourError::AmbiguousMaterial`]. Items that agree on a colour through
 //! different deciders have no one decider for the product:
-//! [`ColourError::DecidersDiffer`]. Deciders are the same by identity: two
-//! items styled by different `IfcStyledItem`s, or by an item style and a
-//! material, differ even when their colours are equal.
+//! [`ColourError::DecidersDiffer`]. Deciders are the same by identity: item styles by their
+//! `IfcSurfaceStyle` alone, so items each with their own `IfcStyledItem` of
+//! one surface style agree (the returned [`ColourDecider::ItemStyle`]'s
+//! source names the first item's styled item); two different surface styles,
+//! or an item style and a material, differ even when their colours are equal.
 //!
 //! # Cost
 //!

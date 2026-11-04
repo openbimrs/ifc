@@ -16,7 +16,10 @@ use super::{same_colour, ColourError, ColourResolver, Leaf, Made, SurfaceColour,
 #[non_exhaustive]
 pub enum ColourDecider {
     /// The item's own style or layer, a boolean's `FirstOperand`'s, or the
-    /// enclosing mapped item's: no material decides.
+    /// enclosing mapped item's: no material decides. Items are the same
+    /// decider when they share the `IfcSurfaceStyle`, whichever
+    /// `IfcStyledItem` assigns it; for a product the colour's source names
+    /// the first item's.
     ItemStyle(SurfaceColour),
     /// One `IfcMaterial`: the product's own or its type's, the single one a
     /// set or list names, or the constituent an aspect names.
@@ -65,13 +68,12 @@ impl ColourDecider {
     }
 
     /// Whether `other` is the same decider, by identity: item styles by
-    /// their `IfcSurfaceStyle` and where it was assigned, materials by
+    /// their `IfcSurfaceStyle` alone (items each styled by their own
+    /// `IfcStyledItem` of one surface style agree), materials by
     /// `IfcMaterial` (or by set and members).
     fn same(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::ItemStyle(a), Self::ItemStyle(b)) => {
-                a.surface_style == b.surface_style && a.source == b.source
-            }
+            (Self::ItemStyle(a), Self::ItemStyle(b)) => a.surface_style == b.surface_style,
             (Self::Material { material: a, .. }, Self::Material { material: b, .. }) => a == b,
             (
                 Self::Materials {
@@ -114,7 +116,8 @@ impl ColourResolver<'_> {
     }
 
     /// What decides the colour of `product`, when all its Body items agree
-    /// on one decider; [`ColourDecider::Nothing`] when it has no Body.
+    /// on one decider (item styles: one `IfcSurfaceStyle`, the first item's
+    /// styled item as source); [`ColourDecider::Nothing`] when it has no Body.
     ///
     /// # Errors
     ///

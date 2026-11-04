@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#677)
+
+- `ColourResolver::product_decider` compares item styles by their
+  `IfcSurfaceStyle` alone: items each with their own `IfcStyledItem` of one
+  shared surface style now yield `ColourDecider::ItemStyle` (the first item's)
+  instead of `DecidersDiffer`. Different surface styles of equal colour still
+  differ.
+
 ### Fixed (#681)
 
 - With `sheet-xlsx`: the XLSX export is byte-stable. The workbook's created and modified time is fixed at 1980-01-01T00:00:00Z (the ZIP epoch) instead of the clock, so the same table exports to identical bytes.
