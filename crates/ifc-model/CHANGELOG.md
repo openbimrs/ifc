@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-11-04
+
 ### Added (#684)
 
 - `RecordDamage` and `UnclassifiedDiagnostic`: a model's reader diagnostics
@@ -249,7 +251,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-model-v0.4.6...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-model-v0.4.7...HEAD
+[0.4.7]: https://github.com/openbimrs/ifc/releases/tag/ifc-model-v0.4.7
 [0.4.6]: https://github.com/openbimrs/ifc/releases/tag/ifc-model-v0.4.6
 [0.4.5]: https://github.com/openbimrs/ifc/releases/tag/ifc-model-v0.4.5
 [0.4.4]: https://github.com/openbimrs/ifc/releases/tag/ifc-model-v0.4.4

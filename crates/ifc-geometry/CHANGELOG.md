@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-11-04
+
 ### Added (#455)
 
 - With `lowering`: `lower_product_layers(session, product, &LayerCut, LayerBody)`: one exact part per layer of a stack of parallel planes in the object frame, the Body (gross, or net on request) cut by half-spaces in the product's frame; the outermost layers keep any of the Body beyond the stack, a zero-thick layer has no part. `LayerCut` (with `From<&LayerBoundaries>`), `LayerBody`, `LayeredLowering`. With `compile`: `compile_product_layer_meshes(_with)`, `LayerMeshes`, `LayerMesh`; `GeometryError::LayerNotSplit` names the layer a backend refuses.
@@ -2511,7 +2513,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.33.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.34.0...HEAD
+[0.34.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.34.0
 [0.33.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.33.0
 [0.32.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.32.1
 [0.32.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.32.0

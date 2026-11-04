@@ -11,7 +11,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | | |
 | --- | --- |
 | Status | <span class="status-partial">Partial</span> |
-| Latest release | 0.33.0 (2026-11-03) |
+| Latest release | 0.34.0 (2026-11-04) |
 | Registries | [crates.io `ifc-geometry`](https://crates.io/crates/ifc-geometry) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `geometry-select` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_geometry/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-geometry) |
@@ -43,47 +43,46 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 ## Changes
 
-Latest release, 0.33.0 (2026-11-03):
+Latest release, 0.34.0 (2026-11-04):
 
-### Added (#651)
+### Added (#455)
 
-- `body_description_for(model, units, product, purpose)`, which describes the representation selected for any `RepresentationPurpose`; `body_description` is its `Body` case. A product without that purpose's representation is `Ok(None)`, never another purpose's.
-- `RepresentationPurpose::Reference`, the geometry provided beside the Body for reference, such as an IFC4 Reference View `IfcOpeningElement`'s void.
-- `BodyDescription::{purpose, frame}` and `BodyItem::bounds`, the new `BodyItemBounds`: the exact bounds of a tessellated item's referenced vertices in the representation frame, mappings applied.
-
-### Changed (#651)
-
-- `body_description` now reads a tessellated item's vertex list and indices, so a face set lowering already refuses (index 0 or past the end, dangling or 2D coordinates, TIN void/hole flags) now refuses the description by name.
-
-Semver: minor (new refusals for malformed face sets and TIN voids in `body_description`).
-
-Semver: breaking (0.x minor). No public item is added, removed or changed in
-signature, but `NetLowering::root` and `gross` of a product with a boolean or
-clip in its Body and no opening is now an `Instance` where it was the boolean
-itself.
-
-### Changed (#655)
-
-- `lower_product_net` and `lower_product_net_with` lower a product no
-  opening voids in its own frame when an item of its Body is an
-  `IfcBooleanResult`, an `IfcBooleanClippingResult` or an `IfcCsgSolid`;
-  `gross` and `root` are one `Instance` of its world transform. Other
-  opening-less Bodies are unchanged.
-
-### Fixed
-
-- The turned wall with a flush polygonal clip meshes net without a lid over
-  the slot (`axiolid-mesh-compile` 0.3.31 up to at least 0.3.40 kept one
-  in world coordinates). The gross path is unchanged (#657).
-
-### Added (#656)
-
-- `compile::compile_product_item_meshes` and `compile_product_item_meshes_with`,
-  returning `ItemMesh { item, mapped_by, mesh, closure }`: one world-space
-  gross mesh per leaf item of a product's Body, mapped items expanded, in the
-  order `ColourResolver::item_colours` lists them. Any item that does not
-  lower or compile refuses the call.
+- With `lowering`: `lower_product_layers(session, product, &LayerCut, LayerBody)`: one exact part per layer of a stack of parallel planes in the object frame, the Body (gross, or net on request) cut by half-spaces in the product's frame; the outermost layers keep any of the Body beyond the stack, a zero-thick layer has no part. `LayerCut` (with `From<&LayerBoundaries>`), `LayerBody`, `LayeredLowering`. With `compile`: `compile_product_layer_meshes(_with)`, `LayerMeshes`, `LayerMesh`; `GeometryError::LayerNotSplit` names the layer a backend refuses.
 
 Semver: patch (additive).
+
+### Added (#640)
+
+- `BodyItem::local_sweep` and `LocalSweptSolid`/`LocalSweepPath`: a swept-area item's profile, `Position` and path in its own item frame, for every swept-area item.
+
+### Changed (#640)
+
+- `body_description` no longer refuses a swept solid that an `IfcMappedItem` scales or mirrors: its `swept` is `None` and `local_sweep` describes it.
+
+Semver: minor.
+
+### Added (#660)
+
+- With `compile`: `compile_profile_outline_with` (and `compile_profile_outline` with the reference backend), an arbitrary profile's outline whose `IfcArcIndex` segments are chord-sampled by the backend within `tolerance`, authored points kept exactly, each arc reported (`SampledArc`) with its bound (the backend's, plus the snap of its end vertices to the authored points, which must lie within `tolerance`). `profile_outline` stays exact and still refuses arcs.
+
+### Changed (#684)
+
+- `units::resolve`, and every entry point that resolves units through it (`compile_product_mesh_with`, `compile_product_mesh_reported_with`, `compile_product_mesh_net_with`, `compile_product_mesh_for_with`, `compile_product_item_meshes_with`, `product_bounds_with`), refuses a lenient model's damaged or possibly incomplete unit records, as `ifc-properties`' exact unit resolution does. A project, unit assignment, assigned unit, conversion factor, unit component or conversion-based unit `Dimensions` that the reader reported is `GeometryError::UnitRecordDamaged`. An unclassified diagnostic, a skip or duplicate without an id, no `IfcProject` after a skipped record, or a skip naming a held id elsewhere is `GeometryError::UnitsIncomplete`. Before, it resolved whichever record the reader kept, a possible factor of 1000. A REAL without its decimal point, a dangling reference elsewhere and an unrelated skipped record still resolve.
+
+### Added (#684)
+
+- `GeometryError::UnitRecordDamaged { entity, diagnostic }`, `GeometryError::UnitsIncomplete { diagnostics }`.
+
+Semver: patch.
+
+### Fixed (#547)
+
+- `IfcSurfaceOfRevolution` now applies `IfcSweptSurface.Position` to its generatrix and axis, as `IfcSurfaceOfLinearExtrusion` already did. A conforming 2D generatrix placed through `Position` was lowered in the XY plane, with no error. Semver: patch.
+
+### Fixed (#589)
+
+- A trimmed surface (and `IfcPointOnSurface`) now converts `u` and `v` with their own unit instead of one factor for both: a cylinder takes an angle in `u` and a length in `v`, a sphere and a torus angles in both, a plane lengths in both, a B-spline surface stays unscaled, and a surface of revolution takes an angle in `u` and its generatrix's own parameter in `v` (an angle on a circle or ellipse, unscaled on a line or polyline). A basis surface or generatrix curve whose parameter unit is not modelled is refused with `Unsupported` instead of defaulting to a length. Semver: patch.
+
+Semver: patch.
 
 Full history: [`crates/ifc-geometry/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-geometry/CHANGELOG.md)

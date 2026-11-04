@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-11-04
+
 ### Changed
 
 - Require `openbim-step` 0.11.3, the release ifc-step requires (#627).

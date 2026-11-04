@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.41.0] - 2026-11-04
+
 ### Fixed (#677)
 
 - `ColourResolver::product_decider` compares item styles by their
@@ -1559,7 +1561,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.40.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.41.0...HEAD
+[0.41.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.41.0
 [0.40.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.40.0
 [0.39.7]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.7
 [0.39.6]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.6

@@ -11,7 +11,7 @@ The IFC entity graph: storage and structural queries, free of domain semantics a
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.6 (2026-11-03) |
+| Latest release | 0.4.7 (2026-11-04) |
 | Registries | [crates.io `ifc-model`](https://crates.io/crates/ifc-model) |
 | API documentation | [rustdoc](/api/rustdoc/ifc_model/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-model) |
 | Source | [`crates/ifc-model/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-model) |
@@ -29,34 +29,28 @@ serialization.
 
 ## Changes
 
-Latest release, 0.4.6 (2026-11-03):
+Latest release, 0.4.7 (2026-11-04):
 
-### Added (#614)
+### Added (#684)
 
-- `Diagnostic::kind` (`DiagnosticKind`), `instance` (the skipped, duplicated
-  or missing id), `referrer` (the record holding a dangling reference),
-  `position` (`SourcePosition`) and `excerpt`; `Diagnostic::new` with
-  `with_byte_range`, `with_position`, `with_instance`, `with_referrer`,
-  `with_excerpt`. `warning` and `unlocated` build `DiagnosticKind::Other`.
+- `RecordDamage` and `UnclassifiedDiagnostic`: a model's reader diagnostics
+  classified for a resolution that reads a known set of records (`reported`,
+  `records_lost`, `held_id_skipped`, `diagnostics`). This is the rule
+  `ifc-properties` unit resolution has applied since #615, now shared with
+  `ifc-geometry`.
 
-### Added (#617)
+Semver: patch (additive).
 
-- `Model::reserve_ids_through(id)`: `push`, `next_id` and transactions never
-  hand out `id` or a lower id. Recorded like every write, so undo, redo and
-  `preview` restore the previous next id.
+### Added (#634)
 
-Semver: patch (additive)
+- `Model::truncate_attributes(id, len)`: shortens a record and returns the
+  dropped tail; recorded like every write, so undo, redo and `preview`
+  restore it exactly.
+- `Transaction::truncate(id, len)` and `Transaction::truncations`: shorten a
+  record after the edits and before the header. `Conflict::TruncationMissingTarget`,
+  `Conflict::WriteBeyondTruncation`. A removal referenced only from a dropped
+  slot does not dangle.
 
-### Added (#616)
-
-- `ModelError` implements `Clone`.
-
-Semver: patch (additive)
-
-### Changed (#614)
-
-- A diagnostic with a position displays its line and column.
-
-Semver: patch (Display text changes)
+Semver: patch (additive).
 
 Full history: [`crates/ifc-model/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-model/CHANGELOG.md)
