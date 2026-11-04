@@ -33,6 +33,8 @@ mod types;
 #[cfg(feature = "lowering")]
 pub(crate) use open_cross::vertices as open_cross_vertices;
 
+#[cfg(feature = "compile")]
+pub(crate) use outline::{arc_boundary, boundary_curves, ring};
 pub use outline::{profile_outline, ProfileOutline};
 pub use types::{ProfileDescription, ProfileOperator, ProfileParameters, ProfilePosition};
 

@@ -50,6 +50,7 @@
 mod bounds;
 mod items;
 mod layers;
+mod outline;
 mod output;
 mod window;
 
@@ -59,6 +60,9 @@ pub use items::{compile_product_item_meshes_with, ItemMesh};
 #[cfg(feature = "compile-reference-backend")]
 pub use layers::compile_product_layer_meshes;
 pub use layers::{compile_product_layer_meshes_with, LayerMesh, LayerMeshes};
+#[cfg(feature = "compile-reference-backend")]
+pub use outline::compile_profile_outline;
+pub use outline::{compile_profile_outline_with, SampledArc, SampledProfileOutline, SampledRing};
 #[cfg(feature = "compile-reference-backend")]
 pub use output::{compile_product_curves, compile_product_mesh_for, compile_product_polylines};
 pub use output::{
