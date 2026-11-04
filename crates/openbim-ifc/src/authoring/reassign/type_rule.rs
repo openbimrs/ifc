@@ -77,7 +77,6 @@ pub(super) fn type_rule<'s>(
 /// The occurrence class that pairs with the type class `type_class`: the
 /// nearest class at or above it, named `{S}Type`, whose stem `S` is a
 /// declared, non-abstract class that declares its own type rule.
-#[cfg(test)] // the pairing of #636 follows
 pub(super) fn occurrence_class<'s>(schema: &'s Schema, type_class: &str) -> Option<&'s str> {
     std::iter::once(type_class)
         .chain(schema.supertypes(type_class))

@@ -16,6 +16,14 @@ everything released before per-crate changelogs began.
 
 - `georeferencing` no longer answers an empty list when the reader's damage may have hidden what its presence gate scans. After a lenient read, a skipped record or a diagnostic the reader's classification cannot place refuses with `GeorefError::RecordsIncomplete` behind either gate (the IFC2X3 property-set test and the IFC4 operation scan), and a reported duplicate of a property set the IFC2X3 gate reads refuses with `GeorefError::RecordDamaged`. Clean models and damage elsewhere still resolve to an empty list.
 
+### Added (#636)
+
+- `AuthorOp::ReassignClass` reassigns type objects (`IfcTypeObject` to `IfcTypeObject`). `ReassignClassOptions::move_pairs`: where the new class's type rule does not accept the other end of a type assignment, that end is reassigned too (an occurrence's type to the class its rule names, a type's unsatisfied occurrences to the class that type pairs with), each in `ReassignReport::paired`. Classes pair by rule owner (`IfcWall.CorrectTypeAssigned` with `IfcWallType`), checked against the normative EXPRESS. `AuthoringFailure::TypeNotAccepted`, `PairNotReassigned`. IFC2X3 declares no type rules; nothing is paired there.
+
+### Changed (#636)
+
+- `TypeRuleChanged` is raised only when the type object's class is not the type class the new class's rule requires.
+
 ### Added (#635)
 
 - `ReassignClassOptions::remove_relationships`: a reassignment takes the entity out of the relationships the new class cannot hold (`WrongReferenceType`, `RelationshipLost`, `TypeRuleChanged`) as `AuthorOp::Remove` detaches. `ReassignReport::removed_relationships` lists each (`RemovedRelationship`, `RelationshipConflict`). Only `IfcRelationship`s are touched; `InverseCardinality` is still refused; a removal that leaves another entity below a mandatory inverse (an opening's `VoidsElements`) is refused with `AuthoringFailure::RelationshipRequired`.

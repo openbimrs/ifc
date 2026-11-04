@@ -4,8 +4,8 @@
 //! the class change as a retype and the changed record as slot writes
 //! (ADR 0010, 0022), so the change undoes exactly. The rules:
 //!
-//! 1. Both classes are an `IfcObject` and not an `IfcProject`; the target is
-//!    declared and not abstract. Type objects are not reassigned (#636).
+//! 1. Both classes are an `IfcObject` and not an `IfcProject`, or both are an
+//!    `IfcTypeObject`; the target is declared and not abstract.
 //! 2. Attributes move by name, case-insensitively. `$` and `*` are not
 //!    carried; a slot the target derives gets `*`. A set attribute the target
 //!    does not declare or derives is dropped, which is refused with
@@ -20,9 +20,17 @@
 //! 6. Every referrer is checked against the new class: its attribute must
 //!    accept it, it must not fill an inverse of the old class the new one
 //!    lacks, and every inverse the new class adds must stay within bounds.
-//! 7. A typed object is refused when the type rule that checks its type
-//!    (`CorrectTypeAssigned`, `CorrectStyleAssigned`) would change: the
-//!    batch does not evaluate those rules.
+//! 7. A typed object is refused when its type object's class is not the
+//!    type class that the new class's type rule (`CorrectTypeAssigned`,
+//!    `CorrectStyleAssigned`) requires: the batch does not evaluate those
+//!    rules. Rules pair by owner, `IfcWall` with `IfcWallType` (`type_rule`).
+//!    A type object is reassigned with its occurrences (`pairs`): one the
+//!    new class does not satisfy is refused with `TypeNotAccepted`, taken
+//!    out of its `IfcRelDefinesByType` with `remove_relationships`, or
+//!    reassigned too with `move_pairs`, as is the type object of an
+//!    occurrence whose new class requires another type class. The primary
+//!    entity's report lists them in `paired`; a refusal of a pair is
+//!    `PairNotReassigned`, and a pair carries its attributes over unchanged.
 //!    With `remove_relationships` the entity is instead taken out of the
 //!    `IfcRelationship`s that fail rule 6 (not its bounds) or this rule, as
 //!    `AuthorOp::Remove` detaches (#635). A removed relationship must not
@@ -34,6 +42,7 @@
 //! 9. Ids, file order and `GlobalId` stay; the entity moves to the end of
 //!    its new type's bucket.
 
+mod pairs;
 mod referrers;
 mod type_rule;
 
@@ -52,8 +61,8 @@ use crate::{attribute_slots, AttributeSlot};
 const GLOBAL_ID: &str = "GlobalId";
 
 impl Planner<'_, '_> {
-    /// Change `id` to the class `type_name`; see the module docs.
-    pub(super) fn reassign_class(
+    /// Change `id` alone to the class `type_name`; see the module docs.
+    pub(super) fn reassign_one(
         &mut self,
         id: EntityId,
         type_name: &str,
@@ -70,12 +79,21 @@ impl Planner<'_, '_> {
             });
         }
         let (from, to) = (from_def.name.as_str(), to_def.name.as_str());
-        for class in [from, to] {
-            if !schema.is_a(class, "IfcObject") || schema.is_a(class, "IfcProject") {
+        if schema.is_a(from, "IfcTypeObject") {
+            if !schema.is_a(to, "IfcTypeObject") {
                 return Err(F::NotA {
-                    type_name: class.to_owned(),
-                    expected: "IfcObject that is not an IfcProject".to_owned(),
+                    type_name: to.to_owned(),
+                    expected: "IfcTypeObject".to_owned(),
                 });
+            }
+        } else {
+            for class in [from, to] {
+                if !schema.is_a(class, "IfcObject") || schema.is_a(class, "IfcProject") {
+                    return Err(F::NotA {
+                        type_name: class.to_owned(),
+                        expected: "IfcObject that is not an IfcProject".to_owned(),
+                    });
+                }
             }
         }
         let from_slots = slots(schema, from)?;
@@ -132,13 +150,14 @@ impl Planner<'_, '_> {
                 Vec::new()
             },
             removed_relationships: removed,
+            paired: Vec::new(),
         })
     }
 
-    /// The type rule a typed object would fall under instead of the one that
-    /// checks its type (rule 7). A target class without a type rule accepts
-    /// any existing type assignment, which is schema-valid; moving a type
-    /// object with its occurrences is #636.
+    /// The type rule that a typed object's type object does not satisfy
+    /// once the object is of class `to` (rule 7). A target class without a
+    /// type rule accepts any existing type assignment, which is
+    /// schema-valid.
     fn type_conflict(&self, id: EntityId, from: &str, to: &str) -> Result<Option<TypeConflict>, F> {
         let Some(relationship) = self.related_by(&TYPED, id) else {
             return Ok(None);
@@ -149,26 +168,33 @@ impl Planner<'_, '_> {
             to: to.to_owned(),
             detail,
         };
-        let from_rule = type_rule(self.schema, from).map_err(unsupported)?;
-        let to_rule = type_rule(self.schema, to).map_err(unsupported)?;
-        let Some(to_rule) = to_rule.filter(|to_rule| from_rule.as_ref() != Some(to_rule)) else {
+        let Some(to_rule) = type_rule(self.schema, to).map_err(unsupported)? else {
             return Ok(None);
         };
-        let (from_rule, to_rule) = (from_rule.map(|rule| rule.name()), to_rule.name());
         let type_object = self
             .relating_of(&TYPED, relationship)
             .unwrap_or(relationship);
+        let satisfied = self
+            .view
+            .get(type_object)
+            .is_some_and(|entity| self.schema.is_a(&entity.type_name, to_rule.type_class));
+        if satisfied {
+            return Ok(None);
+        }
+        let from_rule = type_rule(self.schema, from)
+            .map_err(unsupported)?
+            .map(|rule| rule.name());
         Ok(Some(TypeConflict {
             relationship,
             conflict: RelationshipConflict::TypeRule {
                 type_object,
-                to_rule: to_rule.clone(),
+                to_rule: to_rule.name(),
             },
             refusal: F::TypeRuleChanged {
                 object: id,
                 type_object,
                 from_rule,
-                to_rule,
+                to_rule: to_rule.name(),
             },
         }))
     }

@@ -151,6 +151,11 @@ pub struct ReassignReport {
     /// The relationships the entity was taken out of, ascending by id; empty
     /// unless [`ReassignClassOptions::remove_relationships`](super::ReassignClassOptions::remove_relationships).
     pub removed_relationships: Vec<RemovedRelationship>,
+    /// The entities reassigned with this one because a type rule needed it
+    /// (#636), ascending by id; empty unless
+    /// [`ReassignClassOptions::move_pairs`](super::ReassignClassOptions::move_pairs).
+    /// Their own `paired` is empty.
+    pub paired: Vec<ReassignReport>,
 }
 
 /// A relationship a reassignment took the entity out of (#635).

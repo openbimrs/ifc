@@ -130,6 +130,29 @@ pub enum AuthoringFailure {
         /// The rule the new class falls under.
         to_rule: String,
     },
+    /// A type object's new class does not accept an object it types (#636).
+    TypeNotAccepted {
+        /// The type object.
+        type_object: EntityId,
+        /// Its new class.
+        to: String,
+        /// The typed object.
+        object: EntityId,
+        /// The rule the object's class falls under (`IfcWall.CorrectTypeAssigned`).
+        rule: String,
+        /// The type class that rule requires (`IfcWallType`).
+        required: String,
+    },
+    /// An entity reassigned with the one asked for (`move_pairs`) was
+    /// refused (#636).
+    PairNotReassigned {
+        /// The paired entity.
+        entity: EntityId,
+        /// The class it was to become.
+        to: String,
+        /// Why it was refused.
+        cause: Box<AuthoringFailure>,
+    },
     /// A value references an entity that does not exist.
     MissingReference {
         /// The entity being written.
@@ -501,6 +524,20 @@ impl fmt::Display for AuthoringFailure {
                  not {}, which the batch cannot check: unassign the type first",
                 from_rule.as_deref().unwrap_or("no type rule")
             ),
+            Self::TypeNotAccepted {
+                type_object,
+                to,
+                object,
+                rule,
+                required,
+            } => write!(
+                f,
+                "{type_object} as {to} does not satisfy {rule} of {object}, which requires \
+                 {required}: reassign {object} too (move_pairs) or unassign the type first"
+            ),
+            Self::PairNotReassigned { entity, to, cause } => {
+                write!(f, "paired {entity} cannot become {to}: {cause}")
+            }
             Self::MissingReference {
                 entity,
                 attribute,
