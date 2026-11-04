@@ -21,41 +21,50 @@ impl Planner<'_, '_> {
             return Err(F::MissingEntity(target));
         }
         for referrer in self.view.referrers(target) {
-            let Some(mut entity) = self.view.get(referrer).cloned() else {
-                continue;
-            };
-            if !self.schema.is_a(&entity.type_name, "IfcRelationship") {
-                return Err(F::StillReferenced {
-                    id: target,
-                    by: referrer,
-                });
-            }
-            let mut loses_an_end = false;
-            for value in &mut entity.attributes {
-                match value {
-                    Value::Ref(id) if *id == target => loses_an_end = true,
-                    Value::List(items) if items.contains(&Value::Ref(target)) => {
-                        items.retain(|item| *item != Value::Ref(target));
-                        loses_an_end |= items.is_empty() || holds(items, target);
-                    }
-                    other => loses_an_end |= holds(std::slice::from_ref(other), target),
-                }
-            }
-            if loses_an_end {
-                if let Some(by) = self
-                    .view
-                    .referrers(referrer)
-                    .into_iter()
-                    .find(|by| *by != target)
-                {
-                    return Err(F::StillReferenced { id: referrer, by });
-                }
-                self.view.remove(referrer);
-            } else {
-                self.view.replace(referrer, entity);
-            }
+            self.detach(target, referrer)?;
         }
         self.view.remove(target);
         Ok(())
+    }
+
+    /// Take `target` out of the relationship `referrer`: out of its
+    /// aggregate, or the relationship removed when that leaves it relating
+    /// nothing or `target` was a single-valued end. Whether the
+    /// relationship was removed.
+    pub(super) fn detach(&mut self, target: EntityId, referrer: EntityId) -> Result<bool, F> {
+        let Some(mut entity) = self.view.get(referrer).cloned() else {
+            return Ok(false);
+        };
+        if !self.schema.is_a(&entity.type_name, "IfcRelationship") {
+            return Err(F::StillReferenced {
+                id: target,
+                by: referrer,
+            });
+        }
+        let mut loses_an_end = false;
+        for value in &mut entity.attributes {
+            match value {
+                Value::Ref(id) if *id == target => loses_an_end = true,
+                Value::List(items) if items.contains(&Value::Ref(target)) => {
+                    items.retain(|item| *item != Value::Ref(target));
+                    loses_an_end |= items.is_empty() || holds(items, target);
+                }
+                other => loses_an_end |= holds(std::slice::from_ref(other), target),
+            }
+        }
+        if loses_an_end {
+            if let Some(by) = self
+                .view
+                .referrers(referrer)
+                .into_iter()
+                .find(|by| *by != target)
+            {
+                return Err(F::StillReferenced { id: referrer, by });
+            }
+            self.view.remove(referrer);
+        } else {
+            self.view.replace(referrer, entity);
+        }
+        Ok(loses_an_end)
     }
 }
