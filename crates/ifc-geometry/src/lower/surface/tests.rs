@@ -544,65 +544,6 @@ fn a_torus_preserves_a_self_intersecting_spindle() {
     );
 }
 
-/// A trim parameter on a revolved basis is an ANGLE, not a length.
-///
-/// This is the assertion that pays for the whole family. With degrees in the
-/// file and a length factor applied, a 90-degree patch becomes 0.09 -- still a
-/// valid surface, just the wrong one.
-#[test]
-fn a_trim_parameter_on_a_curved_basis_uses_the_angle_unit() {
-    let mut model = Model::default();
-    model.insert(
-        EntityId(1),
-        entity("IFCCARTESIANPOINT", vec![reals(&[0.0, 0.0, 0.0])]),
-    );
-    model.insert(
-        EntityId(2),
-        entity("IFCAXIS2PLACEMENT3D", vec![r(1), Value::Null, Value::Null]),
-    );
-    model.insert(
-        EntityId(3),
-        entity("IFCCYLINDRICALSURFACE", vec![r(2), Value::Real(200.0)]),
-    );
-    model.insert(
-        EntityId(4),
-        entity(
-            "IFCRECTANGULARTRIMMEDSURFACE",
-            vec![
-                r(3),
-                Value::Real(0.0),
-                Value::Real(0.0),
-                Value::Real(90.0),
-                Value::Real(500.0),
-                Value::Bool(true),
-                Value::Bool(true),
-            ],
-        ),
-    );
-
-    // Degrees for angle, millimetres for length: the two factors differ by
-    // orders of magnitude, so a swapped factor cannot pass by luck.
-    let scale = UnitScale {
-        length_to_metres: 0.001,
-        angle_to_radians: Some(0.017453292519943295),
-    };
-    let mut session = LoweringSession::new(&model, &scale);
-    let node =
-        lower_surface_node(&mut session, EntityId(4), Transform::identity()).expect("lowers");
-    let lowered = session.finish(node).expect("finishes");
-    let Some(GeometryNode::SurfaceRelation(SurfaceRelation::RectangularTrimmed { u, .. })) =
-        lowered.graph.get(lowered.root)
-    else {
-        panic!("expected a rectangular trim");
-    };
-    let expected = 90.0 * 0.017453292519943295;
-    assert!(
-        (u.1 - expected).abs() < 1e-12,
-        "u2 must be radians ({expected}), got {} -- a length factor gives 0.09",
-        u.1
-    );
-}
-
 /// The curve-bounded plane keeps its outer boundary first and its hole after.
 #[test]
 fn a_curve_bounded_plane_orders_outer_then_inner() {

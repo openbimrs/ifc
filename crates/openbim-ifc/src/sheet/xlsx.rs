@@ -13,7 +13,7 @@
 use std::io::Cursor;
 
 use calamine::{Data, Reader, Xlsx};
-use rust_xlsxwriter::{Format, Workbook};
+use rust_xlsxwriter::{DocProperties, ExcelDateTime, Format, Workbook};
 
 use super::grid::{Sheet, SheetFormatError};
 
@@ -39,6 +39,12 @@ pub(super) fn write(sheet: &Sheet) -> Result<Vec<u8>, SheetFormatError> {
     }
     let xlsx = |error: rust_xlsxwriter::XlsxError| SheetFormatError::Xlsx(error.to_string());
     let mut workbook = Workbook::new();
+    // The workbook stamps its created and modified time (one property) with
+    // the clock, which would make the same table differ byte for byte from one
+    // export to the next. Pin it to the ZIP epoch, 1980-01-01T00:00:00Z, the
+    // value the writer already gives every ZIP entry.
+    let epoch = ExcelDateTime::from_ymd(1980, 1, 1).map_err(xlsx)?;
+    workbook.set_properties(&DocProperties::new().set_creation_datetime(&epoch));
     let bold = Format::new().set_bold();
     let worksheet = workbook.add_worksheet();
     worksheet.set_name("IFC").map_err(xlsx)?;

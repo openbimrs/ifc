@@ -161,20 +161,29 @@ def surface_of_revolution(f):
     IfcAxis2Placement3D every other family uses. Mixing them up is a silent
     error: both carry a Location, so a wrong reader still produces a surface.
     """
+    # The generatrix is a 2D profile (IfcArbitraryOpenProfileDef.WR12) placed
+    # through IfcSweptSurface.Position: local x is world +X, local y is world
+    # +Z, and the origin is OFF the world origin so a missing millimetre
+    # conversion of Position is observable.
     profile = f.create_entity("IfcPolyline", Points=[
-        pt(f, (200.0, 0.0, 0.0)),
-        pt(f, (260.0, 0.0, 150.0)),
-        pt(f, (220.0, 0.0, 320.0)),
+        f.create_entity("IfcCartesianPoint", Coordinates=[200.0, 0.0]),
+        f.create_entity("IfcCartesianPoint", Coordinates=[260.0, 150.0]),
+        f.create_entity("IfcCartesianPoint", Coordinates=[220.0, 320.0]),
     ])
-    # Deliberately OFF-ORIGIN: an axis at (0,0,0) makes a missing millimetre
-    # conversion unobservable, because scaling zero is still zero.
+    position = placement(f, (10.0, 0.0, 5.0), axis=(0.0, -1.0, 0.0),
+                         ref=(1.0, 0.0, 0.0))
+    # AxisPosition is stated in the Position system. Deliberately OFF-ORIGIN:
+    # an axis at (0,0,0) makes a missing millimetre conversion unobservable,
+    # because scaling zero is still zero. Local (30, 20, 0) along local y is
+    # the world axis through (40, 0, 25) along +Z.
     axis = f.create_entity("IfcAxis1Placement",
-                           Location=pt(f, (40.0, 0.0, 25.0)),
-                           Axis=dr(f, (0.0, 0.0, 1.0)))
+                           Location=pt(f, (30.0, 20.0, 0.0)),
+                           Axis=dr(f, (0.0, 1.0, 0.0)))
     rev = f.create_entity("IfcSurfaceOfRevolution",
                           SweptCurve=f.create_entity("IfcArbitraryOpenProfileDef",
                                                      ProfileType="CURVE",
                                                      Curve=profile),
+                          Position=position,
                           AxisPosition=axis)
     # Trim in DEGREES: u is the revolution angle, v is along the profile.
     trimmed = f.create_entity("IfcRectangularTrimmedSurface",
