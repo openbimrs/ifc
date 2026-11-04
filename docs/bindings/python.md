@@ -602,8 +602,13 @@ Each mesh also carries its `colour`, a `SurfaceColour`
 ([#449](https://github.com/openbimrs/ifc/issues/449)): `red`, `green`,
 `blue` and `transparency` (each in `[0, 1]`; `transparency` is `None`
 when the file states none, which reads as opaque), the `source` that
-supplied it, `item`, `layer` or `material` in that precedence, the
-`source_entity` and the `surface_style`. The colour comes from the Body
+supplied it, `item`, `layer`, `material` or `materialSet` in that
+precedence, the `source_entity` and the `surface_style`, and
+`source_materials`, a tuple: for `materialSet` (a layer, profile or
+constituent set or material list whose materials all state the colour,
+[#603](https://github.com/openbimrs/ifc/issues/603)) `source_entity` is the
+set and `source_materials` the materials that colour the item, ascending,
+else `()`. The colour comes from the Body
 item's `IfcStyledItem`, else its styled presentation layer, else the
 `IfcMaterialDefinitionRepresentation` of the material the product (or its
 type) is made of: an `IfcMaterial`, the one material of a layer or

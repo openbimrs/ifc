@@ -145,11 +145,21 @@ export interface SurfaceColour {
   /** In `[0, 1]`, 0 opaque; `undefined` when the file states none (opaque). */
   transparency: number | undefined;
   /** Which assignment supplied the colour, in that precedence. */
-  source: "item" | "layer" | "material";
-  /** The `IfcStyledItem`, the layer assignment or the `IfcMaterial`. */
+  source: "item" | "layer" | "material" | "materialSet";
+  /**
+   * The `IfcStyledItem`, the layer assignment, the `IfcMaterial` or, for
+   * `materialSet`, the layer, profile, constituent set or material list (or
+   * a usage of one) whose materials all state this colour (#603).
+   */
   sourceEntity: bigint;
   /** The `IfcSurfaceStyle`. */
   surfaceStyle: bigint;
+  /**
+   * For `materialSet`, the materials of the set that colour the item: every
+   * one, or the constituents its shape aspects name (ascending id,
+   * distinct); empty otherwise.
+   */
+  sourceMaterials: bigint[];
 }
 
 /** One product's Body as triangles, from `IfcModel.productMeshes`. */

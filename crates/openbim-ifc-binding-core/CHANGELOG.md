@@ -8,6 +8,12 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#603)
+
+- `SurfaceColour.source` can be `materialSet`, with `source_entity` the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)) and the new `source_materials` listing the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct); empty for other sources. The record carries `source_materials` last, after `surface_style`.
+
+Semver: minor (pre-1.0 breaking: a field is added to a public struct and a record).
+
 ### Changed (#651)
 
 - The representation names include `Reference`, the void geometry of an IFC4 Reference View opening.

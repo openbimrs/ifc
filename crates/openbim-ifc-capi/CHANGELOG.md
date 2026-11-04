@@ -8,6 +8,13 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#603)
+
+- The `SurfaceColour` record's source can be `materialSet`, its source entity then the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)), and it carries a new last child, `source materials`, a `LIST` of `REF`: the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct), else empty. The record has 8 children; the earlier seven keep their positions.
+- ABI version 0.1.24; no `v0_1` symbol changed.
+
+Semver: additive, released on the 0.1 line.
+
 ### Changed (#651)
 
 - `representation` accepts `Reference`, the void geometry of an IFC4 Reference View opening.

@@ -745,9 +745,13 @@ Body representation.
 
 `SurfaceColour` (#449): red, green, blue (`REAL`s in 0, 1),
 transparency (`REAL`, 0 opaque, or `NULL` when the file states none),
-source (`item`, `layer` or `material`, in that precedence), source
-entity (`REF`: the `IfcStyledItem`, the layer assignment or the
-`IfcMaterial`), surface style (`REF`). The colour is the one the Body's
+source (`item`, `layer`, `material` or `materialSet`, in that
+precedence), source entity (`REF`: the `IfcStyledItem`, the layer
+assignment, the `IfcMaterial` or, for `materialSet`, the material set,
+list or usage), surface style (`REF`), source materials (`LIST` of `REF`,
+last: for `materialSet` the materials of the set that colour the item,
+every one or the constituents its shape aspects name, ascending and
+distinct, else empty; #603). The colour is the one the Body's
 items agree on, `NULL` when nothing colours the product; the colour
 refusal's code is `ambiguous` (two styled items or colours at one
 level, a layer or profile set of several materials, a constituent set

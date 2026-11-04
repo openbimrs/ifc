@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#603)
+
+- Breaking: `ColourSource` gains `MaterialSet { definition, materials }` (it is `#[non_exhaustive]`; `definition` is a layer, profile or constituent set, a material list or a usage of one), and a colour the materials of a set agree on is reported with it where the `openbim-ifc` facade used to report `Material` of the first material. `ColourSource` and `SurfaceColour` are no longer `Copy`: `materials` is a list. `StyleIndex` itself still returns `Material` for one material.
+
+Semver: minor (pre-1.0 breaking).
+
 ## [0.6.5] - 2026-11-03
 
 ### Added (#624)

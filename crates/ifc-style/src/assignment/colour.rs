@@ -9,7 +9,7 @@ use crate::error::{StyleError, StyleResult};
 use crate::StyleView;
 
 /// The colour a surface is painted with, and where it came from.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub struct SurfaceColour {
     /// `SurfaceColour`: red, green and blue, each in `[0, 1]`.
@@ -25,7 +25,7 @@ pub struct SurfaceColour {
 }
 
 /// How a surface style reached the surface.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ColourSource {
     /// An `IfcStyledItem` on the representation item; carries its id.
@@ -38,6 +38,22 @@ pub enum ColourSource {
         material: EntityId,
         /// The item-less `IfcStyledItem` in its `IfcStyledRepresentation`.
         styled_item: EntityId,
+    },
+    /// A material set whose materials all state this colour (#603): the
+    /// layer, profile or constituent set (or the usage) the product is made
+    /// of. Which one of them paints the product is not stated, so the colour
+    /// is neither of theirs alone; a single-material set is
+    /// [`ColourSource::Material`]. Set by the `openbim-ifc` facade, which
+    /// joins materials to products; [`StyleIndex`] itself reads one material.
+    MaterialSet {
+        /// The `IfcMaterialLayerSet`, `IfcMaterialProfileSet`,
+        /// `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of
+        /// one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage`
+        /// and its `Tapering` subtype) the materials belong to.
+        definition: EntityId,
+        /// The materials of the set that colour the item: every one, or the
+        /// constituents its shape aspects name (ascending id, distinct).
+        materials: Vec<EntityId>,
     },
 }
 
@@ -389,7 +405,7 @@ impl<'m, 's> StyleIndex<'m, 's> {
                     rgb,
                     transparency,
                     surface_style: style,
-                    source,
+                    source: source.clone(),
                 });
             }
         }
@@ -439,7 +455,7 @@ impl<'m, 's> StyleIndex<'m, 's> {
 /// The first of `found` when every colour agrees (same RGB and
 /// transparency), `None` when empty, else ambiguous.
 fn agree(owner: EntityId, found: Vec<SurfaceColour>) -> StyleResult<Option<SurfaceColour>> {
-    let Some(first) = found.first().copied() else {
+    let Some(first) = found.first().cloned() else {
         return Ok(None);
     };
     if found
