@@ -34,7 +34,8 @@ fn sha256(bytes: &[u8]) -> String {
 // IFC2X3 TC1 and IFC4X3 ADD2 fingerprints were retaken when the importer
 // began trimming `DataType@type` and `reftype` (#537); IFC4 ADD2 TC1 holds
 // the format-2 values. The corrected fingerprints were retaken when the
-// ledger gained the applicability patches (#622).
+// ledger gained the applicability patches (#622) and again for the member kind
+// patches (#553).
 fn decoded_content_matches_the_format_2_fingerprints() {
     for (edition, official, corrected) in [
         (
@@ -45,12 +46,12 @@ fn decoded_content_matches_the_format_2_fingerprints() {
         (
             CatalogEdition::Ifc4Add2Tc1,
             "60308fa72b5db82a8e40ac76e47a2e9c4277b073deecab9b26876c4f485fea69",
-            Some("ea68906681dac18c9022c09efd616f04637c373c6fd86ea56c2f4813abc996dc"),
+            Some("c571de8c5ad0c284902c251c844e69f48dd62ba7e24acba94f92f1cad5216794"),
         ),
         (
             CatalogEdition::Ifc4x3Add2,
             "ad8e3a96b4390b7e89cb92512ac192757d34def146275d0b9a4c5d049241fa78",
-            Some("a0be879f7724dbf78b6d94fad349542dba88544dbfce9f55009c3d578e64879e"),
+            Some("4c582b6bd3163661c2c56975285812f95692fd70ccc634ab4f877ec0118afc86"),
         ),
     ] {
         let catalog = official_catalog(edition).unwrap();
