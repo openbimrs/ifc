@@ -12,6 +12,10 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#695)
+
+- `georeferencing` no longer answers an empty list when the reader's damage may have hidden what its presence gate scans. After a lenient read, a skipped record or a diagnostic the reader's classification cannot place refuses with `GeorefError::RecordsIncomplete` behind either gate (the IFC2X3 property-set test and the IFC4 operation scan), and a reported duplicate of a property set the IFC2X3 gate reads refuses with `GeorefError::RecordDamaged`. Clean models and damage elsewhere still resolve to an empty list.
+
 ### Added (#635)
 
 - `ReassignClassOptions::remove_relationships`: a reassignment takes the entity out of the relationships the new class cannot hold (`WrongReferenceType`, `RelationshipLost`, `TypeRuleChanged`) as `AuthorOp::Remove` detaches. `ReassignReport::removed_relationships` lists each (`RemovedRelationship`, `RelationshipConflict`). Only `IfcRelationship`s are touched; `InverseCardinality` is still refused; a removal that leaves another entity below a mandatory inverse (an opening's `VoidsElements`) is refused with `AuthoringFailure::RelationshipRequired`.

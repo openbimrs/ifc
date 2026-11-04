@@ -16,7 +16,8 @@
 //! for the source and the rules). The release decides which is read; the
 //! two are never merged. The project length unit is resolved exactly by
 //! `ifc-properties`. A model with nothing to read resolves to an empty
-//! list without asking for its units.
+//! list without asking for its units, unless the reader's damage may have
+//! hidden what the presence test scans (#695).
 #![cfg(all(feature = "georef", feature = "properties"))]
 
 use std::fmt;
@@ -25,7 +26,7 @@ use ifc_georef::{
     has_property_set_georeferencing, resolve_project_to_map_in,
     resolve_property_set_georeferencing, GeorefError, GeorefView, ProjectToMap,
 };
-use ifc_model::{EntityId, Model};
+use ifc_model::{EntityId, Model, RecordDamage};
 use ifc_properties::{exact_unit, ExactPropertyError, ExactUnitError};
 use ifc_schema::{for_version, SchemaVersion};
 
@@ -93,8 +94,13 @@ pub fn georeferencing(model: &Model) -> Result<Vec<ProjectToMap>, Georeferencing
                 },
             ));
         }
+        let damage = record_damage(model)?;
         if !has_property_set_georeferencing(model) {
-            return Ok(Vec::new());
+            return nothing_hidden(
+                &damage,
+                model.diagnostics().len(),
+                model.ids_of_type("IFCPROPERTYSET").iter().copied(),
+            );
         }
         let scale = project_length_scale(model)?;
         return resolve_property_set_georeferencing(model, scale)
@@ -108,12 +114,13 @@ pub fn georeferencing(model: &Model) -> Result<Vec<ProjectToMap>, Georeferencing
         .filter(|(name, _)| schema.is_a(name, "IFCCOORDINATEOPERATION"))
         .map(|(name, _)| name)
         .collect();
+    let damage = record_damage(model)?;
     let mut operations: Vec<EntityId> = types
         .iter()
         .flat_map(|name| model.ids_of_type(name).iter().copied())
         .collect();
     if operations.is_empty() {
-        return Ok(Vec::new());
+        return nothing_hidden(&damage, model.diagnostics().len(), std::iter::empty());
     }
     // File order, whatever the histogram's order.
     let position: std::collections::HashMap<EntityId, usize> =
@@ -126,6 +133,41 @@ pub fn georeferencing(model: &Model) -> Result<Vec<ProjectToMap>, Georeferencing
         .map(|id| resolve_project_to_map_in(&view, id, scale))
         .collect::<Result<_, _>>()
         .map_err(GeoreferencingError::Georef)
+}
+
+/// The reader's diagnostics, classified before the presence gate (#695).
+fn record_damage(model: &Model) -> Result<RecordDamage, GeoreferencingError> {
+    RecordDamage::of(model).map_err(|_| {
+        GeoreferencingError::Georef(GeorefError::RecordsIncomplete {
+            diagnostics: model.diagnostics().len(),
+        })
+    })
+}
+
+/// The empty answer of a presence gate that found nothing to read, unless
+/// the reader's damage may have hidden what it scans (#695): a skipped
+/// record may have been it, and so may a reported duplicate of one of the
+/// `scanned` records the gate did read. Damage elsewhere leaves a lenient
+/// model's answer empty.
+fn nothing_hidden(
+    damage: &RecordDamage,
+    diagnostics: usize,
+    scanned: impl Iterator<Item = EntityId>,
+) -> Result<Vec<ProjectToMap>, GeoreferencingError> {
+    if damage.records_lost() {
+        return Err(GeoreferencingError::Georef(
+            GeorefError::RecordsIncomplete { diagnostics },
+        ));
+    }
+    for entity in scanned {
+        if let Some(diagnostic) = damage.reported(entity) {
+            return Err(GeoreferencingError::Georef(GeorefError::RecordDamaged {
+                entity,
+                diagnostic,
+            }));
+        }
+    }
+    Ok(Vec::new())
 }
 
 /// The header's one schema token when it declares IFC2X3, the release

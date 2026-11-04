@@ -171,3 +171,101 @@ fn a_skipped_record_refuses_every_operation() {
         ))
     );
 }
+
+fn lenient_checked(text: &str) -> ifc::Model {
+    StepCodec::with_options(ifc::ParseOptions::lenient().check_references(true))
+        .read_bytes(text.as_bytes())
+        .expect("lenient read")
+}
+
+/// An IFC2X3 model whose only property set is not a georeferencing one;
+/// `{TAIL}` takes the damage under test.
+const PSETS_OTHER_IFC2X3: &str = "ISO-10303-21;
+HEADER;FILE_DESCRIPTION((''),'2;1');FILE_NAME('','',(''),(''),'','','');FILE_SCHEMA(('IFC2X3'));ENDSEC;
+DATA;
+#1=IFCCARTESIANPOINT((0.,0.,0.));
+#2=IFCPROPERTYSET('0000000000000000000002',$,'Pset_Other',$,());
+{TAIL}ENDSEC;
+END-ISO-10303-21;
+";
+
+fn psets_other(tail: &str) -> ifc::Model {
+    lenient_checked(&PSETS_OTHER_IFC2X3.replace("{TAIL}", tail))
+}
+
+/// #695: the reader keeps the last record of a duplicated id, so the
+/// georeferencing property set it replaced is gone from the presence gate.
+#[test]
+fn a_duplicated_property_set_behind_the_ifc2x3_gate_is_refused() {
+    let text = PSETS_OTHER_IFC2X3.replace("{TAIL}", "").replace(
+        "#2=",
+        "#2=IFCPROPERTYSET('0000000000000000000001',$,'ePSet_MapConversion',$,());\n#2=",
+    );
+    let model = lenient_checked(&text);
+    assert_eq!(model.diagnostics().len(), 1);
+    assert!(matches!(
+        georeferencing(&model),
+        Err(GeoreferencingError::Georef(GeorefError::RecordDamaged {
+            entity: ifc::EntityId(2),
+            ..
+        }))
+    ));
+}
+
+/// #695: a skipped record may have been an IFC4 operation, whether or not
+/// any is left.
+#[test]
+fn a_skipped_record_behind_the_ifc4_gate_is_refused() {
+    let text = MILLIMETRE_IFC4.replace(
+        "#9=IFCMAPCONVERSION(#5,#8,500.,600.,10.,$,$,$);\n",
+        "#9\n XXMAP('x',$);\n",
+    );
+    let model = lenient_checked(&text);
+    assert_eq!(model.diagnostics().len(), 1);
+    assert_eq!(
+        georeferencing(&model),
+        Err(GeoreferencingError::Georef(
+            GeorefError::RecordsIncomplete { diagnostics: 1 }
+        ))
+    );
+}
+
+/// #695: a skipped record behind the IFC2X3 gate is refused too.
+#[test]
+fn a_skipped_record_behind_the_ifc2x3_gate_is_refused() {
+    let model = psets_other("#3\n XXSET('x',$);\n");
+    assert_eq!(model.diagnostics().len(), 1);
+    assert_eq!(
+        georeferencing(&model),
+        Err(GeoreferencingError::Georef(
+            GeorefError::RecordsIncomplete { diagnostics: 1 }
+        ))
+    );
+}
+
+/// #695: damage to a record the gate does not scan leaves the empty answer.
+#[test]
+fn an_unrelated_duplicate_leaves_the_gates_answer_empty() {
+    let model = psets_other("#1=IFCCARTESIANPOINT((1.,1.,1.));\n");
+    assert_eq!(model.diagnostics().len(), 1);
+    assert_eq!(georeferencing(&model), Ok(Vec::new()));
+}
+
+/// #695: a diagnostic the reader's classification cannot place may hide the
+/// record, in both releases.
+#[test]
+fn an_unclassified_diagnostic_behind_either_gate_is_refused() {
+    for text in [
+        PSETS_OTHER_IFC2X3.replace("{TAIL}", ""),
+        MILLIMETRE_IFC4.replace("#9=IFCMAPCONVERSION(#5,#8,500.,600.,10.,$,$,$);\n", ""),
+    ] {
+        let mut model = read(&text);
+        model.push_diagnostic(ifc::Diagnostic::unlocated("x"));
+        assert_eq!(
+            georeferencing(&model),
+            Err(GeoreferencingError::Georef(
+                GeorefError::RecordsIncomplete { diagnostics: 1 }
+            ))
+        );
+    }
+}
