@@ -12,6 +12,9 @@
 //! polygon that differs from the file by an error nobody chose, so an
 //! `IfcArcIndex` segment, and any curve family other than `IfcPolyline` and
 //! `IfcIndexedPolyCurve`, is [`GeometryError::Unsupported`] naming the curve.
+//! A caller that wants the polygon anyway, within a stated tolerance, asks
+//! `compile::compile_profile_outline_with` (feature `compile`), which has the
+//! backend sample each arc and reports its certified bound.
 //!
 //! # Rings
 //!
@@ -81,6 +84,23 @@ pub fn profile_outline(
     units: &UnitScale,
     profile: EntityId,
 ) -> GeometryResult<ProfileOutline> {
+    let (outer, inner) = boundary_curves(model, units, profile)?;
+    Ok(ProfileOutline {
+        profile,
+        outer: ring(model, units, outer)?,
+        inner: inner
+            .iter()
+            .map(|curve| ring(model, units, *curve))
+            .collect::<GeometryResult<_>>()?,
+    })
+}
+
+/// An arbitrary profile's outer curve and inner curves.
+pub(crate) fn boundary_curves(
+    model: &Model,
+    units: &UnitScale,
+    profile: EntityId,
+) -> GeometryResult<(EntityId, Vec<EntityId>)> {
     let description = describe_profile(model, units, profile)?;
     let (outer, inner): (EntityId, &[EntityId]) = match &description.parameters {
         ProfileParameters::ArbitraryClosed { outer_curve } => (*outer_curve, &[]),
@@ -97,18 +117,15 @@ pub fn profile_outline(
             })
         }
     };
-    Ok(ProfileOutline {
-        profile,
-        outer: ring(model, units, outer)?,
-        inner: inner
-            .iter()
-            .map(|curve| ring(model, units, *curve))
-            .collect::<GeometryResult<_>>()?,
-    })
+    Ok((outer, inner.to_vec()))
 }
 
 /// One boundary curve as a ring of distinct vertices, in metres.
-fn ring(model: &Model, units: &UnitScale, curve: EntityId) -> GeometryResult<Vec<[f64; 2]>> {
+pub(crate) fn ring(
+    model: &Model,
+    units: &UnitScale,
+    curve: EntityId,
+) -> GeometryResult<Vec<[f64; 2]>> {
     let entity = model.get(curve).ok_or(GeometryError::MissingEntity {
         referrer: curve,
         missing: curve,
@@ -214,17 +231,7 @@ fn indexed(
     entity: &ifc_model::Entity,
 ) -> GeometryResult<(Vec<[f64; 2]>, Option<bool>)> {
     let view = IndexedPolyCurve::new(curve, entity);
-    let list = match view.points(model)? {
-        CartesianPointList::TwoD(list) => list.coordinates()?,
-        CartesianPointList::ThreeD(list) => {
-            return Err(GeometryError::Degenerate {
-                entity: list.id(),
-                type_name: "IFCCARTESIANPOINTLIST3D".to_owned(),
-                detail: "a profile boundary is 2D (OuterCurve.Dim = 2), this point list is 3D"
-                    .to_owned(),
-            })
-        }
-    };
+    let list = indexed_list(model, &view)?;
     if !view.has_explicit_segments() {
         return Ok((list, None));
     }
@@ -240,15 +247,9 @@ fn indexed(
         };
         match indices.last() {
             None => indices.extend_from_slice(&run),
-            Some(end) if Some(end) == run.first() => indices.extend_from_slice(&run[1..]),
-            Some(_) => {
-                return Err(GeometryError::Degenerate {
-                    entity: curve,
-                    type_name: entity.type_name.to_ascii_uppercase(),
-                    detail: "Segments are not consecutive (WHERE rule Consecutive), so the \
-                             boundary is not one ring"
-                        .to_owned(),
-                })
+            Some(end) => {
+                consecutive(curve, entity, Some(*end), run[0])?;
+                indices.extend_from_slice(&run[1..]);
             }
         }
     }
@@ -257,6 +258,92 @@ fn indexed(
         indices.into_iter().map(|index| list[index]).collect(),
         Some(closed),
     ))
+}
+
+/// An indexed curve's 2D point list, in file units.
+fn indexed_list(model: &Model, view: &IndexedPolyCurve<'_>) -> GeometryResult<Vec<[f64; 2]>> {
+    match view.points(model)? {
+        CartesianPointList::TwoD(list) => list.coordinates(),
+        CartesianPointList::ThreeD(list) => Err(GeometryError::Degenerate {
+            entity: list.id(),
+            type_name: "IFCCARTESIANPOINTLIST3D".to_owned(),
+            detail: "a profile boundary is 2D (OuterCurve.Dim = 2), this point list is 3D"
+                .to_owned(),
+        }),
+    }
+}
+
+/// `IfcConsecutiveSegments`: a segment starts where the previous one ended.
+fn consecutive(
+    curve: EntityId,
+    entity: &ifc_model::Entity,
+    previous_end: Option<usize>,
+    start: usize,
+) -> GeometryResult<()> {
+    match previous_end {
+        Some(end) if end != start => Err(GeometryError::Degenerate {
+            entity: curve,
+            type_name: entity.type_name.to_ascii_uppercase(),
+            detail: "Segments are not consecutive (WHERE rule Consecutive), so the \
+                     boundary is not one ring"
+                .to_owned(),
+        }),
+        _ => Ok(()),
+    }
+}
+
+#[cfg(feature = "compile")]
+/// An `IfcIndexedPolyCurve` boundary that holds an `IfcArcIndex`, checked.
+pub(crate) struct ArcBoundary {
+    /// The point list, in file units.
+    pub(crate) list: Vec<[f64; 2]>,
+    /// The segments in file order, consecutive and closed by index.
+    pub(crate) segments: Vec<PolySegment>,
+}
+
+/// The segments of an `IfcIndexedPolyCurve` boundary with an arc, or `None`
+/// when it has none (the exact outline reads it).
+///
+/// Checks what [`profile_outline`] checks of a boundary: a 2D point list,
+/// consecutive segments, closed by index. Each refusal is
+/// [`GeometryError::Degenerate`].
+#[cfg(feature = "compile")]
+pub(crate) fn arc_boundary(
+    model: &Model,
+    curve: EntityId,
+    entity: &ifc_model::Entity,
+) -> GeometryResult<Option<ArcBoundary>> {
+    let view = IndexedPolyCurve::new(curve, entity);
+    if !view.has_explicit_segments() {
+        return Ok(None);
+    }
+    let list = indexed_list(model, &view)?;
+    let segments = view.segments(list.len())?;
+    if !segments
+        .iter()
+        .any(|s| matches!(s, PolySegment::Arc { .. }))
+    {
+        return Ok(None);
+    }
+    let mut end = None;
+    let mut first = None;
+    for segment in &segments {
+        let (start, last) = match segment {
+            PolySegment::Line(run) => (run[0], run[run.len() - 1]),
+            PolySegment::Arc { start, end, .. } => (*start, *end),
+        };
+        consecutive(curve, entity, end, start)?;
+        first.get_or_insert(start);
+        end = Some(last);
+    }
+    if first != end {
+        return Err(GeometryError::Degenerate {
+            entity: curve,
+            type_name: entity.type_name.to_ascii_uppercase(),
+            detail: "the indexed curve is open, and a profile boundary must be closed".to_owned(),
+        });
+    }
+    Ok(Some(ArcBoundary { list, segments }))
 }
 
 fn distance(a: [f64; 2], b: [f64; 2]) -> f64 {
