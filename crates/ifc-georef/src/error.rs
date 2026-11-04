@@ -102,6 +102,23 @@ pub enum GeorefError {
         /// The unit entity where the walk was abandoned.
         entity: EntityId,
     },
+    /// The reader reported a unit record this resolution reads (#686): the
+    /// file defines its id more than once, or a lenient read skipped a record
+    /// with this id while another record holds it. The kept record cannot be
+    /// shown to be the one the file meant.
+    UnitRecordDamaged {
+        /// The reported record.
+        entity: EntityId,
+        /// Position of the first diagnostic naming it in `Model::diagnostics`.
+        diagnostic: usize,
+    },
+    /// The reader's diagnostics may hide a unit record (#686): a diagnostic
+    /// of an unclassified kind, a skipped record or duplicate with no id, or
+    /// a skip naming a held id elsewhere.
+    UnitsIncomplete {
+        /// How many diagnostics the model carries.
+        diagnostics: usize,
+    },
     /// The model header declares no `FILE_SCHEMA` token.
     MissingSchema,
     /// The header declares more than one schema, so the profile is ambiguous.
@@ -253,6 +270,14 @@ impl std::fmt::Display for GeorefError {
             Self::UnitCycle { entity } => {
                 write!(f, "unit conversion chain at {entity} is cyclic or too deep")
             }
+            Self::UnitRecordDamaged { entity, diagnostic } => write!(
+                f,
+                "{entity} is a unit record the reader reported (diagnostic {diagnostic}), so the map unit is not shown"
+            ),
+            Self::UnitsIncomplete { diagnostics } => write!(
+                f,
+                "{diagnostics} reader diagnostics may hide a unit record, so the map unit is not shown"
+            ),
             Self::MissingSchema => {
                 write!(f, "model header declares no FILE_SCHEMA token")
             }
