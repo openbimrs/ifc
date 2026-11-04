@@ -1,5 +1,5 @@
 //! Permissive attachment of sets to type objects and occurrences, on the
-//! declared release's tables (#631).
+//! declared release's tables (#631, #632).
 //!
 //! Models are parsed from STEP text, so the file is exactly what an exporter
 //! would write.
@@ -81,4 +81,24 @@ fn an_ifc4x3_only_type_object_carries_its_sets() {
         qnames(&model, 2),
         vec![(Attachment::Type, Some("Qto_A".to_owned()))]
     );
+}
+
+// --- #632 ---------------------------------------------------------------
+
+#[test]
+fn a_type_set_id_absent_from_the_file_is_reported() {
+    let wt = "#2=IFCWALLTYPE('4xS3BCk291UvhgP2dvNsgp',$,'WT',$,$,(#20,#99),$,$,.STANDARD.);";
+    let model = step("IFC4", &[wt, P10, PSET20, Q11, QSET21]);
+    let (p, q) = both(&model);
+    assert_eq!(p, vec![missing(2, 99)]);
+    assert_eq!(q, vec![missing(2, 99)]);
+    // The readable set is still attached.
+    assert_eq!(names(&model, 2).len(), 1);
+}
+
+#[test]
+fn a_present_set_of_another_kind_is_not_reported_missing() {
+    let wt = "#2=IFCWALLTYPE('4xS3BCk291UvhgP2dvNsgp',$,'WT',$,$,(#20,#21),$,$,.STANDARD.);";
+    let model = step("IFC4", &[wt, P10, PSET20, Q11, QSET21]);
+    assert_eq!(both(&model), (vec![], vec![]));
 }

@@ -135,6 +135,12 @@ pub(crate) fn sets_by_object<S: Clone>(
             {
                 if let Some(set) = cache.get(model, read, set_id) {
                     out.entry(id).or_default().push((Attachment::Type, set));
+                } else if model.get(set_id).is_none() {
+                    // No relationship here: the type object itself names it.
+                    anomalies.push(PropertyAnomaly::MissingDefinition {
+                        relationship: id,
+                        definition: set_id,
+                    });
                 }
             }
         }

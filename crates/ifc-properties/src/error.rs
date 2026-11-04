@@ -80,8 +80,11 @@ pub enum PropertyAnomaly {
         type_object: EntityId,
     },
     /// A relationship names a property definition absent from the file.
+    ///
+    /// An `IfcTypeObject` naming one in `HasPropertySets` is reported the same
+    /// way, with the type object as `relationship`.
     MissingDefinition {
-        /// The relationship.
+        /// The relationship, or the type object listing the definition.
         relationship: EntityId,
         /// The id it named.
         definition: EntityId,

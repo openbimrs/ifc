@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#632)
+
+- The permissive property and quantity views report an id in `IfcTypeObject.HasPropertySets` that is absent from the model as `PropertyAnomaly::MissingDefinition` (with the type object as `relationship`) instead of skipping it silently.
+
+Semver: patch.
+
 ### Fixed (#631)
 
 - The permissive property and quantity views decide which entities are type objects with the declared release's table instead of IFC4's, so a type object only a later release defines (an IFC4X3 `IfcBearingType`) has its `HasPropertySets` read. A header naming no bundled release still reads through the baseline table.
