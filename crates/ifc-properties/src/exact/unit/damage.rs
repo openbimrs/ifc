@@ -17,6 +17,10 @@ pub(super) struct Damage {
     reported: BTreeMap<EntityId, usize>,
     /// Whether a record was dropped, so an absent record may have existed.
     lost: bool,
+    /// Whether a skipped record names an id a kept record holds. Such a skip
+    /// may have swallowed later records, so a resolution that does not read
+    /// that id is refused too (see [`Damage::settle`]).
+    held_skip: bool,
     /// How many diagnostics the model carries.
     total: usize,
 }
@@ -35,6 +39,7 @@ impl Damage {
         let mut damage = Self {
             reported: BTreeMap::new(),
             lost: false,
+            held_skip: false,
             total,
         };
         for (index, diagnostic) in model.diagnostics().iter().enumerate() {
@@ -42,11 +47,14 @@ impl Damage {
                 DiagnosticKind::RealWithoutPoint | DiagnosticKind::DanglingReference => {}
                 DiagnosticKind::SkippedRecord => {
                     damage.lost = true;
-                    // The reader drops the id when the model already holds
-                    // it, so a record skipped without an id may have been a
-                    // damaged duplicate of one this resolution reads.
-                    // TODO(#627): attribute such a skip in the reader.
+                    // The reader names the id it read, also when a kept
+                    // record holds it; such a record is reported. A skip
+                    // whose `#id` was not read may have held a duplicate of a
+                    // record this resolution reads.
+                    // TODO(#668): a skip that swallowed several records names
+                    // only the first.
                     let id = diagnostic.instance().ok_or_else(incomplete)?;
+                    damage.held_skip |= model.contains(id);
                     damage.reported.entry(id).or_insert(index);
                 }
                 DiagnosticKind::DuplicateId => {
@@ -68,6 +76,22 @@ impl Damage {
             }),
             None => Ok(()),
         }
+    }
+
+    /// Pass a successful resolution through unless a skipped record names an
+    /// id a kept record holds. Resolution refuses such a record when it
+    /// reads it ([`Damage::check`]); when it does not, the skip may still
+    /// have swallowed records it would have read, so the model is
+    /// incomplete (#668).
+    pub(super) fn settle<T>(&self, resolved: T) -> Result<T, ExactUnitError> {
+        if self.held_skip {
+            return Err(ExactUnitError::Structure(
+                ExactPropertyError::IncompleteModel {
+                    diagnostics: self.total,
+                },
+            ));
+        }
+        Ok(resolved)
     }
 
     /// The refusal for a model with no `IfcProject`: a skipped record may

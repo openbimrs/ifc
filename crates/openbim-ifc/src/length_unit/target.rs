@@ -263,7 +263,7 @@ fn assignment(model: &Model) -> Result<(EntityId, usize), LengthUnitError> {
         .ok()
         .and_then(|version| ifc_schema::for_version(version).ok())
         .ok_or_else(|| unresolved("no bundled schema"))?;
-    let assignment = super::space::reference(schema, model, project, "UnitsInContext")
+    let assignment = crate::unit_rules::space::reference(schema, model, project, "UnitsInContext")
         .ok_or_else(|| unresolved("IfcProject.UnitsInContext is not a reference"))?;
     Ok((assignment, 0))
 }

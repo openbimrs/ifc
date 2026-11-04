@@ -470,3 +470,33 @@ fn push_does_not_wrap_after_the_highest_id() {
 fn reserving_the_highest_id_is_refused() {
     Model::new().reserve_ids_through(EntityId(u64::MAX));
 }
+
+#[test]
+fn truncating_a_record_restores_values_count_and_order() {
+    let (mut model, [a, ..]) = seeded();
+    model.set_attribute(a, 3, Value::Integer(9));
+    let before = state(&model);
+    let (tail, inverse) = Inverse::record(&mut model, |m| m.truncate_attributes(a, 1));
+    assert_eq!(tail.unwrap().len(), 3);
+    assert_eq!(model.get(a).unwrap().attributes.len(), 1);
+    let truncated = state(&model);
+    let (restored, redo) = inverse.apply(&mut model).unwrap();
+    assert_eq!(state(&model), before);
+    assert_eq!(restored.modified, vec![a]);
+    // Redo truncates again; undoing the redo restores once more.
+    let (_, undo_again) = redo.apply(&mut model).unwrap();
+    assert_eq!(state(&model), truncated);
+    undo_again.apply(&mut model).unwrap();
+    assert_eq!(state(&model), before);
+}
+
+#[test]
+fn a_preview_restores_a_truncated_record() {
+    let (mut model, [a, ..]) = seeded();
+    model.set_attribute(a, 3, Value::Integer(9));
+    let before = state(&model);
+    let revision = model.revision();
+    model.preview(|m| m.truncate_attributes(a, 0));
+    assert_eq!(state(&model), before);
+    assert_eq!(model.revision(), revision);
+}

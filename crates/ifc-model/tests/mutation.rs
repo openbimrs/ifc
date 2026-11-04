@@ -408,3 +408,183 @@ fn a_create_over_an_existing_id_is_refused() {
         "the existing entity is untouched"
     );
 }
+
+/// Truncations apply after the edits, so a write below the length survives
+/// and the tail is gone.
+#[test]
+fn a_truncation_is_applied_after_the_edits() {
+    let (mut model, storey, wall) = model();
+    let mut tx = Transaction::new(&model);
+    tx.set_attribute(wall, 0, Value::Text("W2".into()));
+    tx.truncate(wall, 1);
+    assert!(!tx.is_empty());
+    assert_eq!(tx.truncations().collect::<Vec<_>>(), vec![(wall, 1)]);
+    assert_eq!(tx.len(), 1, "a truncation is not an edit");
+
+    tx.commit(&mut model).expect("a clean batch");
+
+    assert_eq!(
+        model.get(wall).unwrap().attributes,
+        vec![Value::Text("W2".into())]
+    );
+    assert!(model.contains(storey));
+}
+
+#[test]
+fn a_truncate_only_transaction_is_not_empty() {
+    let (model, _, wall) = model();
+    let mut tx = Transaction::new(&model);
+    assert!(tx.is_empty());
+    tx.truncate(wall, 1);
+    assert!(!tx.is_empty());
+}
+
+#[test]
+fn staging_a_truncation_again_replaces_the_length() {
+    let (model, _, wall) = model();
+    let mut tx = Transaction::new(&model);
+    tx.truncate(wall, 0).truncate(wall, 1);
+    assert_eq!(tx.truncations().collect::<Vec<_>>(), vec![(wall, 1)]);
+}
+
+#[test]
+fn a_truncation_of_a_missing_or_removed_entity_is_refused() {
+    let (mut model, storey, wall) = model();
+    let before = model.revision();
+
+    let mut tx = Transaction::new(&model);
+    tx.truncate(EntityId(99), 0);
+    tx.remove(wall);
+    tx.truncate(wall, 0);
+    tx.truncate(storey, 0);
+    let conflicts = tx.commit(&mut model).expect_err("two dead targets");
+
+    assert_eq!(
+        conflicts,
+        vec![
+            Conflict::TruncationMissingTarget { id: wall },
+            Conflict::TruncationMissingTarget { id: EntityId(99) },
+        ],
+        "ascending id"
+    );
+    assert_eq!(model.revision(), before);
+}
+
+#[test]
+fn a_write_beyond_the_truncation_is_refused() {
+    let (mut model, _, wall) = model();
+    let mut tx = Transaction::new(&model);
+    // Beyond the length, and a reference that would also dangle: only the
+    // truncation conflict is reported.
+    tx.set_attribute(wall, 1, Value::Ref(EntityId(99)));
+    tx.truncate(wall, 1);
+
+    let conflicts = tx.commit(&mut model).expect_err("slot 1 is dropped");
+
+    assert_eq!(
+        conflicts,
+        vec![Conflict::WriteBeyondTruncation {
+            edit: 0,
+            id: wall,
+            slot: 1,
+            len: 1,
+        }]
+    );
+    assert_eq!(model.get(wall).unwrap().attributes.len(), 2);
+}
+
+#[test]
+fn a_removal_referenced_only_from_a_dropped_slot_commits() {
+    let (mut model, storey, wall) = model();
+    let mut tx = Transaction::new(&model);
+    tx.remove(storey);
+    tx.truncate(wall, 1);
+
+    tx.commit(&mut model).expect("the reference is dropped");
+
+    assert!(!model.contains(storey));
+    assert_eq!(model.get(wall).unwrap().attributes.len(), 1);
+    assert!(model.dangling_references().is_empty());
+}
+
+#[test]
+fn a_removal_referenced_below_the_truncation_still_dangles() {
+    let (mut model, storey, wall) = model();
+    let mut tx = Transaction::new(&model);
+    tx.remove(storey);
+    tx.truncate(wall, 2);
+    let conflicts = tx.commit(&mut model).expect_err("slot 1 is kept");
+    assert_eq!(
+        conflicts,
+        vec![Conflict::RemovalWouldDangle {
+            edit: 0,
+            removed: storey,
+            referrer: wall,
+            slot: 1,
+        }]
+    );
+}
+
+#[test]
+fn create_and_truncate_in_one_batch() {
+    let (mut model, storey, _) = model();
+    let mut tx = Transaction::new(&model);
+    // The reference sits in a dropped slot, so a missing target is fine.
+    let id = tx.create(Entity::new(
+        "IFCDOOR",
+        vec![
+            Value::Text("D".into()),
+            Value::Ref(storey),
+            Value::Ref(EntityId(99)),
+        ],
+    ));
+    tx.truncate(id, 2);
+
+    tx.commit(&mut model).expect("slot 2 is never stored");
+
+    assert_eq!(model.get(id).unwrap().attributes.len(), 2);
+}
+
+#[test]
+fn a_dangling_reference_below_the_truncation_in_a_create_is_refused() {
+    let (mut model, _, _) = model();
+    let mut tx = Transaction::new(&model);
+    let id = tx.create(Entity::new("IFCDOOR", vec![Value::Ref(EntityId(99))]));
+    tx.truncate(id, 1);
+    assert!(tx.commit(&mut model).is_err());
+}
+
+#[test]
+fn a_refused_truncating_batch_leaves_the_model_untouched() {
+    let (mut model, storey, wall) = model();
+    let before: Vec<_> = model.iter().map(|(id, e)| (id, e.clone())).collect();
+    let revision = model.revision();
+
+    let mut tx = Transaction::new(&model);
+    tx.truncate(wall, 0);
+    tx.remove(storey);
+    tx.truncate(EntityId(99), 0);
+    tx.commit(&mut model)
+        .expect_err("a missing truncation target");
+
+    let after: Vec<_> = model.iter().map(|(id, e)| (id, e.clone())).collect();
+    assert_eq!(before, after);
+    assert_eq!(model.revision(), revision);
+}
+
+#[test]
+fn a_reversible_truncating_commit_restores_exactly() {
+    let (mut model, storey, wall) = model();
+    let before: Vec<_> = model.iter().map(|(id, e)| (id, e.clone())).collect();
+
+    let mut tx = Transaction::new(&model);
+    tx.remove(storey);
+    tx.truncate(wall, 1);
+    let (_, inverse) = tx.commit_reversible(&mut model).expect("clean");
+    assert_eq!(model.get(wall).unwrap().attributes.len(), 1);
+
+    inverse.apply(&mut model).expect("fresh inverse");
+
+    let after: Vec<_> = model.iter().map(|(id, e)| (id, e.clone())).collect();
+    assert_eq!(before, after);
+}

@@ -12,6 +12,39 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#681)
+
+- With `sheet-xlsx`: the XLSX export is byte-stable. The workbook's created and modified time is fixed at 1980-01-01T00:00:00Z (the ZIP epoch) instead of the clock, so the same table exports to identical bytes.
+
+Semver: patch.
+
+### Changed (#634)
+
+- `AuthorOp::ReassignClass` reassigns a stored entity to a class with fewer
+  attributes than its record (IFC2X3 `IfcSlab` or `IfcDoor` to `IfcWall`); the
+  record is shortened in the transaction with exact undo, redo and replay.
+  `UnsupportedReassignment` is no longer raised for it.
+
+Semver: patch (a refusal lifted).
+
+### Added (#638)
+
+- With `authoring` and `properties`: authoring batches can read their numbers in SI.
+  - API: `AuthoringOptions` (`input_units`, default `InputUnits::Raw`), `stage_authoring_with` and `apply_authoring_with`. `stage_authoring` and `apply_authoring` are unchanged.
+  - What `InputUnits::Si` converts: the attribute values of `Create`, `Edit`, `ReassignClass`, `Project`, `Spatial`, `Product` and `TypeObject`, a `Placement` location and a `CopyProduct` offset (`CopyPlacement::Offset`). Each goes into the unit that applies: the explicit unit of a property, quantity or `IfcMeasureWithUnit`, else the project unit. Units are resolved against the model as it was before the batch.
+  - How values are read:
+    - Measures are classified from the release's tables, an untyped number by its attribute's declared type.
+    - An `IfcParameterValue` follows its curve's or surface's parameter space: lengths and plane angles are converted, unitless parameters kept.
+    - Reviewed `REAL` attributes follow their role.
+    - A temperature difference (`IfcStructuralLoadTemperature.DeltaT*`) converts by the unit's factor alone, so 10 K stays 10 in a Celsius project.
+    - Monetary, logarithmic (decibel, pH) and compound plane angle measures pass unchanged, through a reviewed table. This differs from `apply_property_edits_with`, which refuses every measure without a unit mapping.
+  - Refusals:
+    - `AuthoringFailure::UnitConversion`: no project unit, an offset unit, a non-finite number, a measure with no unit mapping.
+    - `AuthoringFailure::SiInput` with `SiInputRefusal`: a batch that changes the units it converts into (including removing or retyping a context that states them, re-pointing a property enumeration, and any `Purge`), a model with an `IfcPcurve` off a plane, a unit created in the batch, a value whose unit another record states, a parameter space it cannot carry, an ambiguous untyped select, map conversions, an unsupported release or a header that does not declare it, an `IfcProjectLibrary` with units.
+  - The reviewed REAL, parameter and unit-slot tables moved from `length_unit` to a shared module; length conversion is unchanged.
+
+Semver: patch (additive).
+
 ## [0.40.0] - 2026-11-03
 
 ### Changed (#615)

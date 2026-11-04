@@ -32,7 +32,7 @@ group = "facade"
 # when a feature has neither.
 [package.metadata.openbim.features]
 author = "Schema-checked authoring (`authoring`) with every bundled release (`schema`)."
-authoring = "Schema-checked authoring (`ifc-author`) and the checked authoring batch (`apply_authoring`), against the releases the build names."
+authoring = "Schema-checked authoring (`ifc-author`) and the checked authoring batch (`apply_authoring`), against the releases the build names; with `properties`, numbers read in SI (`apply_authoring_with`)."
 codecs = "Both codecs: STEP and ifcXML."
 zip = "ifcZIP (`ifc::ifczip`, `ifc::ifczip::IfcZipCodec`): read an archive holding one STEP or ifcXML model within a decompression budget, and write one; Stored and Deflate only, through the pure-Rust `zip` and `flate2` (miniz_oxide) crates."
 domains = "Every domain view, plus authoring and spatial traversal."

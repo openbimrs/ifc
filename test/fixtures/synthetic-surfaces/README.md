@@ -97,11 +97,6 @@ defective:
 - `synthetic_conic_offset_bounded.ifc`: the boundary curves use p-curve
   segments (`IfcCompositeCurveSegment.ParentIsBoundedCurve`) because the
   tests pin that lowering keeps a surface-parameter curve.
-- `synthetic_surface_of_revolution.ifc`: the generatrix is a 3D polyline,
-  which `IfcArbitraryOpenProfileDef.WR12` forbids (the profile must be 2D).
-  A conforming profile needs `IfcSweptSurface.Position`, which the
-  revolution lowering does not apply (#547), so it would lower to another
-  surface.
 
 The generated files state a 2D `TrueNorth`, a `NOCHANGE` owner-history change
 action and a representation type that admits all of the body's items; a

@@ -19,6 +19,13 @@ use std::sync::Arc;
 
 use ifc_model::{Edit, Entity, EntityId, Model, Transaction, Value};
 
+#[cfg(feature = "properties")]
+impl crate::unit_rules::Records for Overlay<'_> {
+    fn record(&self, id: EntityId) -> Option<&Entity> {
+        self.get(id)
+    }
+}
+
 /// The base model plus the batch's staged changes.
 pub(super) struct Overlay<'m> {
     base: &'m Model,
@@ -389,16 +396,17 @@ impl<'m> Overlay<'m> {
         }
         for (id, entity) in self.changed {
             let before = self.base.get(id).map(|e| e.attributes.as_slice());
-            debug_assert!(
-                before.is_none_or(|b| b.len() <= entity.attributes.len()),
-                "{id}: a changed record is never shorter than the base's"
-            );
             if self
                 .base
                 .get(id)
                 .is_some_and(|base| !base.type_name.eq_ignore_ascii_case(&entity.type_name))
             {
                 tx.retype(id, Arc::clone(&entity.type_name));
+            }
+            // A shorter record is shortened after the edits; slots below its
+            // length are written as usual (#634).
+            if before.is_some_and(|b| b.len() > entity.attributes.len()) {
+                tx.truncate(id, entity.attributes.len());
             }
             for (slot, value) in entity.attributes.into_iter().enumerate() {
                 if before.and_then(|b| b.get(slot)) != Some(&value) {

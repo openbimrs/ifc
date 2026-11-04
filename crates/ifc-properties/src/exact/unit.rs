@@ -9,7 +9,7 @@
 //!
 //! Unit resolution does not refuse a model for having reader diagnostics. It
 //! refuses damage it reaches: a record it reads that the reader skipped is
-//! `MissingReference`; one the reader reported by id (a duplicate id) is
+//! `MissingReference`; one the reader reported by id (a duplicate id, or a skipped record whose id a kept record holds) is
 //! [`ExactUnitError::DamagedRecord`]; no `IfcProject` after a skipped record
 //! is `IncompleteModel`, not `NoProject`, because the skipped record may have
 //! been the project. A REAL read without its decimal point and a dangling
@@ -21,7 +21,7 @@
 //! One surviving `IfcProject` is trusted as the project. Every release
 //! constrains a file to one (`IfcSingleProjectInstance`: IFC2X3_TC1.exp:9563,
 //! IFC4.exp:12392, IFC4X3_ADD2.exp:13977), so a second project the reader
-//! skipped is not detected (TODO(#627)).
+//! skipped is not detected.
 //!
 //! ## Internal split
 //!
@@ -282,7 +282,7 @@ pub fn exact_unit(
             found: resolved.unit_type,
         });
     }
-    Ok(ExactUnit {
+    damage.settle(ExactUnit {
         unit: Some(unit),
         from_project,
         dimensions: resolved.dimensions,
@@ -386,12 +386,13 @@ fn project_unit(
 pub fn exact_project_unit(model: &Model, unit_type: &str) -> Result<EntityId, ExactUnitError> {
     let release = bind_release(model)?;
     let damage = Damage::of(model)?;
-    project_unit(
+    let unit = project_unit(
         model,
         release,
         &damage,
         &Arc::from(unit_type.to_ascii_uppercase()),
-    )
+    )?;
+    damage.settle(unit)
 }
 
 /// What unit a measure type takes in a release: none, a named unit of an
@@ -479,14 +480,14 @@ pub fn resolve_unit(model: &Model, unit: EntityId) -> Result<ConversionUnit, Uni
     let resolved = Resolver::new(model, release, &damage).resolve(unit)?;
     let (mantissa, decimal_exponent) =
         normalise_decimal(resolved.mantissa, resolved.decimal_exponent);
-    Ok(ConversionUnit {
+    Ok(damage.settle(ConversionUnit {
         name: unit_label(model, unit).into(),
         unit_type: Some(resolved.unit_type),
         dimensions: resolved.dimensions,
         mantissa,
         decimal_exponent,
         offset: resolved.offset,
-    })
+    })?)
 }
 
 /// Convert `value` from one of the model's units to another.

@@ -56,7 +56,7 @@ pub(crate) fn parse(input: &[u8], options: ParseOptions) -> Result<Model, StepEr
     apply_header(model.header_mut(), sink.header.standard());
     // Diagnostics are only available once the parse finishes, so they are
     // appended after the records rather than interleaved with them.
-    for diagnostic in self::diagnostics(input, &diagnostics, options, &model) {
+    for diagnostic in self::diagnostics(input, &diagnostics, options) {
         model.push_diagnostic(diagnostic);
     }
     reserve_through(&mut model, sink.floor);
@@ -171,16 +171,16 @@ pub(crate) fn decode(
 ///
 /// Each carries its kind, the bytes it covers, their line and column and a
 /// quote of them. The instance at fault is the substrate's when it names
-/// one; a skipped record's is read from its bytes. A dangling reference
-/// names the missing id as its instance and the record holding it, decoded
-/// from the span under `options`, as its referrer. `model` holds the records
-/// that were read. A REAL read without its
-/// decimal point quotes the token as written.
+/// one. A skipped record's is the id the substrate read, also when a record
+/// that was read holds it; none when no id was read or it does not fit the
+/// model's range. A dangling reference names the missing id as its instance
+/// and the record holding it, decoded from the span under `options`, as its
+/// referrer. A REAL read without its decimal point quotes the token as
+/// written.
 pub(crate) fn diagnostics(
     input: &[u8],
     found: &[openbim_step::Diagnostic],
     options: ParseOptions,
-    model: &Model,
 ) -> Vec<Diagnostic> {
     let starts: Vec<usize> = found.iter().map(|d| d.span().start).collect();
     let positions = location::positions(input, &starts);
@@ -192,15 +192,9 @@ pub(crate) fn diagnostics(
             let range = span.start..span.end;
             let own = found.instance().and_then(|id| model_id(id.as_str()));
             let (kind, instance, referrer) = match found.kind() {
-                StepKind::SkippedRecord => (
-                    DiagnosticKind::SkippedRecord,
-                    own.map(EntityId).or_else(|| {
-                        // An id the model holds belongs to a record that was
-                        // read, so the bytes did not begin the skipped one.
-                        skipped_instance(input, span).filter(|id| !model.contains(*id))
-                    }),
-                    None,
-                ),
+                // TODO(#668): a skip that swallowed several records names only
+                // the first (openbimrs/step#20).
+                StepKind::SkippedRecord => (DiagnosticKind::SkippedRecord, own.map(EntityId), None),
                 StepKind::DuplicateId => (DiagnosticKind::DuplicateId, own.map(EntityId), None),
                 StepKind::DanglingReference => (
                     DiagnosticKind::DanglingReference,
@@ -237,20 +231,6 @@ pub(crate) fn diagnostics(
 fn referrer(input: &[u8], span: Span, options: ParseOptions) -> Option<EntityId> {
     let (record, _) = decode(input, span, options).ok()?;
     model_id(record.id.as_str()).map(EntityId)
-}
-
-/// The id a skipped record starts with: `#` and the longest run of ASCII
-/// digits right after it. `None` when the bytes do not start so, the number
-/// overflows `u64` or it is `u64::MAX`, which no id may be (the next free id
-/// would overflow).
-///
-/// TODO(#627): the substrate names no instance for a skipped record; use its
-/// own once it does.
-pub(crate) fn skipped_instance(input: &[u8], span: Span) -> Option<EntityId> {
-    let bytes = input.get(span.start..span.end)?;
-    let digits = bytes.strip_prefix(b"#")?;
-    let run = digits.iter().take_while(|b| b.is_ascii_digit()).count();
-    model_id(std::str::from_utf8(&digits[..run]).ok()?).map(EntityId)
 }
 
 /// Converts records into the model as the parser emits them.

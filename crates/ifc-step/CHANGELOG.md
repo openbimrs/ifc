@@ -12,6 +12,19 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#627)
+
+- Require `openbim-step` 0.11.3. A skipped record's diagnostic names the id
+  the substrate read (`Diagnostic::instance`) instead of reading it from the
+  record's bytes. It now names that id also when a record that was read holds
+  it (a damaged duplicate, or the rest of a record cut at a `;`), where it
+  named none before. A skip that swallowed several records still names only
+  the first (openbimrs/step#20, #668).
+  A diagnostic may therefore name an id a kept record also holds; a
+  consumer must not treat such a diagnostic as harmless.
+
+Semver: patch
+
 ## [0.6.3] - 2026-11-03
 
 ### Added (#614)

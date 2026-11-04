@@ -65,7 +65,8 @@ pub enum AuthoringFailure {
         /// The set attributes of `from` that would be lost.
         attributes: Vec<String>,
     },
-    /// A reassignment the transaction model cannot stage (#483).
+    /// A reassignment the transaction model cannot stage (#483). Not raised
+    /// at present: a shorter record is staged as a truncation (#634).
     UnsupportedReassignment {
         /// The entity.
         entity: EntityId,
@@ -371,6 +372,31 @@ pub enum AuthoringFailure {
         /// The target model's unit.
         target: String,
     },
+    /// An SI number could not be converted into the unit that applies
+    /// (#638): no project unit, an offset unit, a non-finite number, a
+    /// measure with no unit mapping.
+    #[cfg(feature = "properties")]
+    UnitConversion {
+        /// The entity type holding the number.
+        entity_type: String,
+        /// The attribute.
+        attribute: String,
+        /// The measure type the number was classified as.
+        measure: String,
+        /// Why the conversion was refused.
+        error: Box<ifc_properties::UnitConversionError>,
+    },
+    /// A batch read in SI cannot run, or a value in it cannot be carried
+    /// (#638).
+    #[cfg(feature = "properties")]
+    SiInput {
+        /// The entity type the operation writes, when it is one value's.
+        entity_type: Option<String>,
+        /// The attribute, when the refusal is one value's.
+        attribute: Option<String>,
+        /// Why.
+        reason: super::si_refusal::SiInputRefusal,
+    },
 }
 
 impl AuthoringError {
@@ -609,6 +635,32 @@ impl fmt::Display for AuthoringFailure {
                 "the source model's {unit_type} is {source}, the target's {target}; \
                  convert one model's length unit first (`convert_length_unit`, #469)"
             ),
+            #[cfg(feature = "properties")]
+            Self::UnitConversion {
+                entity_type,
+                attribute,
+                measure,
+                error,
+            } => write!(
+                f,
+                "`{entity_type}.{attribute}`: {measure} given in SI cannot be converted into \
+                 the unit that applies: {error}"
+            ),
+            #[cfg(feature = "properties")]
+            Self::SiInput {
+                entity_type,
+                attribute,
+                reason,
+            } => {
+                match (entity_type, attribute) {
+                    (Some(entity_type), Some(attribute)) => {
+                        write!(f, "`{entity_type}.{attribute}`: ")?;
+                    }
+                    (Some(entity_type), None) => write!(f, "`{entity_type}`: ")?,
+                    _ => {}
+                }
+                reason.fmt(f)
+            }
         }
     }
 }

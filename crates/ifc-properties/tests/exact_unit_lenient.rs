@@ -317,15 +317,55 @@ fn resolve_unit_reports_damage_before_the_unit_kind() {
 }
 
 #[test]
-fn a_skipped_duplicate_without_an_id_is_incomplete() {
-    // The reader drops the id of a skipped record the model already holds.
+fn a_skipped_duplicate_of_a_unit_record_is_damaged() {
     let model = lenient(&units(&[], "#1=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.;\n"));
     assert_eq!(model.diagnostics().len(), 1);
-    assert_eq!(model.diagnostics()[0].instance(), None);
+    assert_eq!(model.diagnostics()[0].instance(), Some(id(1)));
+    assert_eq!(
+        exact_unit(&model, "IFCLENGTHMEASURE", None),
+        Err(ExactUnitError::DamagedRecord {
+            entity: id(1),
+            diagnostic: 0
+        })
+    );
+}
+
+#[test]
+fn a_skip_naming_a_held_id_that_swallowed_a_unit_duplicate_is_incomplete() {
+    // The skip names #20, which a kept record holds; the conflicting #1 it
+    // swallowed is not named. TODO(#668): attribute every swallowed record.
+    let model = lenient(&units(
+        &[],
+        "#20=IFCSITE($);\n#20=IFCSITE($)\n#1=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);\n",
+    ));
+    assert_eq!(model.diagnostics().len(), 1, "{:?}", model.diagnostics());
+    assert_eq!(model.diagnostics()[0].instance(), Some(id(20)));
     assert_eq!(
         exact_unit(&model, "IFCLENGTHMEASURE", None),
         Err(incomplete(1))
     );
+    assert_eq!(exact_project_unit(&model, "LENGTHUNIT"), Err(incomplete(1)));
+}
+
+#[test]
+fn a_cut_record_whose_tail_names_a_held_id_stays_incomplete() {
+    let model = lenient(&units(&[], "#20=IFCSITE($);\n#11=IFCSITE(#1;#20,#46);\n"));
+    assert_eq!(model.diagnostics().len(), 2, "{:?}", model.diagnostics());
+    assert_eq!(model.diagnostics()[1].instance(), Some(id(20)));
+    assert_eq!(
+        exact_unit(&model, "IFCLENGTHMEASURE", None),
+        Err(incomplete(2))
+    );
+}
+
+#[test]
+fn a_skip_before_any_id_is_incomplete() {
+    let model = lenient(&units(&[], "@;\n"));
+    assert_eq!(
+        exact_unit(&model, "IFCLENGTHMEASURE", None),
+        Err(incomplete(1))
+    );
+    assert_eq!(exact_project_unit(&model, "LENGTHUNIT"), Err(incomplete(1)));
 }
 
 #[test]

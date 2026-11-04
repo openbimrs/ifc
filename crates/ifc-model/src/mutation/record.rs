@@ -1,7 +1,8 @@
 //! Recording: capture the exact inverse of a run of model writes.
 //!
 //! While a recording is open, every primitive write (`insert`, `push`,
-//! `set_attribute`, `set_attributes`, `retype`, `remove`, `header_mut`,
+//! `set_attribute`, `set_attributes`, `truncate_attributes`, `retype`, `remove`,
+//! `header_mut`,
 //! `reserve_ids_through`) keeps the step that undoes it. Ending the recording
 //! yields an [`Inverse`].
 //!

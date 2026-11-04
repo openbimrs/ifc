@@ -27,6 +27,47 @@
 //! another entity holds. An edit checks the whole edited record again, as
 //! `ifc-author`'s `EntityEditor` does.
 //!
+//! # SI input
+//!
+//! With `properties`, `apply_authoring_with` and `stage_authoring_with`
+//! take `AuthoringOptions`: under `InputUnits::Si` the numbers an operation
+//! states are SI values and are converted before the operation runs; the
+//! default, `InputUnits::Raw`, is [`apply_authoring`]. Units are resolved by
+//! `ifc-properties` against the model as it was before the batch, so a batch
+//! cannot create the project or its units and read numbers in SI at once; a
+//! raw batch creates those first.
+//!
+//! - **Converted:** the attribute values of `Create`, `Edit`, `ReassignClass`,
+//!   `Project`, `Spatial`, `Product` and `TypeObject`, a `Placement`'s
+//!   location (its axes are directions) and a `CopyProduct`'s
+//!   [`CopyPlacement::Offset`]. Each goes into the unit that applies: the
+//!   explicit unit of the property, quantity or `IfcMeasureWithUnit` the
+//!   number belongs to, else the project unit of its measure. Numbers the
+//!   planner derives or copies are not converted.
+//! - **How a number is read:** a typed measure by its type name, an untyped
+//!   number by the attribute's declared type (the single numeric member of a
+//!   `SELECT`), as the release's tables classify it. Reviewed `REAL`
+//!   attributes follow their role (a precision is a length, an attenuation an
+//!   inverse length, a ratio is kept). An `IfcParameterValue` follows its
+//!   curve's or surface's parameter space, read through the batch: lengths and
+//!   plane angles convert, unitless parameters are kept. Monetary and
+//!   logarithmic measures, and a compound plane angle, pass unchanged. A
+//!   temperature difference (`IfcStructuralLoadTemperature.DeltaT*`) converts
+//!   by the unit's factor alone, never its offset.
+//! - **Refused:** `AuthoringFailure::UnitConversion` when no unit applies
+//!   (a project without one of the type, an offset unit, a non-finite number,
+//!   a measure with no unit mapping), and `AuthoringFailure::SiInput` with a
+//!   `SiInputRefusal` for an unsupported or mismatched release, an
+//!   `IfcProjectLibrary` with units, an operation that changes the units
+//!   (the unit assignment, a unit, the measure behind a conversion-based
+//!   unit, a value holder's `Unit` or enumeration, removing or retyping a
+//!   context that states the units, any `Purge`), a model with an
+//!   `IfcPcurve` off a plane, a unit created in the batch, a value
+//!   whose unit another record states, a parameter space with no single unit
+//!   (composite curves with arcs), an ambiguous untyped `SELECT` value,
+//!   map conversions, polynomial and texture generator parameters. Nothing
+//!   is staged on a refusal.
+//!
 //! # Cost
 //!
 //! Staging a batch costs the batch, not the model, once the model has its
@@ -113,6 +154,9 @@ mod remove;
 mod report;
 mod represent;
 mod shape_type;
+#[cfg(feature = "properties")]
+mod si;
+mod si_refusal;
 
 use ifc_model::{EntityId, Model, Transaction, Value};
 use ifc_schema::Schema;
@@ -128,8 +172,21 @@ pub use report::{
     CopiedEntity, CopyReport, KeepReason, KeptEntity, ReassignReport, RemovalReport, RemovedEntity,
 };
 
+#[cfg(feature = "properties")]
+use crate::input_units::{AuthoringOptions, InputUnits};
 use overlay::Overlay;
 use plan::Planner;
+
+/// The SI input items the crate root re-exports by glob (#638), so the root
+/// names none of them under a `properties` gate: the refusal type is plain
+/// data and always exists, so the glob is never empty.
+pub(crate) mod si_input {
+    pub use super::si_refusal::SiInputRefusal;
+    #[cfg(feature = "properties")]
+    pub use super::{apply_authoring_with, stage_authoring_with};
+    #[cfg(feature = "properties")]
+    pub use crate::input_units::AuthoringOptions;
+}
 
 /// The first id of the handle range: `HANDLE_BASE + i` names the entity
 /// operation `i` of the batch produced. 2^62, so a handle fits every host's
@@ -203,6 +260,50 @@ pub fn stage_authoring(
     ops: &[AuthorOp],
     seed: u128,
 ) -> Result<StagedAuthoring, AuthoringError> {
+    stage(model, schema, ops, seed, &mut |_, op| Ok(op))
+}
+
+/// [`stage_authoring`] reading the batch's numbers as `options` say (#638).
+///
+/// With `InputUnits::Si` every number the operations state is an SI value,
+/// converted into the unit that applies before the operation runs (see the
+/// module documentation); `InputUnits::Raw` is [`stage_authoring`].
+///
+/// # Errors
+///
+/// As [`stage_authoring`]; with `Si`, [`AuthoringFailure::UnitConversion`]
+/// for a number that cannot be converted and [`AuthoringFailure::SiInput`]
+/// for a batch or operation SI input refuses.
+#[cfg(feature = "properties")]
+pub fn stage_authoring_with(
+    model: &Model,
+    schema: &Schema,
+    ops: &[AuthorOp],
+    seed: u128,
+    options: &AuthoringOptions,
+) -> Result<StagedAuthoring, AuthoringError> {
+    match options.input_units {
+        InputUnits::Si => {
+            let mut si = si::SiInput::new(model, schema)
+                .map_err(|failure| AuthoringError::at(None, failure))?;
+            stage(model, schema, ops, seed, &mut |view, op| {
+                si.convert(view, op)
+            })
+        }
+        InputUnits::Raw => stage_authoring(model, schema, ops, seed),
+    }
+}
+
+/// The operations' conversion between handle resolution and planning.
+type Convert<'a> = dyn FnMut(&Overlay<'_>, AuthorOp) -> Result<AuthorOp, AuthoringFailure> + 'a;
+
+fn stage(
+    model: &Model,
+    schema: &Schema,
+    ops: &[AuthorOp],
+    seed: u128,
+    convert: &mut Convert<'_>,
+) -> Result<StagedAuthoring, AuthoringError> {
     let next_id = model.next_id().0;
     if next_id > HANDLE_BASE {
         return Err(AuthoringError::at(
@@ -213,6 +314,7 @@ pub fn stage_authoring(
     let mut planner = Planner::new(schema, Overlay::new(model), seed);
     for (index, op) in ops.iter().enumerate() {
         let op = resolve(op.clone(), index, &planner.ids)
+            .and_then(|op| convert(&planner.view, op))
             .map_err(|failure| AuthoringError::at(Some(index), failure))?;
         let id = planner
             .run(index, op)
@@ -243,6 +345,10 @@ pub fn apply_authoring(
     seed: u128,
 ) -> Result<AuthoringOutcome, AuthoringError> {
     let staged = stage_authoring(model, schema, ops, seed)?;
+    commit(model, staged)
+}
+
+fn commit(model: &mut Model, staged: StagedAuthoring) -> Result<AuthoringOutcome, AuthoringError> {
     let applied = staged
         .transaction
         .commit(model)
@@ -256,6 +362,25 @@ pub fn apply_authoring(
         reassignments: staged.reassignments,
         revision: applied.revision,
     })
+}
+
+/// [`apply_authoring`] reading the batch's numbers as `options` say (#638):
+/// [`stage_authoring_with`], then the commit.
+///
+/// # Errors
+///
+/// As [`stage_authoring_with`] and [`apply_authoring`]. The model is
+/// unchanged on every error.
+#[cfg(feature = "properties")]
+pub fn apply_authoring_with(
+    model: &mut Model,
+    schema: &Schema,
+    ops: &[AuthorOp],
+    seed: u128,
+    options: &AuthoringOptions,
+) -> Result<AuthoringOutcome, AuthoringError> {
+    let staged = stage_authoring_with(model, schema, ops, seed, options)?;
+    commit(model, staged)
 }
 
 /// An append planned and staged but not committed (#479).
