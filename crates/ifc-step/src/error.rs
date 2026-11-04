@@ -44,6 +44,19 @@ pub enum StepError {
         token: String,
     },
 
+    /// Two records of the DATA section share one instance id.
+    ///
+    /// A strict read refuses the file, because an id that names two records
+    /// is ambiguous. A lenient read ([`crate::StepCodec::lenient`]) keeps the
+    /// later record and reports a `DuplicateId` diagnostic naming the id.
+    #[error("duplicate instance id {id} at byte {offset}")]
+    DuplicateId {
+        /// The id both records carry.
+        id: EntityId,
+        /// Byte offset of the later record in the source.
+        offset: usize,
+    },
+
     /// The model contains a REAL value Part 21 cannot represent.
     #[error("entity #{entity} slot {slot} contains a non-finite REAL")]
     NonFiniteReal {
@@ -114,6 +127,7 @@ impl From<StepError> for ModelError {
                      a lenient read accepts it)"
                 ),
             },
+            StepError::DuplicateId { id, .. } => ModelError::DuplicateId(id),
             StepError::NonFiniteReal { entity, slot } => ModelError::Write(format!(
                 "entity #{entity} slot {slot} contains a non-finite REAL"
             )),

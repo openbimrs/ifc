@@ -164,6 +164,10 @@ impl StepReader {
     /// the same input under the same options, and `Ok` means `read_bytes`
     /// succeeds. Locate a syntax error with [`SyntaxLocation::locate`](crate::SyntaxLocation::locate).
     ///
+    /// A strict check keeps the id of every record it accepts, to refuse a
+    /// repeated one, so its memory grows with the number of records (8 bytes
+    /// and a hash slot each).
+    ///
     /// # Errors
     ///
     /// The error `read_bytes` would return.

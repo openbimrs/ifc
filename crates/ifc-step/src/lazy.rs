@@ -144,8 +144,8 @@ const PARALLEL_BYTES: usize = 4 << 20;
 /// `scan` frames every record without parsing it. Each record is then
 /// parsed from its own span and validated -- independently of every other
 /// record, so the frames are split across threads -- and finally the model
-/// is filled in file order, which keeps [`Model::insert_lazy`]'s
-/// duplicate-id and ordering rules exactly those of the eager read.
+/// is filled in file order, which keeps the ordering of the eager
+/// read. A repeated id is the first record the eager read would not accept.
 fn index(source: &Arc<StepSource>) -> Option<Model> {
     let input = source.bytes.as_slice();
     let scanned = openbim_step::scan(input).ok()?;
@@ -162,7 +162,12 @@ fn index(source: &Arc<StepSource>) -> Option<Model> {
     let mut diagnostics = Vec::new();
     let mut floor = 0;
     for (span, (id, name, found, refs)) in frames.iter().zip(records) {
+        let held = model.len();
         model.insert_lazy(id, &name, span.start..span.end);
+        // Two records of one id: the eager read reports it.
+        if model.len() == held {
+            return None;
+        }
         diagnostics.extend(found);
         floor = floor.max(refs);
     }
