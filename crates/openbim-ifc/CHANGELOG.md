@@ -16,7 +16,15 @@ everything released before per-crate changelogs began.
 
 - `ReassignClassOptions::remove_relationships`: a reassignment takes the entity out of the relationships the new class cannot hold (`WrongReferenceType`, `RelationshipLost`, `TypeRuleChanged`) as `AuthorOp::Remove` detaches. `ReassignReport::removed_relationships` lists each (`RemovedRelationship`, `RelationshipConflict`). Only `IfcRelationship`s are touched; `InverseCardinality` is still refused; a removal that leaves another entity below a mandatory inverse (an opening's `VoidsElements`) is refused with `AuthoringFailure::RelationshipRequired`.
 
-Semver: patch (additive).
+### Added (#661)
+
+- With `geometry-select`: `BodyItem::swept_disk` and `SweptDisk`: radius, inner radius, fillet radius, directrix and authored `StartParam`/`EndParam` of `IfcSweptDiskSolid` and `IfcSweptDiskSolidPolygonal`, in the item frame.
+
+### Changed (#661)
+
+- With `geometry-select`: a swept disk with a non-positive radius, a bore at least its radius, a half-open range or a non-positive fillet now refuses `body_description`.
+
+Semver: minor.
 
 ## [0.41.0] - 2026-11-04
 

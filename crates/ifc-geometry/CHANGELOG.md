@@ -12,6 +12,17 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#661)
+
+- `BodyItem::swept_disk` and `SweptDisk`: radius, inner radius, fillet radius, directrix and authored `StartParam`/`EndParam` of `IfcSweptDiskSolid` and `IfcSweptDiskSolidPolygonal`, in the item frame.
+- With `compile`: `compile_sweep_directrix_with` / `compile_sweep_directrix`, the directrix of a swept disk or directrix sweep as a polyline within `tolerance` (StartParam/EndParam applied, certified bound), in the frame the caller passes (a swept-area sweep's `Position` applied first). The `FilletRadius` of an `IfcSweptDiskSolidPolygonal` is not applied. Patch-level on its own.
+
+### Changed (#661)
+
+- A swept disk with a non-positive radius, a bore at least its radius, a half-open range or a non-positive fillet now refuses `body_description`.
+
+Semver: minor.
+
 ## [0.34.0] - 2026-11-04
 
 ### Added (#455)

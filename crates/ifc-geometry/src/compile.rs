@@ -48,12 +48,16 @@
 //! [backend-compare]: https://github.com/openbimrs/ifc/tree/main/crates/ifc-geometry/examples/backend_compare
 
 mod bounds;
+mod directrix;
 mod items;
 mod layers;
 mod outline;
 mod output;
 mod window;
 
+#[cfg(feature = "compile-reference-backend")]
+pub use directrix::compile_sweep_directrix;
+pub use directrix::compile_sweep_directrix_with;
 #[cfg(feature = "compile-reference-backend")]
 pub use items::compile_product_item_meshes;
 pub use items::{compile_product_item_meshes_with, ItemMesh};
