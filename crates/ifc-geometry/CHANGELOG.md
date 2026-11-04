@@ -26,6 +26,16 @@ Semver: minor.
 
 - With `compile`: `compile_profile_outline_with` (and `compile_profile_outline` with the reference backend), an arbitrary profile's outline whose `IfcArcIndex` segments are chord-sampled by the backend within `tolerance`, authored points kept exactly, each arc reported (`SampledArc`) with its bound (the backend's, plus the snap of its end vertices to the authored points, which must lie within `tolerance`). `profile_outline` stays exact and still refuses arcs.
 
+### Changed (#684)
+
+- `units::resolve`, and every entry point that resolves units through it (`compile_product_mesh_with`, `compile_product_mesh_reported_with`, `compile_product_mesh_net_with`, `compile_product_mesh_for_with`, `compile_product_item_meshes_with`, `product_bounds_with`), refuses a lenient model's damaged or possibly incomplete unit records, as `ifc-properties`' exact unit resolution does. A project, unit assignment, assigned unit, conversion factor, unit component or conversion-based unit `Dimensions` that the reader reported is `GeometryError::UnitRecordDamaged`. An unclassified diagnostic, a skip or duplicate without an id, no `IfcProject` after a skipped record, or a skip naming a held id elsewhere is `GeometryError::UnitsIncomplete`. Before, it resolved whichever record the reader kept, a possible factor of 1000. A REAL without its decimal point, a dangling reference elsewhere and an unrelated skipped record still resolve.
+
+### Added (#684)
+
+- `GeometryError::UnitRecordDamaged { entity, diagnostic }`, `GeometryError::UnitsIncomplete { diagnostics }`.
+
+Semver: patch.
+
 ### Fixed (#547)
 
 - `IfcSurfaceOfRevolution` now applies `IfcSweptSurface.Position` to its generatrix and axis, as `IfcSurfaceOfLinearExtrusion` already did. A conforming 2D generatrix placed through `Position` was lowered in the XY plane, with no error. Semver: patch.

@@ -86,6 +86,28 @@ pub enum GeometryError {
         kind: &'static str,
     },
 
+    /// The reader reported a unit record this resolution reads (#684): the
+    /// file defines its id more than once, or a lenient read skipped a record
+    /// with this id while another record holds it. The kept record cannot be
+    /// shown to be the one the file meant.
+    #[error("{entity} is a unit record the reader reported (diagnostic {diagnostic}), so the model's units are not shown")]
+    UnitRecordDamaged {
+        /// The reported record.
+        entity: EntityId,
+        /// Position of the first diagnostic naming it in `Model::diagnostics`.
+        diagnostic: usize,
+    },
+
+    /// The reader's diagnostics may hide a unit record (#684): a diagnostic
+    /// of an unclassified kind, a skipped record or duplicate with no id, no
+    /// `IfcProject` after a skipped record, or a skip naming a held id
+    /// elsewhere.
+    #[error("{diagnostics} reader diagnostics may hide a unit record, so the model's units are not shown")]
+    UnitsIncomplete {
+        /// How many diagnostics the model carries.
+        diagnostics: usize,
+    },
+
     /// A chain exceeded its depth limit without closing.
     #[error("{kind} chain through {entity} exceeded depth {limit}")]
     ChainTooDeep {
@@ -712,7 +734,9 @@ impl GeometryError {
             Self::AngleUnitUndeclared { entity } => Some(*entity),
             Self::UnitUnreadable { unit, .. } => Some(*unit),
             Self::UnitsAmbiguous { second, .. } => Some(*second),
+            Self::UnitRecordDamaged { entity, .. } => Some(*entity),
             Self::Units(_)
+            | Self::UnitsIncomplete { .. }
             | Self::InvalidAuthoredValue { .. }
             | Self::AuthoringSchemaUnbound { .. }
             | Self::AuthoringEntityNotInSchema { .. } => None,

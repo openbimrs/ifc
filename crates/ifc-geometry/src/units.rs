@@ -31,12 +31,19 @@
 //! No project, no `UnitsInContext`, no `LENGTHUNIT`; two projects; two units
 //! of one type; an unknown prefix; a misnamed SI unit; a context-dependent or
 //! offset unit; a conversion factor that is not a positive finite number.
+//! A project, assignment, assigned unit, conversion factor, unit component or
+//! `Dimensions` the reader reported, and a lenient model whose skipped records
+//! may hide one, are refused too (#684).
 //! A conversion-based unit defined through another one is
 //! [`GeometryError::Unsupported`].
 
 use crate::error::{GeometryError, GeometryResult};
 use crate::slots::Slots;
 use ifc_model::{EntityId, Model, Value};
+
+mod damage;
+
+use damage::Damage;
 
 /// Multipliers converting file units into SI base units.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -96,16 +103,15 @@ impl UnitScale {
 /// [`GeometryError::LengthUnitUndeclared`] when there is no project, no
 /// assignment or no `LENGTHUNIT`; [`GeometryError::UnitsAmbiguous`] for two
 /// projects or two units of one type; [`GeometryError::UnitUnreadable`] for a
-/// declared length or angle unit without an exact factor. A missing angle unit
+/// declared length or angle unit without an exact factor;
+/// [`GeometryError::UnitRecordDamaged`] for a unit record the reader reported
+/// and [`GeometryError::UnitsIncomplete`] when its diagnostics may hide one
+/// (#684). A missing angle unit
 /// is not an error here: see [`UnitScale::angle`].
 pub fn resolve(model: &Model) -> GeometryResult<UnitScale> {
+    let damage = Damage::of(model)?;
     let project = match model.ids_of_type("IFCPROJECT") {
-        [] => {
-            return Err(GeometryError::LengthUnitUndeclared {
-                project: None,
-                assignment: None,
-            });
-        }
+        [] => return Err(damage.no_project()),
         [project] => *project,
         [first, second, ..] => {
             return Err(GeometryError::UnitsAmbiguous {
@@ -121,6 +127,7 @@ pub fn resolve(model: &Model) -> GeometryResult<UnitScale> {
             project: Some(project),
             assignment: None,
         })?;
+    damage.check(project)?;
     let project_slots = Slots::new(project, project_entity);
     let Some(value) = project_slots.opt(8) else {
         return Err(GeometryError::LengthUnitUndeclared {
@@ -132,6 +139,7 @@ pub fn resolve(model: &Model) -> GeometryResult<UnitScale> {
         .as_ref_id()
         .ok_or_else(|| project_slots.kind_error("UnitsInContext", "an entity reference", value))?;
     let assignment_entity = project_slots.resolve(model, assignment)?;
+    damage.check(assignment)?;
     if &*assignment_entity.type_name != "IFCUNITASSIGNMENT" {
         return Err(GeometryError::WrongEntityType {
             entity: assignment,
@@ -147,6 +155,7 @@ pub fn resolve(model: &Model) -> GeometryResult<UnitScale> {
     let mut angle: Option<EntityId> = None;
     for unit_id in slots.req_ref_list(0, "Units")? {
         let unit = slots.resolve(model, unit_id)?;
+        damage.check(unit_id)?;
         match unit_type(&Slots::new(unit_id, unit)) {
             Some("LENGTHUNIT") => {
                 if let Some(first) = length {
@@ -165,7 +174,7 @@ pub fn resolve(model: &Model) -> GeometryResult<UnitScale> {
     }
     let read = |unit_id: EntityId, kind: &'static str| -> GeometryResult<f64> {
         let unit = slots.resolve(model, unit_id)?;
-        factor(model, &Slots::new(unit_id, unit), kind)
+        factor(model, &damage, &Slots::new(unit_id, unit), kind)
     };
     let length = length
         .map(|unit_id| read(unit_id, "LENGTHUNIT"))
@@ -180,7 +189,7 @@ pub fn resolve(model: &Model) -> GeometryResult<UnitScale> {
             assignment: Some(assignment),
         });
     };
-    Ok(UnitScale {
+    damage.settle(UnitScale {
         length_to_metres,
         angle_to_radians: angle,
     })
@@ -209,7 +218,12 @@ fn unit_type<'m>(slots: &Slots<'m>) -> Option<&'m str> {
 }
 
 /// Metres per stored length unit, or radians per stored angle unit.
-fn factor(model: &Model, slots: &Slots<'_>, kind: &'static str) -> GeometryResult<f64> {
+fn factor(
+    model: &Model,
+    damage: &Damage,
+    slots: &Slots<'_>,
+    kind: &'static str,
+) -> GeometryResult<f64> {
     let unreadable = |detail: String| GeometryError::UnitUnreadable {
         unit: slots.id(),
         unit_type: kind,
@@ -229,7 +243,7 @@ fn factor(model: &Model, slots: &Slots<'_>, kind: &'static str) -> GeometryResul
                     }
                 }
             }
-            conversion_factor(model, slots, kind)?
+            conversion_factor(model, damage, slots, kind)?
         }
         "IFCCONTEXTDEPENDENTUNIT" => {
             return Err(unreadable(
@@ -278,18 +292,29 @@ fn si_factor(slots: &Slots<'_>, kind: &'static str) -> GeometryResult<f64> {
 
 /// `IfcConversionBasedUnit`: `ConversionFactor.ValueComponent` stated in its
 /// `UnitComponent`.
-fn conversion_factor(model: &Model, slots: &Slots<'_>, kind: &'static str) -> GeometryResult<f64> {
+fn conversion_factor(
+    model: &Model,
+    damage: &Damage,
+    slots: &Slots<'_>,
+    kind: &'static str,
+) -> GeometryResult<f64> {
     let unreadable = |detail: String| GeometryError::UnitUnreadable {
         unit: slots.id(),
         unit_type: kind,
         detail,
     };
+    // The `Dimensions` reference is not read; a reported one is refused so
+    // that this resolution and `ifc-properties` agree.
+    if let Some(dimensions) = slots.opt(0).and_then(Value::as_ref_id) {
+        damage.check(dimensions)?;
+    }
     let measure_id = slots
         .req_ref(3, "ConversionFactor")
         .map_err(|e| unreadable(e.to_string()))?;
     let measure = slots
         .resolve(model, measure_id)
         .map_err(|e| unreadable(e.to_string()))?;
+    damage.check(measure_id)?;
     if &*measure.type_name != "IFCMEASUREWITHUNIT" {
         return Err(unreadable(format!(
             "its ConversionFactor {measure_id} is {}, not IFCMEASUREWITHUNIT",
@@ -306,6 +331,7 @@ fn conversion_factor(model: &Model, slots: &Slots<'_>, kind: &'static str) -> Ge
     let component = measure_slots
         .resolve(model, component_id)
         .map_err(|e| unreadable(e.to_string()))?;
+    damage.check(component_id)?;
     let component_slots = Slots::new(component_id, component);
     match &*component.type_name {
         "IFCSIUNIT" => {
