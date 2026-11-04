@@ -20,6 +20,12 @@ everything released before per-crate changelogs began.
   instead of `DecidersDiffer`. Different surface styles of equal colour still
   differ.
 
+### Changed (#684)
+
+- With `geometry-select`: `product_placements`, product meshes, graphs, curves, `material_layer_bounds` and every other entry point that resolves units through `ifc::geometry::units::resolve` refuse a lenient model with a damaged or possibly incomplete unit record (`GeometryError::UnitRecordDamaged`, `UnitsIncomplete`), the verdict `ifc::properties::exact_unit` already gave. Door and window operation reads of such a model now refuse with their `Placement` error instead of `Unit`, because the placement's units are resolved first.
+
+Semver: patch.
+
 ### Fixed (#681)
 
 - With `sheet-xlsx`: the XLSX export is byte-stable. The workbook's created and modified time is fixed at 1980-01-01T00:00:00Z (the ZIP epoch) instead of the clock, so the same table exports to identical bytes.

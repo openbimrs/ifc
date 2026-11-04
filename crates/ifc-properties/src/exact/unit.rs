@@ -14,7 +14,8 @@
 //! is `IncompleteModel`, not `NoProject`, because the skipped record may have
 //! been the project. A REAL read without its decimal point and a dangling
 //! reference elsewhere change no unit record and are ignored. A diagnostic of
-//! a kind not classified here refuses the model. Property resolution and
+//! a kind not classified here refuses the model. The classification is
+//! [`ifc_model::RecordDamage`], shared with `ifc-geometry` (#684). Property resolution and
 //! `exact_schema` still refuse any diagnostic: a skipped record may have been
 //! a relationship.
 //!
@@ -25,8 +26,8 @@
 //!
 //! ## Internal split
 //!
-//! - `damage.rs`: the reader's diagnostics, classified by kind for a lenient
-//!   model (#615).
+//! - `damage.rs`: [`ifc_model::RecordDamage`]'s answers as this module's
+//!   errors (#615, #684).
 //! - `resolve.rs`: one unit entity to its SI scale and dimensions, following
 //!   conversion chains and derived elements under a depth budget.
 //! - `from_si.rs`: SI input to the unit that applies (#487).

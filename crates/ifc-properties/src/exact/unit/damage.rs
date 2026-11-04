@@ -1,76 +1,30 @@
-//! What the reader reported, as unit resolution reads it (#615).
+//! What the reader reported, as unit resolution reads it (#615, #684).
 //!
-//! Unit resolution reads a handful of records. A reader diagnostic matters to
-//! it only when it names one of those records, or when the diagnostic is of a
-//! kind this module does not classify.
+//! [`RecordDamage`] classifies the diagnostics; this module maps its answers
+//! to [`ExactUnitError`].
 
-use std::collections::BTreeMap;
-
-use ifc_model::{DiagnosticKind, EntityId, Model};
+use ifc_model::{EntityId, Model, RecordDamage};
 
 use super::super::ExactPropertyError;
 use super::ExactUnitError;
 
 /// The reader's diagnostics, sorted into what resolution must refuse.
 pub(super) struct Damage {
-    /// The first diagnostic naming each reported record id.
-    reported: BTreeMap<EntityId, usize>,
-    /// Whether a record was dropped, so an absent record may have existed.
-    lost: bool,
-    /// Whether a skipped record names an id a kept record holds. Such a skip
-    /// may have swallowed later records, so a resolution that does not read
-    /// that id is refused too (see [`Damage::settle`]).
-    held_skip: bool,
-    /// How many diagnostics the model carries.
-    total: usize,
+    record: RecordDamage,
 }
 
 impl Damage {
     /// Classify `model`'s diagnostics by kind.
-    ///
-    /// A REAL without its point and a dangling reference do not change what a
-    /// unit record says. A skipped record or a duplicate id is remembered by
-    /// id. Any other kind, or a skipped record or duplicate with no id, refuses the model.
     pub(super) fn of(model: &Model) -> Result<Self, ExactUnitError> {
-        let total = model.diagnostics().len();
-        let incomplete = || {
-            ExactUnitError::Structure(ExactPropertyError::IncompleteModel { diagnostics: total })
-        };
-        let mut damage = Self {
-            reported: BTreeMap::new(),
-            lost: false,
-            held_skip: false,
-            total,
-        };
-        for (index, diagnostic) in model.diagnostics().iter().enumerate() {
-            match diagnostic.kind() {
-                DiagnosticKind::RealWithoutPoint | DiagnosticKind::DanglingReference => {}
-                DiagnosticKind::SkippedRecord => {
-                    damage.lost = true;
-                    // The reader names the id it read, also when a kept
-                    // record holds it; such a record is reported. A skip
-                    // whose `#id` was not read may have held a duplicate of a
-                    // record this resolution reads.
-                    // TODO(#668): a skip that swallowed several records names
-                    // only the first.
-                    let id = diagnostic.instance().ok_or_else(incomplete)?;
-                    damage.held_skip |= model.contains(id);
-                    damage.reported.entry(id).or_insert(index);
-                }
-                DiagnosticKind::DuplicateId => {
-                    let id = diagnostic.instance().ok_or_else(incomplete)?;
-                    damage.reported.entry(id).or_insert(index);
-                }
-                _ => return Err(incomplete()),
-            }
-        }
-        Ok(damage)
+        RecordDamage::of(model)
+            .map(|record| Self { record })
+            .map_err(|_| incomplete(model.diagnostics().len()))
     }
 
     /// Refuse a record the reader reported by id.
     pub(super) fn check(&self, id: EntityId) -> Result<(), ExactUnitError> {
-        match self.reported.get(&id) {
-            Some(&diagnostic) => Err(ExactUnitError::DamagedRecord {
+        match self.record.reported(id) {
+            Some(diagnostic) => Err(ExactUnitError::DamagedRecord {
                 entity: id,
                 diagnostic,
             }),
@@ -84,12 +38,8 @@ impl Damage {
     /// have swallowed records it would have read, so the model is
     /// incomplete (#668).
     pub(super) fn settle<T>(&self, resolved: T) -> Result<T, ExactUnitError> {
-        if self.held_skip {
-            return Err(ExactUnitError::Structure(
-                ExactPropertyError::IncompleteModel {
-                    diagnostics: self.total,
-                },
-            ));
+        if self.record.held_id_skipped() {
+            return Err(incomplete(self.record.diagnostics()));
         }
         Ok(resolved)
     }
@@ -97,12 +47,14 @@ impl Damage {
     /// The refusal for a model with no `IfcProject`: a skipped record may
     /// have been the project, so the project is not shown to be absent.
     pub(super) fn no_project(&self) -> ExactUnitError {
-        if self.lost {
-            ExactUnitError::Structure(ExactPropertyError::IncompleteModel {
-                diagnostics: self.total,
-            })
+        if self.record.records_lost() {
+            incomplete(self.record.diagnostics())
         } else {
             ExactUnitError::NoProject
         }
     }
+}
+
+fn incomplete(diagnostics: usize) -> ExactUnitError {
+    ExactUnitError::Structure(ExactPropertyError::IncompleteModel { diagnostics })
 }

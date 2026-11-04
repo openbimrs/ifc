@@ -15,6 +15,10 @@ use std::ops::Range;
 
 use crate::EntityId;
 
+mod damage;
+
+pub use damage::{RecordDamage, UnclassifiedDiagnostic};
+
 /// How serious a non-fatal finding is.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]

@@ -346,7 +346,9 @@ fn refusal(error: &ifc::geometry::GeometryError) -> GeometryRefusal {
         | E::LengthUnitUndeclared { .. }
         | E::AngleUnitUndeclared { .. }
         | E::UnitUnreadable { .. }
-        | E::UnitsAmbiguous { .. } => "invalid-model",
+        | E::UnitsAmbiguous { .. }
+        | E::UnitRecordDamaged { .. }
+        | E::UnitsIncomplete { .. } => "invalid-model",
         // A refusal added to the bridge after this binding, or one only an
         // evaluator raises: still typed, never dropped.
         other if other.is_unsupported() => "unsupported",
