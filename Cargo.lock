@@ -1131,6 +1131,7 @@ dependencies = [
 name = "ifc-step"
 version = "0.6.4"
 dependencies = [
+ "ahash",
  "ifc-model",
  "memmap2",
  "openbim-step",

@@ -162,11 +162,12 @@ fn index(source: &Arc<StepSource>) -> Option<Model> {
     let mut diagnostics = Vec::new();
     let mut floor = 0;
     for (span, (id, name, found, refs)) in frames.iter().zip(records) {
+        let held = model.len();
+        model.insert_lazy(id, &name, span.start..span.end);
         // Two records of one id: the eager read reports it.
-        if model.contains(id) {
+        if model.len() == held {
             return None;
         }
-        model.insert_lazy(id, &name, span.start..span.end);
         diagnostics.extend(found);
         floor = floor.max(refs);
     }

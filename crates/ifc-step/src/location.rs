@@ -153,13 +153,15 @@ impl SyntaxLocation {
 
     /// The location of a STEP error that names a byte offset
     /// ([`StepError::Syntax`], [`StepError::MissingEntityId`],
-    /// [`StepError::RealWithoutDecimalPoint`]); `None` for any other.
+    /// [`StepError::RealWithoutDecimalPoint`], [`StepError::DuplicateId`]);
+    /// `None` for any other.
     #[must_use]
     pub fn of_step_error(input: &[u8], error: &StepError) -> Option<Self> {
         match error {
             StepError::Syntax { offset, .. }
             | StepError::MissingEntityId { offset }
-            | StepError::RealWithoutDecimalPoint { offset, .. } => Some(Self::at(input, *offset)),
+            | StepError::RealWithoutDecimalPoint { offset, .. }
+            | StepError::DuplicateId { offset, .. } => Some(Self::at(input, *offset)),
             _ => None,
         }
     }

@@ -17,13 +17,16 @@ everything released before per-crate changelogs began.
 - Two records sharing one instance id are reported on every read, not only
   under `check_references(true)`. A strict read now refuses the file with
   `StepError::DuplicateId` (`ModelError::DuplicateId` through the codec),
-  naming the id and, in `StepError`, the later record's offset: this is a
+  naming the id and, in `StepError`, the later record's offset (public through
+  `Index::scan`; `ModelError` carries the id alone): this is a
   behaviour change, a strict read of such a file used to succeed silently with
-  the later record. A lenient read keeps the later record, as it does under
+  the later record. `Index::scan` refuses such a file too. A lenient read keeps the later record, as it does under
   `check_references(true)`, and reports a `DuplicateId` diagnostic carrying
   the instance, span, position and excerpt. `StepReader::check` refuses the
   same files. Detection happens on insert, with no second pass over a
-  duplicate-free file.
+  duplicate-free file. `SyntaxLocation::of_step_error` locates the error.
+  Semver: patch (behaviour change: a strict read of a file with duplicate ids
+  now fails).
 
 ## [0.6.4] - 2026-11-04
 

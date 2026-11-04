@@ -5,6 +5,8 @@
 //! second limit would disagree with the substrate's on some input.
 
 use std::borrow::Cow;
+use std::collections::HashMap;
+use std::ops::Range;
 use std::sync::Arc;
 
 use crate::location;
@@ -58,10 +60,11 @@ pub(crate) fn parse(input: &[u8], options: ParseOptions) -> Result<Model, StepEr
     apply_header(model.header_mut(), sink.header.standard());
     // Diagnostics are only available once the parse finishes, so they are
     // appended after the records rather than interleaved with them.
-    for diagnostic in self::diagnostics(input, &diagnostics, options) {
-        model.push_diagnostic(diagnostic);
-    }
-    for diagnostic in duplicate_diagnostics(input, &sink.duplicates) {
+    let found = in_file_order(
+        self::diagnostics(input, &diagnostics, options),
+        duplicate_diagnostics(input, &sink.duplicates),
+    );
+    for diagnostic in found {
         model.push_diagnostic(diagnostic);
     }
     reserve_through(&mut model, sink.floor);
@@ -80,7 +83,7 @@ pub(crate) fn check_input(input: &[u8], options: ParseOptions) -> Result<(), Ste
         error: None,
         records: 0,
         failed: None,
-        seen: std::collections::HashSet::new(),
+        seen: ahash::AHashSet::new(),
     };
     openbim_step::parse_events_borrowed(input, &mut sink, options)
         .map_err(|error| StepError::from_step(input, error))?;
@@ -98,7 +101,7 @@ struct CheckSink {
     records: usize,
     failed: Option<(usize, String)>,
     /// The ids of the records accepted so far.
-    seen: std::collections::HashSet<u64>,
+    seen: ahash::AHashSet<u64>,
 }
 
 impl<'a> openbim_step::EventSink<Text<'a>> for CheckSink {
@@ -143,49 +146,96 @@ fn locate(input: &[u8], error: StepError, index: usize, id: &str) -> StepError {
     }
 }
 
-/// `DuplicateId` diagnostics for the data records at `duplicates`, which are
-/// (position among the data records, id) pairs in file order.
+/// `DuplicateId` diagnostics for the later records of `duplicates`, the ids
+/// in file order, each id once per extra record.
 ///
 /// The records carry no offset, so one `scan` places them; it runs only when
 /// a duplicate exists. They read as the substrate's own `DuplicateId`
-/// diagnostics of `check_references`: the later record's span and id.
-fn duplicate_diagnostics(input: &[u8], duplicates: &[(usize, EntityId)]) -> Vec<Diagnostic> {
+/// diagnostics of `check_references`: the later record's span and id. A
+/// recovered-from record may share an id and is framed but never reached the
+/// sink, so a duplicate is placed only when the file frames exactly one more
+/// record of its id than there are duplicates of it; otherwise it names the
+/// instance alone. The result has one diagnostic per duplicate, in order.
+fn duplicate_diagnostics(input: &[u8], duplicates: &[EntityId]) -> Vec<Diagnostic> {
     if duplicates.is_empty() {
         return Vec::new();
     }
-    let Ok(scanned) = openbim_step::scan(input) else {
-        return Vec::new();
-    };
-    let mut wanted = duplicates.iter().peekable();
-    let mut found = Vec::with_capacity(duplicates.len());
-    for (index, record) in scanned.records().enumerate() {
-        let Some(&&(at, id)) = wanted.peek() else {
-            break;
-        };
-        if index != at {
-            continue;
-        }
-        wanted.next();
-        let Ok(record) = record else { continue };
-        found.push((record.span.start..record.span.end, id));
+    let mut extra: HashMap<u64, usize> = HashMap::new();
+    for id in duplicates {
+        *extra.entry(id.0).or_default() += 1;
     }
-    let starts: Vec<usize> = found.iter().map(|(range, _)| range.start).collect();
-    let positions = location::positions(input, &starts);
-    found
+    let mut framed: HashMap<u64, Vec<Range<usize>>> = HashMap::new();
+    if let Ok(scanned) = openbim_step::scan(input) {
+        for record in scanned.records().flatten() {
+            let Ok(id) = record.id.as_str().parse::<u64>() else {
+                continue;
+            };
+            if extra.contains_key(&id) {
+                framed
+                    .entry(id)
+                    .or_default()
+                    .push(record.span.start..record.span.end);
+            }
+        }
+    }
+    let mut nth: HashMap<u64, usize> = HashMap::new();
+    let placed: Vec<(EntityId, Option<Range<usize>>)> = duplicates
+        .iter()
+        .map(|&id| {
+            let n = nth.entry(id.0).or_default();
+            *n += 1;
+            let range = framed
+                .get(&id.0)
+                .filter(|spans| spans.len() == extra[&id.0] + 1)
+                .map(|spans| spans[*n].clone());
+            (id, range)
+        })
+        .collect();
+    let starts: Vec<usize> = placed
+        .iter()
+        .filter_map(|(_, range)| range.as_ref().map(|r| r.start))
+        .collect();
+    let mut positions = location::positions(input, &starts).into_iter();
+    placed
         .into_iter()
-        .zip(positions)
-        .map(|((range, id), position)| {
-            let excerpt = location::excerpt_of(input, range.clone());
-            Diagnostic::new(
+        .map(|(id, range)| {
+            let diagnostic = Diagnostic::new(
                 DiagnosticKind::DuplicateId,
                 format!("duplicate instance id {id}"),
             )
-            .with_instance(id)
-            .with_byte_range(range)
-            .with_position(position)
-            .with_excerpt(excerpt)
+            .with_instance(id);
+            match (range, positions.next()) {
+                (Some(range), Some(position)) => {
+                    let excerpt = location::excerpt_of(input, range.clone());
+                    diagnostic
+                        .with_byte_range(range)
+                        .with_position(position)
+                        .with_excerpt(excerpt)
+                }
+                _ => diagnostic,
+            }
         })
         .collect()
+}
+
+/// `all` with `extra` added, each placed before the first diagnostic that
+/// starts later, so the order is the file's, as the substrate's
+/// `check_references` reports it. One without a range goes last.
+fn in_file_order(mut all: Vec<Diagnostic>, extra: Vec<Diagnostic>) -> Vec<Diagnostic> {
+    for diagnostic in extra {
+        let at = diagnostic.byte_range().and_then(|own| {
+            all.iter().position(|other| {
+                other
+                    .byte_range()
+                    .is_some_and(|range| range.start > own.start)
+            })
+        });
+        match at {
+            Some(at) => all.insert(at, diagnostic),
+            None => all.push(diagnostic),
+        }
+    }
+    all
 }
 
 /// Keeps new entities off every id the source declared or referenced.
@@ -312,9 +362,9 @@ struct ModelSink {
     failed: Option<(usize, String)>,
     /// Whether the substrate reports duplicate ids itself.
     check_references: bool,
-    /// Later records of an id already held, as (position among the data
-    /// records, id), when the substrate does not report them.
-    duplicates: Vec<(usize, EntityId)>,
+    /// The id of each later record of an id already held, in file order,
+    /// when the substrate does not report them.
+    duplicates: Vec<EntityId>,
 }
 
 impl<'a> openbim_step::EventSink<Text<'a>> for ModelSink {
@@ -350,17 +400,20 @@ impl ModelSink {
             self.floor = self.floor.max(declared);
         }
         match convert_noting(instance, &mut self.floor) {
-            Ok((id, _)) if self.model.contains(id) && !self.recovering => {
-                self.failed = Some((self.records - 1, id_text));
-                self.error = Some(StepError::DuplicateId { id, offset: 0 });
-            }
             Ok((id, entity)) => {
                 // The later record replaces the earlier, as with
-                // `check_references`, which reports it itself.
-                if self.model.contains(id) && !self.check_references {
-                    self.duplicates.push((self.records - 1, id));
-                }
+                // `check_references`, which reports it itself; an insert
+                // that adds nothing replaced one.
+                let held = self.model.len();
                 self.model.insert(id, entity);
+                if self.model.len() == held {
+                    if !self.recovering {
+                        self.failed = Some((self.records - 1, id_text));
+                        self.error = Some(StepError::DuplicateId { id, offset: 0 });
+                    } else if !self.check_references {
+                        self.duplicates.push(id);
+                    }
+                }
             }
             Err(error) if self.recovering => {
                 let mut skipped = Diagnostic::new(

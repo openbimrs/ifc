@@ -4,6 +4,14 @@
 use ifc_model::{Codec, DiagnosticKind, EntityId, Model, ModelError, Value};
 use ifc_step::{ParseOptions, StepReader};
 
+fn wrap(records: &str) -> String {
+    format!(
+        "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n\
+         FILE_NAME('n','t',(''),(''),'p','o','a');\nFILE_SCHEMA(('IFC4'));\nENDSEC;\n\
+         DATA;\n{records}\nENDSEC;\nEND-ISO-10303-21;\n"
+    )
+}
+
 const TEXT: &str = "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n\
     FILE_NAME('n','t',(''),(''),'p','o','a');\nFILE_SCHEMA(('IFC4'));\nENDSEC;\n\
     DATA;\n#1=IFCSITE('first');\n#2=IFCSITE('mid');\n#1=IFCSITE('second');\nENDSEC;\n\
@@ -71,13 +79,89 @@ fn a_lenient_read_keeps_the_later_record_and_reports_the_id() {
 
 #[test]
 fn the_report_is_the_same_with_and_without_check_references() {
-    let plain = StepReader::new(ParseOptions::lenient())
-        .read_bytes(TEXT.as_bytes())
-        .unwrap();
-    let checked = StepReader::new(ParseOptions::lenient().check_references(true))
-        .read_bytes(TEXT.as_bytes())
-        .unwrap();
-    assert_eq!(plain.diagnostics(), checked.diagnostics());
+    let mixed = wrap("#1=IFCSITE('a');\n#1=IFCSITE('c');\n#2=IFCSITE(1E-05);");
+    for text in [TEXT, mixed.as_str()] {
+        let plain = StepReader::new(ParseOptions::lenient())
+            .read_bytes(text.as_bytes())
+            .unwrap();
+        let checked = StepReader::new(ParseOptions::lenient().check_references(true))
+            .read_bytes(text.as_bytes())
+            .unwrap();
+        assert_eq!(plain.diagnostics(), checked.diagnostics());
+    }
+    let kinds: Vec<_> = StepReader::new(ParseOptions::lenient())
+        .read_bytes(mixed.as_bytes())
+        .unwrap()
+        .diagnostics()
+        .iter()
+        .map(|d| d.kind())
+        .collect();
+    assert_eq!(
+        kinds,
+        [
+            DiagnosticKind::DuplicateId,
+            DiagnosticKind::RealWithoutPoint
+        ]
+    );
+}
+
+fn duplicates(text: &str) -> Vec<ifc_model::Diagnostic> {
+    StepReader::new(ParseOptions::lenient())
+        .read_bytes(text.as_bytes())
+        .unwrap()
+        .diagnostics()
+        .iter()
+        .filter(|d| d.kind() == DiagnosticKind::DuplicateId)
+        .cloned()
+        .collect()
+}
+
+#[test]
+fn a_skipped_record_before_the_duplicate_does_not_misplace_it() {
+    // A: the skipped record shifts the sink's count against the file's.
+    let a = wrap("#1=IFCSITE('a');\n#2=IFCSITE(1.2.3);\n#3=IFCSITE('b');\n#1=IFCSITE('c');");
+    let found = duplicates(&a);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].instance(), Some(EntityId(1)));
+    assert_eq!(
+        found[0].byte_range().unwrap().start,
+        a.rfind("#1=").unwrap()
+    );
+    // B: the damaged record's id is unreadable.
+    let b = wrap("#1=IFCSITE('a');\n#7\nXXSITE('x');\n#1=IFCSITE('c');");
+    let found = duplicates(&b);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].instance(), Some(EntityId(1)));
+    if let Some(range) = found[0].byte_range() {
+        assert_eq!(range.start, b.rfind("#1=").unwrap());
+    }
+}
+
+#[test]
+fn a_skipped_record_of_the_same_id_leaves_the_duplicate_unplaced() {
+    let text = wrap("#1=IFCSITE('a');\n#1=IFCSITE(1.2.3);\n#1=IFCSITE('c');");
+    let found = duplicates(&text);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].instance(), Some(EntityId(1)));
+    assert_eq!(found[0].byte_range(), None);
+}
+
+#[test]
+fn an_index_refuses_the_id_and_locates_it() {
+    let error = ifc_step::Index::scan(TEXT.as_bytes())
+        .err()
+        .expect("refused");
+    let ifc_step::StepError::DuplicateId { id, offset } = error else {
+        panic!("{error:?}");
+    };
+    assert_eq!(id, EntityId(1));
+    assert_eq!(offset, TEXT.rfind("#1=").unwrap());
+    let located = ifc_step::SyntaxLocation::of_step_error(
+        TEXT.as_bytes(),
+        &ifc_step::StepError::DuplicateId { id, offset },
+    )
+    .expect("located");
+    assert_eq!(located.position().line(), 10);
 }
 
 #[test]

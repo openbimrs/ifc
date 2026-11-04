@@ -59,7 +59,8 @@ impl<'a> Index<'a> {
     /// malformed header, anything between records that is not a record, a
     /// missing `ENDSEC`, content after the end marker, or an instance id or
     /// type the IFC record model cannot hold (an id beyond `u64`, a complex
-    /// instance). Defects inside a record surface when it is decoded.
+    /// instance), or two records with one id ([`StepError::DuplicateId`]).
+    /// Defects inside a record surface when it is decoded.
     pub fn scan(source: &'a [u8]) -> Result<Self, StepError> {
         let scanned =
             openbim_step::scan(source).map_err(|error| StepError::from_step(source, error))?;
@@ -70,6 +71,7 @@ impl<'a> Index<'a> {
         let mut type_ids = Vec::new();
         let mut type_names: Vec<String> = Vec::new();
         let mut seen: HashMap<String, u32> = HashMap::new();
+        let mut held = ahash::AHashSet::new();
         for record in scanned.records() {
             let record = record.map_err(|error| StepError::from_step(source, error))?;
             let id = record.id.as_str().parse::<u64>().map_err(|_| {
@@ -78,6 +80,12 @@ impl<'a> Index<'a> {
                     "instance id exceeds the IFC record model range",
                 )
             })?;
+            if !held.insert(id) {
+                return Err(StepError::DuplicateId {
+                    id: EntityId(id),
+                    offset: record.span.start,
+                });
+            }
             let Some(name) = record.name else {
                 return Err(unrepresentable(
                     record.span,
@@ -95,7 +103,7 @@ impl<'a> Index<'a> {
             type_ids.push(type_id);
         }
         let unordered = (!ids.windows(2).all(|pair| pair[0] < pair[1])).then(|| {
-            // Later records win, as they do in a model read.
+            // Ids are unique (a repeat is refused above).
             ids.iter()
                 .enumerate()
                 .map(|(position, id)| (*id, position))
