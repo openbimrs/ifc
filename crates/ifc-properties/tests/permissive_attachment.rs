@@ -1,5 +1,5 @@
 //! Permissive attachment of sets to type objects and occurrences, on the
-//! declared release's tables (#631, #632).
+//! declared release's tables (#631, #632, #630).
 //!
 //! Models are parsed from STEP text, so the file is exactly what an exporter
 //! would write.
@@ -101,4 +101,62 @@ fn a_present_set_of_another_kind_is_not_reported_missing() {
     let wt = "#2=IFCWALLTYPE('4xS3BCk291UvhgP2dvNsgp',$,'WT',$,$,(#20,#21),$,$,.STANDARD.);";
     let model = step("IFC4", &[wt, P10, PSET20, Q11, QSET21]);
     assert_eq!(both(&model), (vec![], vec![]));
+}
+
+// --- #630 ---------------------------------------------------------------
+
+fn rel(definition: &str) -> String {
+    format!("#30=IFCRELDEFINESBYPROPERTIES('5xS3BCk291UvhgP2dvNsgp',$,$,$,(#1),{definition});")
+}
+
+#[test]
+fn a_definition_set_is_read_member_by_member() {
+    for definition in ["(#20,#21)", "IFCPROPERTYSETDEFINITIONSET((#20,#21))"] {
+        let r = rel(definition);
+        let model = step("IFC4", &[WALL, P10, PSET20, Q11, QSET21, &r]);
+        assert_eq!(
+            names(&model, 1),
+            vec![(Attachment::Occurrence, Some("Pset_A".to_owned()))],
+            "{definition}"
+        );
+        assert_eq!(
+            qnames(&model, 1),
+            vec![(Attachment::Occurrence, Some("Qto_A".to_owned()))],
+            "{definition}"
+        );
+        assert_eq!(both(&model), (vec![], vec![]), "{definition}");
+    }
+}
+
+#[test]
+fn a_mixed_definition_set_reports_each_unreadable_member() {
+    let r = rel("(#20,#99,'x',#21)");
+    let model = step("IFC4", &[WALL, P10, PSET20, Q11, QSET21, &r]);
+    assert_eq!(names(&model, 1).len(), 1);
+    assert_eq!(qnames(&model, 1).len(), 1);
+    let malformed = PropertyAnomaly::MalformedAttribute {
+        entity: EntityId(30),
+        attribute: "RelatingPropertyDefinition",
+        found: "Text(\"x\")".to_owned(),
+    };
+    for anomalies in [both(&model).0, both(&model).1] {
+        assert!(anomalies.contains(&missing(30, 99)), "{anomalies:?}");
+        assert!(anomalies.contains(&malformed), "{anomalies:?}");
+        assert_eq!(anomalies.len(), 2, "{anomalies:?}");
+    }
+}
+
+#[test]
+fn a_definition_set_attaches_to_every_related_object() {
+    let r = "#30=IFCRELDEFINESBYPROPERTIES('5xS3BCk291UvhgP2dvNsgp',$,$,$,(#1,#98),(#20));";
+    let model = step("IFC4", &[WALL, P10, PSET20, r]);
+    assert_eq!(names(&model, 1).len(), 1);
+    let (_, a) = property_sets_by_object(&model);
+    assert_eq!(
+        a,
+        vec![PropertyAnomaly::MissingObject {
+            relationship: EntityId(30),
+            object: EntityId(98)
+        }]
+    );
 }

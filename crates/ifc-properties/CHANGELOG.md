@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#630)
+
+- The permissive property and quantity views read an IFC4+ `IfcRelDefinesByProperties.RelatingPropertyDefinition` that is an `IfcPropertySetDefinitionSet` member by member, each as if attached individually, instead of skipping the list. A member absent from the model gives `PropertyAnomaly::MissingDefinition`, and a member or value that is no reference gives `PropertyAnomaly::MalformedAttribute`. The exact API already read the list.
+
+Semver: patch.
+
 ### Fixed (#632)
 
 - The permissive property and quantity views report an id in `IfcTypeObject.HasPropertySets` that is absent from the model as `PropertyAnomaly::MissingDefinition` (with the type object as `relationship`) instead of skipping it silently.

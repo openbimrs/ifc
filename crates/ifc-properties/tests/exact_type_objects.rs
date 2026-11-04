@@ -435,7 +435,10 @@ fn a_type_set_id_absent_from_the_file_is_refused() {
         assert!(
             matches!(
                 exact_properties(&m, WALL_TYPE),
-                Err(ExactPropertyError::MissingReference { to: EntityId(99), .. })
+                Err(ExactPropertyError::MissingReference {
+                    to: EntityId(99),
+                    ..
+                })
             ),
             "{version:?}"
         );

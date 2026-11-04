@@ -72,25 +72,28 @@ pub(crate) fn sets_by_object<S: Clone>(
     // Route 1: IfcRelDefinesByProperties, for occurrences.
     for &id in model.ids_of_type("IFCRELDEFINESBYPROPERTIES") {
         let Some(rel) = model.get(id) else { continue };
-        let Some(definition) = rel
-            .attributes
-            .get(REL_RELATING_DEFINITION)
-            .and_then(one_ref)
-        else {
-            // TODO(#630): IFC4+ allows an IfcPropertySetDefinitionSet here.
-            continue;
-        };
-        let Some(set) = cache.get(model, read, definition) else {
-            // A definition of another kind is read by its own view; only note
-            // one that is not in the file.
-            if model.get(definition).is_none() {
-                anomalies.push(PropertyAnomaly::MissingDefinition {
-                    relationship: id,
-                    definition,
-                });
+        let mut sets = Vec::new();
+        for definition in definitions(
+            id,
+            rel.attributes.get(REL_RELATING_DEFINITION),
+            &mut anomalies,
+        ) {
+            match cache.get(model, read, definition) {
+                Some(set) => sets.push(set),
+                // A definition of another kind is read by its own view; only
+                // note one that is not in the file.
+                None if model.get(definition).is_none() => {
+                    anomalies.push(PropertyAnomaly::MissingDefinition {
+                        relationship: id,
+                        definition,
+                    });
+                }
+                None => {}
             }
+        }
+        if sets.is_empty() {
             continue;
-        };
+        }
         for object in rel
             .attributes
             .get(REL_RELATED_OBJECTS)
@@ -111,9 +114,10 @@ pub(crate) fn sets_by_object<S: Clone>(
                     type_object: object,
                 });
             }
-            out.entry(object)
-                .or_default()
-                .push((Attachment::Occurrence, set.clone()));
+            let attached = out.entry(object).or_default();
+            for set in &sets {
+                attached.push((Attachment::Occurrence, set.clone()));
+            }
         }
     }
 
@@ -154,6 +158,42 @@ pub(crate) fn sets_by_object<S: Clone>(
         anomalies.extend(found);
     }
     (out, anomalies)
+}
+
+/// The definitions `RelatingPropertyDefinition` names: the one reference, or
+/// each member of an IFC4+ `IfcPropertySetDefinitionSet` (a list, bare or
+/// typed), once. A member that is no reference is reported (#630).
+fn definitions(
+    relationship: EntityId,
+    value: Option<&Value>,
+    anomalies: &mut Vec<PropertyAnomaly>,
+) -> Vec<EntityId> {
+    let mut malformed = |found: &Value| {
+        anomalies.push(PropertyAnomaly::MalformedAttribute {
+            entity: relationship,
+            attribute: "RelatingPropertyDefinition",
+            found: format!("{found:?}"),
+        });
+    };
+    match value.map(Value::unwrap_typed) {
+        None | Some(Value::Null) => Vec::new(),
+        Some(Value::Ref(id)) => vec![*id],
+        Some(Value::List(items)) => {
+            let mut out = Vec::new();
+            for item in items {
+                match one_ref(item) {
+                    Some(id) if !out.contains(&id) => out.push(id),
+                    Some(_) => {}
+                    None => malformed(item),
+                }
+            }
+            out
+        }
+        Some(other) => {
+            malformed(other);
+            Vec::new()
+        }
+    }
 }
 
 fn one_ref(value: &Value) -> Option<EntityId> {
