@@ -12,6 +12,25 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#686)
+
+- `GeorefError::UnitRecordDamaged` and `GeorefError::UnitsIncomplete`, the
+  refusals for a unit record the reader reported and for diagnostics that
+  may hide one.
+
+### Fixed (#686)
+
+- The CRS unit resolver reads `Model::diagnostics()` through
+  `ifc_model::RecordDamage`, so the public entry points that resolve a CRS
+  unit refuse a damaged lenient model instead of using whichever unit record
+  the reader kept: `resolve_project_to_map(_in)`, the projected and
+  geographic CRS readers (including their angle and height units) and
+  `resolve_property_set_georeferencing`. A reported unit record (a duplicate
+  id, or a skip with that id) is refused by name; an unclassified
+  diagnostic, a skip or duplicate without an id, or a skip naming a held id
+  is refused as incomplete. The CRS, operation and property-set records
+  themselves are covered by #690. Semver: patch.
+
 ## [0.8.2] - 2026-10-28
 
 ### Changed
