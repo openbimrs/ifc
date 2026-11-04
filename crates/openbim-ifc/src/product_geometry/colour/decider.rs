@@ -73,9 +73,7 @@ impl ColourDecider {
     /// `IfcMaterial` (or by set and members).
     fn same(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::ItemStyle(a), Self::ItemStyle(b)) => {
-                a.surface_style == b.surface_style
-            }
+            (Self::ItemStyle(a), Self::ItemStyle(b)) => a.surface_style == b.surface_style,
             (Self::Material { material: a, .. }, Self::Material { material: b, .. }) => a == b,
             (
                 Self::Materials {
