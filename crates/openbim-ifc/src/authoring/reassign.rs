@@ -155,9 +155,10 @@ impl Planner<'_, '_> {
     }
 
     /// The type rule that a typed object's type object does not satisfy
-    /// once the object is of class `to` (rule 7). A target class without a
-    /// type rule accepts any existing type assignment, which is
-    /// schema-valid.
+    /// once the object is of class `to` (rule 7). A class that keeps the
+    /// rule of the old one, or has none, accepts the existing type
+    /// assignment, which is schema-valid; so does one whose rule the type
+    /// object's class satisfies.
     fn type_conflict(&self, id: EntityId, from: &str, to: &str) -> Result<Option<TypeConflict>, F> {
         let Some(relationship) = self.related_by(&TYPED, id) else {
             return Ok(None);
@@ -171,6 +172,13 @@ impl Planner<'_, '_> {
         let Some(to_rule) = type_rule(self.schema, to).map_err(unsupported)? else {
             return Ok(None);
         };
+        let from_rule = type_rule(self.schema, from)
+            .map_err(unsupported)?
+            .map(|rule| rule.name());
+        // The same rule keeps the assignment as it was.
+        if from_rule.as_deref() == Some(to_rule.name().as_str()) {
+            return Ok(None);
+        }
         let type_object = self
             .relating_of(&TYPED, relationship)
             .unwrap_or(relationship);
@@ -181,9 +189,6 @@ impl Planner<'_, '_> {
         if satisfied {
             return Ok(None);
         }
-        let from_rule = type_rule(self.schema, from)
-            .map_err(unsupported)?
-            .map(|rule| rule.name());
         Ok(Some(TypeConflict {
             relationship,
             conflict: RelationshipConflict::TypeRule {

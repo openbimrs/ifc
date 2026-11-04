@@ -41,19 +41,18 @@ fn releases() -> Option<Vec<(SchemaVersion, Schema, &'static Schema)>> {
         eprintln!("skipped: references/ifc-spec not present");
         return None;
     };
-    Some(
-        RELEASES
-            .iter()
-            .filter_map(|(version, file)| {
-                let bytes = std::fs::read(root.join(file)).expect("read the reference schema");
-                Some((
-                    *version,
-                    Schema::from_express_bytes(&bytes),
-                    for_version(*version).ok()?,
-                ))
-            })
-            .collect(),
-    )
+    let releases: Vec<_> = RELEASES
+        .iter()
+        .map(|(version, file)| {
+            let bytes = std::fs::read(root.join(file))
+                .unwrap_or_else(|error| panic!("read the {version:?} reference schema: {error}"));
+            let bundled = for_version(*version)
+                .unwrap_or_else(|error| panic!("{version:?} is not bundled: {error}"));
+            (*version, Schema::from_express_bytes(&bytes), bundled)
+        })
+        .collect();
+    assert_eq!(releases.len(), RELEASES.len(), "every release loads");
+    Some(releases)
 }
 
 fn over_type_relationship(expression: &str) -> bool {
@@ -65,7 +64,6 @@ fn over_type_relationship(expression: &str) -> bool {
 #[test]
 fn the_labels_and_the_owner_type_convention_match_the_normative_schema() {
     let Some(releases) = releases() else { return };
-    assert_eq!(releases.len(), RELEASES.len(), "every release is bundled");
     for (version, normative, _) in &releases {
         let name = normative.name().to_uppercase();
         let mut seen_not_type_rules = Vec::new();

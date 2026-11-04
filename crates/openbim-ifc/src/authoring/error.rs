@@ -148,7 +148,9 @@ pub enum AuthoringFailure {
     PairNotReassigned {
         /// The paired entity.
         entity: EntityId,
-        /// The class it was to become.
+        /// The class it was to become; where the schema cannot decide the
+        /// class (`UnsupportedReassignment` as the cause), the type class
+        /// it would need to pair with.
         to: String,
         /// Why it was refused.
         cause: Box<AuthoringFailure>,
@@ -521,7 +523,8 @@ impl fmt::Display for AuthoringFailure {
             } => write!(
                 f,
                 "{object} is typed by {type_object}; as the new class it falls under {to_rule}, \
-                 not {}, which the batch cannot check: unassign the type first",
+                 not {}, which the batch cannot check: unassign the type first, or set remove_relationships \
+                 or move_pairs",
                 from_rule.as_deref().unwrap_or("no type rule")
             ),
             Self::TypeNotAccepted {

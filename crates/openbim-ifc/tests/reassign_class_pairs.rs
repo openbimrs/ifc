@@ -9,7 +9,8 @@
     feature = "step",
     feature = "author",
     feature = "ifc2x3",
-    feature = "ifc4"
+    feature = "ifc4",
+    feature = "ifc4x3"
 ))]
 
 mod reassign_support;
@@ -56,6 +57,24 @@ fn not_defined(entity: EntityId) -> AuthorOp {
 
 fn ifc4_model() -> ifc::Model {
     read("cascade_ifc4.ifc")
+}
+
+/// Apply `ops` tracked, then check undo, redo and replay give the exact bytes.
+fn assert_exact(mut model: ifc::Model, schema: &ifc::Schema, ops: &[AuthorOp]) -> ifc::Model {
+    let original = bytes(&model);
+    let mut history = History::new(8);
+    history
+        .track(&mut model, |m| apply_authoring(m, schema, ops, 5))
+        .expect("applies");
+    let after = bytes(&model);
+    history.undo(&mut model).unwrap();
+    assert_eq!(bytes(&model), original, "undo");
+    history.redo(&mut model).unwrap();
+    assert_eq!(bytes(&model), after, "redo");
+    history.undo(&mut model).unwrap();
+    apply_authoring(&mut model, schema, ops, 5).unwrap();
+    assert_eq!(bytes(&model), after, "replay");
+    model
 }
 
 fn report(outcome: &ifc::AuthoringOutcome, op: usize) -> &ReassignReport {
@@ -138,14 +157,6 @@ fn a_pair_that_cannot_move_names_itself() {
 #[test]
 fn a_type_object_is_refused_by_its_occurrences_without_options() {
     let mut model = ifc4_model();
-    let slab_type = |options| {
-        op(
-            WALL_TYPE,
-            "IfcSlabType",
-            vec![("PredefinedType", enumeration("NOTDEFINED"))],
-            options,
-        )
-    };
     let failure = refusal(&mut model, ifc4(), slab_type(ReassignClassOptions::new()));
     assert!(
         matches!(
@@ -174,9 +185,15 @@ fn a_type_object_is_refused_by_its_occurrences_without_options() {
             entry.relationship == EntityId(67)
                 && matches!(
                     &entry.reason,
-                    RelationshipConflict::TypeRule { type_object, .. } if *type_object == WALL_TYPE
+                    RelationshipConflict::TypeRule { type_object, to_rule }
+                        if *type_object == WALL_TYPE && to_rule == "IfcWall.CorrectTypeAssigned"
                 )
         }));
+        assert_eq!(
+            removed.iter().map(|entry| entry.object).collect::<Vec<_>>(),
+            [WALL, OTHER_WALL],
+            "the occurrences left the relationship, not the type object"
+        );
         assert!(!removed[0].removed && removed[1].removed);
     })
     .expect("detaches");
@@ -301,4 +318,152 @@ fn ifc2x3_declares_no_type_rule_so_nothing_pairs() {
     assert!(report(&outcome, 0).paired.is_empty());
     assert_eq!(class(&model, WALL), "IFCSLAB");
     assert_eq!(class(&model, WALL_TYPE), "IFCWALLTYPE");
+}
+
+fn slab_type(options: ReassignClassOptions) -> AuthorOp {
+    op(
+        WALL_TYPE,
+        "IfcSlabType",
+        vec![("PredefinedType", enumeration("NOTDEFINED"))],
+        options,
+    )
+}
+
+#[test]
+fn a_type_object_move_undoes_redoes_and_replays_exactly() {
+    let model = assert_exact(
+        ifc4_model(),
+        ifc4(),
+        &[
+            not_defined(WALL),
+            not_defined(OTHER_WALL),
+            slab_type(pairs()),
+        ],
+    );
+    assert_eq!(class(&model, WALL), "IFCSLAB");
+    assert_eq!(class(&model, WALL_TYPE), "IFCSLABTYPE");
+}
+
+#[test]
+fn a_type_object_detach_undoes_redoes_and_replays_exactly() {
+    let model = assert_exact(
+        ifc4_model(),
+        ifc4(),
+        &[slab_type(
+            ReassignClassOptions::new().remove_relationships(true),
+        )],
+    );
+    assert_eq!(class(&model, WALL), "IFCWALL");
+    assert!(model.get(EntityId(67)).is_none());
+}
+
+#[test]
+fn a_style_typed_door_keeps_its_rule_in_a_standard_case() {
+    let styled = |name| {
+        read_replaced(
+            name,
+            "#111=IFCDOORTYPE('2I70u$Mssm4ZI9zxHjhosC',#5,'D-90',$,$,$,(#112),$,$,.DOOR.,.SINGLE_SWING_LEFT.,.F.,$);",
+            "#111=IFCDOORSTYLE('2I70u$Mssm4ZI9zxHjhosC',#5,'D-90',$,$,$,(#112),$,$,.SINGLE_SWING_LEFT.,.WOOD.,.F.,.F.);",
+        )
+    };
+    let mut model = styled("cascade_ifc4.ifc");
+    assert_eq!(class(&model, DOOR_TYPE), "IFCDOORSTYLE");
+    let outcome = apply(
+        &mut model,
+        ifc4(),
+        &[op(
+            DOOR,
+            "IfcDoorStandardCase",
+            vec![],
+            ReassignClassOptions::new(),
+        )],
+    )
+    .expect("the same rule keeps the style");
+    assert!(report(&outcome, 0).removed_relationships.is_empty());
+    assert_eq!(class(&model, DOOR), "IFCDOORSTANDARDCASE");
+    assert_eq!(class(&model, DOOR_TYPE), "IFCDOORSTYLE");
+}
+
+#[test]
+fn a_type_class_no_occurrence_class_pairs_with_is_a_pair_failure() {
+    let mut model = ifc4_model();
+    let failure = refusal(
+        &mut model,
+        ifc4(),
+        op(
+            DOOR_TYPE,
+            "IfcDoorStyle",
+            vec![
+                ("ConstructionType", enumeration("WOOD")),
+                ("ParameterTakesPrecedence", Value::Bool(false)),
+                ("Sizeable", Value::Bool(false)),
+            ],
+            pairs().drop_unmapped(true),
+        ),
+    );
+    assert!(
+        matches!(
+            &failure,
+            AuthoringFailure::PairNotReassigned { entity, to, cause }
+                if *entity == DOOR
+                    && to == "IfcDoorStyle"
+                    && matches!(
+                        &**cause,
+                        AuthoringFailure::UnsupportedReassignment { entity, from, to, .. }
+                            if *entity == DOOR && from == "IfcDoor" && to == "IfcDoorStyle"
+                    )
+        ),
+        "{failure:?}"
+    );
+}
+
+#[test]
+fn an_occurrence_of_an_undeclared_class_refuses_the_type_object() {
+    let mut model = read_replaced("cascade_ifc4.ifc", "#100=IFCDOOR(", "#100=IFCUNDECLARED(");
+    assert_eq!(class(&model, DOOR), "IFCUNDECLARED");
+    let failure = refusal(
+        &mut model,
+        ifc4(),
+        op(
+            DOOR_TYPE,
+            "IfcWallType",
+            vec![("PredefinedType", enumeration("NOTDEFINED"))],
+            ReassignClassOptions::new().drop_unmapped(true),
+        ),
+    );
+    assert!(
+        matches!(
+            &failure,
+            AuthoringFailure::PairNotReassigned { entity, cause, .. }
+                if *entity == DOOR
+                    && matches!(&**cause, AuthoringFailure::UnsupportedReassignment { .. })
+        ),
+        "{failure:?}"
+    );
+}
+
+#[test]
+fn ifc4x3_pairs_an_occurrence_with_its_type_and_siblings() {
+    let schema = ifc::schema::for_version(SchemaVersion::Ifc4x3).unwrap();
+    let ops = [
+        not_defined(OTHER_WALL),
+        not_defined(WALL_TYPE),
+        op(
+            WALL,
+            "IfcSlab",
+            vec![("PredefinedType", enumeration("FLOOR"))],
+            pairs(),
+        ),
+    ];
+    let mut model = read("cascade_ifc4x3.ifc");
+    let outcome = apply_authoring(&mut model, schema, &ops, 5).expect("moves the family");
+    assert_eq!(
+        entities(&report(&outcome, 2).paired),
+        [
+            (OTHER_WALL, "IfcWall", "IfcSlab"),
+            (WALL_TYPE, "IfcWallType", "IfcSlabType")
+        ]
+    );
+    let model = assert_exact(read("cascade_ifc4x3.ifc"), schema, &ops);
+    assert_eq!(class(&model, WALL_TYPE), "IFCSLABTYPE");
 }

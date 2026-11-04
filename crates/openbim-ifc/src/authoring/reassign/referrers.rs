@@ -216,6 +216,7 @@ impl Planner<'_, '_> {
         }
         Ok(RemovedRelationship {
             relationship,
+            object: id,
             type_name,
             removed,
             reason,

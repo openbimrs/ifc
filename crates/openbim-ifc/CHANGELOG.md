@@ -22,7 +22,9 @@ everything released before per-crate changelogs began.
 
 ### Changed (#636)
 
-- `TypeRuleChanged` is raised only when the type object's class is not the type class the new class's rule requires.
+- `TypeRuleChanged` is raised only when the new class's type rule differs from the old class's and the type object's class is not the type class the new rule requires.
+- `RemovedRelationship::object` names the object taken out of the relationship: the reassigned entity, or, for a type object reassigned with `remove_relationships`, the occurrence whose type assignment was detached.
+- A `move_pairs` occurrence whose class the schema does not declare, or that no type class pairs with, is refused with `PairNotReassigned` (cause `UnsupportedReassignment`).
 
 ### Added (#635)
 

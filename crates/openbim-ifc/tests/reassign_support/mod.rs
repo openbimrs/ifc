@@ -194,3 +194,20 @@ pub fn read(name: &str) -> Model {
 pub fn bytes(model: &Model) -> Vec<u8> {
     StepCodec.write_bytes(model).expect("writes")
 }
+
+/// A synthetic relation fixture with `from` replaced by `to` in its text.
+pub fn read_replaced(name: &str, from: &str, to: &str) -> Model {
+    let path = format!(
+        "{}/../../test/fixtures/synthetic-relations/{name}",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let text = std::fs::read_to_string(&path).expect("reads the fixture");
+    assert_eq!(
+        text.matches(from).count(),
+        1,
+        "{from} occurs once in {name}"
+    );
+    StepCodec
+        .read_bytes(text.replace(from, to).as_bytes())
+        .unwrap_or_else(|error| panic!("{name}: {error}"))
+}

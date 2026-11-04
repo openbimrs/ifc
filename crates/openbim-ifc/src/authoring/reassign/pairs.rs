@@ -59,8 +59,7 @@ impl Planner<'_, '_> {
         report: &mut ReassignReport,
         paired: &mut Vec<ReassignReport>,
     ) -> Result<(), F> {
-        let occurrences: Vec<EntityId> = occurrences.iter().map(|(object, _)| *object).collect();
-        for unsatisfied in self.unsatisfied(id, &occurrences)? {
+        for unsatisfied in self.unsatisfied(id, occurrences)? {
             if options.move_pairs {
                 let target = self.pairing_class(&unsatisfied, &report.to)?;
                 paired.push(self.reassign_pair(unsatisfied.occurrence, &target, options)?);
@@ -128,11 +127,10 @@ impl Planner<'_, '_> {
             return Ok(());
         }
         paired.push(self.reassign_pair(type_object, rule.type_class, options)?);
-        let others: Vec<EntityId> = self
+        let others: Vec<(EntityId, EntityId)> = self
             .related_to(&TYPED, type_object)
             .into_iter()
-            .map(|(object, _)| object)
-            .filter(|object| *object != id)
+            .filter(|(object, _)| *object != id)
             .collect();
         let new_class = paired[paired.len() - 1].to.clone();
         for unsatisfied in self.unsatisfied(type_object, &others)? {
@@ -149,35 +147,43 @@ impl Planner<'_, '_> {
             .is_some_and(|entity| self.schema.is_a(&entity.type_name, required))
     }
 
-    /// Of `occurrences`, those whose class has a type rule that
-    /// `type_object`'s current class fails, ascending.
+    /// Of `occurrences` (each with the relationship that types it), those
+    /// whose class has a type rule that `type_object`'s current class fails,
+    /// ascending. An occurrence whose class the schema does not declare, or
+    /// whose rule it cannot resolve, is refused as a pair that cannot be
+    /// reassigned, `to` being the class of `type_object` it would pair with.
     fn unsatisfied(
         &self,
         type_object: EntityId,
-        occurrences: &[EntityId],
+        occurrences: &[(EntityId, EntityId)],
     ) -> Result<Vec<Unsatisfied>, F> {
         let schema = self.schema;
+        let to = self
+            .view
+            .get(type_object)
+            .map_or_else(String::new, |entity| entity.type_name.to_string());
         let mut found = Vec::new();
-        for &occurrence in occurrences {
+        for &(occurrence, relationship) in occurrences {
             let Some(entity) = self.view.get(occurrence) else {
                 continue;
             };
-            let class = schema
-                .entity(&entity.type_name)
-                .map_or_else(|| entity.type_name.to_string(), |def| def.name.clone());
-            let rule = type_rule(schema, &class).map_err(|detail| F::UnsupportedReassignment {
-                entity: occurrence,
-                from: class.clone(),
-                to: class.clone(),
-                detail,
-            })?;
-            let Some(rule) = rule else { continue };
+            let refuse = |class: &str, detail: String| {
+                pair_unsupported(occurrence, class.to_owned(), to.clone(), detail)
+            };
+            let Some(definition) = schema.entity(&entity.type_name) else {
+                return Err(refuse(
+                    &entity.type_name,
+                    format!("{} is not declared in {}", entity.type_name, schema.name()),
+                ));
+            };
+            let class = definition.name.clone();
+            let Some(rule) = type_rule(schema, &class).map_err(|detail| refuse(&class, detail))?
+            else {
+                continue;
+            };
             if self.satisfies(type_object, rule.type_class) {
                 continue;
             }
-            let Some(relationship) = self.related_by(&TYPED, occurrence) else {
-                continue;
-            };
             found.push(Unsatisfied {
                 occurrence,
                 relationship,
@@ -190,15 +196,18 @@ impl Planner<'_, '_> {
     }
 
     /// The class an unsatisfied occurrence moves to for the type class
-    /// `type_class`.
+    /// `type_class`; refused as a pair that cannot be reassigned (`from` the
+    /// occurrence's class, `to` the type class) where none pairs with it.
     fn pairing_class(&self, unsatisfied: &Unsatisfied, type_class: &str) -> Result<String, F> {
         occurrence_class(self.schema, type_class)
             .map(str::to_owned)
-            .ok_or_else(|| F::UnsupportedReassignment {
-                entity: unsatisfied.occurrence,
-                from: unsatisfied.class.clone(),
-                to: type_class.to_owned(),
-                detail: format!("no occurrence class pairs with {type_class}"),
+            .ok_or_else(|| {
+                pair_unsupported(
+                    unsatisfied.occurrence,
+                    unsatisfied.class.clone(),
+                    type_class.to_owned(),
+                    format!("no occurrence class pairs with {type_class}"),
+                )
             })
     }
 
@@ -219,5 +228,20 @@ impl Planner<'_, '_> {
                 to: class.to_owned(),
                 cause: Box::new(cause),
             })
+    }
+}
+
+/// A pair the schema tables cannot decide: `entity` of class `from` cannot
+/// pair with the type class `to`.
+fn pair_unsupported(entity: EntityId, from: String, to: String, detail: String) -> F {
+    F::PairNotReassigned {
+        entity,
+        to: to.clone(),
+        cause: Box::new(F::UnsupportedReassignment {
+            entity,
+            from,
+            to,
+            detail,
+        }),
     }
 }

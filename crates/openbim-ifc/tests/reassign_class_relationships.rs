@@ -105,6 +105,7 @@ fn a_containment_with_other_elements_stays() {
     assert_eq!(report.removed_relationships.len(), 1);
     assert_eq!(report.removed_relationships[0].relationship, containment);
     assert!(!report.removed_relationships[0].removed);
+    assert_eq!(report.removed_relationships[0].object, scene.contained_wall);
     let attributes = &model.get(containment).expect("stays").attributes;
     assert!(!attributes.contains(&Value::List(vec![Value::Ref(scene.contained_wall)])));
     assert!(!format!("{attributes:?}").contains(&format!("Ref({})", scene.contained_wall.0)));
