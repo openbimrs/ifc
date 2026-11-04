@@ -560,12 +560,14 @@ does not do — see [R9b/R10 on the roadmap](/project/roadmap).
 | --- | --- | --- |
 | Boundary planes of a wall's material layers (`IfcWall`, `IfcWallStandardCase`; AXIS2 from a straight `IfcPolyline` Axis) | <span class="status-partial">Partial</span> | `ifc::material_layer_bounds`, `ifc_geometry::layer_set_reference`; `crates/ifc-geometry/tests/layer_set_reference.rs`, `crates/openbim-ifc/tests/material_layer_bounds.rs` |
 | Boundary planes of a slab's or plate's layers (`IfcSlab`, `IfcPlate` and their standard cases; AXIS3 from the extrusion `Position`) | <span class="status-partial">Partial</span> | same tests; a tilted roof slab and a clipped body are covered |
-| Exact planes, not split bodies | <span class="status-implemented">Implemented</span> | a plane per boundary in the object frame, in metres, with each layer's material or none (an air gap) |
+| Exact planes | <span class="status-implemented">Implemented</span> | a plane per boundary in the object frame, in metres, with each layer's material or none (an air gap) |
+| Body split into one part per layer, gross or net (opt-in `mesh`) | <span class="status-partial">Partial</span> | `ifc::material_layer_meshes`, `ifc_geometry::lower::lower_product_layers`, `ifc_geometry::compile::compile_product_layer_meshes`; each layer is cut in the product's frame, the outer layers extend so the parts add up to the Body; `crates/ifc-geometry/tests/layer_split_compile.rs`, `crates/openbim-ifc/tests/material_layer_meshes.rs`; not yet in the bindings |
 
 Gaps ([#455](https://github.com/openbimrs/ifc/issues/455)): curved, trimmed
 and indexed wall axes, `IfcMaterialLayerWithOffsets`, bodies of several items
 or mapped or tapered solids, AXIS1 usages, other element classes, the language
-bindings, and splitting a body at the planes.
+bindings for the layer meshes, and a strict mode that reports a Body thicker
+or thinner than its stack.
 
 ### Representation context
 

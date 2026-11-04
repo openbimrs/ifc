@@ -150,6 +150,36 @@ certified `PLACEMENT_ROUNDING` deviation (Exact to Within) to every placed
 body, which every other opening-less Body would pay for nothing. The gross
 entry points are unchanged; #657 covers the gross path.
 
+## Amendment (2026-11-03): per-layer parts are cut in the host's frame (#455)
+
+A layered wall, slab or plate can be asked for one part per material layer.
+The planes of the stack are stated in the product's object frame, so the Body
+is lowered in the host's frame as in #388, split into its solid parts, and
+each part of layer `k` is cut by one exact `Difference` with a half space per
+inner side of its layer, under one `Instance` of the host's world transform.
+Cutting in world coordinates is rejected: it brings back the lost
+coincidences of #388.
+
+**The Body is gross by default and net on explicit request**, as everywhere
+in this ADR. A net Body whose openings fall back to world coordinates (no
+shared placement chain) is refused as `Unsupported`; a stated plane is never
+moved to another frame.
+
+**Outer layers extend.** Only the inner boundaries cut, so the first layer
+with thickness keeps everything of the Body below its upper plane and the last
+everything above its lower plane, and the parts add up to the Body by
+construction. A zero-thick layer has no part. A Body thicker than its stack
+therefore thickens the outer layers; a strict mode that cuts at the outer
+boundaries and reports the remainder is not offered yet.
+
+`ifc-geometry` takes a neutral `LayerCut` (a unit normal and ascending
+distances), never an `ifc-material` type; the join with the material usage
+lives in the `openbim-ifc` facade (`material_layer_meshes`). Nothing is
+tessellated or evaluated in the bridge (ADR 0004): `lower_product_layers`
+builds the exact graph, and `compile_product_layer_meshes_with` compiles each
+part, naming the layer a backend refuses (`LayerNotSplit`) once the Body
+itself compiles. A part with no volume compiles to an empty mesh.
+
 ## Relation to existing code
 
 - `ifc-geometry/src/input/openings.rs` — kernel-free relation read; slot
@@ -159,9 +189,15 @@ entry points are unchanged; #657 covers the gross path.
   opening's placement relative to it (#388).
 - `ifc-geometry/src/lower/net/boolean_body.rs` — whether a Body holds a
   boolean or a clip (#655).
+- `ifc-geometry/src/lower/layers.rs` and `src/compile/layers.rs` — the
+  per-layer split and its meshes (#455); `openbim-ifc/src/product_geometry/layer_meshes.rs`
+  joins them with the layer bounds.
 - `ifc-geometry/src/lower/session.rs` — `NodeShape` side table recorded at push.
 - `ifc-geometry/src/compile.rs` — net entry points and refusal attribution.
 - Tests: `tests/opening_subtraction_compile.rs` (analytic volumes),
   `tests/opening_attribution.rs` (backend refusals named precisely),
   `tests/net_host_frame.rs` (flush openings under georeferenced sites),
   `tests/net_clip_frame.rs` (opening-less clipped bodies, #655).
+- `tests/layer_split_compile.rs` (layer volumes, polarity, extension, empty
+  parts), `openbim-ifc/tests/material_layer_meshes.rs` (materials, net,
+  releases).

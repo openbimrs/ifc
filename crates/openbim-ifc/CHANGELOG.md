@@ -59,6 +59,12 @@ Semver: patch (a refusal lifted).
 
 Semver: patch (additive).
 
+### Added (#455)
+
+- With `material` and `mesh`: `material_layer_meshes(model, product, body)`: a mesh per material layer of a layered wall, slab or plate, gross or net, in the product's frame, with its layer and material (`MaterialLayerMeshes`, `MaterialLayerMesh`); the layer volumes add up to the Body. `LayerBody` is re-exported to choose gross or net.
+
+Semver: patch (additive).
+
 ### Added (#640)
 
 - With `geometry-select`: `BodyItem::local_sweep` and `LocalSweptSolid`/`LocalSweepPath`: a swept-area item's profile, `Position` and path in its own item frame, for every swept-area item.

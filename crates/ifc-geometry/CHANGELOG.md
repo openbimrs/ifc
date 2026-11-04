@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#455)
+
+- With `lowering`: `lower_product_layers(session, product, &LayerCut, LayerBody)`: one exact part per layer of a stack of parallel planes in the object frame, the Body (gross, or net on request) cut by half-spaces in the product's frame; the outermost layers keep any of the Body beyond the stack, a zero-thick layer has no part. `LayerCut` (with `From<&LayerBoundaries>`), `LayerBody`, `LayeredLowering`. With `compile`: `compile_product_layer_meshes(_with)`, `LayerMeshes`, `LayerMesh`; `GeometryError::LayerNotSplit` names the layer a backend refuses.
+
+Semver: patch (additive).
+
 ### Added (#640)
 
 - `BodyItem::local_sweep` and `LocalSweptSolid`/`LocalSweepPath`: a swept-area item's profile, `Position` and path in its own item frame, for every swept-area item.

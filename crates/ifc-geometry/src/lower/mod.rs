@@ -12,6 +12,7 @@ pub mod dispatch;
 pub mod halfspace;
 #[cfg(feature = "compile")]
 pub(crate) mod items;
+pub mod layers;
 pub mod mapped;
 pub mod net;
 pub mod point;
@@ -39,6 +40,7 @@ pub use csg::{lower_csg_primitive_node, lower_csg_solid_node, lower_swept_disk_n
 pub use curve::lower_curve_node;
 pub use dispatch::lower_representation_item;
 pub use halfspace::lower_half_space_node;
+pub use layers::{lower_product_layers, LayerBody, LayerCut, LayeredLowering};
 pub use mapped::{lower_mapped_item_node, lower_representation};
 pub use net::{
     lower_product_net, lower_product_net_with, AppliedReason, NetLowering, NetOptions,

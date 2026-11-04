@@ -173,6 +173,23 @@ pub enum GeometryError {
         closure: axiolid_mesh_compile_contract::MeshClosure,
     },
 
+    /// A backend refused to cut one layer out of a product's Body (#455).
+    ///
+    /// Raised only for a layer split, and only when the Body itself compiles:
+    /// a refusal the Body alone would raise stays as it is. `layer` indexes
+    /// the cut's layers, so no part of the stack is dropped or merged into a
+    /// neighbour to hide it.
+    #[error("layer {layer} of {product} could not be split from its Body: {cause}")]
+    LayerNotSplit {
+        /// The layered product.
+        product: EntityId,
+        /// The first layer, as an index of the cut, the backend refused.
+        layer: usize,
+        /// Why it was refused.
+        #[source]
+        cause: Box<GeometryError>,
+    },
+
     /// An opening that voids a host could not be subtracted from it (#44).
     ///
     /// Raised only when a caller asked for NET geometry. Returning the gross
@@ -727,6 +744,7 @@ impl GeometryError {
             }
             // The opening is what failed; `host` stays readable on the variant.
             Self::OpeningNotSubtracted { opening, .. } => Some(*opening),
+            Self::LayerNotSplit { product, .. } => Some(*product),
             Self::LengthUnitUndeclared {
                 project,
                 assignment,
@@ -777,7 +795,9 @@ impl GeometryError {
                     | crate::compile::SeamWindowRefusal::CertificationBudgetExceeded
             ),
             // A net refusal is as supported as the reason behind it.
-            Self::OpeningNotSubtracted { cause, .. } => cause.is_unsupported(),
+            Self::OpeningNotSubtracted { cause, .. } | Self::LayerNotSplit { cause, .. } => {
+                cause.is_unsupported()
+            }
             _ => false,
         }
     }
