@@ -148,7 +148,7 @@ pub use input::openings::{openings_of, voiding_conflicts, VoidingConflict};
 // "is this beam an HEA300" must not link a solid kernel for the answer.
 pub use input::body::{
     body_description, body_description_for, BodyDescription, BodyItem, BodyItemBounds, BodyKind,
-    LocalSweepPath, LocalSweptSolid, SweepPath, SweptSolid,
+    LocalSweepPath, LocalSweptSolid, SweepPath, SweptDisk, SweptSolid,
 };
 // Profile families read into SI parameters. The same reader feeds
 // `lower::profile`, so a description and a lowering cannot disagree.

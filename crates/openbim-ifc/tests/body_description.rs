@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 use ifc::{
     body_description, body_description_for, geometry::units, BodyKind, LocalSweepPath,
-    LocalSweptSolid, ProfileParameters, RepresentationPurpose, SweepPath,
+    LocalSweptSolid, ProfileParameters, RepresentationPurpose, SweepPath, SweptDisk,
 };
 use ifc_model::EntityId;
 
@@ -89,4 +89,26 @@ fn the_facade_describes_a_reference_view_opening() {
     for (actual, expected) in bounds.max.iter().zip([2.5, 0.2, 2.5]) {
         assert!((actual - expected).abs() < 1e-9, "{:?}", bounds.max);
     }
+}
+
+/// `swept_disk_composite_arc_crankbar.ifc` bar #79 is one swept disk, radius
+/// 18.5 mm, along a composite curve with an authored range.
+#[test]
+fn the_facade_describes_a_swept_disk() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test/fixtures/ifclite-geometry/swept_disk_composite_arc_crankbar.ifc");
+    let model = ifc::read_path(&path).expect("fixture parses");
+    let body = body_description(
+        &model,
+        &units::resolve(&model).expect("project units"),
+        EntityId(79),
+    )
+    .expect("describes")
+    .expect("has a body");
+    let item = body.sole_item().expect("one item");
+    assert_eq!(item.kind, BodyKind::SweptDisk);
+    let disk: &SweptDisk = item.swept_disk.as_ref().expect("a swept disk");
+    assert!((disk.radius - 0.0185).abs() < 1e-12);
+    assert_eq!(disk.inner_radius, None);
+    assert_eq!(disk.parameter_range, Some((0.0, 4840.61604159709)));
 }

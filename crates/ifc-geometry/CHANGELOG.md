@@ -12,6 +12,16 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#661)
+
+- `BodyItem::swept_disk` and `SweptDisk`: radius, inner radius, fillet radius, directrix and authored `StartParam`/`EndParam` of `IfcSweptDiskSolid` and `IfcSweptDiskSolidPolygonal`, in the item frame.
+
+### Changed (#661)
+
+- a swept disk with a non-positive radius, a bore at least its radius, a half-open range or a non-positive fillet now refuses `body_description`.
+
+Semver: minor.
+
 ## [0.34.0] - 2026-11-04
 
 ### Added (#455)

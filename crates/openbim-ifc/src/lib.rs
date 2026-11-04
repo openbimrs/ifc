@@ -335,7 +335,7 @@ pub use product_geometry::*;
 pub use ifc_geometry::{
     body_description, body_description_for, describe_profile, profile_outline, BodyDescription,
     BodyItem, BodyItemBounds, BodyKind, LocalSweepPath, LocalSweptSolid, ProfileDescription,
-    ProfileOutline, ProfileParameters, SweepPath, SweptSolid,
+    ProfileOutline, ProfileParameters, SweepPath, SweptDisk, SweptSolid,
 };
 
 /// Map conversion and coordinate reference systems.

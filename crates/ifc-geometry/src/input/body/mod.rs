@@ -42,6 +42,7 @@
 //! same geometry authored in place.
 
 mod bounds;
+mod disk;
 mod kind;
 mod local;
 mod sweep;
@@ -120,6 +121,10 @@ pub struct BodyItem {
     /// kind. These are the authored parameters whatever the mapping does;
     /// [`Self::item_world`] places them.
     pub local_sweep: Option<LocalSweptSolid>,
+    /// Radii, directrix and parameter range, for [`BodyKind::SweptDisk`];
+    /// `None` for every other kind. The authored parameters in the item's own
+    /// frame, whatever the mappings do; [`Self::item_world`] places them.
+    pub swept_disk: Option<SweptDisk>,
     /// The frame the item's own coordinates are placed in, in metres: the
     /// representation context's `WorldCoordinateSystem` and the product
     /// placement, composed with every `MappingTarget o MappingOrigin` in
@@ -139,6 +144,40 @@ pub struct BodyItem {
     /// `max`. `Some` for
     /// [`BodyKind::Tessellated`], `None` for every other kind.
     pub bounds: Option<BodyItemBounds>,
+}
+
+/// A swept disk (`IfcSweptDiskSolid`, `IfcSweptDiskSolidPolygonal`): a pipe,
+/// duct or reinforcing bar, in its own item frame.
+///
+/// Radii are in metres. The directrix is reported by reference and lies in the
+/// frame [`BodyItem::item_world`] places; a non-rigid `item_world` does not
+/// refuse the item.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct SweptDisk {
+    /// `Radius`, in metres; positive.
+    pub radius: f64,
+    /// `InnerRadius` of a tube, in metres; smaller than [`Self::radius`].
+    pub inner_radius: Option<f64>,
+    /// `FilletRadius` of an `IfcSweptDiskSolidPolygonal`, in metres; `None`
+    /// for sharp corners and for an `IfcSweptDiskSolid`.
+    pub fillet_radius: Option<f64>,
+    /// The `Directrix` curve, in the item frame.
+    pub directrix: EntityId,
+    /// `(StartParam, EndParam)` as authored, unconverted: the unit depends on
+    /// the directrix family.
+    ///
+    /// - A conic (`IfcCircle`, `IfcEllipse`): an angle in the file's plane-angle
+    ///   unit.
+    /// - `IfcPolyline`: 1 per edge.
+    /// - `IfcLine`: multiples of the direction vector.
+    /// - `IfcTrimmedCurve`: the parameter of its basis curve.
+    /// - `IfcCompositeCurve`: parametric length.
+    /// - `IfcIndexedPolyCurve`: see #694.
+    ///
+    /// `None` when the disk is not trimmed; one end without the other is
+    /// refused.
+    pub parameter_range: Option<(f64, f64)>,
 }
 
 /// An axis-aligned box in the representation frame
@@ -408,6 +447,13 @@ impl Walk<'_> {
         } else {
             (None, None)
         };
+        let swept_disk = if kind == BodyKind::SweptDisk {
+            Some(disk::describe(
+                self.model, self.units, item, entity, &type_name,
+            )?)
+        } else {
+            None
+        };
         let bounds = if kind == BodyKind::Tessellated {
             Some(bounds::tessellated(
                 self.model, self.units, item, entity, &type_name, local,
@@ -422,6 +468,7 @@ impl Walk<'_> {
             kind,
             swept,
             local_sweep,
+            swept_disk,
             item_world: frame,
             bounds,
         });
