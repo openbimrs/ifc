@@ -24,6 +24,38 @@ pub fn model(
     entities: &str,
     items: &str,
 ) -> Model {
+    build(
+        schema,
+        length_prefix,
+        false,
+        product_x_axis,
+        entities,
+        items,
+    )
+}
+
+/// [`model`] in metres with the plane angle unit in degrees, as most files
+/// state it (`#7`..`#9` are the conversion record).
+pub fn degrees(entities: &str, items: &str) -> Model {
+    build("IFC4", "$", true, "1.,0.,0.", entities, items)
+}
+
+fn build(
+    schema: &str,
+    length_prefix: &str,
+    degrees: bool,
+    product_x_axis: &str,
+    entities: &str,
+    items: &str,
+) -> Model {
+    let angle = if degrees {
+        "#2=IFCCONVERSIONBASEDUNIT(#7,.PLANEANGLEUNIT.,'DEGREE',#8);
+#7=IFCDIMENSIONALEXPONENTS(0,0,0,0,0,0,0);
+#8=IFCMEASUREWITHUNIT(IFCPLANEANGLEMEASURE(0.017453292519943295),#9);
+#9=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);"
+    } else {
+        "#2=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);"
+    };
     let text = format!(
         "ISO-10303-21;
 HEADER;
@@ -33,7 +65,7 @@ FILE_SCHEMA(('{schema}'));
 ENDSEC;
 DATA;
 #1=IFCSIUNIT(*,.LENGTHUNIT.,{length_prefix},.METRE.);
-#2=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);
+{angle}
 #3=IFCUNITASSIGNMENT((#1,#2));
 #4=IFCPROJECT('0',$,'p',$,$,$,$,(#10),#3);
 #5=IFCCARTESIANPOINT((0.,0.,0.));

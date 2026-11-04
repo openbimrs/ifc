@@ -3,7 +3,9 @@
 //! Every case asserts the error variant AND the entity it names: a refusal
 //! that names the wrong entity sends a user to the wrong record.
 
-use ifc_geometry::{body_description, describe_profile, units, BodyKind, GeometryError};
+use ifc_geometry::{
+    body_description, describe_profile, units, BodyKind, GeometryError, LocalSweepPath,
+};
 use ifc_model::{EntityId, Model};
 
 use super::step::{metres, PRODUCT};
@@ -211,11 +213,12 @@ fn a_mapped_item_cycle_is_refused() {
     ));
 }
 
-/// A scaling map would report parameters the file never authored.
+/// A scaling map does not change the authored parameters, so the swept solid
+/// is described in its own frame; only the world description is withheld.
 ///
 /// The B-rep beside it is still reported: a kind does not depend on scale.
 #[test]
-fn a_scaled_mapped_swept_solid_is_refused_but_a_scaled_brep_is_not() {
+fn a_scaled_mapped_swept_solid_is_described_locally() {
     let map = |item: &str| {
         format!(
             "{SOLID}
@@ -230,10 +233,41 @@ fn a_scaled_mapped_swept_solid_is_refused_but_a_scaled_brep_is_not() {
              #203=IFCMAPPEDITEM(#201,#202);"
         )
     };
-    let error = describe(&metres(&map("#104"), "#203")).expect_err("scaled sweep");
-    assert!(error.is_unsupported(), "{error:?}");
-    assert_eq!(error.entity(), Some(EntityId(203)), "blame the mapping");
+    let body = describe(&metres(&map("#104"), "#203")).unwrap().unwrap();
+    let item = body.sole_item().unwrap();
+    assert!(item.swept.is_none(), "no world description under a scale");
+    let local = item.local_sweep.as_ref().expect("local description");
+    assert!(local.profile.bounds_area());
+    assert!(matches!(
+        local.path,
+        LocalSweepPath::Extrusion { direction: [0.0, 0.0, 1.0], depth, .. } if depth == 1.0
+    ));
+    assert!((item.item_world.determinant() - 8.0).abs() < 1e-9);
 
     let body = describe(&metres(&map("#112"), "#203")).unwrap().unwrap();
-    assert_eq!(body.sole_item().unwrap().kind, BodyKind::Brep);
+    let item = body.sole_item().unwrap();
+    assert_eq!(item.kind, BodyKind::Brep);
+    assert!(item.local_sweep.is_none());
+}
+
+/// A dangling profile still refuses under a scaling mapping.
+#[test]
+fn a_dangling_profile_under_a_scaled_mapping_is_still_refused() {
+    let model = metres(
+        &format!(
+            "{SOLID}
+             #104=IFCEXTRUDEDAREASOLID(#999,#102,#103,1.);
+             #200=IFCSHAPEREPRESENTATION(#10,'Body','SweptSolid',(#104));
+             #201=IFCREPRESENTATIONMAP(#102,#200);
+             #202=IFCCARTESIANTRANSFORMATIONOPERATOR3D($,$,#101,2.,$);
+             #203=IFCMAPPEDITEM(#201,#202);"
+        ),
+        "#203",
+    );
+    let error = describe(&model).expect_err("dangling profile");
+    assert!(matches!(
+        error,
+        GeometryError::MissingEntity { referrer, missing }
+            if referrer == EntityId(104) && missing == EntityId(999)
+    ));
 }

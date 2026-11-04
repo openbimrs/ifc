@@ -9,8 +9,8 @@
 use std::path::PathBuf;
 
 use ifc::{
-    body_description, body_description_for, geometry::units, BodyKind, ProfileParameters,
-    RepresentationPurpose, SweepPath,
+    body_description, body_description_for, geometry::units, BodyKind, LocalSweepPath,
+    LocalSweptSolid, ProfileParameters, RepresentationPurpose, SweepPath,
 };
 use ifc_model::EntityId;
 
@@ -46,6 +46,17 @@ fn the_facade_describes_a_steel_section_body() {
         panic!("an extrusion path");
     };
     assert_eq!(direction_world, [0.0, 0.0, 1.0]);
+    assert!((depth - 1.0).abs() < 1e-12);
+
+    // The same item in its own frame: the facade names both types.
+    let local: &LocalSweptSolid = first.local_sweep.as_ref().expect("local description");
+    let LocalSweepPath::Extrusion {
+        direction, depth, ..
+    } = local.path
+    else {
+        panic!("an extrusion path");
+    };
+    assert_eq!(direction, [0.0, 0.0, 1.0]);
     assert!((depth - 1.0).abs() < 1e-12);
 }
 
