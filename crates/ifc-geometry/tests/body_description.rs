@@ -7,6 +7,8 @@
 //! Models are small STEP texts built by `body_description/step.rs`; expected
 //! values are derived by hand at each test from the quoted records.
 
+#[path = "body_description/local.rs"]
+mod local;
 #[path = "body_description/profiles.rs"]
 mod profiles;
 #[path = "body_description/purpose.rs"]

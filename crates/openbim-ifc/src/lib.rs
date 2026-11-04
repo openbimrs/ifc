@@ -333,8 +333,8 @@ pub use product_geometry::*;
 #[cfg(feature = "geometry-select")]
 pub use ifc_geometry::{
     body_description, body_description_for, describe_profile, profile_outline, BodyDescription,
-    BodyItem, BodyItemBounds, BodyKind, ProfileDescription, ProfileOutline, ProfileParameters,
-    SweepPath, SweptSolid,
+    BodyItem, BodyItemBounds, BodyKind, LocalSweepPath, LocalSweptSolid, ProfileDescription,
+    ProfileOutline, ProfileParameters, SweepPath, SweptSolid,
 };
 
 /// Map conversion and coordinate reference systems.

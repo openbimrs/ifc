@@ -6,7 +6,8 @@
 //! "is this beam an extrusion of an I-section, how deep is the web, which way
 //! does it run". A mesh has lost every one of those answers. This module
 //! reads them from the representation items directly, in SI units and world
-//! coordinates, and links no geometry kernel.
+//! coordinates (or, for `local_sweep`, the item's own frame), and links no
+//! geometry kernel.
 //!
 //! # One entry per item, never a merged answer
 //!
@@ -20,7 +21,7 @@
 //! # All or nothing
 //!
 //! If any item cannot be described exactly (an unsupported family, a dangling
-//! reference, a mapping that scales a swept solid), the whole call fails with
+//! reference, a profile that bounds no area), the whole call fails with
 //! a typed error naming the entity. A partial list would let a caller treat a
 //! body as fully checked when part of it was never read.
 //!
@@ -42,6 +43,7 @@
 
 mod bounds;
 mod kind;
+mod local;
 mod sweep;
 
 pub use kind::BodyKind;
@@ -108,9 +110,16 @@ pub struct BodyItem {
     pub mapped_by: Vec<EntityId>,
     /// How the item models its shape.
     pub kind: BodyKind,
-    /// Profile and path, for the swept-area families
-    /// ([`BodyKind::is_swept_area`]); `None` for every other kind.
+    /// Profile and path in world coordinates, for the swept-area families
+    /// ([`BodyKind::is_swept_area`]); `None` for every other kind and for a
+    /// swept-area item whose [`Self::item_world`] is not rigid (a mapping
+    /// scaled or mirrored it). [`Self::local_sweep`] still describes it.
     pub swept: Option<SweptSolid>,
+    /// Profile, `Position` and path in the item's own frame, for every
+    /// swept-area family ([`BodyKind::is_swept_area`]); `None` for every other
+    /// kind. These are the authored parameters whatever the mapping does;
+    /// [`Self::item_world`] places them.
+    pub local_sweep: Option<LocalSweptSolid>,
     /// The frame the item's own coordinates are placed in, in metres: the
     /// representation context's `WorldCoordinateSystem` and the product
     /// placement, composed with every `MappingTarget o MappingOrigin` in
@@ -119,8 +128,9 @@ pub struct BodyItem {
     ///
     /// Unlike [`SweptSolid::placement_world`] it is not required to be rigid:
     /// a mapping may scale or mirror any item kind, and this frame says so.
-    /// A swept solid's `placement_world` is this frame composed with the
-    /// solid's own `Position`.
+    /// A swept solid's world placement is this frame composed with the
+    /// solid's own `Position` ([`LocalSweptSolid::position`]); it is
+    /// `placement_world` when this frame is rigid.
     pub item_world: Transform,
     /// The exact bounds of a tessellated item's referenced vertices, in the
     /// representation frame ([`BodyDescription::frame`]): the item's mappings
@@ -165,14 +175,71 @@ pub struct SweptSolid {
     pub profile: ProfileDescription,
     /// `EndSweptArea` of a tapered sweep; `None` otherwise.
     pub end_profile: Option<ProfileDescription>,
-    /// The solid's `Position` composed into world coordinates, in metres.
+    /// The solid's `Position` composed into world coordinates, in metres:
+    /// [`BodyItem::item_world`] composed with [`LocalSweptSolid::position`].
     ///
     /// The profile lies in this frame's XY plane. Rigid by construction: a
-    /// mapping that scales or mirrors a swept solid is refused, because its
-    /// profile parameters would no longer be the authored ones.
+    /// swept solid whose `item_world` scales or mirrors has no `SweptSolid`
+    /// (`BodyItem::swept` is `None`), because its profile parameters would no
+    /// longer be the authored ones; [`LocalSweptSolid`] describes it instead.
     pub placement_world: Transform,
     /// The path the profile follows.
     pub path: SweepPath,
+}
+
+/// A swept-area solid in its own item frame: the frame
+/// [`BodyItem::item_world`] places, before any mapping or product placement.
+///
+/// Every parameter is the authored one in metres and radians, whatever scale
+/// or mirror the item's mappings apply. The world answer for a rigid
+/// `item_world` is [`SweptSolid`]; in general it is
+/// `item_world.compose(&position)`.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct LocalSweptSolid {
+    /// `SweptArea`, in metres and radians.
+    pub profile: ProfileDescription,
+    /// `EndSweptArea` of a tapered sweep; `None` otherwise.
+    pub end_profile: Option<ProfileDescription>,
+    /// The solid's `Position` in the item frame, in metres; `None` when the
+    /// file omits it (IFC4 OPTIONAL), which is the identity. Rigid, being an
+    /// `IfcAxis2Placement3D`.
+    pub position: Option<Transform>,
+    /// The path the profile follows, in the `Position` frame.
+    pub path: LocalSweepPath,
+}
+
+/// The path of a swept-area solid, in its `Position` frame.
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub enum LocalSweepPath {
+    /// A straight extrusion (plain or tapered).
+    #[non_exhaustive]
+    Extrusion {
+        /// `ExtrudedDirection` in the `Position` frame, unit length.
+        direction: [f64; 3],
+        /// `Depth`, in metres, measured along `direction`.
+        depth: f64,
+    },
+    /// A revolution about an axis (plain or tapered).
+    #[non_exhaustive]
+    Revolution {
+        /// The axis origin in the `Position` frame, in metres.
+        axis_origin: [f64; 3],
+        /// The axis direction in the `Position` frame, unit length.
+        axis_direction: [f64; 3],
+        /// `Angle`, in radians.
+        angle: f64,
+    },
+    /// A sweep along a directrix curve, reported by reference.
+    ///
+    /// The curve and its `StartParam`/`EndParam` live in the directrix's own
+    /// parameterisation; reading them is a curve question, not a body one.
+    #[non_exhaustive]
+    Directrix {
+        /// The `Directrix` curve.
+        directrix: EntityId,
+    },
 }
 
 /// The path of a swept-area solid, in world coordinates.
@@ -334,14 +401,12 @@ impl Walk<'_> {
         let kind = BodyKind::classify(&type_name).ok_or_else(|| {
             Slots::new(item, entity).unsupported("representation item family is not described")
         })?;
-        let swept = if kind.is_swept_area() {
-            // The innermost mapping is what scaled the frame, if anything did.
-            let culprit = self.mapped_by.last().copied().unwrap_or(item);
-            Some(sweep::describe(
-                self.model, self.units, item, entity, frame, culprit,
-            )?)
+        let (local_sweep, swept) = if kind.is_swept_area() {
+            let local = local::describe(self.model, self.units, item, entity)?;
+            let swept = sweep::world(&local, item, entity, frame)?;
+            (Some(local), swept)
         } else {
-            None
+            (None, None)
         };
         let bounds = if kind == BodyKind::Tessellated {
             Some(bounds::tessellated(
@@ -356,6 +421,7 @@ impl Walk<'_> {
             mapped_by: self.mapped_by.clone(),
             kind,
             swept,
+            local_sweep,
             item_world: frame,
             bounds,
         });
