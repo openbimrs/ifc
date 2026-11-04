@@ -148,14 +148,18 @@ export interface SurfaceColour {
   source: "item" | "layer" | "material" | "materialSet";
   /**
    * The `IfcStyledItem`, the layer assignment, the `IfcMaterial` or, for
-   * `materialSet`, the layer, profile or constituent set (or usage) whose
-   * materials all state this colour (#603).
+   * `materialSet`, the layer, profile, constituent set or material list (or
+   * a usage of one) whose materials all state this colour (#603).
    */
   sourceEntity: bigint;
-  /** Every `IfcMaterial` of the set for `materialSet`; empty otherwise. */
-  sourceMaterials: bigint[];
   /** The `IfcSurfaceStyle`. */
   surfaceStyle: bigint;
+  /**
+   * For `materialSet`, the materials of the set that colour the item: every
+   * one, or the constituents its shape aspects name (ascending id,
+   * distinct); empty otherwise.
+   */
+  sourceMaterials: bigint[];
 }
 
 /** One product's Body as triangles, from `IfcModel.productMeshes`. */

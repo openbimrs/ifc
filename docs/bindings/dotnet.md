@@ -397,8 +397,11 @@ record with a `GeometryRefusal` (`Code` `unsupported`, `invalid-model`,
 and `uint[] Indices`. `ProductMesh.Colour` is its `SurfaceColour`
 ([#449](https://github.com/openbimrs/ifc/issues/449)): `Red`, `Green`,
 `Blue` and `Transparency` (null when the file states none, which reads
-as opaque), the `Source` that supplied it, `item`, `layer` or `material`
-in that precedence, `SourceEntity` and `SurfaceStyle`; null when nothing
+as opaque), the `Source` that supplied it, `item`, `layer`, `material` or `materialSet`
+in that precedence, `SourceEntity`, `SurfaceStyle` and `SourceMaterials`
+(for `materialSet`, `SourceEntity` is the set whose materials all state the
+colour and `SourceMaterials` the materials that colour the item, ascending,
+else empty; #603); null when nothing
 colours the product, with `ColourRefusal` (code `ambiguous` for a set of
 several materials or Body items of different colours) when it is not
 resolved. A colour never refuses the mesh. It needs a native library built with the C ABI's

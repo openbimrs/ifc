@@ -10,7 +10,7 @@ a release here does not imply a release of any other crate in the family.
 
 ### Added (#603)
 
-- `SurfaceColour.source` can be `materialSet`, with `source_entity` the set (or usage) and the new `source_materials` listing every `IfcMaterial` of it (empty for other sources). The record carries `source_materials` between `source_entity` and `surface_style`.
+- `SurfaceColour.source` can be `materialSet`, with `source_entity` the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)) and the new `source_materials` listing the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct); empty for other sources. The record carries `source_materials` last, after `surface_style`.
 
 Semver: minor (pre-1.0 breaking: a field is added to a public struct and a record).
 

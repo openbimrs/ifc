@@ -14,7 +14,7 @@ everything released before per-crate changelogs began.
 
 ### Changed (#603)
 
-- `ColourResolver` reports the colour that all materials of a layer, profile or constituent set state as `ColourSource::MaterialSet { definition, materials }` naming the set (or usage) and every material, instead of `Material` of the first. A set of one material keeps `Material`; differing styles stay `ColourError::AmbiguousMaterial`. `ColourSource` and `SurfaceColour` are no longer `Copy` (`ifc-style`).
+- Breaking: `ColourResolver` reports the colour that all materials of a layer, profile or constituent set state as `ColourSource::MaterialSet { definition, materials }` naming the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)) and the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct), instead of `Material` of the first. A set of one material keeps `Material`; differing styles stay `ColourError::AmbiguousMaterial`. `ColourSource` and `SurfaceColour` are no longer `Copy` (`ifc-style`).
 
 Semver: minor (pre-1.0 breaking).
 

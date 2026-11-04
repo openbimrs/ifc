@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from array import array
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 Matrix4 = Tuple[float, ...]
 
@@ -117,10 +117,13 @@ class SurfaceColour:
     0 opaque, and ``None`` when the file states none (which the standard
     reads as opaque). ``source`` is ``item``, ``layer``, ``material`` or
     ``materialSet``, in that precedence; ``source_entity`` the
-    ``IfcStyledItem``, the layer assignment, the ``IfcMaterial`` or the
-    material set whose materials all state the colour (#603);
-    ``source_materials`` every ``IfcMaterial`` of that set, else empty; ``surface_style`` the
-    ``IfcSurfaceStyle``.
+    ``IfcStyledItem``, the layer assignment, the ``IfcMaterial`` or, for
+    ``materialSet``, the layer, profile, constituent set or material list
+    (or a usage of one) whose materials all state the colour (#603);
+    ``surface_style`` the ``IfcSurfaceStyle``; ``source_materials`` the
+    materials of that set that colour the item, every one or the
+    constituents its shape aspects name (ascending id, distinct), else
+    ``()``.
     """
 
     red: float
@@ -129,8 +132,8 @@ class SurfaceColour:
     transparency: Optional[float]
     source: str
     source_entity: int
-    source_materials: List[int]
     surface_style: int
+    source_materials: Tuple[int, ...]
 
 
 @dataclass(frozen=True)
@@ -214,7 +217,9 @@ def _refusal(data: Optional[Dict[str, Any]]) -> Optional[GeometryRefusal]:
 def _colour(data: Optional[Dict[str, Any]]) -> Optional[SurfaceColour]:
     if data is None:
         return None
-    return SurfaceColour(**{k: v for k, v in data.items() if k != "_record"})
+    fields = {k: v for k, v in data.items() if k != "_record"}
+    fields["source_materials"] = tuple(fields["source_materials"])
+    return SurfaceColour(**fields)
 
 
 def _matrix(data: Optional[Any]) -> Optional[Matrix4]:

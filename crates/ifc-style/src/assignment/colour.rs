@@ -46,12 +46,13 @@ pub enum ColourSource {
     /// [`ColourSource::Material`]. Set by the `openbim-ifc` facade, which
     /// joins materials to products; [`StyleIndex`] itself reads one material.
     MaterialSet {
-        /// The `IfcMaterialLayerSet`, `IfcMaterialLayerSetUsage`,
-        /// `IfcMaterialProfileSet`, `IfcMaterialProfileSetUsage` or
-        /// `IfcMaterialConstituentSet` the materials belong to.
+        /// The `IfcMaterialLayerSet`, `IfcMaterialProfileSet`,
+        /// `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of
+        /// one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage`
+        /// and its `Tapering` subtype) the materials belong to.
         definition: EntityId,
-        /// Every `IfcMaterial` of the set, in the order the caller resolved
-        /// them (ascending id, distinct).
+        /// The materials of the set that colour the item: every one, or the
+        /// constituents its shape aspects name (ascending id, distinct).
         materials: Vec<EntityId>,
     },
 }

@@ -10,9 +10,10 @@ a release here does not imply a release of any other crate in the family.
 
 ### Added (#603)
 
-- The `SurfaceColour` record's source can be `materialSet` and carries a new `source materials` `LIST` of `REF` between source entity and surface style (every material of the set, else empty); its `child_count` is 8.
+- The `SurfaceColour` record's source can be `materialSet`, its source entity then the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)), and it carries a new last child, `source materials`, a `LIST` of `REF`: the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct), else empty. The record has 8 children; the earlier seven keep their positions.
+- ABI version 0.1.24; no `v0_1` symbol changed.
 
-Semver: minor (pre-1.0 breaking: a record field is added).
+Semver: additive, released on the 0.1 line.
 
 ### Changed (#651)
 

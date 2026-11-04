@@ -70,9 +70,9 @@ public sealed record ProductGeometry(
 /// <param name="Blue">Blue, in [0, 1].</param>
 /// <param name="Transparency">In [0, 1], 0 opaque; null when the file states none, which the standard reads as opaque.</param>
 /// <param name="Source">Which assignment supplied it, in that precedence: <c>item</c>, <c>layer</c>, <c>material</c> or <c>materialSet</c> (#603).</param>
-/// <param name="SourceEntity">The <c>IfcStyledItem</c>, the layer assignment, the <c>IfcMaterial</c> or, for <c>materialSet</c>, the set whose materials all state the colour.</param>
-/// <param name="SourceMaterials">Every <c>IfcMaterial</c> of the set for <c>materialSet</c>; empty otherwise.</param>
+/// <param name="SourceEntity">The <c>IfcStyledItem</c>, the layer assignment, the <c>IfcMaterial</c> or, for <c>materialSet</c>, the layer, profile, constituent set or material list (or a usage of one) whose materials all state the colour.</param>
 /// <param name="SurfaceStyle">The <c>IfcSurfaceStyle</c> the colour is read from.</param>
+/// <param name="SourceMaterials">For <c>materialSet</c>, the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct); empty otherwise.</param>
 public sealed record SurfaceColour(
     double Red,
     double Green,
@@ -80,8 +80,8 @@ public sealed record SurfaceColour(
     double? Transparency,
     string Source,
     ulong SourceEntity,
-    EquatableList<ulong> SourceMaterials,
-    ulong SurfaceStyle);
+    ulong SurfaceStyle,
+    EquatableList<ulong> SourceMaterials);
 
 /// <summary>One product's mesh, without its arrays (<see cref="MeshedProduct"/> carries them).</summary>
 /// <param name="Id">The product's entity id.</param>

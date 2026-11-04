@@ -11,9 +11,10 @@ a release here does not imply a release of any other crate in the family.
 
 ### Added (#603)
 
-- `SurfaceColour.Source` can be `materialSet`, and the new `SourceMaterials` lists the set's materials (empty for other sources).
+- `SurfaceColour.Source` can be `materialSet`, `SourceEntity` then the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)), and the new last parameter `SourceMaterials` lists the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct); empty for other sources.
+- Needs the C library of ABI 0.1.24.
 
-Semver: minor (pre-1.0 breaking: a record field is added).
+Semver: minor (pre-1.0 breaking: a record parameter is added).
 
 ### Changed (#651)
 

@@ -65,7 +65,8 @@ fn assert_set(model: &Model, colour: &SurfaceColour, names: &[&str]) {
     assert_eq!(materials, &expected);
     let type_name = &model.get(*definition).expect("the set exists").type_name;
     assert!(
-        type_name.starts_with("IFCMATERIAL") && type_name.contains("SET"),
+        type_name.starts_with("IFCMATERIAL")
+            && (type_name.contains("SET") || type_name.ends_with("LIST")),
         "{type_name}"
     );
 }
@@ -99,4 +100,30 @@ fn a_set_of_one_material_keeps_the_material_source() {
         matches!(got.source, ColourSource::Material { material, .. } if material == red),
         "{got:?}"
     );
+}
+
+#[test]
+fn a_material_list_that_agrees_names_the_list_and_every_material() {
+    let model = edited(&[
+        ("(#221),#45);", "(#221),#951);"),
+        (
+            "ENDSEC;\nEND-ISO",
+            "#951=IFCMATERIALLIST((#24,#900));\nENDSEC;\nEND-ISO",
+        ),
+    ]);
+    assert_set(&model, &colour(&model, "PLAIN"), &["Red", "Red twin"]);
+}
+
+#[test]
+fn a_profile_set_that_agrees_names_the_set_and_every_material() {
+    let model = edited(&[
+        ("(#221),#45);", "(#221),#951);"),
+        (
+            "ENDSEC;\nEND-ISO",
+            "#949=IFCMATERIALPROFILE('A',$,#24,#48,$,$);\n\
+             #950=IFCMATERIALPROFILE('B',$,#900,#48,$,$);\n\
+             #951=IFCMATERIALPROFILESET('Pair',$,(#949,#950),$);\nENDSEC;\nEND-ISO",
+        ),
+    ]);
+    assert_set(&model, &colour(&model, "PLAIN"), &["Red", "Red twin"]);
 }

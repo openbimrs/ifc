@@ -117,14 +117,19 @@ pub struct SurfaceColour {
     /// profile or constituent set whose materials all state this colour,
     /// #603), in that precedence.
     pub source: String,
-    /// The `IfcStyledItem`, the layer assignment, the `IfcMaterial` or the
-    /// material set (or usage).
+    /// The `IfcStyledItem`, the layer assignment, the `IfcMaterial` or, for
+    /// `materialSet`, the set: an `IfcMaterialLayerSet`,
+    /// `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or
+    /// `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`,
+    /// `IfcMaterialProfileSetUsage` and its `Tapering`).
     pub source_entity: u64,
-    /// Every `IfcMaterial` of the set when `source` is `materialSet`, else
-    /// empty.
-    pub source_materials: Vec<u64>,
     /// The `IfcSurfaceStyle` the colour is read from.
     pub surface_style: u64,
+    /// When `source` is `materialSet`, the materials of the set that colour
+    /// the item: every one, or the constituents its shape aspects name
+    /// (ascending id, distinct); else empty. Last, so the earlier fields
+    /// keep their positions.
+    pub source_materials: Vec<u64>,
 }
 
 /// One product's Body as triangles.
@@ -544,6 +549,7 @@ impl ToRecord for SurfaceColour {
                 ),
                 ("source", Field::Text(self.source.clone())),
                 ("source_entity", Field::Id(self.source_entity)),
+                ("surface_style", Field::Id(self.surface_style)),
                 (
                     "source_materials",
                     Field::List(
@@ -553,7 +559,6 @@ impl ToRecord for SurfaceColour {
                             .collect(),
                     ),
                 ),
-                ("surface_style", Field::Id(self.surface_style)),
             ],
         )
     }

@@ -492,7 +492,7 @@ END-ISO-10303-21;
         assert_eq!(set.source_materials.len(), 2);
         assert_ne!(set.source_entity, set.source_materials[0]);
         assert_eq!(meshes[1].colour_refusal, None);
-        // The record carries the materials between the entity and the style.
+        // The record carries the materials last, after the style (the C tape's positions).
         let record = meshes[1].colour.as_ref().unwrap().to_record();
         let names: Vec<&str> = record.fields.iter().map(|(name, _)| *name).collect();
         assert_eq!(
@@ -500,8 +500,8 @@ END-ISO-10303-21;
             [
                 "source",
                 "source_entity",
-                "source_materials",
-                "surface_style"
+                "surface_style",
+                "source_materials"
             ]
         );
 

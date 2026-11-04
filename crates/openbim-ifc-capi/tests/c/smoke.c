@@ -1069,8 +1069,8 @@ static int geometry(void) {
     CHECK(count == 1 && nodes[1].child_count == 10, "one ProductMesh record");
     /* id, global id, type, transform (17 nodes), vertex and triangle
      * counts, refusal, then colour: red, green, blue, transparency,
-     * source, source entity, source materials, surface style; colour refusal (#449); and
-     * closure (#458). */
+     * source, source entity, surface style, source materials (#603);
+     * colour refusal (#449); and closure (#458). */
     CHECK(nodes[24].kind == OPENBIM_IFC_KIND_NULL, "no refusal");
     CHECK(nodes[25].kind == OPENBIM_IFC_KIND_LIST && nodes[25].child_count == 8,
           "a SurfaceColour record");
@@ -1079,7 +1079,8 @@ static int geometry(void) {
     CHECK(nodes[30].str_len == 8 && memcmp(strings + nodes[30].str_offset, "material", 8) == 0,
           "from the material");
     CHECK(nodes[31].kind == OPENBIM_IFC_KIND_REF && nodes[31].int_value == 18, "the material");
-    CHECK(nodes[32].kind == OPENBIM_IFC_KIND_LIST && nodes[32].child_count == 0,
+    CHECK(nodes[32].kind == OPENBIM_IFC_KIND_REF, "the surface style");
+    CHECK(nodes[33].kind == OPENBIM_IFC_KIND_LIST && nodes[33].child_count == 0,
           "no source materials");
     CHECK(nodes[34].kind == OPENBIM_IFC_KIND_NULL, "no colour refusal");
     CHECK(nodes[35].kind == OPENBIM_IFC_KIND_TEXT && nodes[35].str_len == 5 &&
