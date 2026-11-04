@@ -330,4 +330,47 @@ impl Planner<'_, '_> {
                     })
             })
     }
+
+    /// The objects `relation` relates to `relating`, each with the
+    /// relationship that does, ascending by object.
+    pub(super) fn related_to(
+        &self,
+        relation: &Relation,
+        relating: EntityId,
+    ) -> Vec<(EntityId, EntityId)> {
+        let Some(slot) = self
+            .schema
+            .attributes(relation.entity)
+            .iter()
+            .position(|attribute| attribute.name.eq_ignore_ascii_case(relation.related))
+        else {
+            return Vec::new();
+        };
+        let mut related = Vec::new();
+        for relationship in self.view.referrers_of_type(relating, relation.type_name) {
+            if self.relating_of(relation, relationship) != Some(relating) {
+                continue;
+            }
+            let Some(value) = self
+                .view
+                .get(relationship)
+                .and_then(|entity| entity.attributes.get(slot))
+            else {
+                continue;
+            };
+            match value {
+                Value::List(items) => related.extend(
+                    items
+                        .iter()
+                        .filter_map(Value::as_ref_id)
+                        .map(|object| (object, relationship)),
+                ),
+                Value::Ref(object) => related.push((*object, relationship)),
+                _ => {}
+            }
+        }
+        related.sort_unstable();
+        related.dedup_by_key(|(object, _)| *object);
+        related
+    }
 }

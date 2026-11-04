@@ -65,8 +65,9 @@ pub enum AuthoringFailure {
         /// The set attributes of `from` that would be lost.
         attributes: Vec<String>,
     },
-    /// A reassignment the transaction model cannot stage (#483). Not raised
-    /// at present: a shorter record is staged as a truncation (#634).
+    /// A reassignment the schema tables cannot decide (#483, #636): a type
+    /// rule whose owner has no `{Owner}Type` in the release, or a type class
+    /// no occurrence class pairs with.
     UnsupportedReassignment {
         /// The entity.
         entity: EntityId,
@@ -128,6 +129,31 @@ pub enum AuthoringFailure {
         from_rule: Option<String>,
         /// The rule the new class falls under.
         to_rule: String,
+    },
+    /// A type object's new class does not accept an object it types (#636).
+    TypeNotAccepted {
+        /// The type object.
+        type_object: EntityId,
+        /// Its new class.
+        to: String,
+        /// The typed object.
+        object: EntityId,
+        /// The rule the object's class falls under (`IfcWall.CorrectTypeAssigned`).
+        rule: String,
+        /// The type class that rule requires (`IfcWallType`).
+        required: String,
+    },
+    /// An entity reassigned with the one asked for (`move_pairs`) was
+    /// refused (#636).
+    PairNotReassigned {
+        /// The paired entity.
+        entity: EntityId,
+        /// The class it was to become; where the schema cannot decide the
+        /// class (`UnsupportedReassignment` as the cause), the type class
+        /// it would need to pair with.
+        to: String,
+        /// Why it was refused.
+        cause: Box<AuthoringFailure>,
     },
     /// A value references an entity that does not exist.
     MissingReference {
@@ -497,9 +523,24 @@ impl fmt::Display for AuthoringFailure {
             } => write!(
                 f,
                 "{object} is typed by {type_object}; as the new class it falls under {to_rule}, \
-                 not {}, which the batch cannot check: unassign the type first",
+                 not {}, which the batch cannot check: unassign the type first, or set remove_relationships \
+                 or move_pairs",
                 from_rule.as_deref().unwrap_or("no type rule")
             ),
+            Self::TypeNotAccepted {
+                type_object,
+                to,
+                object,
+                rule,
+                required,
+            } => write!(
+                f,
+                "{type_object} as {to} does not satisfy {rule} of {object}, which requires \
+                 {required}: reassign {object} too (move_pairs) or unassign the type first"
+            ),
+            Self::PairNotReassigned { entity, to, cause } => {
+                write!(f, "paired {entity} cannot become {to}: {cause}")
+            }
             Self::MissingReference {
                 entity,
                 attribute,

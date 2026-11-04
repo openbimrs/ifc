@@ -399,7 +399,21 @@ pub enum AuthorOp {
     /// [`ReassignClassOptions::remove_relationships`] the relationships among
     /// those are removed as [`AuthorOp::Remove`] does, except
     /// [`InverseCardinality`]. A class with fewer attributes than the stored
-    /// record shortens it. `WHERE`
+    /// record shortens it.
+    ///
+    /// An `IfcTypeObject` is reassigned to another type class the same way.
+    /// Its occurrences must still satisfy their own type rule: one that does
+    /// not is refused with [`TypeNotAccepted`]. With
+    /// [`ReassignClassOptions::remove_relationships`] their type assignment
+    /// is removed instead (named in the report, by occurrence); with
+    /// [`ReassignClassOptions::move_pairs`] they are reassigned to the class
+    /// that pairs with the new type class, and an occurrence reassigned to a
+    /// class whose rule its type object fails moves that type object too,
+    /// each in [`ReassignReport::paired`](super::ReassignReport::paired). A
+    /// paired entity that cannot be reassigned is refused with
+    /// [`PairNotReassigned`]. A typed object keeps its type assignment
+    /// when its new class falls under the same type rule as the old one.
+    /// `WHERE`
     /// rules are not evaluated, neither the entity's nor its referrers'
     /// (an `IfcRelSpaceBoundary` of `.PHYSICAL.` accepts a wall moved to
     /// `IfcVirtualElement`).
@@ -409,6 +423,8 @@ pub enum AuthorOp {
     /// [`RelationshipLost`]: super::AuthoringFailure::RelationshipLost
     /// [`InverseCardinality`]: super::AuthoringFailure::InverseCardinality
     /// [`TypeRuleChanged`]: super::AuthoringFailure::TypeRuleChanged
+    /// [`TypeNotAccepted`]: super::AuthoringFailure::TypeNotAccepted
+    /// [`PairNotReassigned`]: super::AuthoringFailure::PairNotReassigned
     ReassignClass {
         /// The `IfcObject` to reassign; keeps its id. Produces it.
         entity: EntityId,

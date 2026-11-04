@@ -148,17 +148,27 @@ pub struct ReassignReport {
     /// The set attributes dropped, in the old class's slot order; empty
     /// unless [`ReassignClassOptions::drop_unmapped`](super::ReassignClassOptions::drop_unmapped).
     pub dropped: Vec<String>,
-    /// The relationships the entity was taken out of, ascending by id; empty
-    /// unless [`ReassignClassOptions::remove_relationships`](super::ReassignClassOptions::remove_relationships).
+    /// The relationships the entity, or an occurrence of the type object it
+    /// is, was taken out of, ascending by relationship id (each names the
+    /// object that left, [`RemovedRelationship::object`]); empty unless [`ReassignClassOptions::remove_relationships`](super::ReassignClassOptions::remove_relationships).
     pub removed_relationships: Vec<RemovedRelationship>,
+    /// The entities reassigned with this one because a type rule needed it
+    /// (#636), ascending by id; empty unless
+    /// [`ReassignClassOptions::move_pairs`](super::ReassignClassOptions::move_pairs).
+    /// Their own `paired` is empty.
+    pub paired: Vec<ReassignReport>,
 }
 
-/// A relationship a reassignment took the entity out of (#635).
+/// A relationship a reassignment took an object out of (#635).
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct RemovedRelationship {
     /// The relationship.
     pub relationship: EntityId,
+    /// The object taken out of it: the reassigned entity, or, when a type
+    /// object is reassigned with `remove_relationships`, the occurrence
+    /// whose type assignment was detached (#636).
+    pub object: EntityId,
     /// Its class, in the schema's spelling (`IfcRelVoidsElement`).
     pub type_name: String,
     /// `true`: the relationship was removed; `false`: only the entity left
@@ -189,7 +199,9 @@ pub enum RelationshipConflict {
     TypeRule {
         /// The type object.
         type_object: EntityId,
-        /// The rule the new class falls under.
+        /// The rule the object leaving the relationship falls under: that
+        /// of the new class when an object was reassigned, that of the
+        /// detached occurrence's own class when a type object was.
         to_rule: String,
     },
 }

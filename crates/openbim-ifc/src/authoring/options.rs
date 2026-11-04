@@ -285,6 +285,16 @@ pub struct ReassignClassOptions {
     /// mandatory inverse
     /// ([`RelationshipRequired`](super::AuthoringFailure::RelationshipRequired)).
     pub remove_relationships: bool,
+    /// Reassign the other end of a type assignment too where the new class's
+    /// type rule does not accept it (#636): an occurrence's type object to
+    /// the type class its rule names, with the occurrences of that type
+    /// object the new type class does not satisfy; a type object's
+    /// unsatisfied occurrences to the class their type pairs with. Each is
+    /// named in [`ReassignReport::paired`](super::ReassignReport::paired),
+    /// carries its attributes over unchanged, and is refused with
+    /// [`PairNotReassigned`](super::AuthoringFailure::PairNotReassigned) if
+    /// it cannot be. IFC2X3 declares no type rules, so nothing is paired.
+    pub move_pairs: bool,
 }
 
 impl ReassignClassOptions {
@@ -295,6 +305,7 @@ impl ReassignClassOptions {
         Self {
             drop_unmapped: false,
             remove_relationships: false,
+            move_pairs: false,
         }
     }
 
@@ -309,6 +320,13 @@ impl ReassignClassOptions {
     #[must_use]
     pub const fn remove_relationships(mut self, remove: bool) -> Self {
         self.remove_relationships = remove;
+        self
+    }
+
+    /// With [`Self::move_pairs`] set.
+    #[must_use]
+    pub const fn move_pairs(mut self, move_pairs: bool) -> Self {
+        self.move_pairs = move_pairs;
         self
     }
 }
