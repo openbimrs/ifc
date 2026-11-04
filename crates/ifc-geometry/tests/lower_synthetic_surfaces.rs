@@ -179,7 +179,12 @@ fn a_degree_trim_on_a_revolved_basis_becomes_radians() {
                 u.1
             );
             assert!((u.0).abs() < 1e-9, "u1 stays at zero");
-            assert!(v.1 > 0.0, "the v range must survive, got {}", v.1);
+            // v runs 0..1 on a three-point polyline generatrix: a point
+            // ordinal, so the length factor (0.001) must not touch it.
+            assert!(
+                v.0.abs() < 1e-12 && (v.1 - 1.0).abs() < 1e-12,
+                "v is the polyline's own parameter and stays (0, 1), got {v:?}"
+            );
         }
         other => panic!("expected a rectangular trim, got {other:?}"),
     }

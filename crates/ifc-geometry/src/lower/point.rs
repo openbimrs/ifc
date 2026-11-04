@@ -77,10 +77,8 @@ fn build_point_on_curve(
 ///
 /// Both `(u, v)` parameters are in the basis surface's own parameter space
 /// and may use different unit conventions on a mixed analytic surface (for
-/// example a cylinder: `u` an angle, `v` a length). `trim_converter` already
-/// resolves the single-factor cases this crate supports; the pair is
-/// converted with the same per-basis-kind factor since neither IFC nor this
-/// adapter distinguishes a surface with different conventions per axis.
+/// example a cylinder: `u` an angle, `v` a length). `trim_converter` resolves
+/// one factor per direction from the basis kind.
 pub fn lower_point_on_surface_node(
     session: &mut LoweringSession<'_>,
     id: EntityId,
@@ -107,10 +105,9 @@ fn build_point_on_surface(
     let basis_ref = view.basis_surface()?;
     let (raw_u, raw_v) = view.parameters()?;
 
-    let basis_kind = session.type_name(basis_ref)?;
     let surface = lower_surface_node(session, basis_ref, frame)?;
-    let convert = crate::lower::surface::trim_converter(session, id, &basis_kind)?;
-    let (u, v) = (convert(raw_u), convert(raw_v));
+    let (convert_u, convert_v) = crate::lower::surface::trim_converter(session, id, basis_ref)?;
+    let (u, v) = (convert_u(raw_u), convert_v(raw_v));
 
     session.node_for(
         id,

@@ -22,6 +22,16 @@ everything released before per-crate changelogs began.
 
 Semver: minor.
 
+### Fixed (#547)
+
+- `IfcSurfaceOfRevolution` now applies `IfcSweptSurface.Position` to its generatrix and axis, as `IfcSurfaceOfLinearExtrusion` already did. A conforming 2D generatrix placed through `Position` was lowered in the XY plane, with no error. Semver: patch.
+
+### Fixed (#589)
+
+- A trimmed surface (and `IfcPointOnSurface`) now converts `u` and `v` with their own unit instead of one factor for both: a cylinder takes an angle in `u` and a length in `v`, a sphere and a torus angles in both, a plane lengths in both, a B-spline surface stays unscaled, and a surface of revolution takes an angle in `u` and its generatrix's own parameter in `v` (an angle on a circle or ellipse, unscaled on a line or polyline). A basis surface or generatrix curve whose parameter unit is not modelled is refused with `Unsupported` instead of defaulting to a length. Semver: patch.
+
+Semver: patch.
+
 ## [0.33.0] - 2026-11-03
 
 ### Added (#651)

@@ -175,11 +175,4 @@ pub const EXPECTED: &[(&str, &str, u64, &str, Agreement)] = &[
         "error",
         Agrees,
     ),
-    (
-        "synthetic-surfaces/synthetic_surface_of_revolution.ifc",
-        "IfcArbitraryOpenProfileDef.WR12",
-        18,
-        "error",
-        Agrees,
-    ),
 ];
