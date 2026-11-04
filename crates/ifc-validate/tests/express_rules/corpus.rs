@@ -147,12 +147,7 @@ fn rule_findings() -> BTreeSet<(String, String, u64, String)> {
 ///   intent can satisfy it (buildingSMART/IFC4.x-development#1235);
 /// - `synthetic_conic_offset_bounded` gives its boundary curves p-curve
 ///   segments on purpose (`IfcCompositeCurveSegment.ParentIsBoundedCurve`):
-///   the test pins that lowering keeps a surface-parameter curve;
-/// - `synthetic_surface_of_revolution` states its generatrix as a 3D curve
-///   (`IfcArbitraryOpenProfileDef.WR12`, the profile must be 2D);
-///   `lower_revolution` does not apply `IfcSweptSurface.Position` (#547), so
-///   a 2D profile placed through `Position` would lower to a different
-///   surface.
+///   the test pins that lowering keeps a surface-parameter curve.
 ///
 /// The table keeps them visible: a fixture edit that fixes or adds a
 /// violation fails here until the table says so.

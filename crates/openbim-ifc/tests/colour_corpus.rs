@@ -351,7 +351,7 @@ const EXPECTED: &[(&str, u64)] = &[
     ),
     (
         "synthetic-surfaces/synthetic_surface_of_revolution.ifc",
-        0x5866cab712d6c5de,
+        0x7eeafe706a0bbea3,
     ),
     (
         "synthetic-surfaces/synthetic_tapered_sweeps.ifc",

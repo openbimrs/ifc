@@ -20,6 +20,10 @@ everything released before per-crate changelogs began.
   instead of `DecidersDiffer`. Different surface styles of equal colour still
   differ.
 
+### Fixed (#681)
+
+- With `sheet-xlsx`: the XLSX export is byte-stable. The workbook's created and modified time is fixed at 1980-01-01T00:00:00Z (the ZIP epoch) instead of the clock, so the same table exports to identical bytes.
+
 Semver: patch.
 
 ### Changed (#634)
