@@ -169,6 +169,7 @@ fn a_definition_set_attaches_to_every_related_object() {
 
 // --- review: names the declared table does not know ----------------------
 
+#[cfg(all(feature = "ifc2x3", feature = "ifc4"))]
 const DOOR_TYPE: &str =
     "#2=IFCDOORTYPE('4xS3BCk291UvhgP2dvNsgp',$,'DT',$,$,(#20),$,$,.DOOR.,.NOTDEFINED.,$);";
 
