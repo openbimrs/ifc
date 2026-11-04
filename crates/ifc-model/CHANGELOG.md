@@ -12,6 +12,16 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#684)
+
+- `RecordDamage` and `UnclassifiedDiagnostic`: a model's reader diagnostics
+  classified for a resolution that reads a known set of records (`reported`,
+  `records_lost`, `held_id_skipped`, `diagnostics`). This is the rule
+  `ifc-properties` unit resolution has applied since #615, now shared with
+  `ifc-geometry`.
+
+Semver: patch (additive).
+
 ### Added (#634)
 
 - `Model::truncate_attributes(id, len)`: shortens a record and returns the

@@ -58,7 +58,9 @@ pub mod traverse;
 pub mod value;
 
 pub use codec::Codec;
-pub use diagnostic::{Diagnostic, DiagnosticKind, Severity, SourcePosition};
+pub use diagnostic::{
+    Diagnostic, DiagnosticKind, RecordDamage, Severity, SourcePosition, UnclassifiedDiagnostic,
+};
 pub use entity::Entity;
 pub use error::{ModelError, ModelResult};
 pub use header::Header;
