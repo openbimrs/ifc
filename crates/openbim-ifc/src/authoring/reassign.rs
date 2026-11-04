@@ -35,21 +35,19 @@
 //!    its new type's bucket.
 
 mod referrers;
+mod type_rule;
 
 use ifc_author::AuthorError;
 use ifc_model::{EntityId, Value};
 use ifc_schema::{EntityDef, Schema};
 
+use self::type_rule::type_rule;
 use super::check::{build, recheck, relations};
 use super::plan::Planner;
 use super::relate::TYPED;
 use super::report::{ReassignReport, RelationshipConflict};
 use super::{AuthoringFailure as F, NamedValues, ReassignClassOptions};
 use crate::{attribute_slots, AttributeSlot};
-
-/// The `WHERE` rule labels that check a typed object's class against its
-/// type object.
-const TYPE_RULES: [&str; 2] = ["CorrectTypeAssigned", "CorrectStyleAssigned"];
 
 const GLOBAL_ID: &str = "GlobalId";
 
@@ -116,7 +114,7 @@ impl Planner<'_, '_> {
             }
             Vec::new()
         };
-        while let Some(conflict) = self.type_conflict(id, from, to) {
+        while let Some(conflict) = self.type_conflict(id, from, to)? {
             if !options.remove_relationships {
                 return Err(conflict.refusal);
             }
@@ -141,14 +139,26 @@ impl Planner<'_, '_> {
     /// checks its type (rule 7). A target class without a type rule accepts
     /// any existing type assignment, which is schema-valid; moving a type
     /// object with its occurrences is #636.
-    fn type_conflict(&self, id: EntityId, from: &str, to: &str) -> Option<TypeConflict> {
-        let relationship = self.related_by(&TYPED, id)?;
-        let (from_rule, to_rule) = (type_rule(self.schema, from), type_rule(self.schema, to));
-        let to_rule = to_rule.filter(|to_rule| from_rule.as_ref() != Some(to_rule))?;
+    fn type_conflict(&self, id: EntityId, from: &str, to: &str) -> Result<Option<TypeConflict>, F> {
+        let Some(relationship) = self.related_by(&TYPED, id) else {
+            return Ok(None);
+        };
+        let unsupported = |detail| F::UnsupportedReassignment {
+            entity: id,
+            from: from.to_owned(),
+            to: to.to_owned(),
+            detail,
+        };
+        let from_rule = type_rule(self.schema, from).map_err(unsupported)?;
+        let to_rule = type_rule(self.schema, to).map_err(unsupported)?;
+        let Some(to_rule) = to_rule.filter(|to_rule| from_rule.as_ref() != Some(to_rule)) else {
+            return Ok(None);
+        };
+        let (from_rule, to_rule) = (from_rule.map(|rule| rule.name()), to_rule.name());
         let type_object = self
             .relating_of(&TYPED, relationship)
             .unwrap_or(relationship);
-        Some(TypeConflict {
+        Ok(Some(TypeConflict {
             relationship,
             conflict: RelationshipConflict::TypeRule {
                 type_object,
@@ -160,7 +170,7 @@ impl Planner<'_, '_> {
                 from_rule,
                 to_rule,
             },
-        })
+        }))
     }
 }
 
@@ -218,19 +228,4 @@ fn remap(
     }
     values.extend(overrides);
     (values, dropped)
-}
-
-/// `Owner.Label` of the nearest class, `type_name` first, that declares a
-/// rule checking the type a typed object has.
-fn type_rule(schema: &Schema, type_name: &str) -> Option<String> {
-    std::iter::once(type_name)
-        .chain(schema.supertypes(type_name))
-        .filter_map(|name| schema.entity(name))
-        .find_map(|definition| {
-            definition
-                .where_rules
-                .iter()
-                .find(|rule| TYPE_RULES.contains(&rule.label.as_str()))
-                .map(|rule| format!("{}.{}", definition.name, rule.label))
-        })
 }

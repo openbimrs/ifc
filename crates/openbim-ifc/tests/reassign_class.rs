@@ -12,13 +12,11 @@
     feature = "ifc4x3"
 ))]
 
-use std::path::PathBuf;
-
 mod reassign_support;
 
 use ifc::{
     apply_authoring, authoring_handle, stage_authoring, AuthorOp, AuthoringFailure, EntityId,
-    History, ReassignClassOptions, Schema, SchemaVersion, Value,
+    History, Model, ReassignClassOptions, SchemaVersion, Value,
 };
 use reassign_support::*;
 
@@ -415,61 +413,40 @@ fn ifc2x3_has_no_type_rule() {
     }
 }
 
-fn spec_root() -> Option<PathBuf> {
-    let crate_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    [
-        "../../../../references/ifc-spec",
-        "../../references/ifc-spec",
-    ]
-    .into_iter()
-    .map(|rel| crate_dir.join(rel))
-    .find(|path| path.is_dir())
-}
-
-/// The batch reads the type rules by their labels; a release that labels a
-/// rule over `IsTypedBy` otherwise would pass unchecked.
+/// `IfcEvent.CorrectTypeAssigned` checks the event trigger type, not the type
+/// object (#670): a typed process moves to `IfcEvent` and keeps its type.
 #[test]
-fn every_type_rule_is_labelled_as_the_batch_reads_it() {
-    let Some(root) = spec_root() else {
-        assert!(
-            std::env::var_os("IFC_SPEC_REQUIRED").is_none(),
-            "IFC_SPEC_REQUIRED is set but references/ifc-spec was not found; \
-             run scripts/fetch-ifc-schemas.sh"
-        );
-        eprintln!("skipped: references/ifc-spec not present");
-        return;
+fn a_typed_task_becomes_an_event() {
+    let mut model = Model::new();
+    let ops = [
+        AuthorOp::TypeObject {
+            type_name: "IfcTaskType".into(),
+            attributes: vec![("PredefinedType".into(), enumeration("NOTDEFINED"))],
+            owner_history: None,
+        },
+        create(
+            "IfcTask",
+            vec![("Name", text("T")), ("IsMilestone", Value::Bool(false))],
+        ),
+        create(
+            "IfcRelDefinesByType",
+            vec![
+                (
+                    "RelatedObjects",
+                    Value::List(vec![Value::Ref(authoring_handle(1))]),
+                ),
+                ("RelatingType", Value::Ref(authoring_handle(0))),
+            ],
+        ),
+    ];
+    let built = apply(&mut model, ifc4(), &ops).expect("builds");
+    let task = built.ids[1].expect("task");
+    let event = AuthorOp::ReassignClass {
+        entity: task,
+        type_name: "IfcEvent".into(),
+        attributes: vec![("PredefinedType".into(), enumeration("NOTDEFINED"))],
+        options: ReassignClassOptions::new().drop_unmapped(true),
     };
-    for (version, file, rules) in [
-        (SchemaVersion::Ifc2x3, "ifc2x3-tc1/IFC2X3_TC1.exp", false),
-        (SchemaVersion::Ifc4, "ifc4-add2-tc1/IFC4.exp", true),
-        (SchemaVersion::Ifc4x3, "ifc4x3-add2/IFC4X3_ADD2.exp", true),
-    ] {
-        let bytes = std::fs::read(root.join(file)).expect("read the reference schema");
-        let normative = Schema::from_express_bytes(&bytes);
-        let mut found = 0;
-        for entity in normative.entities() {
-            for rule in &entity.where_rules {
-                let typed = rule.expression.contains("IsTypedBy")
-                    || rule.expression.contains("RelatingType");
-                // IFC2X3 `IfcObject.WR1` is the one rule over the type
-                // relationship there; it is not a type-assignment rule.
-                let allowed = entity.name == "IfcObject" && rule.label == "WR1";
-                if typed && !allowed {
-                    found += 1;
-                    assert!(
-                        ["CorrectTypeAssigned", "CorrectStyleAssigned"]
-                            .contains(&rule.label.as_str()),
-                        "{version:?} {}.{}",
-                        entity.name,
-                        rule.label
-                    );
-                }
-            }
-        }
-        assert_eq!(
-            found > 0,
-            rules,
-            "{version:?}: {found} rules over the type relationship"
-        );
-    }
+    apply(&mut model, ifc4(), &[event]).expect("a typed task is not refused");
+    assert_eq!(class(&model, task), "IFCEVENT");
 }

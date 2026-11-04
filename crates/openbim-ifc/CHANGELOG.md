@@ -30,6 +30,12 @@ everything released before per-crate changelogs began.
 
 Semver: minor.
 
+### Fixed (#670)
+
+- `AuthorOp::ReassignClass` no longer treats `IfcEvent.CorrectTypeAssigned` as a type rule: it checks `EventTriggerType`, not the type object, so a typed object reassigned to `IfcEvent` is not refused with `TypeRuleChanged`.
+
+Semver: patch (refusals narrowed).
+
 ## [0.41.0] - 2026-11-04
 
 ### Fixed (#677)

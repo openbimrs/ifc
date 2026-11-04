@@ -65,8 +65,9 @@ pub enum AuthoringFailure {
         /// The set attributes of `from` that would be lost.
         attributes: Vec<String>,
     },
-    /// A reassignment the transaction model cannot stage (#483). Not raised
-    /// at present: a shorter record is staged as a truncation (#634).
+    /// A reassignment the schema tables cannot decide (#483, #636): a type
+    /// rule whose owner has no `{Owner}Type` in the release, or a type class
+    /// no occurrence class pairs with.
     UnsupportedReassignment {
         /// The entity.
         entity: EntityId,
