@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.10.6] - 2026-11-04
+
 ### Changed (#684)
 
 - Unit resolution takes its reader-diagnostic classification from `ifc_model::RecordDamage`, shared with `ifc-geometry`; refusals are unchanged.
@@ -837,7 +839,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-properties-v0.10.5...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-properties-v0.10.6...HEAD
+[0.10.6]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.10.6
 [0.10.5]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.10.5
 [0.10.4]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.10.4
 [0.10.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.10.3

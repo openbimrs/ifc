@@ -11,7 +11,7 @@ STEP physical file (ISO 10303-21) codec for the IFC model.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.6.3 (2026-11-03) |
+| Latest release | 0.6.4 (2026-11-04) |
 | Registries | [crates.io `ifc-step`](https://crates.io/crates/ifc-step) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `step` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_step/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-step) |
@@ -40,41 +40,18 @@ substrate and `ifc_model::Model` plus IFC codec detection and I/O policy.
 
 ## Changes
 
-Latest release, 0.6.3 (2026-11-03):
+Latest release, 0.6.4 (2026-11-04):
 
-### Added (#614)
+### Changed (#627)
 
-- A read's diagnostics carry their kind, the instance at fault, the record
-  holding a dangling reference, their line and column and a quote of up to
-  120 characters of the bytes they cover.
-
-Semver: patch (additive)
-
-### Added (#616)
-
-- `StepReader::try_read_owned` and `StepCodec::try_read_owned`: on failure
-  the input comes back uncopied in a `ReadFailure` with the error.
-  `SyntaxLocation`: line, column and a quote of at most 120 characters of the
-  offending line (`ReadFailure::location`, `SyntaxLocation::locate`).
-  `StepReader::check(bytes)`: whether `read_bytes` would succeed, and its
-  error, without building a model.
-
-Semver: patch (additive)
-
-### Fixed (#616)
-
-- A strict read refusing a record the IFC model cannot represent reports that
-  record's byte offset instead of 0. `StepError` implements `Clone`.
-
-Semver: patch
-
-### Fixed (#617)
-
-- After a read, `Model::next_id` is above every id the file declared, skipped
-  records included, and every id it references, so a new entity never takes
-  the id of a dangling reference or a skipped record. Applies to strict
-  reads too. `u64::MAX` is no instance id: a strict read refuses it, a
-  lenient read skips the record.
+- Require `openbim-step` 0.11.3. A skipped record's diagnostic names the id
+  the substrate read (`Diagnostic::instance`) instead of reading it from the
+  record's bytes. It now names that id also when a record that was read holds
+  it (a damaged duplicate, or the rest of a record cut at a `;`), where it
+  named none before. A skip that swallowed several records still names only
+  the first (openbimrs/step#20, #668).
+  A diagnostic may therefore name an id a kept record also holds; a
+  consumer must not treat such a diagnostic as harmless.
 
 Semver: patch
 

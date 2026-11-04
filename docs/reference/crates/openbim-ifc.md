@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.40.0 (2026-11-03) |
+| Latest release | 0.41.0 (2026-11-04) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -103,36 +103,69 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.40.0 (2026-11-03):
+Latest release, 0.41.0 (2026-11-04):
 
-### Changed (#615)
+### Fixed (#677)
 
-- `project_style_units` and the bindings' `resolve_unit` resolve project units in a lenient model whose damage does not reach the unit records. `georeferencing`, `FillResolver::new` and the material fill functions built on it, door and window operation reads and length-unit changes still refuse any diagnostic.
+- `ColourResolver::product_decider` compares item styles by their
+  `IfcSurfaceStyle` alone: items each with their own `IfcStyledItem` of one
+  shared surface style now yield `ColourDecider::ItemStyle` (the first item's)
+  instead of `DecidersDiffer`. Different surface styles of equal colour still
+  differ.
+
+### Changed (#684)
+
+- With `geometry-select`: `product_placements`, product meshes, graphs, curves, `material_layer_bounds` and every other entry point that resolves units through `ifc::geometry::units::resolve` refuse a lenient model with a damaged or possibly incomplete unit record (`GeometryError::UnitRecordDamaged`, `UnitsIncomplete`), the verdict `ifc::properties::exact_unit` already gave. Door and window operation reads of such a model now refuse with their `Placement` error instead of `Unit`, because the placement's units are resolved first.
 
 Semver: patch.
 
-### Added (#651)
+### Fixed (#681)
 
-- With `geometry-select`: `body_description_for(model, units, product, purpose)`, `BodyItemBounds`, and the `Reference` representation purpose from ifc-geometry, so an IFC4 Reference View opening's void is described, with a tessellated item's exact bounds.
+- With `sheet-xlsx`: the XLSX export is byte-stable. The workbook's created and modified time is fixed at 1980-01-01T00:00:00Z (the ZIP epoch) instead of the clock, so the same table exports to identical bytes.
 
-### Changed (#651)
+Semver: patch.
 
-- `body_description` now refuses a tessellated Body item that lowering refuses (index 0 or past the end, dangling or 2D coordinates), and a Body TIN with void or hole flags fails the whole description.
+### Changed (#634)
 
-Semver: minor (new refusals in `body_description`; additive API).
+- `AuthorOp::ReassignClass` reassigns a stored entity to a class with fewer
+  attributes than its record (IFC2X3 `IfcSlab` or `IfcDoor` to `IfcWall`); the
+  record is shortened in the transaction with exact undo, redo and replay.
+  `UnsupportedReassignment` is no longer raised for it.
 
-### Added (#659)
+Semver: patch (a refusal lifted).
 
-- With `colour`: `ColourResolver::product_decider` and `ColourResolver::item_deciders` name what decides a product's or a Body item's surface colour, by the same rules as `product_colour` and `item_colours` (#596's included): `ColourDecider::ItemStyle`, `Material` (the one `IfcMaterial`, also while it states no style), `Materials` (a layer, profile, list or constituent set whose materials are all unstyled or styled alike) or `Nothing`; an ambiguous material set refuses both with the same `ColourError::AmbiguousMaterial`. `ColourError::DecidersDiffer`: Body items that agree on a colour through different deciders (compared by identity: the same style assigned the same way, the same material). `item_colours` now reads `item_deciders`; its results are unchanged.
+### Added (#638)
+
+- With `authoring` and `properties`: authoring batches can read their numbers in SI.
+  - API: `AuthoringOptions` (`input_units`, default `InputUnits::Raw`), `stage_authoring_with` and `apply_authoring_with`. `stage_authoring` and `apply_authoring` are unchanged.
+  - What `InputUnits::Si` converts: the attribute values of `Create`, `Edit`, `ReassignClass`, `Project`, `Spatial`, `Product` and `TypeObject`, a `Placement` location and a `CopyProduct` offset (`CopyPlacement::Offset`). Each goes into the unit that applies: the explicit unit of a property, quantity or `IfcMeasureWithUnit`, else the project unit. Units are resolved against the model as it was before the batch.
+  - How values are read:
+    - Measures are classified from the release's tables, an untyped number by its attribute's declared type.
+    - An `IfcParameterValue` follows its curve's or surface's parameter space: lengths and plane angles are converted, unitless parameters kept.
+    - Reviewed `REAL` attributes follow their role.
+    - A temperature difference (`IfcStructuralLoadTemperature.DeltaT*`) converts by the unit's factor alone, so 10 K stays 10 in a Celsius project.
+    - Monetary, logarithmic (decibel, pH) and compound plane angle measures pass unchanged, through a reviewed table. This differs from `apply_property_edits_with`, which refuses every measure without a unit mapping.
+  - Refusals:
+    - `AuthoringFailure::UnitConversion`: no project unit, an offset unit, a non-finite number, a measure with no unit mapping.
+    - `AuthoringFailure::SiInput` with `SiInputRefusal`: a batch that changes the units it converts into (including removing or retyping a context that states them, re-pointing a property enumeration, and any `Purge`), a model with an `IfcPcurve` off a plane, a unit created in the batch, a value whose unit another record states, a parameter space it cannot carry, an ambiguous untyped select, map conversions, an unsupported release or a header that does not declare it, an `IfcProjectLibrary` with units.
+  - The reviewed REAL, parameter and unit-slot tables moved from `length_unit` to a shared module; length conversion is unchanged.
 
 Semver: patch (additive).
 
-### Documentation (#656)
+### Added (#455)
 
-- `ColourResolver::item_colours` documents its index-by-index pairing with
-  `ifc::geometry::compile::compile_product_item_meshes`, which a new test
-  holds.
+- With `material` and `mesh`: `material_layer_meshes(model, product, body)`: a mesh per material layer of a layered wall, slab or plate, gross or net, in the product's frame, with its layer and material (`MaterialLayerMeshes`, `MaterialLayerMesh`); the layer volumes add up to the Body. `LayerBody` is re-exported to choose gross or net.
 
-Semver: patch. No code change.
+Semver: patch (additive).
+
+### Added (#640)
+
+- With `geometry-select`: `BodyItem::local_sweep` and `LocalSweptSolid`/`LocalSweepPath`: a swept-area item's profile, `Position` and path in its own item frame, for every swept-area item.
+
+### Changed (#640)
+
+- With `geometry-select`: `body_description` no longer refuses a swept solid that an `IfcMappedItem` scales or mirrors: its `swept` is `None` and `local_sweep` describes it.
+
+Semver: minor.
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)
