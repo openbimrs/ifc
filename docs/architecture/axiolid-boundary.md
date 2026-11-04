@@ -39,7 +39,9 @@ format, and so the IFC crate never grows a dependency on a CPU or GPU provider.
 **Curve representation is not curve evaluation.** `ifc-geometry` reads an
 `IfcBSplineCurveWithKnots` into a neutral B-spline description. Producing points
 along it is an Axiolid concern. If you need discretised geometry — for drawing,
-export, or measurement — that call is downstream of this crate.
+export, or measurement — that call is downstream of this crate. The sampled
+profile outline asks a `PolylineCompiler`; no kernel-free code in this
+crate samples a curve.
 
 **Booleans are represented, not executed** in the default build.
 `IfcBooleanResult` lowers into a DAG node describing the operation and its

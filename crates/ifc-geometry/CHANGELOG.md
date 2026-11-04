@@ -22,6 +22,10 @@ everything released before per-crate changelogs began.
 
 Semver: minor.
 
+### Added (#660)
+
+- With `compile`: `compile_profile_outline_with` (and `compile_profile_outline` with the reference backend), an arbitrary profile's outline whose `IfcArcIndex` segments are chord-sampled by the backend within `tolerance`, authored points kept exactly, each arc reported (`SampledArc`) with its bound (the backend's, plus the snap of its end vertices to the authored points, which must lie within `tolerance`). `profile_outline` stays exact and still refuses arcs.
+
 ### Fixed (#547)
 
 - `IfcSurfaceOfRevolution` now applies `IfcSweptSurface.Position` to its generatrix and axis, as `IfcSurfaceOfLinearExtrusion` already did. A conforming 2D generatrix placed through `Position` was lowered in the XY plane, with no error. Semver: patch.

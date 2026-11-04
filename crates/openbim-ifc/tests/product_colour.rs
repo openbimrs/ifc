@@ -730,6 +730,29 @@ fn window(edits: &[(&str, &str)]) -> Model {
 }
 
 #[test]
+fn items_with_own_styled_items_of_one_surface_style_share_a_decider() {
+    let model = window(&[(
+        "ENDSEC;\nEND-ISO",
+        "#905=IFCSTYLEDITEM(#173,(#27),$);\n#906=IFCSTYLEDITEM(#180,(#27),$);\nENDSEC;\nEND-ISO",
+    )]);
+    let resolver = ColourResolver::new(&model).unwrap();
+    let two = product(&model, "CONSTITUENT_TWO_PARTS");
+    let deciders = resolver.item_deciders(two).unwrap();
+    let [(_, first), (_, second)] = deciders.as_slice() else {
+        panic!("two items");
+    };
+    assert_ne!(first, second, "each item names its own styled item");
+    assert!(matches!(
+        resolver.product_decider(two),
+        Ok(decider) if decider == *first
+    ));
+    assert!(matches!(first, ColourDecider::ItemStyle(_)));
+    for (id, _) in product_colours(&model, None) {
+        assert_agrees(&resolver, id);
+    }
+}
+
+#[test]
 fn equal_colours_through_different_deciders_differ() {
     let frame = "#149=IFCMATERIALCONSTITUENT('Frame',$,#31,$,$);";
     let glazing = "#150=IFCMATERIALCONSTITUENT('Glazing',$,#38,$,$);";
@@ -739,10 +762,11 @@ fn equal_colours_through_different_deciders_differ() {
             (frame, "#149=IFCMATERIALCONSTITUENT('Frame',$,#24,$,$);"),
             (glazing, "#150=IFCMATERIALCONSTITUENT('Glazing',$,#900,$,$);"),
         ]),
-        // (b) Two different styled items of one surface style.
+        // (b) Two items styled by two surface styles of one colour.
         window(&[(
             "ENDSEC;\nEND-ISO",
-            "#905=IFCSTYLEDITEM(#173,(#27),$);\n#906=IFCSTYLEDITEM(#180,(#27),$);\nENDSEC;\nEND-ISO",
+            "#910=IFCSURFACESTYLE('Red twin',.BOTH.,(#26));\n\
+             #905=IFCSTYLEDITEM(#173,(#27),$);\n#906=IFCSTYLEDITEM(#180,(#910),$);\nENDSEC;\nEND-ISO",
         )]),
         // (c) An item style and a material of the same colour.
         window(&[
