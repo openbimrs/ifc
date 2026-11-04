@@ -68,6 +68,7 @@ pub(crate) fn sets_by_object<S: Clone>(
     // Which entities are type objects, from the declared release's table
     // (#631), or the baseline when the header names none this build bundles.
     let (_, schema) = crate::baseline::table_for(model);
+    let is_type_object = |name: &str| crate::baseline::is_type_object(schema, name);
 
     // Route 1: IfcRelDefinesByProperties, for occurrences.
     for &id in model.ids_of_type("IFCRELDEFINESBYPROPERTIES") {
@@ -75,7 +76,9 @@ pub(crate) fn sets_by_object<S: Clone>(
         let mut sets = Vec::new();
         for definition in definitions(
             id,
+            "RelatingPropertyDefinition",
             rel.attributes.get(REL_RELATING_DEFINITION),
+            true,
             &mut anomalies,
         ) {
             match cache.get(model, read, definition) {
@@ -108,7 +111,7 @@ pub(crate) fn sets_by_object<S: Clone>(
                 continue;
             };
             // The WHERE rule: a type object must not appear here.
-            if schema.is_a(&target.type_name.to_ascii_uppercase(), "IFCTYPEOBJECT") {
+            if is_type_object(&target.type_name.to_ascii_uppercase()) {
                 anomalies.push(PropertyAnomaly::TypeAttachedByRelationship {
                     relationship: id,
                     type_object: object,
@@ -124,25 +127,25 @@ pub(crate) fn sets_by_object<S: Clone>(
     // Route 2: IfcTypeObject.HasPropertySets, a direct attribute.
     for (type_name, _) in model.type_histogram() {
         let upper = type_name.to_ascii_uppercase();
-        if !schema.is_a(&upper, "IFCTYPEOBJECT") {
+        if !is_type_object(&upper) {
             continue;
         }
         for &id in model.ids_of_type(&upper) {
             let Some(entity) = model.get(id) else {
                 continue;
             };
-            for set_id in entity
-                .attributes
-                .get(TYPE_HAS_PROPERTY_SETS)
-                .and_then(refs)
-                .unwrap_or_default()
-            {
+            for set_id in definitions(
+                id,
+                "HasPropertySets",
+                entity.attributes.get(TYPE_HAS_PROPERTY_SETS),
+                false,
+                &mut anomalies,
+            ) {
                 if let Some(set) = cache.get(model, read, set_id) {
                     out.entry(id).or_default().push((Attachment::Type, set));
                 } else if model.get(set_id).is_none() {
-                    // No relationship here: the type object itself names it.
-                    anomalies.push(PropertyAnomaly::MissingDefinition {
-                        relationship: id,
+                    anomalies.push(PropertyAnomaly::MissingTypeSet {
+                        type_object: id,
                         definition: set_id,
                     });
                 }
@@ -160,25 +163,32 @@ pub(crate) fn sets_by_object<S: Clone>(
     (out, anomalies)
 }
 
-/// The definitions `RelatingPropertyDefinition` names: the one reference, or
-/// each member of an IFC4+ `IfcPropertySetDefinitionSet` (a list, bare or
-/// typed), once. A member that is no reference is reported (#630).
+/// The definitions `attribute` names: a list (an IFC4+
+/// `IfcPropertySetDefinitionSet`, bare or typed, or `HasPropertySets`) member
+/// by member and once each, or, when `single_ok`, one reference. An empty
+/// list (`SET [1:?]`), a member that is no reference and a value of any other
+/// form are reported rather than dropped (#630); `$` names nothing.
 fn definitions(
-    relationship: EntityId,
+    entity: EntityId,
+    attribute: &'static str,
     value: Option<&Value>,
+    single_ok: bool,
     anomalies: &mut Vec<PropertyAnomaly>,
 ) -> Vec<EntityId> {
     let mut malformed = |found: &Value| {
         anomalies.push(PropertyAnomaly::MalformedAttribute {
-            entity: relationship,
-            attribute: "RelatingPropertyDefinition",
+            entity,
+            attribute,
             found: format!("{found:?}"),
         });
     };
     match value.map(Value::unwrap_typed) {
         None | Some(Value::Null) => Vec::new(),
-        Some(Value::Ref(id)) => vec![*id],
-        Some(Value::List(items)) => {
+        Some(Value::Ref(id)) if single_ok => vec![*id],
+        Some(list @ Value::List(items)) => {
+            if items.is_empty() {
+                malformed(list);
+            }
             let mut out = Vec::new();
             for item in items {
                 match one_ref(item) {

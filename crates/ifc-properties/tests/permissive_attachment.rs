@@ -68,6 +68,7 @@ fn both(model: &Model) -> (Vec<PropertyAnomaly>, Vec<PropertyAnomaly>) {
 
 // --- #631 ---------------------------------------------------------------
 
+#[cfg(feature = "ifc4x3")]
 #[test]
 fn an_ifc4x3_only_type_object_carries_its_sets() {
     let bearing =
@@ -89,9 +90,13 @@ fn an_ifc4x3_only_type_object_carries_its_sets() {
 fn a_type_set_id_absent_from_the_file_is_reported() {
     let wt = "#2=IFCWALLTYPE('4xS3BCk291UvhgP2dvNsgp',$,'WT',$,$,(#20,#99),$,$,.STANDARD.);";
     let model = step("IFC4", &[wt, P10, PSET20, Q11, QSET21]);
+    let missing_set = PropertyAnomaly::MissingTypeSet {
+        type_object: EntityId(2),
+        definition: EntityId(99),
+    };
     let (p, q) = both(&model);
-    assert_eq!(p, vec![missing(2, 99)]);
-    assert_eq!(q, vec![missing(2, 99)]);
+    assert_eq!(p, vec![missing_set.clone()]);
+    assert_eq!(q, vec![missing_set]);
     // The readable set is still attached.
     assert_eq!(names(&model, 2).len(), 1);
 }
@@ -139,7 +144,8 @@ fn a_mixed_definition_set_reports_each_unreadable_member() {
         attribute: "RelatingPropertyDefinition",
         found: "Text(\"x\")".to_owned(),
     };
-    for anomalies in [both(&model).0, both(&model).1] {
+    let (p, q) = both(&model);
+    for anomalies in [p, q] {
         assert!(anomalies.contains(&missing(30, 99)), "{anomalies:?}");
         assert!(anomalies.contains(&malformed), "{anomalies:?}");
         assert_eq!(anomalies.len(), 2, "{anomalies:?}");
@@ -159,4 +165,75 @@ fn a_definition_set_attaches_to_every_related_object() {
             object: EntityId(98)
         }]
     );
+}
+
+// --- review: names the declared table does not know ----------------------
+
+const DOOR_TYPE: &str =
+    "#2=IFCDOORTYPE('4xS3BCk291UvhgP2dvNsgp',$,'DT',$,$,(#20),$,$,.DOOR.,.NOTDEFINED.,$);";
+
+#[cfg(all(feature = "ifc2x3", feature = "ifc4"))]
+#[test]
+fn a_type_the_declared_release_does_not_define_still_carries_its_sets() {
+    let model = step("IFC2X3", &[DOOR_TYPE, P10, PSET20]);
+    assert_eq!(
+        names(&model, 2),
+        vec![(Attachment::Type, Some("Pset_A".to_owned()))]
+    );
+}
+
+#[cfg(all(feature = "ifc2x3", feature = "ifc4"))]
+#[test]
+fn such_a_type_attached_by_a_relationship_is_reported() {
+    let r = "#30=IFCRELDEFINESBYPROPERTIES('5xS3BCk291UvhgP2dvNsgp',$,$,$,(#2),#20);";
+    let model = step("IFC2X3", &[DOOR_TYPE, P10, PSET20, r]);
+    let (p, _) = both(&model);
+    assert_eq!(
+        p,
+        vec![PropertyAnomaly::TypeAttachedByRelationship {
+            relationship: EntityId(30),
+            type_object: EntityId(2),
+        }]
+    );
+}
+
+// --- review: HasPropertySets and empty lists ------------------------------
+
+fn malformed(entity: u64, attribute: &'static str, found: &str) -> PropertyAnomaly {
+    PropertyAnomaly::MalformedAttribute {
+        entity: EntityId(entity),
+        attribute,
+        found: found.to_owned(),
+    }
+}
+
+#[test]
+fn an_empty_definition_set_is_reported() {
+    for definition in ["()", "IFCPROPERTYSETDEFINITIONSET(())"] {
+        let r = rel(definition);
+        let model = step("IFC4", &[WALL, P10, PSET20, &r]);
+        let (p, q) = both(&model);
+        let expected = vec![malformed(30, "RelatingPropertyDefinition", "List([])")];
+        assert_eq!(p, expected, "{definition}");
+        assert_eq!(q, expected, "{definition}");
+    }
+}
+
+#[test]
+fn a_malformed_has_property_sets_is_reported() {
+    let cases = [
+        ("(#20,'x')", "Text(\"x\")", 1),
+        ("()", "List([])", 0),
+        ("#20", "Ref(EntityId(20))", 0),
+    ];
+    for (value, found, attached) in cases {
+        let wt =
+            format!("#2=IFCWALLTYPE('4xS3BCk291UvhgP2dvNsgp',$,'WT',$,$,{value},$,$,.STANDARD.);");
+        let model = step("IFC4", &[&wt, P10, PSET20]);
+        let (p, q) = both(&model);
+        let expected = vec![malformed(2, "HasPropertySets", found)];
+        assert_eq!(p, expected, "{value}");
+        assert_eq!(q, expected, "{value}");
+        assert_eq!(names(&model, 2).len(), attached, "{value}");
+    }
 }

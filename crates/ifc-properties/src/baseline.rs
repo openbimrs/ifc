@@ -38,3 +38,17 @@ pub(crate) fn table_for(model: &Model) -> (SchemaVersion, &'static Schema) {
     };
     table(declared)
 }
+
+/// Whether `name` (upper case) is an `IfcTypeObject` in `schema`, the table a
+/// permissive read binds. A name that table does not define (`IFCDOORTYPE` in
+/// an IFC2X3 file) is a type object when any bundled table says so, so such a
+/// type still reads, as before the table followed the declared release.
+pub(crate) fn is_type_object(schema: &Schema, name: &str) -> bool {
+    if schema.entity(name).is_some() {
+        return schema.is_a(name, "IFCTYPEOBJECT");
+    }
+    BASELINE
+        .into_iter()
+        .filter_map(|version| for_version(version).ok())
+        .any(|other| other.is_a(name, "IFCTYPEOBJECT"))
+}
