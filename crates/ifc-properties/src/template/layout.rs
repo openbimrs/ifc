@@ -40,11 +40,7 @@ impl Layout {
     /// table, which declares no templates, so nothing reads as one. A build
     /// without the IFC4 table (#306) falls back to the newest one it bundles.
     pub(crate) fn permissive(model: &Model) -> Self {
-        let declared = match model.header().schema.as_slice() {
-            [token] => SchemaVersion::from_header_token(token),
-            _ => None,
-        };
-        let (version, schema) = crate::baseline::table(declared);
+        let (version, schema) = crate::baseline::table_for(model);
         Self { version, schema }
     }
 

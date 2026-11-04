@@ -12,6 +12,24 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#630)
+
+- The permissive property and quantity views read an IFC4+ `IfcRelDefinesByProperties.RelatingPropertyDefinition` that is an `IfcPropertySetDefinitionSet` member by member, each as if attached individually, instead of skipping the list. A member absent from the model gives `PropertyAnomaly::MissingDefinition`, and an empty list, a member or a value that is no reference gives `PropertyAnomaly::MalformedAttribute`. The exact API already read the list.
+
+Semver: patch.
+
+### Fixed (#632)
+
+- The permissive property and quantity views report an id in `IfcTypeObject.HasPropertySets` that is absent from the model as the new `PropertyAnomaly::MissingTypeSet { type_object, definition }` instead of skipping it silently. The variant is additive (the enum is `#[non_exhaustive]`). A `HasPropertySets` that is not a list, or whose list is empty or holds a non-reference, gives `PropertyAnomaly::MalformedAttribute`.
+
+Semver: patch.
+
+### Fixed (#631)
+
+- The permissive property and quantity views decide which entities are type objects with the declared release's table instead of IFC4's, so a type object only a later release defines (an IFC4X3 `IfcBearingType`) has its `HasPropertySets` read. A header naming no bundled release still reads through the baseline table.
+
+Semver: patch.
+
 ## [0.10.6] - 2026-11-04
 
 ### Changed (#684)

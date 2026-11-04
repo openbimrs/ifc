@@ -65,32 +65,38 @@ pub(crate) fn sets_by_object<S: Clone>(
         sets: BTreeMap::new(),
         anomalies: BTreeMap::new(),
     };
-    // Which entities are type objects, from the IFC4 table as always, or
-    // the newest bundled one in a build without it (#306).
-    let (_, schema) = crate::baseline::table(None);
+    // Which entities are type objects, from the declared release's table
+    // (#631), or the baseline when the header names none this build bundles.
+    let (_, schema) = crate::baseline::table_for(model);
+    let is_type_object = |name: &str| crate::baseline::is_type_object(schema, name);
 
     // Route 1: IfcRelDefinesByProperties, for occurrences.
     for &id in model.ids_of_type("IFCRELDEFINESBYPROPERTIES") {
         let Some(rel) = model.get(id) else { continue };
-        let Some(definition) = rel
-            .attributes
-            .get(REL_RELATING_DEFINITION)
-            .and_then(one_ref)
-        else {
-            // TODO(#630): IFC4+ allows an IfcPropertySetDefinitionSet here.
-            continue;
-        };
-        let Some(set) = cache.get(model, read, definition) else {
-            // A definition of another kind is read by its own view; only note
-            // one that is not in the file.
-            if model.get(definition).is_none() {
-                anomalies.push(PropertyAnomaly::MissingDefinition {
-                    relationship: id,
-                    definition,
-                });
+        let mut sets = Vec::new();
+        for definition in definitions(
+            id,
+            "RelatingPropertyDefinition",
+            rel.attributes.get(REL_RELATING_DEFINITION),
+            true,
+            &mut anomalies,
+        ) {
+            match cache.get(model, read, definition) {
+                Some(set) => sets.push(set),
+                // A definition of another kind is read by its own view; only
+                // note one that is not in the file.
+                None if model.get(definition).is_none() => {
+                    anomalies.push(PropertyAnomaly::MissingDefinition {
+                        relationship: id,
+                        definition,
+                    });
+                }
+                None => {}
             }
+        }
+        if sets.is_empty() {
             continue;
-        };
+        }
         for object in rel
             .attributes
             .get(REL_RELATED_OBJECTS)
@@ -105,36 +111,43 @@ pub(crate) fn sets_by_object<S: Clone>(
                 continue;
             };
             // The WHERE rule: a type object must not appear here.
-            if schema.is_a(&target.type_name.to_ascii_uppercase(), "IFCTYPEOBJECT") {
+            if is_type_object(&target.type_name.to_ascii_uppercase()) {
                 anomalies.push(PropertyAnomaly::TypeAttachedByRelationship {
                     relationship: id,
                     type_object: object,
                 });
             }
-            out.entry(object)
-                .or_default()
-                .push((Attachment::Occurrence, set.clone()));
+            let attached = out.entry(object).or_default();
+            for set in &sets {
+                attached.push((Attachment::Occurrence, set.clone()));
+            }
         }
     }
 
     // Route 2: IfcTypeObject.HasPropertySets, a direct attribute.
     for (type_name, _) in model.type_histogram() {
         let upper = type_name.to_ascii_uppercase();
-        if !schema.is_a(&upper, "IFCTYPEOBJECT") {
+        if !is_type_object(&upper) {
             continue;
         }
         for &id in model.ids_of_type(&upper) {
             let Some(entity) = model.get(id) else {
                 continue;
             };
-            for set_id in entity
-                .attributes
-                .get(TYPE_HAS_PROPERTY_SETS)
-                .and_then(refs)
-                .unwrap_or_default()
-            {
+            for set_id in definitions(
+                id,
+                "HasPropertySets",
+                entity.attributes.get(TYPE_HAS_PROPERTY_SETS),
+                false,
+                &mut anomalies,
+            ) {
                 if let Some(set) = cache.get(model, read, set_id) {
                     out.entry(id).or_default().push((Attachment::Type, set));
+                } else if model.get(set_id).is_none() {
+                    anomalies.push(PropertyAnomaly::MissingTypeSet {
+                        type_object: id,
+                        definition: set_id,
+                    });
                 }
             }
         }
@@ -148,6 +161,49 @@ pub(crate) fn sets_by_object<S: Clone>(
         anomalies.extend(found);
     }
     (out, anomalies)
+}
+
+/// The definitions `attribute` names: a list (an IFC4+
+/// `IfcPropertySetDefinitionSet`, bare or typed, or `HasPropertySets`) member
+/// by member and once each, or, when `single_ok`, one reference. An empty
+/// list (`SET [1:?]`), a member that is no reference and a value of any other
+/// form are reported rather than dropped (#630); `$` names nothing.
+fn definitions(
+    entity: EntityId,
+    attribute: &'static str,
+    value: Option<&Value>,
+    single_ok: bool,
+    anomalies: &mut Vec<PropertyAnomaly>,
+) -> Vec<EntityId> {
+    let mut malformed = |found: &Value| {
+        anomalies.push(PropertyAnomaly::MalformedAttribute {
+            entity,
+            attribute,
+            found: format!("{found:?}"),
+        });
+    };
+    match value.map(Value::unwrap_typed) {
+        None | Some(Value::Null) => Vec::new(),
+        Some(Value::Ref(id)) if single_ok => vec![*id],
+        Some(list @ Value::List(items)) => {
+            if items.is_empty() {
+                malformed(list);
+            }
+            let mut out = Vec::new();
+            for item in items {
+                match one_ref(item) {
+                    Some(id) if !out.contains(&id) => out.push(id),
+                    Some(_) => {}
+                    None => malformed(item),
+                }
+            }
+            out
+        }
+        Some(other) => {
+            malformed(other);
+            Vec::new()
+        }
+    }
 }
 
 fn one_ref(value: &Value) -> Option<EntityId> {

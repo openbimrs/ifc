@@ -6,6 +6,7 @@
 //! through the newest release it bundles instead; the crate's compile guard
 //! guarantees there is one.
 
+use ifc_model::Model;
 use ifc_schema::{for_version, Schema, SchemaVersion};
 
 /// The order a permissive read tries the bundled tables in: IFC4 first, as
@@ -26,4 +27,28 @@ pub(crate) fn table(preferred: Option<SchemaVersion>) -> (SchemaVersion, &'stati
         .find_map(|version| for_version(version).ok().map(|schema| (version, schema)))
         // The compile guard in lib.rs refuses a build bundling no release.
         .expect("ifc-properties bundles at least one release")
+}
+
+/// The table for `model`: the release its header's single `FILE_SCHEMA`
+/// names when this build bundles it, otherwise the baseline (#631).
+pub(crate) fn table_for(model: &Model) -> (SchemaVersion, &'static Schema) {
+    let declared = match model.header().schema.as_slice() {
+        [token] => SchemaVersion::from_header_token(token),
+        _ => None,
+    };
+    table(declared)
+}
+
+/// Whether `name` (upper case) is an `IfcTypeObject` in `schema`, the table a
+/// permissive read binds. A name that table does not define (`IFCDOORTYPE` in
+/// an IFC2X3 file) is a type object when any bundled table says so, so such a
+/// type still reads, as before the table followed the declared release.
+pub(crate) fn is_type_object(schema: &Schema, name: &str) -> bool {
+    if schema.entity(name).is_some() {
+        return schema.is_a(name, "IFCTYPEOBJECT");
+    }
+    BASELINE
+        .into_iter()
+        .filter_map(|version| for_version(version).ok())
+        .any(|other| other.is_a(name, "IFCTYPEOBJECT"))
 }

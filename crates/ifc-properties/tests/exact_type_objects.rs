@@ -427,3 +427,20 @@ fn a_type_in_a_property_relationship_is_refused_not_ignored() {
         ));
     }
 }
+
+#[test]
+fn a_type_set_id_absent_from_the_file_is_refused() {
+    for (_, version) in RELEASES {
+        let m = walls(version, "(#20,#99)", &[]);
+        assert!(
+            matches!(
+                exact_properties(&m, WALL_TYPE),
+                Err(ExactPropertyError::MissingReference {
+                    to: EntityId(99),
+                    ..
+                })
+            ),
+            "{version:?}"
+        );
+    }
+}

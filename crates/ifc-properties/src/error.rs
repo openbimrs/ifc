@@ -86,6 +86,16 @@ pub enum PropertyAnomaly {
         /// The id it named.
         definition: EntityId,
     },
+    /// An `IfcTypeObject` lists a definition absent from the file in
+    /// `HasPropertySets`.
+    ///
+    /// The set cannot be read, so the type carries nothing for it.
+    MissingTypeSet {
+        /// The type object listing the definition.
+        type_object: EntityId,
+        /// The id it named.
+        definition: EntityId,
+    },
     /// A relationship names an object absent from the file.
     MissingObject {
         /// The relationship.
