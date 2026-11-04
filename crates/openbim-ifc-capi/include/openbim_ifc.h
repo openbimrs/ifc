@@ -1321,9 +1321,11 @@ OpenbimIfcStatus openbim_ifc_v0_1_meshes_positions(OpenbimIfcMeshes meshes,
  *
  * `SurfaceColour` (#449): red, green, blue (`REAL`s in [0, 1]),
  * transparency (`REAL`, 0 opaque, or `NULL` when the file states none),
- * source (`item`, `layer` or `material`, in that precedence), source
- * entity (`REF`: the `IfcStyledItem`, the layer assignment or the
- * `IfcMaterial`), surface style (`REF`). The colour is the one the Body's
+ * source (`item`, `layer`, `material` or `materialSet`, in that
+ * precedence), source entity (`REF`: the `IfcStyledItem`, the layer
+ * assignment, the `IfcMaterial` or the material set), source materials
+ * (`LIST` of `REF`: every `IfcMaterial` of the set for `materialSet`, else
+ * empty; #603), surface style (`REF`). The colour is the one the Body's
  * items agree on, `NULL` when nothing colours the product; the colour
  * refusal's code is `ambiguous` (two styled items or colours at one
  * level, a layer or profile set of several materials, a constituent set

@@ -111,12 +111,18 @@ pub struct SurfaceColour {
     /// none, which the standard reads as opaque.
     pub transparency: Option<f64>,
     /// Where the style was assigned: `item` (an `IfcStyledItem` on the
-    /// representation item), `layer` (an `IfcPresentationLayerWithStyle`)
-    /// or `material` (the `IfcMaterial`'s
-    /// `IfcMaterialDefinitionRepresentation`), in that precedence.
+    /// representation item), `layer` (an `IfcPresentationLayerWithStyle`),
+    /// `material` (the `IfcMaterial`'s
+    /// `IfcMaterialDefinitionRepresentation`) or `materialSet` (a layer,
+    /// profile or constituent set whose materials all state this colour,
+    /// #603), in that precedence.
     pub source: String,
-    /// The `IfcStyledItem`, the layer assignment or the `IfcMaterial`.
+    /// The `IfcStyledItem`, the layer assignment, the `IfcMaterial` or the
+    /// material set (or usage).
     pub source_entity: u64,
+    /// Every `IfcMaterial` of the set when `source` is `materialSet`, else
+    /// empty.
+    pub source_materials: Vec<u64>,
     /// The `IfcSurfaceStyle` the colour is read from.
     pub surface_style: u64,
 }
@@ -377,10 +383,18 @@ fn closure(closure: ifc::geometry::compile::MeshClosure) -> &'static str {
 #[cfg(feature = "mesh")]
 fn surface_colour(colour: &ifc::SurfaceColour) -> SurfaceColour {
     use ifc::ColourSource as S;
-    let (source, entity) = match colour.source {
-        S::StyledItem(id) => ("item", id),
-        S::PresentationLayer(id) => ("layer", id),
-        S::Material { material, .. } => ("material", material),
+    let mut materials = Vec::new();
+    let (source, entity) = match &colour.source {
+        S::StyledItem(id) => ("item", *id),
+        S::PresentationLayer(id) => ("layer", *id),
+        S::Material { material, .. } => ("material", *material),
+        S::MaterialSet {
+            definition,
+            materials: set,
+        } => {
+            materials = set.iter().map(|id| id.0).collect();
+            ("materialSet", *definition)
+        }
         // A source added to the facade after this binding: still typed.
         _ => ("other", colour.surface_style),
     };
@@ -392,6 +406,7 @@ fn surface_colour(colour: &ifc::SurfaceColour) -> SurfaceColour {
         transparency: colour.transparency,
         source: source.to_owned(),
         source_entity: entity.0,
+        source_materials: materials,
         surface_style: colour.surface_style.0,
     }
 }
@@ -529,6 +544,15 @@ impl ToRecord for SurfaceColour {
                 ),
                 ("source", Field::Text(self.source.clone())),
                 ("source_entity", Field::Id(self.source_entity)),
+                (
+                    "source_materials",
+                    Field::List(
+                        self.source_materials
+                            .iter()
+                            .map(|&id| Field::Id(id))
+                            .collect(),
+                    ),
+                ),
                 ("surface_style", Field::Id(self.surface_style)),
             ],
         )

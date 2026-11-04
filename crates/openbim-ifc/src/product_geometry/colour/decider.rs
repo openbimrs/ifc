@@ -50,8 +50,8 @@ impl ColourDecider {
     #[must_use]
     pub fn colour(&self) -> Option<SurfaceColour> {
         match self {
-            Self::ItemStyle(colour) => Some(*colour),
-            Self::Material { colour, .. } | Self::Materials { colour, .. } => *colour,
+            Self::ItemStyle(colour) => Some(colour.clone()),
+            Self::Material { colour, .. } | Self::Materials { colour, .. } => colour.clone(),
             Self::Nothing => None,
         }
     }

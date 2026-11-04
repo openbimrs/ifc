@@ -145,9 +145,15 @@ export interface SurfaceColour {
   /** In `[0, 1]`, 0 opaque; `undefined` when the file states none (opaque). */
   transparency: number | undefined;
   /** Which assignment supplied the colour, in that precedence. */
-  source: "item" | "layer" | "material";
-  /** The `IfcStyledItem`, the layer assignment or the `IfcMaterial`. */
+  source: "item" | "layer" | "material" | "materialSet";
+  /**
+   * The `IfcStyledItem`, the layer assignment, the `IfcMaterial` or, for
+   * `materialSet`, the layer, profile or constituent set (or usage) whose
+   * materials all state this colour (#603).
+   */
   sourceEntity: bigint;
+  /** Every `IfcMaterial` of the set for `materialSet`; empty otherwise. */
+  sourceMaterials: bigint[];
   /** The `IfcSurfaceStyle`. */
   surfaceStyle: bigint;
 }

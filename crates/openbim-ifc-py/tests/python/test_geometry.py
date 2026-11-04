@@ -335,6 +335,26 @@ class MeshTests(unittest.TestCase):
             self.assertEqual((len(mesh.indices), mesh.refusal), (0, None))
 
     @unittest.skipUnless(MESH, "needs a wheel built with --features mesh")
+    def test_a_material_set_that_agrees_on_a_colour_names_its_materials(self) -> None:
+        with open(COLOURS, "rb") as handle:
+            text = handle.read().decode()
+        twin = (
+            "#900=IFCMATERIAL('Red twin',$,$);\n"
+            "#901=IFCSTYLEDITEM($,(#27),$);\n"
+            "#902=IFCSTYLEDREPRESENTATION(#6,'Style','Material',(#901));\n"
+            "#903=IFCMATERIALDEFINITIONREPRESENTATION($,$,(#902),#900);\n"
+        )
+        text = text.replace(
+            "#127=IFCMATERIALLAYER(#31,", "#127=IFCMATERIALLAYER(#900,"
+        ).replace("ENDSEC;\nEND-ISO", twin + "ENDSEC;\nEND-ISO")
+        material, multi = IfcModel.parse(text.encode()).product_meshes([58, 125])
+        self.assertEqual(material.colour.source, "material")
+        self.assertEqual(material.colour.source_materials, [])
+        self.assertEqual(multi.colour.source, "materialSet")
+        self.assertEqual(len(multi.colour.source_materials), 2)
+        self.assertIsNone(multi.colour_refusal)
+
+    @unittest.skipUnless(MESH, "needs a wheel built with --features mesh")
     def test_meshes_carry_the_item_layer_or_material_colour(self) -> None:
         with open(COLOURS, "rb") as handle:
             coloured = IfcModel.parse(handle.read())
@@ -347,6 +367,7 @@ class MeshTests(unittest.TestCase):
         )
         self.assertEqual(material.colour.transparency, 0.25)
         self.assertEqual(material.colour.source, "material")
+        self.assertEqual(material.colour.source_materials, [])
         self.assertIsNone(material.colour_refusal)
         self.assertEqual(item.colour.source, "item")
         self.assertEqual(item.colour.blue, 0.9)

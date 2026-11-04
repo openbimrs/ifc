@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from array import array
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 Matrix4 = Tuple[float, ...]
 
@@ -115,9 +115,11 @@ class SurfaceColour:
 
     ``red``, ``green`` and ``blue`` are in ``[0, 1]``; ``transparency`` too,
     0 opaque, and ``None`` when the file states none (which the standard
-    reads as opaque). ``source`` is ``item``, ``layer`` or ``material``, in
-    that precedence; ``source_entity`` the ``IfcStyledItem``, the layer
-    assignment or the ``IfcMaterial``; ``surface_style`` the
+    reads as opaque). ``source`` is ``item``, ``layer``, ``material`` or
+    ``materialSet``, in that precedence; ``source_entity`` the
+    ``IfcStyledItem``, the layer assignment, the ``IfcMaterial`` or the
+    material set whose materials all state the colour (#603);
+    ``source_materials`` every ``IfcMaterial`` of that set, else empty; ``surface_style`` the
     ``IfcSurfaceStyle``.
     """
 
@@ -127,6 +129,7 @@ class SurfaceColour:
     transparency: Optional[float]
     source: str
     source_entity: int
+    source_materials: List[int]
     surface_style: int
 
 

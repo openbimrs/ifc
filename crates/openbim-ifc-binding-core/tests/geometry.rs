@@ -468,6 +468,50 @@ END-ISO-10303-21;
     }
 
     #[test]
+    fn a_material_set_that_agrees_on_a_colour_names_its_materials() {
+        use openbim_ifc_binding_core::ToRecord;
+        // MULTI_LAYER's second layer made of a twin of its first layer's
+        // material, which states the same colour (#603).
+        let path = format!(
+            "{}/../../test/fixtures/synthetic-colour/material_colour.ifc",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let text = std::fs::read_to_string(path).expect("fixture");
+        let twin = "#900=IFCMATERIAL('Red twin',$,$);\n\
+            #901=IFCSTYLEDITEM($,(#27),$);\n\
+            #902=IFCSTYLEDREPRESENTATION(#6,'Style','Material',(#901));\n\
+            #903=IFCMATERIALDEFINITIONREPRESENTATION($,$,(#902),#900);\n";
+        let text = text
+            .replace("#127=IFCMATERIALLAYER(#31,", "#127=IFCMATERIALLAYER(#900,")
+            .replace("ENDSEC;\nEND-ISO", &format!("{twin}ENDSEC;\nEND-ISO"));
+        let model = IfcModel::parse(text.as_bytes()).expect("parses");
+        let meshes = model.product_meshes(Some(&[58, 125])).unwrap();
+
+        let set = meshes[1].colour.as_ref().expect("the layers agree");
+        assert_eq!(set.source, "materialSet");
+        assert_eq!(set.source_materials.len(), 2);
+        assert_ne!(set.source_entity, set.source_materials[0]);
+        assert_eq!(meshes[1].colour_refusal, None);
+        // The record carries the materials between the entity and the style.
+        let record = meshes[1].colour.as_ref().unwrap().to_record();
+        let names: Vec<&str> = record.fields.iter().map(|(name, _)| *name).collect();
+        assert_eq!(
+            names[4..],
+            [
+                "source",
+                "source_entity",
+                "source_materials",
+                "surface_style"
+            ]
+        );
+
+        // A single material keeps the material source and lists none.
+        let single = meshes[0].colour.as_ref().expect("a material colour");
+        assert_eq!(single.source, "material");
+        assert!(single.source_materials.is_empty());
+    }
+
+    #[test]
     fn meshes_carry_the_item_layer_or_material_colour() {
         use openbim_ifc_binding_core::ToRecord;
         for (name, ids) in [

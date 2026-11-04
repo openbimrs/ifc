@@ -307,7 +307,7 @@ fn a_layer_set_of_equal_styles_takes_their_colour() {
     let resolver = ColourResolver::new(&model).unwrap();
     let got = colour(&resolver, &model, "MULTI_LAYER");
     assert_colour(&got, RED);
-    from_material(&got, material(&model, "Red"));
+    assert!(matches!(got.source, ColourSource::MaterialSet { .. }));
 }
 
 #[test]

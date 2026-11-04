@@ -8,6 +8,12 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#603)
+
+- The `SurfaceColour` record's source can be `materialSet` and carries a new `source materials` `LIST` of `REF` between source entity and surface style (every material of the set, else empty); its `child_count` is 8.
+
+Semver: minor (pre-1.0 breaking: a record field is added).
+
 ### Changed (#651)
 
 - `representation` accepts `Reference`, the void geometry of an IFC4 Reference View opening.

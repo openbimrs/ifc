@@ -48,10 +48,12 @@
 //! Several materials, which of them paints the item is not stated, so each
 //! one's own colour is resolved and they are compared. None styled gives no
 //! colour (a cavity wall of unstyled layers is simply unpainted); all styled
-//! with the same rgb and transparency give that colour (its source names the
-//! first material); anything else, differing styles or a mix of styled and
-//! unstyled materials, is [`ColourError::AmbiguousMaterial`] naming every
-//! material, never a pick of one.
+//! with the same rgb and transparency give that colour (its source is
+//! [`ColourSource::MaterialSet`] naming the set and every material, #603; a
+//! set of one material is [`ColourSource::Material`]); anything else,
+//! differing styles or a mix of styled and unstyled materials, is
+//! [`ColourError::AmbiguousMaterial`] naming every material, never a pick of
+//! one.
 //!
 //! IFC4X1 and IFC4X2 files resolve item and layer styles; the material
 //! domain is not verified for those releases, so a material fallback there
@@ -382,7 +384,7 @@ impl<'m> ColourResolver<'m> {
             return Ok(None);
         };
         if colours.iter().all(|(_, colour)| same_colour(colour, first)) {
-            Ok(*first)
+            Ok(first.clone())
         } else {
             Err(ColourError::ItemsDiffer {
                 product,
@@ -438,9 +440,19 @@ impl<'m> ColourResolver<'m> {
         }
         if let Some(Some(first)) = colours.first() {
             if colours.iter().all(|colour| {
-                colour.is_some_and(|c| (c.rgb, c.transparency) == (first.rgb, first.transparency))
+                colour
+                    .as_ref()
+                    .is_some_and(|c| (c.rgb, c.transparency) == (first.rgb, first.transparency))
             }) {
-                return Ok(Some(*first));
+                // Named whole, so an edit of one material is not offered as
+                // the colour's cause (#603). A set of one material never
+                // gets here: it resolves as that material.
+                let mut colour = first.clone();
+                colour.source = ColourSource::MaterialSet {
+                    definition,
+                    materials: materials.to_vec(),
+                };
+                return Ok(Some(colour));
             }
         }
         Err(ColourError::AmbiguousMaterial {

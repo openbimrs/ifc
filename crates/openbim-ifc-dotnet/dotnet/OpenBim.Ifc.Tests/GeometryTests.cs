@@ -176,6 +176,7 @@ public class GeometryTests
             Assert.Equal(0.25, colour.Transparency);
             Assert.Equal("material", colour.Source);
             Assert.Equal(18UL, colour.SourceEntity);
+            Assert.Empty(colour.SourceMaterials);
             Assert.Equal(21UL, colour.SurfaceStyle);
         }
         catch (IfcException error)

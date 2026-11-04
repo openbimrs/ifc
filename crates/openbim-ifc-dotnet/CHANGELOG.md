@@ -9,6 +9,12 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Added (#603)
+
+- `SurfaceColour.Source` can be `materialSet`, and the new `SourceMaterials` lists the set's materials (empty for other sources).
+
+Semver: minor (pre-1.0 breaking: a record field is added).
+
 ### Changed (#651)
 
 - `representation` accepts `Reference`, the void geometry of an IFC4 Reference View opening.

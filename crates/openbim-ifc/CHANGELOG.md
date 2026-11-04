@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#603)
+
+- `ColourResolver` reports the colour that all materials of a layer, profile or constituent set state as `ColourSource::MaterialSet { definition, materials }` naming the set (or usage) and every material, instead of `Material` of the first. A set of one material keeps `Material`; differing styles stay `ColourError::AmbiguousMaterial`. `ColourSource` and `SurfaceColour` are no longer `Copy` (`ifc-style`).
+
+Semver: minor (pre-1.0 breaking).
+
 ### Fixed (#695)
 
 - `georeferencing` no longer answers an empty list when the reader's damage may have hidden what its presence gate scans. After a lenient read, a skipped record or a diagnostic the reader's classification cannot place refuses with `GeorefError::RecordsIncomplete` behind either gate (the IFC2X3 property-set test and the IFC4 operation scan), and a reported duplicate of a property set the IFC2X3 gate reads refuses with `GeorefError::RecordDamaged`. Clean models and damage elsewhere still resolve to an empty list.

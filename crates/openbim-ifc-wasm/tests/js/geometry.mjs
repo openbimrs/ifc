@@ -413,6 +413,31 @@ if (!mesh) {
     }
   });
 
+  test("a material set that agrees on a colour names its materials (#603)", () => {
+    const fixture = path.resolve(
+      here,
+      "../../../../test/fixtures/synthetic-colour/material_colour.ifc",
+    );
+    const twin =
+      "#900=IFCMATERIAL('Red twin',$,$);\n" +
+      "#901=IFCSTYLEDITEM($,(#27),$);\n" +
+      "#902=IFCSTYLEDREPRESENTATION(#6,'Style','Material',(#901));\n" +
+      "#903=IFCMATERIALDEFINITIONREPRESENTATION($,$,(#902),#900);\n";
+    const text = readFileSync(fixture, "utf8")
+      .replace("#127=IFCMATERIALLAYER(#31,", "#127=IFCMATERIALLAYER(#900,")
+      .replace("ENDSEC;\nEND-ISO", `${twin}ENDSEC;\nEND-ISO`);
+    const [material, multi] = IfcModel.parse(new TextEncoder().encode(text)).productMeshes([
+      58n,
+      125n,
+    ]);
+    assert.equal(material.colour.source, "material");
+    assert.deepEqual(material.colour.sourceMaterials, []);
+    assert.equal(multi.colour.source, "materialSet");
+    assert.equal(multi.colour.sourceMaterials.length, 2);
+    assert.equal(typeof multi.colour.sourceMaterials[0], "bigint");
+    assert.equal(multi.colourRefusal, undefined);
+  });
+
   test("meshes carry the item, layer or material colour (#449)", () => {
     const colours = IfcModel.parse(
       readFileSync(
