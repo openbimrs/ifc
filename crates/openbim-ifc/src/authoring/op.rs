@@ -395,8 +395,11 @@ pub enum AuthorOp {
     /// [`ReassignClassOptions::drop_unmapped`]. A relationship the new class
     /// cannot hold is refused: [`WrongReferenceType`], [`RelationshipLost`],
     /// [`InverseCardinality`], and [`TypeRuleChanged`] for a typed object
-    /// whose type rule would change. A class with fewer attributes than the
-    /// stored record shortens it. `WHERE`
+    /// whose type rule would change; with
+    /// [`ReassignClassOptions::remove_relationships`] the relationships among
+    /// those are removed as [`AuthorOp::Remove`] does, except
+    /// [`InverseCardinality`]. A class with fewer attributes than the stored
+    /// record shortens it. `WHERE`
     /// rules are not evaluated, neither the entity's nor its referrers'
     /// (an `IfcRelSpaceBoundary` of `.PHYSICAL.` accepts a wall moved to
     /// `IfcVirtualElement`).

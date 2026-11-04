@@ -148,4 +148,48 @@ pub struct ReassignReport {
     /// The set attributes dropped, in the old class's slot order; empty
     /// unless [`ReassignClassOptions::drop_unmapped`](super::ReassignClassOptions::drop_unmapped).
     pub dropped: Vec<String>,
+    /// The relationships the entity was taken out of, ascending by id; empty
+    /// unless [`ReassignClassOptions::remove_relationships`](super::ReassignClassOptions::remove_relationships).
+    pub removed_relationships: Vec<RemovedRelationship>,
+}
+
+/// A relationship a reassignment took the entity out of (#635).
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct RemovedRelationship {
+    /// The relationship.
+    pub relationship: EntityId,
+    /// Its class, in the schema's spelling (`IfcRelVoidsElement`).
+    pub type_name: String,
+    /// `true`: the relationship was removed; `false`: only the entity left
+    /// its list.
+    pub removed: bool,
+    /// Why the new class cannot hold it.
+    pub reason: RelationshipConflict,
+}
+
+/// Why the new class cannot hold a relationship (#635).
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum RelationshipConflict {
+    /// The relationship's attribute does not accept the new class.
+    WrongReferenceType {
+        /// The attribute.
+        attribute: String,
+        /// Its declared type.
+        expected: String,
+    },
+    /// The relationship fills an inverse of the old class the new one lacks.
+    Lost {
+        /// The inverse attribute of the old class.
+        inverse: String,
+    },
+    /// The relationship assigns a type object checked by another type rule
+    /// than the new class falls under.
+    TypeRule {
+        /// The type object.
+        type_object: EntityId,
+        /// The rule the new class falls under.
+        to_rule: String,
+    },
 }

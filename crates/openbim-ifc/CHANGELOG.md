@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#635)
+
+- `ReassignClassOptions::remove_relationships`: a reassignment takes the entity out of the relationships the new class cannot hold (`WrongReferenceType`, `RelationshipLost`, `TypeRuleChanged`) as `AuthorOp::Remove` detaches. `ReassignReport::removed_relationships` lists each (`RemovedRelationship`, `RelationshipConflict`). Only `IfcRelationship`s are touched; `InverseCardinality` is still refused; a removal that leaves another entity below a mandatory inverse (an opening's `VoidsElements`) is refused with `AuthoringFailure::RelationshipRequired`.
+
+Semver: patch (additive).
+
 ## [0.41.0] - 2026-11-04
 
 ### Fixed (#677)
