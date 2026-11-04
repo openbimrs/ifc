@@ -27,7 +27,8 @@ use axiolid_core::Transform3;
 use ifc_model::value::Value;
 use ifc_model::{Entity, EntityId, Model};
 
-use crate::context::OperationSource;
+use crate::context::{operation_source, OperationSource};
+use crate::crs::Damage;
 use crate::crs::{LengthUnit, ProjectedCrs};
 use crate::error::{GeorefError, GeorefResult};
 use crate::view::GeorefView;
@@ -268,13 +269,16 @@ fn dispatch(
         metres_per_unit: project_metres_per_unit,
     };
     let actual_type = entity.type_name.to_ascii_uppercase();
+    let damage = Damage::of(model)?;
+    damage.check(id)?;
     let operation = Operation {
         model,
         view,
         id,
         entity,
+        damage: &damage,
     };
-    match actual_type.as_str() {
+    let lowered = match actual_type.as_str() {
         "IFCMAPCONVERSION" => map::lower(&operation, project_unit, false),
         "IFCMAPCONVERSIONSCALED" => map::lower(&operation, project_unit, true),
         "IFCRIGIDOPERATION" => rigid::lower(&operation, project_unit),
@@ -283,7 +287,8 @@ fn dispatch(
             expected: "IFCCOORDINATEOPERATION",
             actual: entity.type_name.to_string(),
         }),
-    }
+    }?;
+    damage.settle(lowered)
 }
 
 /// The operation being lowered, with the view that pinned it (if any).
@@ -292,9 +297,20 @@ pub(super) struct Operation<'m, 'v> {
     pub view: Option<&'v GeorefView<'m>>,
     pub id: EntityId,
     pub entity: &'m Entity,
+    /// The entry point's reader damage (#690), shared by every record read.
+    pub damage: &'v Damage,
 }
 
 impl Operation<'_, '_> {
+    /// Read the operation's source, refusing the operation record and the
+    /// source when the reader reported either (#690).
+    pub fn source(&self) -> GeorefResult<OperationSource> {
+        self.damage.check(self.id)?;
+        let source = operation_source(self.model, self.view, self.id, Some(self.damage))?;
+        self.damage.check(source.entity())?;
+        Ok(source)
+    }
+
     pub fn required_ref(&self, index: usize, name: &'static str) -> GeorefResult<EntityId> {
         self.entity
             .reference(index)

@@ -5,6 +5,7 @@
 //! library; an application that needs EPSG parameters resolves the returned
 //! identifier itself.
 
+mod damage;
 mod geographic;
 mod projected;
 mod unit;
@@ -13,6 +14,7 @@ pub use geographic::GeographicCrs;
 pub use projected::ProjectedCrs;
 pub use unit::{AngleUnit, LengthUnit};
 
+pub(crate) use damage::Damage;
 pub(crate) use geographic::geographic_crs;
 pub(crate) use projected::projected_crs;
 pub(crate) use unit::resolve_length_unit;

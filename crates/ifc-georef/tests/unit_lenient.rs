@@ -103,7 +103,7 @@ fn a_skip_without_an_id_is_incomplete() {
     let model = lenient(&crs("@;\n"));
     assert!(matches!(
         refused(&model),
-        GeorefError::UnitsIncomplete { diagnostics: 1 }
+        GeorefError::RecordsIncomplete { diagnostics: 1 }
     ));
 }
 
@@ -117,7 +117,7 @@ fn a_skip_naming_a_held_id_is_incomplete() {
     assert_eq!(model.diagnostics().len(), 1, "{:?}", model.diagnostics());
     assert!(matches!(
         refused(&model),
-        GeorefError::UnitsIncomplete { diagnostics: 1 }
+        GeorefError::RecordsIncomplete { diagnostics: 1 }
     ));
 }
 
@@ -192,6 +192,6 @@ fn a_held_id_skip_makes_a_geographic_crs_incomplete() {
         .expect("lenient read");
     assert!(matches!(
         geographic_offset(&model),
-        Err(GeorefError::UnitsIncomplete { diagnostics: 1 })
+        Err(GeorefError::RecordsIncomplete { diagnostics: 1 })
     ));
 }

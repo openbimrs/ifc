@@ -16,6 +16,7 @@ use ifc_model::{EntityId, Model};
 
 use crate::crs::projected::name_or_wkt;
 use crate::crs::unit::{resolve_angle_unit, resolve_length_unit, AngleUnit, LengthUnit};
+use crate::crs::Damage;
 use crate::error::{GeorefError, GeorefResult};
 use crate::slot::geographic_crs as slot;
 use crate::slot::projected_crs as base;
@@ -46,7 +47,12 @@ pub struct GeographicCrs {
     pub well_known_text: Option<String>,
 }
 
-pub(crate) fn geographic_crs(model: &Model, id: EntityId) -> GeorefResult<GeographicCrs> {
+pub(crate) fn geographic_crs(
+    model: &Model,
+    id: EntityId,
+    damage: &Damage,
+) -> GeorefResult<GeographicCrs> {
+    damage.check(id)?;
     let entity = model.get(id).ok_or(GeorefError::MissingEntity {
         referrer: id,
         missing: id,
@@ -58,7 +64,7 @@ pub(crate) fn geographic_crs(model: &Model, id: EntityId) -> GeorefResult<Geogra
             actual: entity.type_name.to_string(),
         });
     }
-    let (name, well_known_text) = name_or_wkt(model, id, entity)?;
+    let (name, well_known_text) = name_or_wkt(model, id, entity, damage)?;
     let unit_ref = |index: usize, name: &'static str| match entity.attribute(index) {
         None | Some(Value::Null) => Ok(None),
         Some(value) => value
@@ -71,10 +77,10 @@ pub(crate) fn geographic_crs(model: &Model, id: EntityId) -> GeorefResult<Geogra
             }),
     };
     let angle_unit = unit_ref(slot::ANGLE_UNIT, "AngleUnit")?
-        .map(|unit| resolve_angle_unit(model, unit))
+        .map(|unit| resolve_angle_unit(model, unit, damage))
         .transpose()?;
     let height_unit = unit_ref(slot::HEIGHT_UNIT, "HeightUnit")?
-        .map(|unit| resolve_length_unit(model, unit))
+        .map(|unit| resolve_length_unit(model, unit, damage))
         .transpose()?;
     Ok(GeographicCrs {
         entity: id,

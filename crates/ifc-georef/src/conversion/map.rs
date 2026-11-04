@@ -24,7 +24,6 @@
 //! the subtype resolves rather than being refused. A factor that is zero,
 //! negative or non-finite is refused like a non-positive `Scale`.
 
-use crate::context::operation_source;
 use crate::crs::{projected_crs, LengthUnit};
 use crate::error::{GeorefError, GeorefResult};
 use crate::slot::map_conversion as slot;
@@ -42,9 +41,9 @@ pub(super) fn lower(
     let id = op.id;
     // Slots are pinned against the bundled IFC4 and IFC4X3 tables in
     // `crate::slot`.
-    let source = operation_source(op.model, op.view, id)?;
+    let source = op.source()?;
     let target_ref = op.required_ref(slot::TARGET_CRS, "TargetCRS")?;
-    let target_crs = projected_crs(op.model, target_ref)?;
+    let target_crs = projected_crs(op.model, target_ref, op.damage)?;
     let map_unit = target_crs
         .map_unit
         .clone()

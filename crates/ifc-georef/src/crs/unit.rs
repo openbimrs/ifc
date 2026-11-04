@@ -6,8 +6,9 @@
 //! Only the expected `UnitType`/base name and the base factor differ.
 
 use ifc_model::value::Value;
-use ifc_model::{EntityId, Model, RecordDamage};
+use ifc_model::{EntityId, Model};
 
+use crate::crs::damage::Damage;
 use crate::error::{GeorefError, GeorefResult};
 use crate::slot::{conversion_based_unit, measure_with_unit, si_unit};
 
@@ -50,59 +51,26 @@ const PLANE_ANGLE: Kind = Kind {
     si_name: "RADIAN",
 };
 
-/// The reader's diagnostics, sorted into what resolution must refuse (#686).
-struct Damage(RecordDamage);
-
-impl Damage {
-    fn of(model: &Model) -> GeorefResult<Self> {
-        RecordDamage::of(model)
-            .map(Self)
-            .map_err(|_| GeorefError::UnitsIncomplete {
-                diagnostics: model.diagnostics().len(),
-            })
-    }
-
-    /// Refuse a record the reader reported by id.
-    fn check(&self, id: EntityId) -> GeorefResult<()> {
-        match self.0.reported(id) {
-            Some(diagnostic) => Err(GeorefError::UnitRecordDamaged {
-                entity: id,
-                diagnostic,
-            }),
-            None => Ok(()),
-        }
-    }
-
-    /// Pass a resolved unit through unless a skipped record names an id a
-    /// kept record holds: the skip may have swallowed records resolution
-    /// would have read.
-    fn settle<T>(&self, value: T) -> GeorefResult<T> {
-        if self.0.held_id_skipped() {
-            return Err(GeorefError::UnitsIncomplete {
-                diagnostics: self.0.diagnostics(),
-            });
-        }
-        Ok(value)
-    }
-}
-
-/// Reduce `id` for `kind` against the reader's damage, built once.
-fn resolve_settled(model: &Model, id: EntityId, kind: Kind) -> GeorefResult<(String, f64)> {
-    let damage = Damage::of(model)?;
-    let resolved = resolve(model, id, kind, &mut Vec::new(), &damage)?;
-    damage.settle(resolved)
-}
-
-pub(crate) fn resolve_length_unit(model: &Model, id: EntityId) -> GeorefResult<LengthUnit> {
-    let (name, metres_per_unit) = resolve_settled(model, id, LENGTH)?;
+/// Reduce a length unit against the entry point's `damage`. The caller
+/// settles the damage once its whole reading is done.
+pub(crate) fn resolve_length_unit(
+    model: &Model,
+    id: EntityId,
+    damage: &Damage,
+) -> GeorefResult<LengthUnit> {
+    let (name, metres_per_unit) = resolve(model, id, LENGTH, &mut Vec::new(), damage)?;
     Ok(LengthUnit {
         name,
         metres_per_unit,
     })
 }
 
-pub(crate) fn resolve_angle_unit(model: &Model, id: EntityId) -> GeorefResult<AngleUnit> {
-    let (name, radians_per_unit) = resolve_settled(model, id, PLANE_ANGLE)?;
+pub(crate) fn resolve_angle_unit(
+    model: &Model,
+    id: EntityId,
+    damage: &Damage,
+) -> GeorefResult<AngleUnit> {
+    let (name, radians_per_unit) = resolve(model, id, PLANE_ANGLE, &mut Vec::new(), damage)?;
     Ok(AngleUnit {
         name,
         radians_per_unit,
@@ -120,7 +88,7 @@ fn resolve(
     if chain.len() >= 16 || chain.contains(&id) {
         return Err(GeorefError::UnitCycle { entity: id });
     }
-    damage.check(id)?;
+    damage.check_unit(id)?;
     chain.push(id);
     let entity = model.get(id).ok_or(GeorefError::MissingEntity {
         referrer: id,
@@ -187,7 +155,7 @@ fn resolve(
                     index: conversion_based_unit::CONVERSION_FACTOR,
                     name: "ConversionFactor",
                 })?;
-            damage.check(factor_ref)?;
+            damage.check_unit(factor_ref)?;
             let factor_entity = model.get(factor_ref).ok_or(GeorefError::MissingEntity {
                 referrer: id,
                 missing: factor_ref,
