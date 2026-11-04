@@ -89,6 +89,18 @@ pub enum AuthoringFailure {
         /// The new class.
         to: String,
     },
+    /// Taking the entity out of a relationship, which removes it, would
+    /// leave another entity below a mandatory inverse attribute (#635).
+    RelationshipRequired {
+        /// The relationship that would be removed.
+        relationship: EntityId,
+        /// The entity left below the bound.
+        entity: EntityId,
+        /// Its inverse attribute.
+        inverse: String,
+        /// The declared lower bound.
+        lower: u64,
+    },
     /// The entity as the new class would break the bounds of an inverse
     /// attribute the new class declares (#483).
     InverseCardinality {
@@ -454,6 +466,16 @@ impl fmt::Display for AuthoringFailure {
                 f,
                 "{relationship} relates {entity} as {inverse}, which {to} does not declare; \
                  remove or edit the relationship first"
+            ),
+            Self::RelationshipRequired {
+                relationship,
+                entity,
+                inverse,
+                lower,
+            } => write!(
+                f,
+                "removing {relationship} would leave {entity} without its {inverse}, which \
+                 requires at least {lower}: remove or edit {entity} first"
             ),
             Self::InverseCardinality {
                 entity,

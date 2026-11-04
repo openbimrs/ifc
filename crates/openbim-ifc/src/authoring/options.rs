@@ -276,14 +276,25 @@ pub struct ReassignClassOptions {
     /// the reassignment is refused with
     /// [`AttributesDropped`](super::AuthoringFailure::AttributesDropped).
     pub drop_unmapped: bool,
+    /// Take the entity out of the relationships the new class cannot hold
+    /// (`WrongReferenceType`, `RelationshipLost` and `TypeRuleChanged` of a
+    /// relationship) as [`AuthorOp::Remove`](super::AuthorOp::Remove) does,
+    /// naming them in the [`ReassignReport`](super::ReassignReport) (#635).
+    /// Only `IfcRelationship`s are touched; `InverseCardinality` is still
+    /// refused, and so is a removal that leaves another entity below a
+    /// mandatory inverse
+    /// ([`RelationshipRequired`](super::AuthoringFailure::RelationshipRequired)).
+    pub remove_relationships: bool,
 }
 
 impl ReassignClassOptions {
-    /// Refuse a reassignment that would drop an attribute: the default.
+    /// Refuse a reassignment that would drop an attribute or a
+    /// relationship: the default.
     #[must_use]
     pub const fn new() -> Self {
         Self {
             drop_unmapped: false,
+            remove_relationships: false,
         }
     }
 
@@ -291,6 +302,13 @@ impl ReassignClassOptions {
     #[must_use]
     pub const fn drop_unmapped(mut self, drop: bool) -> Self {
         self.drop_unmapped = drop;
+        self
+    }
+
+    /// With [`Self::remove_relationships`] set.
+    #[must_use]
+    pub const fn remove_relationships(mut self, remove: bool) -> Self {
+        self.remove_relationships = remove;
         self
     }
 }

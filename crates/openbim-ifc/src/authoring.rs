@@ -169,7 +169,8 @@ pub use options::{
     RelateOptions, RemoveProductOptions, ReuseOptions,
 };
 pub use report::{
-    CopiedEntity, CopyReport, KeepReason, KeptEntity, ReassignReport, RemovalReport, RemovedEntity,
+    CopiedEntity, CopyReport, KeepReason, KeptEntity, ReassignReport, RelationshipConflict,
+    RemovalReport, RemovedEntity, RemovedRelationship,
 };
 
 #[cfg(feature = "properties")]
