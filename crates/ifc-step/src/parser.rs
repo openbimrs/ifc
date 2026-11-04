@@ -43,6 +43,8 @@ pub(crate) fn parse(input: &[u8], options: ParseOptions) -> Result<Model, StepEr
         floor: 0,
         records: 0,
         failed: None,
+        check_references: options.check_references,
+        duplicates: Vec::new(),
     };
     let diagnostics = openbim_step::parse_events_borrowed(input, &mut sink, options)
         .map_err(|error| StepError::from_step(input, error))?;
@@ -57,6 +59,9 @@ pub(crate) fn parse(input: &[u8], options: ParseOptions) -> Result<Model, StepEr
     // Diagnostics are only available once the parse finishes, so they are
     // appended after the records rather than interleaved with them.
     for diagnostic in self::diagnostics(input, &diagnostics, options) {
+        model.push_diagnostic(diagnostic);
+    }
+    for diagnostic in duplicate_diagnostics(input, &sink.duplicates) {
         model.push_diagnostic(diagnostic);
     }
     reserve_through(&mut model, sink.floor);
@@ -75,6 +80,7 @@ pub(crate) fn check_input(input: &[u8], options: ParseOptions) -> Result<(), Ste
         error: None,
         records: 0,
         failed: None,
+        seen: std::collections::HashSet::new(),
     };
     openbim_step::parse_events_borrowed(input, &mut sink, options)
         .map_err(|error| StepError::from_step(input, error))?;
@@ -91,6 +97,8 @@ struct CheckSink {
     error: Option<StepError>,
     records: usize,
     failed: Option<(usize, String)>,
+    /// The ids of the records accepted so far.
+    seen: std::collections::HashSet<u64>,
 }
 
 impl<'a> openbim_step::EventSink<Text<'a>> for CheckSink {
@@ -103,7 +111,14 @@ impl<'a> openbim_step::EventSink<Text<'a>> for CheckSink {
         if self.recovering || self.error.is_some() {
             return;
         }
-        if let Err(error) = validate(&instance) {
+        let checked = validate(&instance).and_then(|(id, _)| {
+            if self.seen.insert(id.0) {
+                Ok(())
+            } else {
+                Err(StepError::DuplicateId { id, offset: 0 })
+            }
+        });
+        if let Err(error) = checked {
             self.failed = Some((self.records - 1, instance.id.as_str().to_string()));
             self.error = Some(error);
         }
@@ -116,15 +131,61 @@ impl<'a> openbim_step::EventSink<Text<'a>> for CheckSink {
 /// says offset 0. The failing record is the `index`-th data record; `scan`
 /// frames the same records, and the id guards against a disagreement.
 fn locate(input: &[u8], error: StepError, index: usize, id: &str) -> StepError {
-    let StepError::Syntax { detail, .. } = error else {
-        return error;
-    };
     let offset = openbim_step::scan(input)
         .ok()
         .and_then(|scanned| scanned.records().nth(index)?.ok())
         .filter(|record| record.id.as_str() == id)
         .map_or(0, |record| record.span.start);
-    StepError::Syntax { offset, detail }
+    match error {
+        StepError::Syntax { detail, .. } => StepError::Syntax { offset, detail },
+        StepError::DuplicateId { id, .. } => StepError::DuplicateId { id, offset },
+        other => other,
+    }
+}
+
+/// `DuplicateId` diagnostics for the data records at `duplicates`, which are
+/// (position among the data records, id) pairs in file order.
+///
+/// The records carry no offset, so one `scan` places them; it runs only when
+/// a duplicate exists. They read as the substrate's own `DuplicateId`
+/// diagnostics of `check_references`: the later record's span and id.
+fn duplicate_diagnostics(input: &[u8], duplicates: &[(usize, EntityId)]) -> Vec<Diagnostic> {
+    if duplicates.is_empty() {
+        return Vec::new();
+    }
+    let Ok(scanned) = openbim_step::scan(input) else {
+        return Vec::new();
+    };
+    let mut wanted = duplicates.iter().peekable();
+    let mut found = Vec::with_capacity(duplicates.len());
+    for (index, record) in scanned.records().enumerate() {
+        let Some(&&(at, id)) = wanted.peek() else {
+            break;
+        };
+        if index != at {
+            continue;
+        }
+        wanted.next();
+        let Ok(record) = record else { continue };
+        found.push((record.span.start..record.span.end, id));
+    }
+    let starts: Vec<usize> = found.iter().map(|(range, _)| range.start).collect();
+    let positions = location::positions(input, &starts);
+    found
+        .into_iter()
+        .zip(positions)
+        .map(|((range, id), position)| {
+            let excerpt = location::excerpt_of(input, range.clone());
+            Diagnostic::new(
+                DiagnosticKind::DuplicateId,
+                format!("duplicate instance id {id}"),
+            )
+            .with_instance(id)
+            .with_byte_range(range)
+            .with_position(position)
+            .with_excerpt(excerpt)
+        })
+        .collect()
 }
 
 /// Keeps new entities off every id the source declared or referenced.
@@ -249,6 +310,11 @@ struct ModelSink {
     records: usize,
     /// Position and id text of the record whose conversion failed.
     failed: Option<(usize, String)>,
+    /// Whether the substrate reports duplicate ids itself.
+    check_references: bool,
+    /// Later records of an id already held, as (position among the data
+    /// records, id), when the substrate does not report them.
+    duplicates: Vec<(usize, EntityId)>,
 }
 
 impl<'a> openbim_step::EventSink<Text<'a>> for ModelSink {
@@ -284,7 +350,18 @@ impl ModelSink {
             self.floor = self.floor.max(declared);
         }
         match convert_noting(instance, &mut self.floor) {
-            Ok((id, entity)) => self.model.insert(id, entity),
+            Ok((id, _)) if self.model.contains(id) && !self.recovering => {
+                self.failed = Some((self.records - 1, id_text));
+                self.error = Some(StepError::DuplicateId { id, offset: 0 });
+            }
+            Ok((id, entity)) => {
+                // The later record replaces the earlier, as with
+                // `check_references`, which reports it itself.
+                if self.model.contains(id) && !self.check_references {
+                    self.duplicates.push((self.records - 1, id));
+                }
+                self.model.insert(id, entity);
+            }
             Err(error) if self.recovering => {
                 let mut skipped = Diagnostic::new(
                     DiagnosticKind::SkippedRecord,

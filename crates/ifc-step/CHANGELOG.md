@@ -12,6 +12,19 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#626)
+
+- Two records sharing one instance id are reported on every read, not only
+  under `check_references(true)`. A strict read now refuses the file with
+  `StepError::DuplicateId` (`ModelError::DuplicateId` through the codec),
+  naming the id and, in `StepError`, the later record's offset: this is a
+  behaviour change, a strict read of such a file used to succeed silently with
+  the later record. A lenient read keeps the later record, as it does under
+  `check_references(true)`, and reports a `DuplicateId` diagnostic carrying
+  the instance, span, position and excerpt. `StepReader::check` refuses the
+  same files. Detection happens on insert, with no second pass over a
+  duplicate-free file.
+
 ## [0.6.4] - 2026-11-04
 
 ### Changed (#627)
