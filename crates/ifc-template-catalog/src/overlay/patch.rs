@@ -2,7 +2,9 @@
 
 use thiserror::Error;
 
-use crate::definition::{Applicability, CatalogEdition, PropertyTemplate};
+use crate::definition::{
+    Applicability, CatalogEdition, PropertyKind, PropertyTemplate, QuantityKind,
+};
 
 /// One ledger entry correcting or annotating an official set template.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,6 +44,28 @@ pub enum PatchOperation {
     /// machine-readable PSD omits. Rejected when the target is a quantity set
     /// or already has a member of that name.
     AddProperty(PropertyTemplate),
+    /// Replace the kind of one quantity of a quantity set, rejected unless
+    /// the quantity currently has the `expected` kind. For a published kind
+    /// that real files cannot match.
+    ReplaceQuantityKind {
+        /// `Name` of the quantity in the target set.
+        member: String,
+        /// Kind the quantity must currently have.
+        expected: QuantityKind,
+        /// Kind to install in its place.
+        replacement: QuantityKind,
+    },
+    /// Replace the kind of one property of a property set, rejected unless
+    /// the property currently has the `expected` kind. For a published kind
+    /// that real files cannot match.
+    ReplacePropertyKind {
+        /// `Name` of the property in the target set.
+        member: String,
+        /// Kind the property must currently have.
+        expected: PropertyKind,
+        /// Kind to install in its place.
+        replacement: PropertyKind,
+    },
     /// Attach an [`Advisory`] to the target template without changing its data.
     AddAdvisory {
         /// How serious the advisory is.
@@ -142,8 +166,10 @@ pub enum PatchError {
         /// The target template name.
         template: String,
     },
-    /// A [`PatchOperation::ReplaceApplicability`]'s `expected` list did not
-    /// match the template's current applicability.
+    /// A [`PatchOperation::ReplaceApplicability`]'s `expected` list, or a
+    /// [`PatchOperation::ReplaceQuantityKind`] or
+    /// [`PatchOperation::ReplacePropertyKind`]'s `expected` kind, did not
+    /// match the template's current value.
     #[error("patch `{patch_id}` expected different applicability on `{template}`")]
     StaleTarget {
         /// Id of the offending patch.
@@ -151,13 +177,33 @@ pub enum PatchError {
         /// The target template name.
         template: String,
     },
-    /// A [`PatchOperation::AddProperty`] targets a quantity set template.
-    #[error("patch `{patch_id}` adds a property to quantity set `{template}`")]
+    /// A [`PatchOperation::AddProperty`] or
+    /// [`PatchOperation::ReplacePropertyKind`] targets a quantity set template.
+    #[error("patch `{patch_id}` changes a property of quantity set `{template}`")]
     NotAPropertySet {
         /// Id of the offending patch.
         patch_id: String,
         /// The target template name.
         template: String,
+    },
+    /// A [`PatchOperation::ReplaceQuantityKind`] targets a property set template.
+    #[error("patch `{patch_id}` changes a quantity of property set `{template}`")]
+    NotAQuantitySet {
+        /// Id of the offending patch.
+        patch_id: String,
+        /// The target template name.
+        template: String,
+    },
+    /// A [`PatchOperation::ReplaceQuantityKind`] or
+    /// [`PatchOperation::ReplacePropertyKind`] names a member the target lacks.
+    #[error("patch `{patch_id}` names unknown member `{member}` of `{template}`")]
+    UnknownMember {
+        /// Id of the offending patch.
+        patch_id: String,
+        /// The target template name.
+        template: String,
+        /// The unmatched member name.
+        member: String,
     },
     /// Two patches in the ledger both attempt to change the same template's
     /// applicability in incompatible ways (e.g. add after replace).

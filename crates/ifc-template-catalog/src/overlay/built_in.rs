@@ -1,7 +1,7 @@
 //! Evidence-backed Nehirde correction ledger.
 
 use crate::definition::{
-    Applicability, CatalogEdition, PropertyDataType, PropertyKind, PropertyTemplate,
+    Applicability, CatalogEdition, PropertyDataType, PropertyKind, PropertyTemplate, QuantityKind,
 };
 
 use super::{AdvisorySeverity, Patch, PatchOperation};
@@ -70,6 +70,18 @@ pub fn corrected_patches(edition: CatalogEdition) -> Vec<Patch> {
                  (IFC4.x-development 524daac53ca682e0649d240ace87f4cd7baff6e7 \
                  schemas/IFC.xml, association EAID_239365BE_FADD_46bf_A54E_3FA8D892187C); \
                  IfcOpenShell 1a6336bd Pset_IFC4_ADD2.ifc #1750: 'IfcSpatialZone'".into(),
+            ),
+            proxy_quantity_kind(
+                edition,
+                "NEH-IFC4-QTO-0002",
+                "NetSurfaceArea",
+                QuantityKind::Area,
+            ),
+            proxy_quantity_kind(
+                edition,
+                "NEH-IFC4-QTO-0003",
+                "NetVolume",
+                QuantityKind::Volume,
             ),
         ]
         }
@@ -266,6 +278,20 @@ pub fn corrected_patches(edition: CatalogEdition) -> Vec<Patch> {
              schemas/IFC.xml: association EAID_B40B9136_EB56_4717_8EDB_9CD7FDE69A22 between \
              Qto_SurfaceFeatureBaseQuantities and IfcSurfaceFeature".into(),
         ),
+        proxy_quantity_kind(
+            edition,
+            "NEH-IFC4X3-QTO-0012",
+            "NetSurfaceArea",
+            QuantityKind::Area,
+        ),
+        proxy_quantity_kind(
+            edition,
+            "NEH-IFC4X3-QTO-0013",
+            "NetVolume",
+            QuantityKind::Volume,
+        ),
+        process_item_enumeration(edition, "NEH-IFC4X3-PSD-0006", "Pset_CargoCommon"),
+        process_item_enumeration(edition, "NEH-IFC4X3-PSD-0007", "Pset_ProcessCapacity"),
         ],
         _ => Vec::new(),
     }
@@ -308,6 +334,87 @@ fn applicability_from_evidence(
         operation: PatchOperation::ReplaceApplicability {
             expected: Vec::new(),
             replacement: vec![selector],
+        },
+    }
+}
+
+/// Correct a `Qto_BuildingElementProxyQuantities` member the source declares
+/// `Q_COUNT`.
+///
+/// The IFC4 ADD2 TC1 and IFC4X3 ADD2 PSD XML both declare `NetSurfaceArea`
+/// and `NetVolume` with no definition and `Q_COUNT`, so `expected` is
+/// `Count`: a regenerated snapshot that already differs fails as stale.
+fn proxy_quantity_kind(
+    edition: CatalogEdition,
+    id: &str,
+    member: &str,
+    replacement: QuantityKind,
+) -> Patch {
+    let (psd, detail) = match edition {
+        CatalogEdition::Ifc4Add2Tc1 => (
+            "reference_schemas/psd_IFC4_ADD2_TC1/Qto_BuildingElementProxyQuantities.xml",
+            "the same-named members of every other IFC4 ADD2 TC1 base quantity set are \
+             Q_AREA and Q_VOLUME (IfcOpenShell 1a6336bd Pset_IFC4_ADD2.ifc, e.g. \
+             Qto_BeamBaseQuantities #4919 and #4931)",
+        ),
+        _ => (
+            "reference_schemas/psd/Qto_BuildingElementProxyQuantities.xml",
+            "the IfcOpenShell 1a6336bd Pset_IFC4X3.ifc template generated from the IFC4X3 \
+             documentation declares the set's NetSurfaceArea (#4856) Q_AREA and NetVolume \
+             (#4857) Q_VOLUME",
+        ),
+    };
+    Patch {
+        id: id.into(),
+        edition,
+        target_template: "Qto_BuildingElementProxyQuantities".into(),
+        rationale: format!(
+            "The source declares {member} as a count; it is a measured quantity, and real \
+             files carry it as an IfcQuantity{replacement:?}"
+        ),
+        evidence: format!(
+            "buildingSMART IFC4.x-development 524daac53ca682e0649d240ace87f4cd7baff6e7 \
+             {psd}: {member} QtoType Q_COUNT; {detail}"
+        ),
+        operation: PatchOperation::ReplaceQuantityKind {
+            member: member.into(),
+            expected: QuantityKind::Count,
+            replacement,
+        },
+    }
+}
+
+/// Correct the IFC4X3 `ProcessItem` member the source declares as a single
+/// value of the enumeration `PEnum_ProcessItem`.
+fn process_item_enumeration(edition: CatalogEdition, id: &str, target: &str) -> Patch {
+    Patch {
+        id: id.into(),
+        edition,
+        target_template: target.into(),
+        rationale: "ProcessItem selects from the enumeration PEnum_ProcessItem; a single value \
+                    cannot hold an enumerated selection"
+            .into(),
+        evidence: format!(
+            "buildingSMART IFC4.x-development 524daac53ca682e0649d240ace87f4cd7baff6e7 \
+             reference_schemas/psd/{target}.xml: ProcessItem is a TypePropertySingleValue of \
+             DataType PEnum_ProcessItem; \
+             docs/schemas/core/IfcProductExtension/PropertyEnumerations/PEnum_ProcessItem.md: \
+             enumeration of TEU, CGT, BARREL, TONNE, PASSENGER, VEHICLE"
+        ),
+        operation: PatchOperation::ReplacePropertyKind {
+            member: "ProcessItem".into(),
+            expected: PropertyKind::SingleValue {
+                data_type: PropertyDataType::new("PEnum_ProcessItem"),
+            },
+            replacement: PropertyKind::EnumeratedValue {
+                enumeration_name: Some("PEnum_ProcessItem".into()),
+                data_type: None,
+                values: ["TEU", "CGT", "BARREL", "TONNE", "PASSENGER", "VEHICLE"]
+                    .into_iter()
+                    .map(String::from)
+                    .collect(),
+                constants: Vec::new(),
+            },
         },
     }
 }

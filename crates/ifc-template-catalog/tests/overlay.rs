@@ -4,9 +4,10 @@
 mod support;
 use ifc_template_catalog::catalog::{Catalog, CatalogProfile};
 use ifc_template_catalog::definition::{
-    Applicability, CatalogEdition, PropertyDataType, PropertyKind, PropertyTemplate,
+    Applicability, CatalogEdition, PropertyDataType, PropertyKind, PropertyTemplate, QuantityKind,
     QuantitySetType, SetTemplateKind,
 };
+use ifc_template_catalog::embedded::official_catalog;
 use ifc_template_catalog::overlay::{AdvisorySeverity, Patch, PatchError, PatchOperation};
 use support::{manifest, property_set, quantity_set};
 
@@ -261,6 +262,93 @@ fn an_added_property_is_appended_once_and_only_to_a_property_set() {
             CatalogProfile::Corrected,
             &[add_property_patch("P-1", "Qto_Test")]
         ),
+        Err(PatchError::NotAPropertySet { .. })
+    ));
+}
+
+fn replace_quantity_patch(target: &str, member: &str, expected: QuantityKind) -> Patch {
+    Patch {
+        id: "Q-1".into(),
+        edition: CatalogEdition::Ifc4Add2Tc1,
+        target_template: target.into(),
+        rationale: "fixture".into(),
+        evidence: "fixture".into(),
+        operation: PatchOperation::ReplaceQuantityKind {
+            member: member.into(),
+            expected,
+            replacement: QuantityKind::Volume,
+        },
+    }
+}
+
+fn replace_property_patch(target: &str, member: &str) -> Patch {
+    Patch {
+        id: "P-1".into(),
+        edition: CatalogEdition::Ifc4Add2Tc1,
+        target_template: target.into(),
+        rationale: "fixture".into(),
+        evidence: "fixture".into(),
+        operation: PatchOperation::ReplacePropertyKind {
+            member: member.into(),
+            expected: PropertyKind::SingleValue {
+                data_type: PropertyDataType::new("IfcBoolean"),
+            },
+            replacement: PropertyKind::ListValue {
+                data_type: PropertyDataType::new("IfcBoolean"),
+            },
+        },
+    }
+}
+
+#[test]
+fn a_replaced_member_kind_needs_the_expected_kind_a_set_of_that_family_and_the_member() {
+    let official = official_catalog(CatalogEdition::Ifc4Add2Tc1).unwrap();
+    let apply = |patch| official.with_patches(CatalogProfile::Corrected, &[patch]);
+    let wall = "Qto_WallBaseQuantities";
+
+    let corrected = apply(replace_quantity_patch(wall, "Length", QuantityKind::Length)).unwrap();
+    let SetTemplateKind::Quantity { quantities, .. } = &corrected.get(wall).unwrap().kind else {
+        panic!()
+    };
+    let kind = |name: &str| quantities.iter().find(|q| q.name == name).unwrap().kind;
+    assert_eq!(kind("Length"), QuantityKind::Volume);
+    assert_eq!(kind("Width"), QuantityKind::Length);
+
+    assert!(matches!(
+        apply(replace_quantity_patch(wall, "Length", QuantityKind::Count)),
+        Err(PatchError::StaleTarget { .. })
+    ));
+    assert!(matches!(
+        apply(replace_quantity_patch(wall, "Nope", QuantityKind::Length)),
+        Err(PatchError::UnknownMember { .. })
+    ));
+    assert!(matches!(
+        apply(replace_quantity_patch(
+            "Pset_WallCommon",
+            "IsExternal",
+            QuantityKind::Length
+        )),
+        Err(PatchError::NotAQuantitySet { .. })
+    ));
+
+    let corrected = apply(replace_property_patch("Pset_WallCommon", "IsExternal")).unwrap();
+    let SetTemplateKind::Property { properties, .. } =
+        &corrected.get("Pset_WallCommon").unwrap().kind
+    else {
+        panic!()
+    };
+    let flag = properties.iter().find(|p| p.name == "IsExternal").unwrap();
+    assert!(matches!(flag.kind, PropertyKind::ListValue { .. }));
+    assert!(matches!(
+        apply(replace_property_patch("Pset_WallCommon", "Reference")),
+        Err(PatchError::StaleTarget { .. })
+    ));
+    assert!(matches!(
+        apply(replace_property_patch("Pset_WallCommon", "Nope")),
+        Err(PatchError::UnknownMember { .. })
+    ));
+    assert!(matches!(
+        apply(replace_property_patch(wall, "Length")),
         Err(PatchError::NotAPropertySet { .. })
     ));
 }

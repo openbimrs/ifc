@@ -391,3 +391,45 @@ fn every_catalog_member_keeps_its_form_through_the_facade() {
     }
     assert!(quantities.len() >= 6, "{quantities:?}");
 }
+
+/// `#2` and `#3` are the quantities, `#4` the proxy's `Qto_BuildingElementProxyQuantities`.
+fn proxy_quantities(token: &str, area: &str, volume: &str) -> ifc::Model {
+    let text = format!(
+        "ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION((''),'2;1');\n\
+         FILE_NAME('sets.ifc','',(''),(''),'','','');\nFILE_SCHEMA(('{token}'));\nENDSEC;\nDATA;\n\
+         #2={area}('NetSurfaceArea',$,$,1.,$);\n\
+         #3={volume}('NetVolume',$,$,1.,$);\n\
+         #4=IFCELEMENTQUANTITY('0YvctVUKr0kugbFTf53O03',$,'Qto_BuildingElementProxyQuantities',$,$,(#2,#3));\n\
+         ENDSEC;\nEND-ISO-10303-21;\n"
+    );
+    StepCodec
+        .read_bytes(text.as_bytes())
+        .expect("the model parses")
+}
+
+/// ArchiCAD writes the proxy's net area and volume as measured quantities;
+/// the source templates declare both a count (#553).
+#[test]
+fn a_proxy_net_area_and_volume_are_clean_and_a_count_is_not() {
+    for (token, ..) in &RELEASES[1..] {
+        let clean = validate(
+            &proxy_quantities(token, "IFCQUANTITYAREA", "IFCQUANTITYVOLUME"),
+            schema(token),
+        );
+        assert!(
+            members(&clean, "property.member_type").is_empty(),
+            "{token}: {:?}",
+            clean.findings()
+        );
+        let report = validate(
+            &proxy_quantities(token, "IFCQUANTITYCOUNT", "IFCQUANTITYCOUNT"),
+            schema(token),
+        );
+        assert_eq!(
+            members(&report, "property.member_type").len(),
+            2,
+            "{token}: {:?}",
+            report.findings()
+        );
+    }
+}

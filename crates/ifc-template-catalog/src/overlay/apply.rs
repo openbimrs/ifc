@@ -123,6 +123,60 @@ impl Catalog {
                     }
                     properties.push(property.clone());
                 }
+                PatchOperation::ReplaceQuantityKind {
+                    member,
+                    expected,
+                    replacement,
+                } => {
+                    let SetTemplateKind::Quantity { quantities, .. } = &mut template.kind else {
+                        return Err(PatchError::NotAQuantitySet {
+                            patch_id: patch.id.clone(),
+                            template: template.name.clone(),
+                        });
+                    };
+                    let quantity = quantities
+                        .iter_mut()
+                        .find(|quantity| quantity.name == *member)
+                        .ok_or_else(|| PatchError::UnknownMember {
+                            patch_id: patch.id.clone(),
+                            template: template.name.clone(),
+                            member: member.clone(),
+                        })?;
+                    if quantity.kind != *expected {
+                        return Err(PatchError::StaleTarget {
+                            patch_id: patch.id.clone(),
+                            template: template.name.clone(),
+                        });
+                    }
+                    quantity.kind = *replacement;
+                }
+                PatchOperation::ReplacePropertyKind {
+                    member,
+                    expected,
+                    replacement,
+                } => {
+                    let SetTemplateKind::Property { properties, .. } = &mut template.kind else {
+                        return Err(PatchError::NotAPropertySet {
+                            patch_id: patch.id.clone(),
+                            template: template.name.clone(),
+                        });
+                    };
+                    let property = properties
+                        .iter_mut()
+                        .find(|property| property.name == *member)
+                        .ok_or_else(|| PatchError::UnknownMember {
+                            patch_id: patch.id.clone(),
+                            template: template.name.clone(),
+                            member: member.clone(),
+                        })?;
+                    if property.kind != *expected {
+                        return Err(PatchError::StaleTarget {
+                            patch_id: patch.id.clone(),
+                            template: template.name.clone(),
+                        });
+                    }
+                    property.kind = replacement.clone();
+                }
                 PatchOperation::AddAdvisory { severity, message } => {
                     advisories.push(Advisory {
                         patch_id: patch.id.clone(),
