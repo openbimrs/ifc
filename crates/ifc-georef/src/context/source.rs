@@ -23,6 +23,7 @@
 use ifc_model::value::Value;
 use ifc_model::{EntityId, Model};
 
+use crate::crs::Damage;
 use crate::error::{GeorefError, GeorefResult};
 use crate::slot::map_conversion as slot;
 use crate::view::GeorefView;
@@ -99,7 +100,7 @@ pub fn resolve_operation_source(
             actual: actual.to_owned(),
         });
     }
-    operation_source(view.model, Some(view), operation)
+    operation_source(view.model, Some(view), operation, None)
 }
 
 /// The one coordinate operation whose `SourceCRS` is `source`: the
@@ -126,7 +127,7 @@ pub fn coordinate_operation_for(
         });
     }
     classify(model, Some(view), source)?;
-    let operations = operations_from(model, Some(view), source);
+    let operations = operations_from(model, Some(view), source, None)?;
     match operations.as_slice() {
         [] => Ok(None),
         [one] => {
@@ -146,6 +147,7 @@ pub(crate) fn operation_source(
     model: &Model,
     view: Option<&GeorefView>,
     operation: EntityId,
+    damage: Option<&Damage>,
 ) -> GeorefResult<OperationSource> {
     let entity = model.get(operation).ok_or(GeorefError::MissingEntity {
         referrer: operation,
@@ -173,7 +175,7 @@ pub(crate) fn operation_source(
     }
     let classified = classify(model, view, source)?;
     forbid_sub_context(model, source)?;
-    if operations_from(model, view, source).len() > 1 {
+    if operations_from(model, view, source, damage)?.len() > 1 {
         return Err(GeorefError::RuleViolation {
             entity: source,
             rule: HAS_COORDINATE_OPERATION,
@@ -236,18 +238,32 @@ fn forbid_sub_context(model: &Model, source: EntityId) -> GeorefResult<()> {
 
 /// Every coordinate operation whose `SourceCRS` references `source`, in
 /// ascending id order.
-fn operations_from(model: &Model, view: Option<&GeorefView>, source: EntityId) -> Vec<EntityId> {
+///
+/// With `damage`, every operation scanned is checked before its source is
+/// read (#690): a reported operation may be the copy that named `source`.
+fn operations_from(
+    model: &Model,
+    view: Option<&GeorefView>,
+    source: EntityId,
+    damage: Option<&Damage>,
+) -> GeorefResult<Vec<EntityId>> {
     let types: Vec<&str> = match view {
         Some(view) => view.schema.subtypes("IfcCoordinateOperation"),
         None => UNPINNED_OPERATIONS.to_vec(),
     };
-    let mut found: Vec<EntityId> = types
+    let mut found = Vec::new();
+    for (id, operation) in types
         .into_iter()
         .flat_map(|type_name| model.of_type(type_name))
-        .filter(|(_, operation)| operation.reference(slot::SOURCE_CRS) == Some(source))
-        .map(|(id, _)| id)
-        .collect();
+    {
+        if let Some(damage) = damage {
+            damage.check(id)?;
+        }
+        if operation.reference(slot::SOURCE_CRS) == Some(source) {
+            found.push(id);
+        }
+    }
     found.sort_unstable();
     found.dedup();
-    found
+    Ok(found)
 }

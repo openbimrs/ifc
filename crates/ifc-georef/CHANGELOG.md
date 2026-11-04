@@ -12,11 +12,36 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#690)
+
+- `GeorefError::RecordDamaged`, the refusal for a CRS, coordinate-operation
+  or IFC2X3 property-set record the reader reported. `UnitRecordDamaged`
+  stays for unit records; `RecordsIncomplete` covers diagnostics that may
+  hide any record georeferencing reads, units included.
+
+### Fixed (#690)
+
+- `resolve_project_to_map`, `resolve_project_to_map_in`,
+  `resolve_geographic_offset_in` and `resolve_property_set_georeferencing`
+  check, against `ifc_model::RecordDamage`, every record they read besides
+  units, and refuse a reported one with `RecordDamaged` naming it. Each
+  record is checked before it is read or filtered on, so a damaged copy
+  cannot steer the choice: the operation (before its type and coordinates),
+  its source, every operation scanned for `HasCoordinateOperation`, the CRS,
+  every `IfcWellKnownText` scanned, and in IFC2X3 every
+  `IfcRelDefinesByProperties` scanned, its property set, each related host
+  and each `IfcPropertySingleValue`. One `Damage` is built per entry point.
+- A skip naming a held id elsewhere is refused as `RecordsIncomplete`, and
+  so is an empty IFC2X3 host list when a record was skipped and an
+  `ePSet_MapConversion` or `ePSet_ProjectedCRS` set is present.
+- The facade's presence gate before the property-set entry point is #695.
+  Semver: patch.
+
 ### Added (#686)
 
-- `GeorefError::UnitRecordDamaged` and `GeorefError::UnitsIncomplete`, the
+- `GeorefError::UnitRecordDamaged` and `GeorefError::RecordsIncomplete`, the
   refusals for a unit record the reader reported and for diagnostics that
-  may hide one.
+  may hide a record georeferencing reads.
 
 ### Fixed (#686)
 

@@ -44,8 +44,8 @@
 use ifc_model::value::Value;
 use ifc_model::EntityId;
 
-use crate::context::{operation_source, OperationSource};
-use crate::crs::{geographic_crs, projected_crs, GeographicCrs, LengthUnit};
+use crate::context::OperationSource;
+use crate::crs::{geographic_crs, projected_crs, Damage, GeographicCrs, LengthUnit};
 use crate::error::{GeorefError, GeorefResult};
 use crate::slot::map_conversion as base;
 use crate::slot::rigid_operation as slot;
@@ -102,12 +102,15 @@ pub fn resolve_geographic_offset_in(
             actual: actual.to_owned(),
         });
     }
+    let damage = Damage::of(view.model)?;
     let op = Operation {
         model: view.model,
         view: Some(view),
         id,
         entity,
+        damage: &damage,
     };
+    damage.check(id)?;
     let coordinates = coordinates(&op)?;
     if coordinates.measure != PLANE_ANGLE {
         return Err(GeorefError::CoordinateMeasureMismatch {
@@ -116,10 +119,10 @@ pub fn resolve_geographic_offset_in(
             actual: coordinates.measure,
         });
     }
-    let source = operation_source(view.model, Some(view), id)?;
+    let source = op.source()?;
     let target = op.required_ref(base::TARGET_CRS, "TargetCRS")?;
-    let target_crs = geographic_crs(view.model, target)?;
-    Ok(GeographicOffset {
+    let target_crs = geographic_crs(view.model, target, &damage)?;
+    damage.settle(GeographicOffset {
         operation: id,
         source,
         target_crs,
@@ -142,9 +145,9 @@ pub(super) fn lower(
             actual: coordinates.measure,
         });
     }
-    let source = operation_source(op.model, op.view, op.id)?;
+    let source = op.source()?;
     let target = op.required_ref(base::TARGET_CRS, "TargetCRS")?;
-    let target_crs = projected_crs(op.model, target)?;
+    let target_crs = projected_crs(op.model, target, op.damage)?;
     let map_unit = target_crs
         .map_unit
         .clone()

@@ -112,10 +112,23 @@ pub enum GeorefError {
         /// Position of the first diagnostic naming it in `Model::diagnostics`.
         diagnostic: usize,
     },
-    /// The reader's diagnostics may hide a unit record (#686): a diagnostic
+    /// The reader reported a record georeferencing reads other than a unit
+    /// (#690): the CRS, the coordinate operation, its source, or an IFC2X3
+    /// property set or property. The file defines its id more than once, or
+    /// a lenient read skipped a record with this id while another record
+    /// holds it. The kept record cannot be shown to be the one the file
+    /// meant.
+    RecordDamaged {
+        /// The reported record.
+        entity: EntityId,
+        /// Position of the first diagnostic naming it in `Model::diagnostics`.
+        diagnostic: usize,
+    },
+    /// The reader's diagnostics may hide a record georeferencing reads (#686,
+    /// #690): a diagnostic
     /// of an unclassified kind, a skipped record or duplicate with no id, or
     /// a skip naming a held id elsewhere.
-    UnitsIncomplete {
+    RecordsIncomplete {
         /// How many diagnostics the model carries.
         diagnostics: usize,
     },
@@ -274,9 +287,13 @@ impl std::fmt::Display for GeorefError {
                 f,
                 "{entity} is a unit record the reader reported (diagnostic {diagnostic}), so the map unit is not shown"
             ),
-            Self::UnitsIncomplete { diagnostics } => write!(
+            Self::RecordDamaged { entity, diagnostic } => write!(
                 f,
-                "{diagnostics} reader diagnostics may hide a unit record, so the map unit is not shown"
+                "{entity} is a record the reader reported (diagnostic {diagnostic}), so the georeferencing is not shown"
+            ),
+            Self::RecordsIncomplete { diagnostics } => write!(
+                f,
+                "{diagnostics} reader diagnostics may hide a record georeferencing reads, so it is not shown"
             ),
             Self::MissingSchema => {
                 write!(f, "model header declares no FILE_SCHEMA token")

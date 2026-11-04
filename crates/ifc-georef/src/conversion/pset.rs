@@ -82,7 +82,7 @@ use ifc_model::{Entity, EntityId, Model};
 use ifc_schema::{for_version, SchemaVersion};
 
 use crate::context::OperationSource;
-use crate::crs::{resolve_length_unit, LengthUnit, ProjectedCrs};
+use crate::crs::{resolve_length_unit, Damage, LengthUnit, ProjectedCrs};
 use crate::error::{GeorefError, GeorefResult};
 use crate::slot::{property_set, property_single_value, rel_defines_by_properties};
 use crate::view::declared_release;
@@ -138,9 +138,17 @@ pub fn resolve_property_set_georeferencing(
             token: token.clone(),
         });
     }
-    let hosts = hosts(model)?;
+    let damage = Damage::of(model)?;
+    let hosts = hosts(model, &damage)?;
     if hosts.is_empty() {
-        return Ok(Vec::new());
+        // A skipped record may have been the host or a set, so an empty list
+        // is not trusted when georeferencing sets are present (#690).
+        if damage.records_lost() && has_property_set_georeferencing(model) {
+            return Err(GeorefError::RecordsIncomplete {
+                diagnostics: damage.diagnostics(),
+            });
+        }
+        return damage.settle(Vec::new());
     }
     if !project_metres_per_unit.is_finite() || project_metres_per_unit <= 0.0 {
         let (&host, _) = hosts.iter().next().expect("not empty");
@@ -154,11 +162,12 @@ pub fn resolve_property_set_georeferencing(
         metres_per_unit: project_metres_per_unit,
     };
     let any_project = hosts.values().any(|sets| sets.is_project);
-    hosts
+    let resolved = hosts
         .iter()
         .filter(|(_, sets)| sets.is_project == any_project)
-        .map(|(&host, sets)| resolve_host(model, host, sets, &project_unit))
-        .collect()
+        .map(|(&host, sets)| resolve_host(model, host, sets, &project_unit, &damage))
+        .collect::<GeorefResult<Vec<_>>>()?;
+    damage.settle(resolved)
 }
 
 /// Which georeferencing set a property set is, by name ignoring case.
@@ -190,13 +199,15 @@ struct HostSets {
 /// Every `IfcProject` and `IfcSite` with a georeferencing set attached by
 /// an `IfcRelDefinesByProperties`, keyed by host id. Other objects are not
 /// hosts: the guide names the project, practice adds the site.
-fn hosts(model: &Model) -> GeorefResult<BTreeMap<EntityId, HostSets>> {
+fn hosts(model: &Model, damage: &Damage) -> GeorefResult<BTreeMap<EntityId, HostSets>> {
     let mut hosts: BTreeMap<EntityId, HostSets> = BTreeMap::new();
     for (rel_id, rel) in model.of_type("IFCRELDEFINESBYPROPERTIES") {
+        damage.check(rel_id)?;
         let Some(set_id) = rel.reference(rel_defines_by_properties::RELATING_PROPERTY_DEFINITION)
         else {
             continue;
         };
+        damage.check(set_id)?;
         let Some(kind) = model
             .get(set_id)
             .filter(|set| set.is_type("IFCPROPERTYSET"))
@@ -209,6 +220,7 @@ fn hosts(model: &Model) -> GeorefResult<BTreeMap<EntityId, HostSets>> {
             .and_then(Value::as_list)
             .unwrap_or(&[]);
         for object in related.iter().filter_map(Value::as_ref_id) {
+            damage.check(object)?;
             let host = model.get(object).ok_or(GeorefError::MissingEntity {
                 referrer: rel_id,
                 missing: object,
@@ -252,6 +264,7 @@ fn resolve_host(
     host: EntityId,
     sets: &HostSets,
     project_unit: &LengthUnit,
+    damage: &Damage,
 ) -> GeorefResult<ProjectToMap> {
     // Both ambiguity checks before completeness, so a host with two of one
     // set and none of the other reports the ambiguity it has.
@@ -261,9 +274,16 @@ fn resolve_host(
     if sets.projected_crs.len() > 1 {
         one(host, PROJECTED_CRS_PSET, &sets.projected_crs)?;
     }
-    let conversion =
-        Properties::read(model, one(host, MAP_CONVERSION_PSET, &sets.map_conversion)?)?;
-    let crs = Properties::read(model, one(host, PROJECTED_CRS_PSET, &sets.projected_crs)?)?;
+    let conversion = Properties::read(
+        model,
+        one(host, MAP_CONVERSION_PSET, &sets.map_conversion)?,
+        damage,
+    )?;
+    let crs = Properties::read(
+        model,
+        one(host, PROJECTED_CRS_PSET, &sets.projected_crs)?,
+        damage,
+    )?;
 
     let target_crs = projected_crs(&crs)?;
     let map_unit = target_crs
@@ -396,13 +416,15 @@ fn si_length_unit(text: &str) -> Option<LengthUnit> {
 /// The properties of one georeferencing set, by name.
 struct Properties<'m> {
     set: EntityId,
+    damage: &'m Damage,
     by_name: BTreeMap<&'m str, (EntityId, &'m Entity)>,
 }
 
 impl<'m> Properties<'m> {
     /// Index `HasProperties` by name, refusing a dangling or non-reference
     /// member and a repeated name (`WR32`).
-    fn read(model: &'m Model, set: EntityId) -> GeorefResult<Self> {
+    fn read(model: &'m Model, set: EntityId, damage: &'m Damage) -> GeorefResult<Self> {
+        damage.check(set)?;
         let entity = model.get(set).ok_or(GeorefError::MissingEntity {
             referrer: set,
             missing: set,
@@ -422,6 +444,7 @@ impl<'m> Properties<'m> {
                 index: property_set::HAS_PROPERTIES,
                 name: "HasProperties",
             })?;
+            damage.check(id)?;
             let property = model.get(id).ok_or(GeorefError::MissingEntity {
                 referrer: set,
                 missing: id,
@@ -440,7 +463,11 @@ impl<'m> Properties<'m> {
                 });
             }
         }
-        Ok(Self { set, by_name })
+        Ok(Self {
+            set,
+            damage,
+            by_name,
+        })
     }
 
     fn get(&self, name: &str) -> Option<(EntityId, &'m Entity)> {
@@ -524,7 +551,7 @@ impl<'m> Properties<'m> {
                     index: property_single_value::UNIT,
                     name: "Unit",
                 })?;
-                let stated = resolve_length_unit(model, unit)?;
+                let stated = resolve_length_unit(model, unit, self.damage)?;
                 if stated.metres_per_unit != map_unit.metres_per_unit {
                     return Err(self.invalid(
                         id,

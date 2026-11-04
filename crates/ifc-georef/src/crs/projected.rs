@@ -5,6 +5,7 @@ use ifc_model::{Entity, EntityId, Model};
 use ifc_schema::SchemaVersion;
 
 use crate::crs::unit::{resolve_length_unit, LengthUnit};
+use crate::crs::Damage;
 use crate::error::{GeorefError, GeorefResult};
 use crate::slot::projected_crs as slot;
 use crate::slot::well_known_text as wkt_slot;
@@ -52,7 +53,12 @@ pub struct ProjectedCrs {
     pub well_known_text: Option<String>,
 }
 
-pub(crate) fn projected_crs(model: &Model, id: EntityId) -> GeorefResult<ProjectedCrs> {
+pub(crate) fn projected_crs(
+    model: &Model,
+    id: EntityId,
+    damage: &Damage,
+) -> GeorefResult<ProjectedCrs> {
+    damage.check(id)?;
     let entity = model.get(id).ok_or(GeorefError::MissingEntity {
         referrer: id,
         missing: id,
@@ -68,7 +74,7 @@ pub(crate) fn projected_crs(model: &Model, id: EntityId) -> GeorefResult<Project
     // `crate::slot`; the two versions declare them differently but place
     // them identically. What differs is whether `Name` is optional.
     let (name, well_known_text) = if declares_ifc4x3(model) {
-        name_or_wkt(model, id, entity)?
+        name_or_wkt(model, id, entity, damage)?
     } else {
         let name = entity
             .text(slot::NAME)
@@ -87,7 +93,7 @@ pub(crate) fn projected_crs(model: &Model, id: EntityId) -> GeorefResult<Project
                 index: slot::MAP_UNIT,
                 name: "MapUnit",
             })?;
-            Some(resolve_length_unit(model, unit)?)
+            Some(resolve_length_unit(model, unit, damage)?)
         }
     };
     Ok(ProjectedCrs {
@@ -125,6 +131,7 @@ pub(crate) fn name_or_wkt(
     model: &Model,
     id: EntityId,
     entity: &Entity,
+    damage: &Damage,
 ) -> GeorefResult<(Option<String>, Option<String>)> {
     let name = match entity.attribute(slot::NAME) {
         None | Some(Value::Null) => None,
@@ -140,22 +147,32 @@ pub(crate) fn name_or_wkt(
                 .to_owned(),
         ),
     };
-    let mut definitions = model.of_type("IFCWELLKNOWNTEXT").filter(|(_, wkt)| {
-        wkt.attribute(wkt_slot::COORDINATE_REFERENCE_SYSTEM)
+    // Every definition scanned is checked before its CRS is read: a reported
+    // one may be the copy that named another CRS (#690).
+    let mut matching = Vec::new();
+    for (wkt_id, wkt) in model.of_type("IFCWELLKNOWNTEXT") {
+        damage.check(wkt_id)?;
+        if wkt
+            .attribute(wkt_slot::COORDINATE_REFERENCE_SYSTEM)
             .and_then(Value::as_ref_id)
             == Some(id)
-    });
+        {
+            matching.push((wkt_id, wkt));
+        }
+    }
+    let mut definitions = matching.into_iter();
     let well_known_text = match (definitions.next(), definitions.next()) {
         (None, _) => None,
-        (Some((wkt_id, wkt)), None) => Some(
+        (Some((wkt_id, wkt)), None) => Some({
+            damage.check(wkt_id)?;
             wkt.text(wkt_slot::WELL_KNOWN_TEXT)
                 .ok_or(GeorefError::InvalidAttribute {
                     entity: wkt_id,
                     index: wkt_slot::WELL_KNOWN_TEXT,
                     name: "WellKnownText",
                 })?
-                .to_owned(),
-        ),
+                .to_owned()
+        }),
         (Some(_), Some(_)) => {
             return Err(GeorefError::RuleViolation {
                 entity: id,
