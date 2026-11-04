@@ -65,9 +65,9 @@ pub(crate) fn sets_by_object<S: Clone>(
         sets: BTreeMap::new(),
         anomalies: BTreeMap::new(),
     };
-    // Which entities are type objects, from the IFC4 table as always, or
-    // the newest bundled one in a build without it (#306).
-    let (_, schema) = crate::baseline::table(None);
+    // Which entities are type objects, from the declared release's table
+    // (#631), or the baseline when the header names none this build bundles.
+    let (_, schema) = crate::baseline::table_for(model);
 
     // Route 1: IfcRelDefinesByProperties, for occurrences.
     for &id in model.ids_of_type("IFCRELDEFINESBYPROPERTIES") {

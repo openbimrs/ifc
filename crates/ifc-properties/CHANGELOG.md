@@ -12,6 +12,12 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#631)
+
+- The permissive property and quantity views decide which entities are type objects with the declared release's table instead of IFC4's, so a type object only a later release defines (an IFC4X3 `IfcBearingType`) has its `HasPropertySets` read. A header naming no bundled release still reads through the baseline table.
+
+Semver: patch.
+
 ## [0.10.6] - 2026-11-04
 
 ### Changed (#684)

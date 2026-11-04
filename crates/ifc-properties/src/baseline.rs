@@ -6,6 +6,7 @@
 //! through the newest release it bundles instead; the crate's compile guard
 //! guarantees there is one.
 
+use ifc_model::Model;
 use ifc_schema::{for_version, Schema, SchemaVersion};
 
 /// The order a permissive read tries the bundled tables in: IFC4 first, as
@@ -26,4 +27,14 @@ pub(crate) fn table(preferred: Option<SchemaVersion>) -> (SchemaVersion, &'stati
         .find_map(|version| for_version(version).ok().map(|schema| (version, schema)))
         // The compile guard in lib.rs refuses a build bundling no release.
         .expect("ifc-properties bundles at least one release")
+}
+
+/// The table for `model`: the release its header's single `FILE_SCHEMA`
+/// names when this build bundles it, otherwise the baseline (#631).
+pub(crate) fn table_for(model: &Model) -> (SchemaVersion, &'static Schema) {
+    let declared = match model.header().schema.as_slice() {
+        [token] => SchemaVersion::from_header_token(token),
+        _ => None,
+    };
+    table(declared)
 }
