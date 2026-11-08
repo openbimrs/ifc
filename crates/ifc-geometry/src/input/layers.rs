@@ -158,7 +158,7 @@ pub fn layer_set_reference(
             type_name: product_type.clone(),
             attribute: "Body representation",
         })?;
-    let (extrusion_id, local, sweep) = coaxial_frame(model, units, body)?;
+    let (extrusion_id, local, sweep) = coaxial_frame(model, units, body, direction)?;
 
     let (normal, distance, source) = match direction {
         LayerSetDirection::Axis2 => {
@@ -205,11 +205,14 @@ pub fn layer_set_reference(
 /// must share the `Position` orientation and profile plane (origins may slide
 /// within it) and the extrusion direction, or the layers would not hang from
 /// one plane. The depth is not compared: the reference reads neither it nor
-/// the profile.
+/// the profile. Along AXIS2 the origins may not differ along the layer
+/// direction (the object y axis) either: pieces slide along or up the wall,
+/// not across its layers. A refusal names the body item.
 fn coaxial_frame(
     model: &Model,
     units: &UnitScale,
     body: EntityId,
+    direction: LayerSetDirection,
 ) -> GeometryResult<(EntityId, Transform, [f64; 3])> {
     let representation = model.get(body).ok_or(GeometryError::MissingEntity {
         referrer: body,
@@ -240,20 +243,24 @@ fn coaxial_frame(
         let sweep = normalised(local.apply_direction(sweep));
         match &first {
             None => first = Some((id, local, sweep)),
-            Some((_, frame, direction)) => {
+            Some((_, frame, first_sweep)) => {
                 let shift = [0, 1, 2].map(|i| local.origin[i] - frame.origin[i]);
-                let same_frame = dot(frame.basis[2], shift).abs() <= AXIS_TOLERANCE
+                let across = matches!(direction, LayerSetDirection::Axis2)
+                    && shift[1].abs() > AXIS_TOLERANCE;
+                let same_frame = !across
+                    && dot(frame.basis[2], shift).abs() <= AXIS_TOLERANCE
                     && frame
                         .basis
                         .iter()
                         .zip(&local.basis)
                         .all(|(a, b)| vectors_agree(*a, *b));
-                if !same_frame || !vectors_agree(*direction, sweep) {
+                if !same_frame || !vectors_agree(*first_sweep, sweep) {
                     return Err(unsupported(
-                        id,
-                        "IFCEXTRUDEDAREASOLID",
-                        "the body items are not coaxial: this extrusion differs in Position \
-                         orientation, profile plane or ExtrudedDirection from the first item, so the layers have no single \
+                        item,
+                        "body item",
+                        "the body items are not coaxial: this item differs in Position \
+                         orientation, profile plane, offset across the layers or \
+                         ExtrudedDirection from the first item, so the layers have no single \
                          reference plane",
                     ));
                 }

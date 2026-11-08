@@ -257,6 +257,101 @@ fn a_body_item_with_another_position_is_unsupported_and_named() {
 }
 
 #[test]
+fn a_body_item_with_a_turned_position_is_unsupported_and_named() {
+    // Same origin, z and ExtrudedDirection, but the x axis turned 90 degrees.
+    let turned = "#120=IFCCARTESIANPOINT((0.,0.,0.));
+         #121=IFCDIRECTION((0.,1.,0.));
+         #122=IFCAXIS2PLACEMENT3D(#120,$,#121);
+         #123=IFCDIRECTION((0.,0.,1.));
+         #110=IFCEXTRUDEDAREASOLID(#100,#122,#123,1400.);";
+    let m = wall(
+        "#104,#110",
+        Some("#40"),
+        &format!("{}{}{turned}", plain(0.0), axis(0.0)),
+    );
+    assert_unsupported(&refusal(&m, LayerSetDirection::Axis2), 110, "not coaxial");
+}
+
+#[test]
+fn a_body_item_shifted_across_the_wall_layers_is_unsupported_and_named() {
+    let m = wall(
+        "#104,#110",
+        Some("#40"),
+        &format!(
+            "{}{}{}",
+            plain(0.0),
+            axis(0.0),
+            second("0.,300.,0.", "0.,0.,1.")
+        ),
+    );
+    assert_unsupported(&refusal(&m, LayerSetDirection::Axis2), 110, "not coaxial");
+    // Along the wall and up it is fine.
+    let m = wall(
+        "#104,#110",
+        Some("#40"),
+        &format!(
+            "{}{}{}",
+            plain(0.0),
+            axis(0.0),
+            second("3000.,0.,0.", "0.,0.,1.")
+        ),
+    );
+    reference(&m, LayerSetDirection::Axis2).expect("slid along the wall");
+}
+
+#[test]
+fn a_slab_of_several_coaxial_items_shares_its_plane_and_refuses_another() {
+    let m = model(
+        "IFCSLAB",
+        "#104,#110",
+        None,
+        &format!("{}{}", plain(0.0), second("3000.,300.,0.", "0.,0.,1.")),
+    );
+    let r = reference(&m, LayerSetDirection::Axis3).expect("coplanar items");
+    close(r.normal, [0.0, 0.0, 1.0]);
+    let m = model(
+        "IFCSLAB",
+        "#104,#110",
+        None,
+        &format!("{}{}", plain(0.0), second("0.,0.,50.", "0.,0.,1.")),
+    );
+    assert_unsupported(&refusal(&m, LayerSetDirection::Axis3), 110, "not coaxial");
+}
+
+#[test]
+fn a_clipped_item_is_named_by_its_body_item_not_its_extrusion() {
+    // #130 clips #110, which is off the plane of #104.
+    let clipped = "#131=IFCCARTESIANPOINT((0.,0.,0.));
+         #132=IFCAXIS2PLACEMENT3D(#131,$,$);
+         #133=IFCPLANE(#132);
+         #134=IFCHALFSPACESOLID(#133,.F.);
+         #130=IFCBOOLEANCLIPPINGRESULT(.DIFFERENCE.,#110,#134);";
+    let m = wall(
+        "#104,#130",
+        Some("#40"),
+        &format!(
+            "{}{}{}{clipped}",
+            plain(0.0),
+            axis(0.0),
+            second("0.,300.,0.", "0.,0.,1.")
+        ),
+    );
+    assert_unsupported(&refusal(&m, LayerSetDirection::Axis2), 130, "not coaxial");
+    // A clipped coaxial item is accepted.
+    let m = wall(
+        "#104,#130",
+        Some("#40"),
+        &format!(
+            "{}{}{}{clipped}",
+            plain(0.0),
+            axis(0.0),
+            second("3000.,0.,0.", "0.,0.,1.")
+        ),
+    );
+    reference(&m, LayerSetDirection::Axis2).expect("clipped coaxial item");
+}
+
+#[test]
 fn a_body_item_with_another_direction_is_unsupported_and_named() {
     let m = wall(
         "#104,#110",
