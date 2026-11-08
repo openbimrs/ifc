@@ -9,6 +9,10 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+### Changed (wire format 1.5)
+
+- The geometry graph payload (#367) may be Axiolid's wire format 1.5, written only when a graph holds a ruled surface (axiolid/kernel#402); every other graph keeps its version. The newest version the build advertises (`GEOMETRY_FORMAT_VERSION`) is `"1.5"`. A reader on `axiolid-model` 0.3.17 or older refuses `1.5`.
+
 ### Added (#603)
 
 - `SurfaceColour.Source` can be `materialSet`, `SourceEntity` then the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)), and the new last parameter `SourceMaterials` lists the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct); empty for other sources.

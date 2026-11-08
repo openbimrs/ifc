@@ -68,7 +68,7 @@ mod graph {
         assert!(FORMAT_VERSION.reads(FormatVersion::parse(version).unwrap()));
         assert_eq!(
             (GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION),
-            ("axiolid-geometry-graph", "1.4")
+            ("axiolid-geometry-graph", "1.5")
         );
         assert_eq!(GEOMETRY_FORMAT, FORMAT_NAME);
         assert_eq!(GEOMETRY_FORMAT_VERSION, FORMAT_VERSION.to_string());
@@ -217,7 +217,7 @@ mod graph {
         let text = record.json().expect("JSON text");
         let envelope: serde_json::Value = serde_json::from_str(text).unwrap();
         assert_eq!(envelope["version"], GEOMETRY_FORMAT_VERSION);
-        assert_eq!(GEOMETRY_FORMAT_VERSION, "1.4");
+        assert_eq!(GEOMETRY_FORMAT_VERSION, "1.5");
         assert!(text.contains("\"BoundedHalfSpaceAlongZ\""), "{text}");
         GeometryGraph::from_json(text).expect("reads back");
     }

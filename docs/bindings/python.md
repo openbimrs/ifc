@@ -715,8 +715,8 @@ polygonal bounded half-space clips
 `1.4` (axiolid/kernel#297, #301, #303, #321). A reader on `axiolid-model` 0.3.8 or
 older reads a `1.0` payload and refuses `1.1`; one on 0.3.10 or older
 refuses `1.2`, one on 0.3.11 or older `1.3`, one on 0.3.13 or older
-`1.4`. `GEOMETRY_FORMAT` and `GEOMETRY_FORMAT_VERSION`
-name the format and the newest version the wheel writes, `"1.4"`. Nodes come in insertion order; each is tagged by its
+`1.4`, one on 0.3.17 or older `1.5`. `GEOMETRY_FORMAT` and `GEOMETRY_FORMAT_VERSION`
+name the format and the newest version the wheel writes, `"1.5"`. Nodes come in insertion order; each is tagged by its
 kind, and a reference to another node is its index. The graph is in world
 coordinates, metres, with the product's `transform` already applied. A
 product with no Body has no payload and no refusal; a refused one carries
