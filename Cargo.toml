@@ -203,8 +203,10 @@ axiolid-contracts = { version = "0.3.1" }
 # edge before its faces, from the strictest face using it, so planar and
 # curved faces sharing a straight edge close (axiolid/kernel#336; #528).
 # 0.3.31 reports a faceted face without a surface whose corners are not
-# exactly coplanar with its slab width instead of 0.
-axiolid-mesh-compile = { version = "0.3.31" }
+# exactly coplanar with its slab width instead of 0. 0.3.44: deterministic
+# Delaunay flips, so triangle order no longer varies (axiolid/kernel#425;
+# #610), and trims of curve relations (axiolid/kernel#424; #693).
+axiolid-mesh-compile = { version = "0.3.44" }
 axiolid-mesh-compile-contract = { version = "0.3.4" }
 # 0.3.5: batch booleans keep their memory budget (axiolid/kernel#259).
 # 0.3.6: a boolean whose result outgrows its operands keeps its memory
@@ -227,6 +229,11 @@ axiolid-mesh-boolean-boolmesh = { version = "0.3.6" }
 # the limit (axiolid/kernel#339), the release `axiolid-mesh-compile` 0.3.31
 # is built with.
 axiolid-construct = { version = "0.3.20" }
+# Not used directly: `axiolid-mesh-compile` reaches it. Pinned here only to
+# raise the floor to 0.3.5, whose orient2d, incircle and insphere signs are
+# correct at extreme scales, the release `axiolid-mesh-compile` 0.3.44 is
+# built with.
+axiolid-predicates = { version = "0.3.5" }
 
 # No default features: the default `runtime-rng` pulls getrandom 0.3, which
 # does not build on wasm32-unknown-unknown. Members opt into a seed source

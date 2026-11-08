@@ -464,8 +464,9 @@ fn half_circle_edges_compile_along_and_against_their_circles() {
 /// up to 0.05 m. Its samples have no parameters on the top surface, and the
 /// compilation is refused rather than meshed with a gap. The kernel's
 /// certified inversion gives up as a spent budget, not as an off-surface
-/// sample: `BudgetExceeded` naming the certified surface projection, a
-/// typed refusal in its own right, which this pins as reported.
+/// sample: `BudgetExceeded` naming the certified surface projection. Since
+/// `axiolid-mesh-compile` 0.3.42 the kernel names the off-surface edge
+/// instead (axiolid/kernel#320), as a `Degenerate` kernel refusal.
 #[test]
 fn an_edge_off_its_bspline_face_is_refused() {
     let model = edited(
@@ -483,8 +484,8 @@ fn an_edge_off_its_bspline_face_is_refused() {
         GeometryError::CompilationRefused { entity, reason } => {
             assert_eq!(entity, id);
             assert!(
-                reason.contains("BudgetExceeded")
-                    && reason.contains("certified surface projection"),
+                reason.contains("Degenerate")
+                    && reason.contains("leaves its B-spline face's surface"),
                 "{reason}"
             );
         }
