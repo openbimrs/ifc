@@ -3,13 +3,16 @@
 //! [`material_layer_bounds`] says where each layer's planes lie in the
 //! product's object frame; `ifc-geometry` cuts the Body by them
 //! ([`compile_product_layer_meshes_with`]). This module joins the two, since
-//! neither crate may depend on the other, and puts the result in the same
-//! frame as [`ProductMesh`](super::ProductMesh): the compiled world positions
-//! mapped back through the inverse of the product's world placement in `f64`
-//! and only then narrowed to `f32`, so `world` applied to a layer's positions
-//! is its world position. Those positions are in the object frame the
-//! `bounds` are stated in only when the representation context's frame is the
-//! identity; otherwise they carry the context frame, as a `ProductMesh` does.
+//! neither crate may depend on the other, and puts the result in the object
+//! frame the `bounds` are stated in: the compiled world positions mapped back
+//! through the inverse of the Body's representation frame in `f64` and only
+//! then narrowed to `f32`. That frame is the product's placement with the
+//! representation context's `WorldCoordinateSystem` above it, and `world` is
+//! that frame, so `world` applied to a layer's positions is its world position
+//! and a position compares directly with `bounds` whatever the context.
+//! (Before #706 the positions were mapped back through the placement alone and
+//! carried the context frame, as a [`ProductMesh`](super::ProductMesh) still
+//! does; the two agree when the context frame is the identity.)
 //!
 //! The Body is gross unless [`LayerBody::Net`] is asked for (ADR 0014). The
 //! outermost layers extend to the Body's faces and only the inner boundaries
@@ -24,7 +27,7 @@ use ifc_geometry::compile::{
     compile_product_layer_meshes_with, default_backend, MeshClosure, Tolerance,
 };
 use ifc_geometry::lower::LayerCut;
-use ifc_geometry::{products_world_transforms, units, Transform};
+use ifc_geometry::{product_representation_frame, units, RepresentationPurpose, Transform};
 use ifc_model::{EntityId, Model};
 
 pub use ifc_geometry::lower::LayerBody;
@@ -38,8 +41,11 @@ use super::mesh::Inverse;
 pub struct MaterialLayerMeshes {
     /// The planes the Body was cut by.
     pub bounds: LayerBounds,
-    /// The product's world placement in metres; a vertex's world position is
-    /// `world` applied to its entry in a layer's `positions`.
+    /// The Body's frame in metres: the product's world placement with the
+    /// representation context's `WorldCoordinateSystem` above it, equal to the
+    /// placement when that frame is the identity. A vertex's world position is
+    /// `world` applied to its entry in a layer's `positions`, and those
+    /// positions are in the object frame of `bounds`.
     pub world: Transform,
     /// One entry per layer, `layers[k]` for `bounds.layers[k]`.
     pub layers: Vec<MaterialLayerMesh>,
@@ -60,10 +66,9 @@ pub struct MaterialLayerMesh {
     pub layer: EntityId,
     /// Its `IfcMaterial`, or `None` for a layer without one (an air gap).
     pub material: Option<EntityId>,
-    /// Vertex positions, `x, y, z` per vertex, in metres, relative to the
-    /// product's placement as in [`ProductMesh`](super::ProductMesh): `world`
-    /// applied to them is world space, and they equal the object frame of
-    /// `bounds` when the representation context's frame is the identity.
+    /// Vertex positions, `x, y, z` per vertex, in metres, in the
+    /// object frame `bounds` is stated in: `world` applied to them is world
+    /// space.
     /// Empty for a zero-thick layer (no part) and for a layer the Body does
     /// not reach (a part with no volume).
     pub positions: Vec<f32>,
@@ -107,10 +112,8 @@ pub fn material_layer_meshes(
         return Ok(None);
     };
     let scale = units::resolve(model)?;
-    let (_, world) = products_world_transforms(model, &scale, [product])
-        .pop()
-        .expect("one product was asked for");
-    let world = world?;
+    let world = product_representation_frame(model, &scale, product, RepresentationPurpose::Body)?
+        .expect("the Body was split, so the product has one");
     let to_local = Inverse::checked(model, product, &world)?;
 
     let mut layers = Vec::with_capacity(bounds.layers.len());

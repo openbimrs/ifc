@@ -16,6 +16,10 @@ everything released before per-crate changelogs began.
 
 - `material_layer_bounds` and `material_layer_meshes` accept a layered Body of several coaxial extrusions, such as a wall interrupted at a crossing (see `ifc-geometry`).
 
+### Changed (#706)
+
+- `MaterialLayerMeshes` positions are now in the object frame `bounds` is stated in, whatever the representation context's `WorldCoordinateSystem`, and `MaterialLayerMeshes::world` is the Body's full frame (the context frame above the product's placement), so `world` applied to a position is still its world position. Results for an identity context frame are unchanged; with another one, positions no longer carry the context frame and `world` includes it.
+
 ### Changed (#603)
 
 - Breaking: `ColourResolver` reports the colour that all materials of a layer, profile or constituent set state as `ColourSource::MaterialSet { definition, materials }` naming the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)) and the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct), instead of `Material` of the first. A set of one material keeps `Material`; differing styles stay `ColourError::AmbiguousMaterial`. `ColourSource` and `SurfaceColour` are no longer `Copy` (`ifc-style`).
