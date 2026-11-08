@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Added (#709)
+
+- `History::rollback`: undoes the newest entry exactly as `undo` does (same
+  revision check, same refusals, history unchanged on refusal) but drops it
+  instead of moving it to the redo stack, and clears redo as `push` does.
+
+Semver: minor (additive).
+
 ## [0.4.7] - 2026-11-04
 
 ### Added (#684)
