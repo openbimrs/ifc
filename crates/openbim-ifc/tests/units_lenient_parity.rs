@@ -160,12 +160,12 @@ fn both_resolutions_give_one_verdict() {
             Verdict::Incomplete,
         ),
         (
-            "held-id skip",
+            "held-id skip before a unit duplicate",
             lenient(&units(
                 &[],
                 "#20=IFCSITE($);\n#20=IFCSITE($)\n#1=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);\n",
             )),
-            Verdict::Incomplete,
+            Verdict::Damaged(EntityId(1)),
         ),
         (
             "cut record",

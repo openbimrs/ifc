@@ -12,6 +12,15 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#668)
+
+- Moved to `openbim-step` 0.11.4. A lenient read's recovery now stops before
+  the next `#id =`, so a record missing its `;` no longer swallows the
+  record after it: that record is kept, and a conflicting duplicate id among
+  them is reported as a `DuplicateId` diagnostic. Unit resolution therefore
+  refuses it as damaged instead of trusting it or calling the model
+  incomplete.
+
 ### Fixed (#626)
 
 - Two records sharing one instance id are reported on every read, not only

@@ -133,15 +133,15 @@ fn diagnostics_that_cannot_be_attributed_are_incomplete() {
 }
 
 #[test]
-fn a_skip_naming_a_held_id_is_incomplete() {
-    // The skip names #20, which a kept record holds; the conflicting #1 it
-    // swallowed is not named. TODO(#668): attribute every swallowed record.
+fn a_skip_naming_a_held_id_before_a_unit_duplicate_is_damaged() {
+    // The skip names #20, which a kept record holds; the conflicting #1
+    // after it is kept (openbim-step 0.11.4) and reported as a duplicate.
     let model = lenient(&units(
         &[],
         "#20=IFCSITE($);\n#20=IFCSITE($)\n#1=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);\n",
     ));
-    assert_eq!(model.diagnostics().len(), 1, "{:?}", model.diagnostics());
-    assert_eq!(resolve(&model), Err(incomplete(1)));
+    assert_eq!(model.diagnostics().len(), 2, "{:?}", model.diagnostics());
+    assert_eq!(resolve(&model), Err(damaged(1, 1)));
 }
 
 #[test]
