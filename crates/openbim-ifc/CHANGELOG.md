@@ -12,6 +12,10 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#705)
+
+- `material_layer_bounds` and `material_layer_meshes` accept a layered Body of several coaxial extrusions, such as a wall interrupted at a crossing (see `ifc-geometry`).
+
 ### Changed (#603)
 
 - Breaking: `ColourResolver` reports the colour that all materials of a layer, profile or constituent set state as `ColourSource::MaterialSet { definition, materials }` naming the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)) and the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct), instead of `Material` of the first. A set of one material keeps `Material`; differing styles stay `ColourError::AmbiguousMaterial`. `ColourSource` and `SurfaceColour` are no longer `Copy` (`ifc-style`).

@@ -207,22 +207,68 @@ fn an_empty_body_is_unsupported() {
     assert_unsupported(
         &refusal(&m, LayerSetDirection::Axis2),
         20,
-        "exactly one item",
+        "at least one item",
     );
 }
 
+/// A second extrusion `#110` over the same profile, at `location` along
+/// `direction`.
+fn second(location: &str, direction: &str) -> String {
+    format!(
+        "#120=IFCCARTESIANPOINT(({location}));
+         #121=IFCAXIS2PLACEMENT3D(#120,$,$);
+         #122=IFCDIRECTION(({direction}));
+         #110=IFCEXTRUDEDAREASOLID(#100,#121,#122,1400.);"
+    )
+}
+
 #[test]
-fn two_body_items_are_unsupported() {
+fn coaxial_body_items_share_one_reference() {
+    // An interrupted wall: two pieces, same orientation and profile plane,
+    // the second one shorter.
     let m = wall(
-        "#104,#104",
+        "#104,#110",
         Some("#40"),
-        &format!("{}{}", plain(0.0), axis(0.0)),
+        &format!(
+            "{}{}{}",
+            plain(0.0),
+            axis(7.0),
+            second("0.,0.,0.", "0.,0.,1.")
+        ),
     );
-    assert_unsupported(
-        &refusal(&m, LayerSetDirection::Axis2),
-        20,
-        "exactly one item",
+    let r = reference(&m, LayerSetDirection::Axis2).expect("coaxial items");
+    close(r.normal, [0.0, 1.0, 0.0]);
+    assert!((r.distance - 0.007).abs() < 1e-9, "{}", r.distance);
+}
+
+#[test]
+fn a_body_item_with_another_position_is_unsupported_and_named() {
+    let m = wall(
+        "#104,#110",
+        Some("#40"),
+        &format!(
+            "{}{}{}",
+            plain(0.0),
+            axis(0.0),
+            second("0.,0.,500.", "0.,0.,1.")
+        ),
     );
+    assert_unsupported(&refusal(&m, LayerSetDirection::Axis2), 110, "not coaxial");
+}
+
+#[test]
+fn a_body_item_with_another_direction_is_unsupported_and_named() {
+    let m = wall(
+        "#104,#110",
+        Some("#40"),
+        &format!(
+            "{}{}{}",
+            plain(0.0),
+            axis(0.0),
+            second("0.,0.,0.", "1.,0.,0.")
+        ),
+    );
+    assert_unsupported(&refusal(&m, LayerSetDirection::Axis2), 110, "not coaxial");
 }
 
 #[test]

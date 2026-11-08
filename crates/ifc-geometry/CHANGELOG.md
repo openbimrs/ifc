@@ -12,6 +12,10 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Changed (#705)
+
+- `layer_set_reference` accepts a layered Body of several `IfcExtrudedAreaSolid` items (an interrupted wall), each optionally clipped, when they share the `Position` orientation, the profile plane and the extrusion direction (origins may slide within the plane); an item that disagrees is `Unsupported`, naming it. An empty Body is still `Unsupported`, now "at least one item". Splitting by layers already cut every part of the Body.
+
 ### Added (#661)
 
 - `BodyItem::swept_disk` and `SweptDisk`: radius, inner radius, fillet radius, directrix and authored `StartParam`/`EndParam` of `IfcSweptDiskSolid` and `IfcSweptDiskSolidPolygonal`, in the item frame.

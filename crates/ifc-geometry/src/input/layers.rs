@@ -31,7 +31,9 @@
 //! object frame, in metres. The `Position` is optional from IFC4 (absent
 //! means identity) and a clipping chain (`IfcBooleanClippingResult`) is
 //! walked to its extrusion, because clipping trims the body without changing
-//! which plane the layers hang from.
+//! which plane the layers hang from. A body of several items (an interrupted
+//! wall) is accepted when they share the `Position` orientation, the profile plane and the
+//! extrusion direction.
 
 use ifc_model::{EntityId, Model};
 
@@ -116,7 +118,8 @@ fn degenerate(id: EntityId, type_name: &str, detail: impl Into<String>) -> Geome
 /// Only `IfcWall`/`IfcWallStandardCase` along AXIS2 and
 /// `IfcSlab`/`IfcPlate` (and their standard cases) along AXIS3 are
 /// interpreted; everything else is [`GeometryError::Unsupported`]. The body
-/// must be one `IfcExtrudedAreaSolid`, optionally clipped.
+/// is one or several coaxial `IfcExtrudedAreaSolid` items (an interrupted
+/// wall), each optionally clipped; an item that disagrees is refused by name.
 pub fn layer_set_reference(
     model: &Model,
     units: &UnitScale,
@@ -155,20 +158,7 @@ pub fn layer_set_reference(
             type_name: product_type.clone(),
             attribute: "Body representation",
         })?;
-    let (extrusion_id, extrusion) = sole_extrusion(model, body)?;
-
-    let local = match extrusion.base().position() {
-        Some(position) => {
-            let placement = model.get(position).ok_or(GeometryError::MissingEntity {
-                referrer: extrusion_id,
-                missing: position,
-            })?;
-            axis_placement_transform(model, position, placement)?.to_metres(units)
-        }
-        None => Transform::identity(),
-    };
-    let sweep = resolve::direction(model, extrusion_id, extrusion.extruded_direction()?)?.unit()?;
-    let sweep = normalised(local.apply_direction(sweep));
+    let (extrusion_id, local, sweep) = coaxial_frame(model, units, body)?;
 
     let (normal, distance, source) = match direction {
         LayerSetDirection::Axis2 => {
@@ -207,24 +197,86 @@ pub fn layer_set_reference(
     })
 }
 
-/// The one extrusion of `body`, through any clipping chain.
-fn sole_extrusion(
+/// The id of the first item, and the frame and unit sweep direction shared by
+/// every item of `body`.
+///
+/// Each item is one `IfcExtrudedAreaSolid`, through any clipping chain. An
+/// interrupted wall is several of them, each positioned along the wall; they
+/// must share the `Position` orientation and profile plane (origins may slide
+/// within it) and the extrusion direction, or the layers would not hang from
+/// one plane. The depth is not compared: the reference reads neither it nor
+/// the profile.
+fn coaxial_frame(
     model: &Model,
+    units: &UnitScale,
     body: EntityId,
-) -> GeometryResult<(EntityId, ExtrudedAreaSolid<'_>)> {
+) -> GeometryResult<(EntityId, Transform, [f64; 3])> {
     let representation = model.get(body).ok_or(GeometryError::MissingEntity {
         referrer: body,
         missing: body,
     })?;
     let items = Representation::new(body, representation).items()?;
-    let [first] = items.as_slice() else {
+    if items.is_empty() {
         return Err(unsupported(
             body,
             &representation.type_name,
-            "a layered body must hold exactly one item",
+            "a layered body must hold at least one item",
         ));
-    };
-    let mut id = *first;
+    }
+    let mut first: Option<(EntityId, Transform, [f64; 3])> = None;
+    for item in items {
+        let (id, extrusion) = extrusion_of(model, body, item)?;
+        let local = match extrusion.base().position() {
+            Some(position) => {
+                let placement = model.get(position).ok_or(GeometryError::MissingEntity {
+                    referrer: id,
+                    missing: position,
+                })?;
+                axis_placement_transform(model, position, placement)?.to_metres(units)
+            }
+            None => Transform::identity(),
+        };
+        let sweep = resolve::direction(model, id, extrusion.extruded_direction()?)?.unit()?;
+        let sweep = normalised(local.apply_direction(sweep));
+        match &first {
+            None => first = Some((id, local, sweep)),
+            Some((_, frame, direction)) => {
+                let shift = [0, 1, 2].map(|i| local.origin[i] - frame.origin[i]);
+                let same_frame = dot(frame.basis[2], shift).abs() <= AXIS_TOLERANCE
+                    && frame
+                        .basis
+                        .iter()
+                        .zip(&local.basis)
+                        .all(|(a, b)| vectors_agree(*a, *b));
+                if !same_frame || !vectors_agree(*direction, sweep) {
+                    return Err(unsupported(
+                        id,
+                        "IFCEXTRUDEDAREASOLID",
+                        "the body items are not coaxial: this extrusion differs in Position \
+                         orientation, profile plane or ExtrudedDirection from the first item, so the layers have no single \
+                         reference plane",
+                    ));
+                }
+            }
+        }
+    }
+    let (id, local, sweep) = first.expect("a body with items has a first");
+    Ok((id, local, sweep))
+}
+
+fn vectors_agree(a: [f64; 3], b: [f64; 3]) -> bool {
+    a.iter()
+        .zip(&b)
+        .all(|(x, y)| (x - y).abs() <= AXIS_TOLERANCE)
+}
+
+/// The extrusion of one body item, through any clipping chain.
+fn extrusion_of(
+    model: &Model,
+    body: EntityId,
+    first: EntityId,
+) -> GeometryResult<(EntityId, ExtrudedAreaSolid<'_>)> {
+    let mut id = first;
     for _ in 0..=MAX_CLIPPING_DEPTH {
         let item = model.get(id).ok_or(GeometryError::MissingEntity {
             referrer: body,
@@ -240,13 +292,13 @@ fn sole_extrusion(
             return Err(unsupported(
                 id,
                 &item.type_name,
-                "a layered body must be an IfcExtrudedAreaSolid, optionally clipped by \
+                "a layered body must be IfcExtrudedAreaSolid items, optionally clipped by \
                  IfcBooleanClippingResult",
             ));
         }
     }
     Err(GeometryError::ChainTooDeep {
-        entity: *first,
+        entity: first,
         kind: "boolean clipping",
         limit: MAX_CLIPPING_DEPTH,
     })
