@@ -12,6 +12,10 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#610)
+
+- `product_meshes` triangle order is deterministic: `axiolid-mesh-compile` 0.3.44 flips Delaunay edges deterministically (axiolid/kernel#425), so a product's mesh no longer differs from call to call or between a subset and the whole model. Floor raised to 0.3.44.
+
 ### Changed (#603)
 
 - Breaking: `ColourResolver` reports the colour that all materials of a layer, profile or constituent set state as `ColourSource::MaterialSet { definition, materials }` naming the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)) and the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct), instead of `Material` of the first. A set of one material keeps `Material`; differing styles stay `ColourError::AmbiguousMaterial`. `ColourSource` and `SurfaceColour` are no longer `Copy` (`ifc-style`).
