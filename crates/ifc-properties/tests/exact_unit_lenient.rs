@@ -331,20 +331,46 @@ fn a_skipped_duplicate_of_a_unit_record_is_damaged() {
 }
 
 #[test]
-fn a_skip_naming_a_held_id_that_swallowed_a_unit_duplicate_is_incomplete() {
-    // The skip names #20, which a kept record holds; the conflicting #1 it
-    // swallowed is not named. TODO(#668): attribute every swallowed record.
+fn a_skip_naming_a_held_id_before_a_unit_duplicate_reports_the_duplicate() {
+    // The skip names #20, which a kept record holds; the conflicting #1 after
+    // it is kept (openbim-step 0.11.4) and reported as a duplicate.
     let model = lenient(&units(
         &[],
         "#20=IFCSITE($);\n#20=IFCSITE($)\n#1=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);\n",
     ));
-    assert_eq!(model.diagnostics().len(), 1, "{:?}", model.diagnostics());
+    assert_eq!(model.diagnostics().len(), 2, "{:?}", model.diagnostics());
     assert_eq!(model.diagnostics()[0].instance(), Some(id(20)));
+    assert_eq!(model.diagnostics()[1].kind(), DiagnosticKind::DuplicateId);
+    assert_eq!(model.diagnostics()[1].instance(), Some(id(1)));
+    let damaged = ExactUnitError::DamagedRecord {
+        entity: id(1),
+        diagnostic: 1,
+    };
     assert_eq!(
         exact_unit(&model, "IFCLENGTHMEASURE", None),
-        Err(incomplete(1))
+        Err(damaged.clone())
     );
-    assert_eq!(exact_project_unit(&model, "LENGTHUNIT"), Err(incomplete(1)));
+    assert_eq!(exact_project_unit(&model, "LENGTHUNIT"), Err(damaged));
+}
+
+#[test]
+fn a_skipped_duplicate_unit_after_a_bare_skip_is_damaged() {
+    // The first repro of #668: #30 lacks its `;`, so the conflicting #1 that
+    // follows is kept and reported rather than trusted.
+    let model = lenient(&units(
+        &[],
+        "#30=IFCSITE($)\n#1=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);\n",
+    ));
+    assert_eq!(model.diagnostics().len(), 2, "{:?}", model.diagnostics());
+    assert_eq!(model.diagnostics()[0].instance(), Some(id(30)));
+    assert_eq!(model.diagnostics()[1].kind(), DiagnosticKind::DuplicateId);
+    assert_eq!(
+        exact_unit(&model, "IFCLENGTHMEASURE", None),
+        Err(ExactUnitError::DamagedRecord {
+            entity: id(1),
+            diagnostic: 1
+        })
+    );
 }
 
 #[test]

@@ -303,8 +303,10 @@ pub(crate) fn diagnostics(
             let range = span.start..span.end;
             let own = found.instance().and_then(|id| model_id(id.as_str()));
             let (kind, instance, referrer) = match found.kind() {
-                // TODO(#668): a skip that swallowed several records names only
-                // the first (openbimrs/step#20).
+                // Recovery stops before the next `#id =`, so a following
+                // record is kept (and a duplicate reported), not swallowed;
+                // only a record hidden by its own damage is covered by the
+                // skip's span alone (#668).
                 StepKind::SkippedRecord => (DiagnosticKind::SkippedRecord, own.map(EntityId), None),
                 StepKind::DuplicateId => (DiagnosticKind::DuplicateId, own.map(EntityId), None),
                 StepKind::DanglingReference => (

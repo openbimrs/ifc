@@ -83,8 +83,8 @@ impl RecordDamage {
                     // record holds it; such a record is reported. A skip
                     // whose `#id` was not read may have held a duplicate of a
                     // record the resolution reads.
-                    // TODO(#668): a skip that swallowed several records names
-                    // only the first.
+                    // A record hidden inside the skip's span by its own
+                    // damage is not named (#668).
                     let id = diagnostic.instance().ok_or(unclassified)?;
                     damage.held_id_skipped |= model.contains(id);
                     damage.reported.entry(id).or_insert(index);

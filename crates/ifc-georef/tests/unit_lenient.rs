@@ -109,15 +109,15 @@ fn a_skip_without_an_id_is_incomplete() {
 
 #[test]
 fn a_skip_naming_a_held_id_is_incomplete() {
-    // The skip names #20, which a kept record holds; the conflicting record
-    // it swallowed is not named. TODO(#668): attribute every swallowed record.
+    // The skip names #20, which a kept record holds; the conflicting #3
+    // after it is kept (openbim-step 0.11.4) and reported as a duplicate.
     let model = lenient(&crs(
         "#20=IFCSITE($);\n#20=IFCSITE($)\n#3=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);\n",
     ));
-    assert_eq!(model.diagnostics().len(), 1, "{:?}", model.diagnostics());
+    assert_eq!(model.diagnostics().len(), 2, "{:?}", model.diagnostics());
     assert!(matches!(
         refused(&model),
-        GeorefError::RecordsIncomplete { diagnostics: 1 }
+        GeorefError::UnitRecordDamaged { entity, diagnostic: 1 } if entity == id(3)
     ));
 }
 
@@ -183,7 +183,7 @@ fn a_duplicate_angle_unit_of_a_geographic_crs_is_refused_by_name() {
 }
 
 #[test]
-fn a_held_id_skip_makes_a_geographic_crs_incomplete() {
+fn a_held_id_skip_before_a_unit_duplicate_damages_a_geographic_crs() {
     let data = format!(
         "{GEOGRAPHIC}#20=IFCSITE($);\n#20=IFCSITE($)\n#3=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);\n"
     );
@@ -192,6 +192,6 @@ fn a_held_id_skip_makes_a_geographic_crs_incomplete() {
         .expect("lenient read");
     assert!(matches!(
         geographic_offset(&model),
-        Err(GeorefError::RecordsIncomplete { diagnostics: 1 })
+        Err(GeorefError::UnitRecordDamaged { entity, diagnostic: 1 }) if entity == id(3)
     ));
 }
