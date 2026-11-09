@@ -12,6 +12,14 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-11-09
+
+### Changed
+
+- Requires `openbim-step` 0.11.4 (exact pin, as the workspace does), so it resolves together with `ifc-step` 0.6.5.
+
+Semver: patch.
+
 ## [0.3.6] - 2026-11-04
 
 ### Changed
