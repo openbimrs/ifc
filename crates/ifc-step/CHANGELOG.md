@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.6.5] - 2026-11-09
+
 ### Fixed (#668)
 
 - Moved to `openbim-step` 0.11.4. A lenient read's recovery now stops before
@@ -207,7 +209,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-step-v0.6.4...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-step-v0.6.5...HEAD
+[0.6.5]: https://github.com/openbimrs/ifc/releases/tag/ifc-step-v0.6.5
 [0.6.4]: https://github.com/openbimrs/ifc/releases/tag/ifc-step-v0.6.4
 [0.6.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-step-v0.6.3
 [0.6.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-step-v0.6.2

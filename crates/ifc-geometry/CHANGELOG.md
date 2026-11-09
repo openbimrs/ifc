@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.34.1] - 2026-11-09
+
 ### Changed (#693)
 
 - `compile_sweep_directrix_with` / `compile_sweep_directrix` no longer refuse a ranged directrix that is itself a curve relation (an `IfcTrimmedCurve`, an `IfcIndexedPolyCurve` with `Segments`, an offset curve): `axiolid-mesh-compile` 0.3.44 compiles a trim of a trim (axiolid/kernel#424), reading the range in the basis's parameter. A range outside the directrix, and point or arc-length selectors on a relation (axiolid/kernel#432), stay refused as `CompilationRefused`. Floor `axiolid-mesh-compile` 0.3.44 and `axiolid-predicates` 0.3.5 (correct orient2d, incircle and insphere signs at extreme scales).
@@ -2533,7 +2535,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.34.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.34.1...HEAD
+[0.34.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.34.1
 [0.34.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.34.0
 [0.33.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.33.0
 [0.32.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.32.1

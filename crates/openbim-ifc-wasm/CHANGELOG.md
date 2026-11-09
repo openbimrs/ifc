@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-09
+
 ### Changed (wire format 1.5)
 
 - The geometry graph payload (#367) may be Axiolid's wire format 1.5, written only when a graph holds a ruled surface (axiolid/kernel#402); every other graph keeps its version. The newest version the build advertises (`GEOMETRY_FORMAT_VERSION`) is `"1.5"`. A reader on `axiolid-model` 0.3.17 or older refuses `1.5`.
@@ -666,7 +668,8 @@ Published to npm by hand, before the release workflow existed.
 - `scripts/build-node-pkg.sh` builds a Node package with the pinned
   `wasm-bindgen` CLI and runs the Node smoke and corpus suites.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.15.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.16.0...HEAD
+[0.16.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.16.0
 [0.15.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.15.0
 [0.14.2]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.14.2
 [0.14.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.14.1

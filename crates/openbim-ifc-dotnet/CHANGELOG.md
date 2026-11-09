@@ -9,6 +9,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-09
+
 ### Changed (wire format 1.5)
 
 - The geometry graph payload (#367) may be Axiolid's wire format 1.5, written only when a graph holds a ruled surface (axiolid/kernel#402); every other graph keeps its version. The newest version the build advertises (`GEOMETRY_FORMAT_VERSION`) is `"1.5"`. A reader on `axiolid-model` 0.3.17 or older refuses `1.5`.

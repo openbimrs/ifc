@@ -11,7 +11,7 @@ The IFC entity graph: storage and structural queries, free of domain semantics a
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.7 (2026-11-04) |
+| Latest release | 0.4.8 (2026-11-09) |
 | Registries | [crates.io `ifc-model`](https://crates.io/crates/ifc-model) |
 | API documentation | [rustdoc](/api/rustdoc/ifc_model/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-model) |
 | Source | [`crates/ifc-model/`](https://github.com/openbimrs/ifc/tree/main/crates/ifc-model) |
@@ -29,28 +29,14 @@ serialization.
 
 ## Changes
 
-Latest release, 0.4.7 (2026-11-04):
+Latest release, 0.4.8 (2026-11-09):
 
-### Added (#684)
+### Added (#709)
 
-- `RecordDamage` and `UnclassifiedDiagnostic`: a model's reader diagnostics
-  classified for a resolution that reads a known set of records (`reported`,
-  `records_lost`, `held_id_skipped`, `diagnostics`). This is the rule
-  `ifc-properties` unit resolution has applied since #615, now shared with
-  `ifc-geometry`.
+- `History::rollback`: undoes the newest entry exactly as `undo` does (same
+  revision check, same refusals, history unchanged on refusal) but drops it
+  instead of moving it to the redo stack, and clears redo as `push` does.
 
-Semver: patch (additive).
-
-### Added (#634)
-
-- `Model::truncate_attributes(id, len)`: shortens a record and returns the
-  dropped tail; recorded like every write, so undo, redo and `preview`
-  restore it exactly.
-- `Transaction::truncate(id, len)` and `Transaction::truncations`: shorten a
-  record after the edits and before the header. `Conflict::TruncationMissingTarget`,
-  `Conflict::WriteBeyondTruncation`. A removal referenced only from a dropped
-  slot does not dangle.
-
-Semver: patch (additive).
+Semver: minor (additive).
 
 Full history: [`crates/ifc-model/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-model/CHANGELOG.md)

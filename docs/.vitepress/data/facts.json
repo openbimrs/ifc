@@ -130,10 +130,10 @@
           "url": "https://crates.io/crates/ifc-geometry"
         }
       ],
-      "released": "0.34.0",
-      "released_date": "2026-11-04",
+      "released": "0.34.1",
+      "released_date": "2026-11-09",
       "status": "partial",
-      "version": "0.34.0"
+      "version": "0.34.1"
     },
     "ifc-georef": {
       "description": "Georeferencing: map conversion, coordinate reference systems, site placement.",
@@ -145,10 +145,10 @@
           "url": "https://crates.io/crates/ifc-georef"
         }
       ],
-      "released": "0.8.2",
-      "released_date": "2026-10-28",
+      "released": "0.8.3",
+      "released_date": "2026-11-09",
       "status": "implemented",
-      "version": "0.8.2"
+      "version": "0.8.3"
     },
     "ifc-material": {
       "description": "Material definitions: layer sets, profile sets, constituents, usage.",
@@ -175,10 +175,10 @@
           "url": "https://crates.io/crates/ifc-model"
         }
       ],
-      "released": "0.4.7",
-      "released_date": "2026-11-04",
+      "released": "0.4.8",
+      "released_date": "2026-11-09",
       "status": "implemented",
-      "version": "0.4.7"
+      "version": "0.4.8"
     },
     "ifc-occurrence": {
       "description": "Built element and distribution occurrence classes and their type pairing.",
@@ -205,10 +205,10 @@
           "url": "https://crates.io/crates/ifc-properties"
         }
       ],
-      "released": "0.10.6",
-      "released_date": "2026-11-04",
+      "released": "0.10.7",
+      "released_date": "2026-11-09",
       "status": "implemented",
-      "version": "0.10.6"
+      "version": "0.10.7"
     },
     "ifc-resource": {
       "description": "Construction resources: labour, equipment, material, crew, subcontract.",
@@ -280,10 +280,10 @@
           "url": "https://crates.io/crates/ifc-step"
         }
       ],
-      "released": "0.6.4",
-      "released_date": "2026-11-04",
+      "released": "0.6.5",
+      "released_date": "2026-11-09",
       "status": "implemented",
-      "version": "0.6.4"
+      "version": "0.6.5"
     },
     "ifc-structural": {
       "description": "Structural analysis model: members, connections, actions, reactions, loads.",
@@ -310,10 +310,10 @@
           "url": "https://crates.io/crates/ifc-style"
         }
       ],
-      "released": "0.6.5",
-      "released_date": "2026-11-03",
+      "released": "0.7.0",
+      "released_date": "2026-11-09",
       "status": "implemented",
-      "version": "0.6.5"
+      "version": "0.7.0"
     },
     "ifc-systems": {
       "description": "Distribution systems, ports, and connectivity between elements.",
@@ -355,10 +355,10 @@
           "url": "https://crates.io/crates/ifc-template-catalog"
         }
       ],
-      "released": "0.4.4",
-      "released_date": "2026-11-03",
+      "released": "0.4.5",
+      "released_date": "2026-11-09",
       "status": "implemented",
-      "version": "0.4.4"
+      "version": "0.4.5"
     },
     "ifc-validate": {
       "description": "Schema conformance: WHERE rules, cardinality, GUID and reference integrity.",
@@ -400,10 +400,10 @@
           "url": "https://crates.io/crates/openbim-ifc"
         }
       ],
-      "released": "0.41.0",
-      "released_date": "2026-11-04",
+      "released": "0.42.0",
+      "released_date": "2026-11-09",
       "status": "implemented",
-      "version": "0.41.0"
+      "version": "0.42.0"
     },
     "openbim-ifc-binding-core": {
       "description": "Host-independent core shared by the openbim-ifc language bindings (WebAssembly, C ABI, Python).",
@@ -421,13 +421,13 @@
         {
           "package": "openbim_ifc",
           "registry": "GitHub release",
-          "url": "https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.20"
+          "url": "https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-capi-v0.1.21"
         }
       ],
-      "released": "0.1.20",
-      "released_date": "2026-10-28",
+      "released": "0.1.21",
+      "released_date": "2026-11-09",
       "status": "implemented",
-      "version": "0.1.20"
+      "version": "0.1.21"
     },
     "openbim-ifc-cli": {
       "description": "The openbim-ifc command: validate, convert, inspect, query and edit IFC files (STEP, ifcXML and ifcZIP), and exchange their values as CSV, TSV or XLSX tables, from a shell or CI.",
@@ -454,10 +454,10 @@
           "url": "https://www.nuget.org/packages/OpenBim.Ifc"
         }
       ],
-      "released": "0.12.0",
-      "released_date": "2026-10-28",
+      "released": "0.13.0",
+      "released_date": "2026-11-09",
       "status": "implemented",
-      "version": "0.12.0"
+      "version": "0.13.0"
     },
     "openbim-ifc-py": {
       "description": "Python bindings for openbim-ifc: read, edit and write IFC STEP files from Python.",
@@ -469,10 +469,10 @@
           "url": "https://pypi.org/project/openbim-ifc/"
         }
       ],
-      "released": "0.15.0",
-      "released_date": "2026-10-28",
+      "released": "0.16.0",
+      "released_date": "2026-11-09",
       "status": "implemented",
-      "version": "0.15.0"
+      "version": "0.16.0"
     },
     "openbim-ifc-wasm": {
       "description": "WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from JavaScript.",
@@ -484,10 +484,10 @@
           "url": "https://www.npmjs.com/package/@openbim/ifc"
         }
       ],
-      "released": "0.15.0",
-      "released_date": "2026-10-28",
+      "released": "0.16.0",
+      "released_date": "2026-11-09",
       "status": "implemented",
-      "version": "0.15.0"
+      "version": "0.16.0"
     }
   },
   "crates": {

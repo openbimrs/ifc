@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.4.8] - 2026-11-09
+
 ### Added (#709)
 
 - `History::rollback`: undoes the newest entry exactly as `undo` does (same
@@ -259,7 +261,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-model-v0.4.7...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-model-v0.4.8...HEAD
+[0.4.8]: https://github.com/openbimrs/ifc/releases/tag/ifc-model-v0.4.8
 [0.4.7]: https://github.com/openbimrs/ifc/releases/tag/ifc-model-v0.4.7
 [0.4.6]: https://github.com/openbimrs/ifc/releases/tag/ifc-model-v0.4.6
 [0.4.5]: https://github.com/openbimrs/ifc/releases/tag/ifc-model-v0.4.5

@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-11-09
+
 ### Fixed (#610)
 
 - `product_meshes` triangle order is deterministic: `axiolid-mesh-compile` 0.3.44 flips Delaunay edges deterministically (axiolid/kernel#425), so a product's mesh no longer differs from call to call or between a subset and the whole model. Floor raised to 0.3.44.
@@ -1620,7 +1622,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.41.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.42.0...HEAD
+[0.42.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.42.0
 [0.41.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.41.0
 [0.40.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.40.0
 [0.39.7]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.7

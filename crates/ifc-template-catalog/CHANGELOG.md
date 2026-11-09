@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-11-09
+
 Semver: minor (new `PatchOperation` and `PatchError` variants).
 
 ### Added
@@ -140,7 +142,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-template-catalog-v0.4.4...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-template-catalog-v0.4.5...HEAD
+[0.4.5]: https://github.com/openbimrs/ifc/releases/tag/ifc-template-catalog-v0.4.5
 [0.4.4]: https://github.com/openbimrs/ifc/releases/tag/ifc-template-catalog-v0.4.4
 [0.4.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-template-catalog-v0.4.3
 [0.4.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-template-catalog-v0.4.2
