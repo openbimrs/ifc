@@ -42,7 +42,7 @@ pub const GEOMETRY_FORMAT: &str = "axiolid-geometry-graph";
 /// payload's envelope carries the lowest version its content needs, so its
 /// `version` entry is this or an older minor of the same major (module
 /// documentation).
-pub const GEOMETRY_FORMAT_VERSION: &str = "1.4";
+pub const GEOMETRY_FORMAT_VERSION: &str = "1.5";
 
 /// How [`IfcModel::product_geometry`](crate::IfcModel::product_geometry)
 /// encodes each graph.

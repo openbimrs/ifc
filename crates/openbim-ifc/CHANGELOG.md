@@ -12,6 +12,10 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+### Fixed (#610)
+
+- `product_meshes` triangle order is deterministic: `axiolid-mesh-compile` 0.3.44 flips Delaunay edges deterministically (axiolid/kernel#425), so a product's mesh no longer differs from call to call or between a subset and the whole model. Floor raised to 0.3.44.
+
 ### Changed (#705)
 
 - `material_layer_bounds` and `material_layer_meshes` accept a layered Body of several coaxial extrusions, such as a wall interrupted at a crossing (see `ifc-geometry`).

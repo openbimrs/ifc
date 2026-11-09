@@ -7,7 +7,7 @@
 use std::path::{Path, PathBuf};
 
 use ifc::{
-    product_colours, product_meshes, product_meshes_for, Codec, EntityId, Model, ProductMesh,
+    product_colours, product_meshes, product_meshes_for, Codec, EntityId, Model,
     RepresentationPurpose, StepCodec,
 };
 
@@ -48,21 +48,6 @@ fn read(path: &Path) -> Model {
         .unwrap_or_else(|e| panic!("{} must parse leniently: {e:?}", path.display()))
 }
 
-/// What a mesh fixes regardless of triangle order.
-fn shape<E: std::fmt::Debug>(mesh: &Result<ProductMesh, E>) -> String {
-    match mesh {
-        Ok(mesh) => format!(
-            "{:?} {} {} {:?} {:?}",
-            mesh.world,
-            mesh.positions.len(),
-            mesh.indices.len(),
-            mesh.colour,
-            mesh.closure
-        ),
-        Err(error) => format!("{error:?}"),
-    }
-}
-
 /// Every subset entry equals the whole-model entry of the same product.
 fn assert_subsets_agree(model: &Model, label: &str) {
     for purpose in [RepresentationPurpose::Body, RepresentationPurpose::Surface] {
@@ -71,23 +56,13 @@ fn assert_subsets_agree(model: &Model, label: &str) {
         for ((id, entry), (_, twin)) in whole.iter().zip(&again).take(PER_FIXTURE) {
             let subset = product_meshes_for(model, Some(&[*id]), purpose);
             assert_eq!(subset.len(), 1, "{label}");
-            let want = format!("{:?}", (id, entry));
-            if want == format!("{:?}", (id, twin)) {
-                assert_eq!(
-                    format!("{:?}", subset[0]),
-                    want,
-                    "{label}: mesh of {id:?} ({purpose:?})"
-                );
-            } else {
-                // TODO(#610): the reference backend orders some triangles
-                // differently from call to call; everything else must still
-                // agree.
-                assert_eq!(
-                    shape(&subset[0].1),
-                    shape(entry),
-                    "{label}: mesh of {id:?} ({purpose:?})"
-                );
-            }
+            assert_eq!(
+                format!("{:?}", subset[0]),
+                format!("{:?}", (id, entry)),
+                "{label}: mesh of {id:?} ({purpose:?})"
+            );
+            // Triangle order is deterministic (axiolid/kernel#425; #610).
+            assert_eq!(format!("{:?}", twin), format!("{:?}", entry), "{label}");
         }
     }
     assert_eq!(

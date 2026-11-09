@@ -698,7 +698,7 @@ polygonal bounded half-space clips
 `1.4` (axiolid/kernel#297, #301, #303, #321). A reader on `axiolid-model` 0.3.8 or
 older reads a `1.0` payload and refuses `1.1`; one on 0.3.10 or older
 refuses `1.2`, one on 0.3.11 or older `1.3`, one on 0.3.13 or older
-`1.4`. A major version of the wire format would
+`1.4`, one on 0.3.17 or older `1.5`. A major version of the wire format would
 be a breaking change of the ABI (ADR 0021).
 
 ## Creating entities

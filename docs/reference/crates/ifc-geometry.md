@@ -26,7 +26,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | Feature | Default | Enables |
 | --- | --- | --- |
 | `compile` |  | `lowering`, `dep:axiolid-contracts`, `dep:axiolid-mesh-compile-contract`, `dep:axiolid-curve-evaluate-contract` |
-| `compile-reference-backend` |  | `compile`, `dep:axiolid-mesh-compile`, `dep:axiolid-mesh-boolean-boolmesh`, `dep:axiolid-construct` |
+| `compile-reference-backend` |  | `compile`, `dep:axiolid-mesh-compile`, `dep:axiolid-mesh-boolean-boolmesh`, `dep:axiolid-construct`, `dep:axiolid-predicates` |
 | `ifc2x3` | yes | `ifc-schema/ifc2x3` |
 | `ifc4` | yes | `ifc-schema/ifc4` |
 | `ifc4x1` | yes | `ifc-schema/ifc4x1` |

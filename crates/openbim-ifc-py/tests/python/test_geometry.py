@@ -186,7 +186,7 @@ class GraphTests(unittest.TestCase):
         envelope = json.loads(wall.payload)
         self.assertEqual(envelope["format"], GEOMETRY_FORMAT)
         self.assertEqual(envelope["version"], "1.0")
-        self.assertEqual((GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION), ("axiolid-geometry-graph", "1.4"))
+        self.assertEqual((GEOMETRY_FORMAT, GEOMETRY_FORMAT_VERSION), ("axiolid-geometry-graph", "1.5"))
         nodes = envelope["graph"]["nodes"]
         self.assertEqual(envelope["graph"]["roots"], [len(nodes) - 1])
         self.assertEqual(list(nodes[-1]), ["Instance"])
@@ -217,7 +217,7 @@ class GraphTests(unittest.TestCase):
     @unittest.skipUnless(GRAPH, "needs a wheel built with --features graph")
     def test_a_polygonal_bounded_clip_is_labelled_wire_format_1_4(self) -> None:
         # A half-space bounded along its Position's Z (#515,
-        # axiolid/kernel#321): the newest version the wheel writes.
+        # axiolid/kernel#321): a wall without a ruled surface keeps the lowest version it needs.
         with open(GABLE, "rb") as handle:
             m = IfcModel.parse(handle.read())
         (wall,) = m.product_geometry([9031])
@@ -225,7 +225,7 @@ class GraphTests(unittest.TestCase):
         assert isinstance(wall.payload, str)
         self.assertEqual(json.loads(wall.payload)["version"], "1.4")
         self.assertIn('"BoundedHalfSpaceAlongZ"', wall.payload)
-        self.assertEqual(GEOMETRY_FORMAT_VERSION, "1.4")
+        self.assertEqual(GEOMETRY_FORMAT_VERSION, "1.5")
 
     @unittest.skipUnless(GRAPH, "needs a wheel built with --features graph")
     def test_the_cbor_payload_decodes_to_the_json_envelope(self) -> None:

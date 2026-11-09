@@ -36,6 +36,7 @@ const EXECUTION_PROVIDER: &[&str] = &[
     "axiolid-mesh-boolean-boolmesh",
     "axiolid-mesh-compile",
     "axiolid-mesh-compile-contract",
+    "axiolid-predicates",
 ];
 
 const NEUTRAL_GEOMETRY: &[&str] = &[
