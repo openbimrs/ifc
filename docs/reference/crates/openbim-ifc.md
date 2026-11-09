@@ -11,7 +11,7 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.41.0 (2026-11-04) |
+| Latest release | 0.42.0 (2026-11-09) |
 | Registries | [crates.io `openbim-ifc`](https://crates.io/crates/openbim-ifc) |
 | API documentation | [rustdoc](/api/rustdoc/ifc/index.html){target="_self"} · [docs.rs](https://docs.rs/openbim-ifc) |
 | Source | [`crates/openbim-ifc/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc) |
@@ -103,69 +103,61 @@ Facade for the openBIM IFC crates: pick codecs and domains as features.
 
 ## Changes
 
-Latest release, 0.41.0 (2026-11-04):
+Latest release, 0.42.0 (2026-11-09):
 
-### Fixed (#677)
+### Changed (#705)
 
-- `ColourResolver::product_decider` compares item styles by their
-  `IfcSurfaceStyle` alone: items each with their own `IfcStyledItem` of one
-  shared surface style now yield `ColourDecider::ItemStyle` (the first item's)
-  instead of `DecidersDiffer`. Different surface styles of equal colour still
-  differ.
+- `material_layer_bounds` and `material_layer_meshes` accept a layered Body of several coaxial extrusions, such as a wall interrupted at a crossing (see `ifc-geometry`).
 
-### Changed (#684)
+### Changed (#706)
 
-- With `geometry-select`: `product_placements`, product meshes, graphs, curves, `material_layer_bounds` and every other entry point that resolves units through `ifc::geometry::units::resolve` refuse a lenient model with a damaged or possibly incomplete unit record (`GeometryError::UnitRecordDamaged`, `UnitsIncomplete`), the verdict `ifc::properties::exact_unit` already gave. Door and window operation reads of such a model now refuse with their `Placement` error instead of `Unit`, because the placement's units are resolved first.
+- Breaking: `MaterialLayerMeshes` positions are now in the object frame `bounds` is stated in, whatever the representation context's `WorldCoordinateSystem`, and `MaterialLayerMeshes::world` is the Body's full frame (the context frame above the product's placement), so `world` applied to a position is still its world position. Results for an identity context frame are unchanged; with another one, positions no longer carry the context frame and `world` includes it.
 
-Semver: patch.
+### Added (#709)
 
-### Fixed (#681)
+- `History::rollback` (re-exported from `ifc-model`): undoes the newest entry
+  and drops it, leaving nothing to redo.
 
-- With `sheet-xlsx`: the XLSX export is byte-stable. The workbook's created and modified time is fixed at 1980-01-01T00:00:00Z (the ZIP epoch) instead of the clock, so the same table exports to identical bytes.
+Semver: minor (additive).
 
-Semver: patch.
+### Changed (#603)
 
-### Changed (#634)
+- Breaking: `ColourResolver` reports the colour that all materials of a layer, profile or constituent set state as `ColourSource::MaterialSet { definition, materials }` naming the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)) and the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct), instead of `Material` of the first. A set of one material keeps `Material`; differing styles stay `ColourError::AmbiguousMaterial`. `ColourSource` and `SurfaceColour` are no longer `Copy` (`ifc-style`).
 
-- `AuthorOp::ReassignClass` reassigns a stored entity to a class with fewer
-  attributes than its record (IFC2X3 `IfcSlab` or `IfcDoor` to `IfcWall`); the
-  record is shortened in the transaction with exact undo, redo and replay.
-  `UnsupportedReassignment` is no longer raised for it.
+Semver: minor (pre-1.0 breaking).
 
-Semver: patch (a refusal lifted).
+### Fixed (#695)
 
-### Added (#638)
+- `georeferencing` no longer answers an empty list when the reader's damage may have hidden what its presence gate scans. After a lenient read, a skipped record or a diagnostic the reader's classification cannot place refuses with `GeorefError::RecordsIncomplete` behind either gate (the IFC2X3 property-set test and the IFC4 operation scan), and a reported duplicate of a property set the IFC2X3 gate reads refuses with `GeorefError::RecordDamaged`. Clean models and damage elsewhere still resolve to an empty list.
 
-- With `authoring` and `properties`: authoring batches can read their numbers in SI.
-  - API: `AuthoringOptions` (`input_units`, default `InputUnits::Raw`), `stage_authoring_with` and `apply_authoring_with`. `stage_authoring` and `apply_authoring` are unchanged.
-  - What `InputUnits::Si` converts: the attribute values of `Create`, `Edit`, `ReassignClass`, `Project`, `Spatial`, `Product` and `TypeObject`, a `Placement` location and a `CopyProduct` offset (`CopyPlacement::Offset`). Each goes into the unit that applies: the explicit unit of a property, quantity or `IfcMeasureWithUnit`, else the project unit. Units are resolved against the model as it was before the batch.
-  - How values are read:
-    - Measures are classified from the release's tables, an untyped number by its attribute's declared type.
-    - An `IfcParameterValue` follows its curve's or surface's parameter space: lengths and plane angles are converted, unitless parameters kept.
-    - Reviewed `REAL` attributes follow their role.
-    - A temperature difference (`IfcStructuralLoadTemperature.DeltaT*`) converts by the unit's factor alone, so 10 K stays 10 in a Celsius project.
-    - Monetary, logarithmic (decibel, pH) and compound plane angle measures pass unchanged, through a reviewed table. This differs from `apply_property_edits_with`, which refuses every measure without a unit mapping.
-  - Refusals:
-    - `AuthoringFailure::UnitConversion`: no project unit, an offset unit, a non-finite number, a measure with no unit mapping.
-    - `AuthoringFailure::SiInput` with `SiInputRefusal`: a batch that changes the units it converts into (including removing or retyping a context that states them, re-pointing a property enumeration, and any `Purge`), a model with an `IfcPcurve` off a plane, a unit created in the batch, a value whose unit another record states, a parameter space it cannot carry, an ambiguous untyped select, map conversions, an unsupported release or a header that does not declare it, an `IfcProjectLibrary` with units.
-  - The reviewed REAL, parameter and unit-slot tables moved from `length_unit` to a shared module; length conversion is unchanged.
+### Added (#636)
 
-Semver: patch (additive).
+- `AuthorOp::ReassignClass` reassigns type objects (`IfcTypeObject` to `IfcTypeObject`). `ReassignClassOptions::move_pairs`: where the new class's type rule does not accept the other end of a type assignment, that end is reassigned too (an occurrence's type to the class its rule names, a type's unsatisfied occurrences to the class that type pairs with), each in `ReassignReport::paired`. Classes pair by rule owner (`IfcWall.CorrectTypeAssigned` with `IfcWallType`), checked against the normative EXPRESS. `AuthoringFailure::TypeNotAccepted`, `PairNotReassigned`. IFC2X3 declares no type rules; nothing is paired there.
 
-### Added (#455)
+### Changed (#636)
 
-- With `material` and `mesh`: `material_layer_meshes(model, product, body)`: a mesh per material layer of a layered wall, slab or plate, gross or net, in the product's frame, with its layer and material (`MaterialLayerMeshes`, `MaterialLayerMesh`); the layer volumes add up to the Body. `LayerBody` is re-exported to choose gross or net.
+- `TypeRuleChanged` is raised only when the new class's type rule differs from the old class's and the type object's class is not the type class the new rule requires.
+- `RemovedRelationship::object` names the object taken out of the relationship: the reassigned entity, or, for a type object reassigned with `remove_relationships`, the occurrence whose type assignment was detached.
+- A `move_pairs` occurrence whose class the schema does not declare, or that no type class pairs with, is refused with `PairNotReassigned` (cause `UnsupportedReassignment`).
 
-Semver: patch (additive).
+### Added (#635)
 
-### Added (#640)
+- `ReassignClassOptions::remove_relationships`: a reassignment takes the entity out of the relationships the new class cannot hold (`WrongReferenceType`, `RelationshipLost`, `TypeRuleChanged`) as `AuthorOp::Remove` detaches. `ReassignReport::removed_relationships` lists each (`RemovedRelationship`, `RelationshipConflict`). Only `IfcRelationship`s are touched; `InverseCardinality` is still refused; a removal that leaves another entity below a mandatory inverse (an opening's `VoidsElements`) is refused with `AuthoringFailure::RelationshipRequired`.
 
-- With `geometry-select`: `BodyItem::local_sweep` and `LocalSweptSolid`/`LocalSweepPath`: a swept-area item's profile, `Position` and path in its own item frame, for every swept-area item.
+### Added (#661)
 
-### Changed (#640)
+- With `geometry-select`: `BodyItem::swept_disk` and `SweptDisk`: radius, inner radius, fillet radius, directrix and authored `StartParam`/`EndParam` of `IfcSweptDiskSolid` and `IfcSweptDiskSolidPolygonal`, in the item frame.
 
-- With `geometry-select`: `body_description` no longer refuses a swept solid that an `IfcMappedItem` scales or mirrors: its `swept` is `None` and `local_sweep` describes it.
+### Changed (#661)
+
+- With `geometry-select`: a swept disk with a non-positive radius, a bore at least its radius, a half-open range or a non-positive fillet now refuses `body_description`.
 
 Semver: minor.
+
+### Fixed (#670)
+
+- `AuthorOp::ReassignClass` no longer treats `IfcEvent.CorrectTypeAssigned` as a type rule: it checks `EventTriggerType`, not the type object, so a typed object reassigned to `IfcEvent` is not refused with `TypeRuleChanged`.
+
+Semver: patch (refusals narrowed).
 
 Full history: [`crates/openbim-ifc/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc/CHANGELOG.md)

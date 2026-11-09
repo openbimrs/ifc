@@ -11,7 +11,7 @@ Versioned IFC PSD/QTO catalog definitions and correction overlays
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.4.4 (2026-11-03) |
+| Latest release | 0.4.5 (2026-11-09) |
 | Registries | [crates.io `ifc-template-catalog`](https://crates.io/crates/ifc-template-catalog) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `property-catalog`, `property-catalog-runtime` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_template_catalog/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-template-catalog) |
@@ -40,10 +40,17 @@ and quantity instances remain in `ifc-properties`.
 
 ## Changes
 
-Latest release, 0.4.4 (2026-11-03):
+Latest release, 0.4.5 (2026-11-09):
 
-### Fixed
+Semver: minor (new `PatchOperation` and `PatchError` variants).
 
-- The corrected profiles give `Pset_ElementAssemblyCommon`, `Pset_CivilElementCommon`, `Pset_SpatialZoneCommon` (IFC4, IFC4X3), `Pset_MarineFacilityTransportation` and 11 IFC4X3 `Qto_*` sets the applicable entity their published XML omits (patches NEH-IFC4-PSD-0001..0003, NEH-IFC4X3-PSD-0002..0005, NEH-IFC4X3-QTO-0001..0011, #622). `Pset_ElectricFlowStorageDevicePHistory` stays empty because no buildingSMART source names its entity. The official snapshots, container and TSV exports are unchanged; the TSVs still show the published empty `applicable_entity`.
+### Added
+
+- `PatchOperation::ReplaceQuantityKind` and `PatchOperation::ReplacePropertyKind` replace the kind of one named member and fail as stale unless the member currently has the `expected` kind. `PatchError` gains `NotAQuantitySet` and `UnknownMember`.
+
+### Fixed (#553)
+
+- The corrected profiles declare `Qto_BuildingElementProxyQuantities.NetSurfaceArea` an area and `.NetVolume` a volume (IFC4 ADD2 TC1 and IFC4X3 ADD2; patches NEH-IFC4-QTO-0002..0003, NEH-IFC4X3-QTO-0012..0013). The source PSD XML declares both `Q_COUNT`, so ArchiCAD's `IfcQuantityVolume` and `IfcQuantityArea` drew a member-type warning.
+- The IFC4X3 corrected profile declares `ProcessItem` of `Pset_CargoCommon` and `Pset_ProcessCapacity` an enumerated value of `PEnum_ProcessItem` (TEU, CGT, BARREL, TONNE, PASSENGER, VEHICLE) instead of a single value (patches NEH-IFC4X3-PSD-0006..0007). The official snapshots are unchanged.
 
 Full history: [`crates/ifc-template-catalog/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-template-catalog/CHANGELOG.md)

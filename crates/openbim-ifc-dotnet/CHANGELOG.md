@@ -9,6 +9,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-09
+
 ### Added (#603)
 
 - `SurfaceColour.Source` can be `materialSet`, `SourceEntity` then the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)), and the new last parameter `SourceMaterials` lists the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct); empty for other sources.

@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.10.7] - 2026-11-09
+
 ### Fixed (#630)
 
 - The permissive property and quantity views read an IFC4+ `IfcRelDefinesByProperties.RelatingPropertyDefinition` that is an `IfcPropertySetDefinitionSet` member by member, each as if attached individually, instead of skipping the list. A member absent from the model gives `PropertyAnomaly::MissingDefinition`, and an empty list, a member or a value that is no reference gives `PropertyAnomaly::MalformedAttribute`. The exact API already read the list.
@@ -857,7 +859,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-properties-v0.10.6...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-properties-v0.10.7...HEAD
+[0.10.7]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.10.7
 [0.10.6]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.10.6
 [0.10.5]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.10.5
 [0.10.4]: https://github.com/openbimrs/ifc/releases/tag/ifc-properties-v0.10.4

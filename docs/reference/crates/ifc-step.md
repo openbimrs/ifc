@@ -11,7 +11,7 @@ STEP physical file (ISO 10303-21) codec for the IFC model.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.6.4 (2026-11-04) |
+| Latest release | 0.6.5 (2026-11-09) |
 | Registries | [crates.io `ifc-step`](https://crates.io/crates/ifc-step) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `step` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_step/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-step) |
@@ -40,19 +40,31 @@ substrate and `ifc_model::Model` plus IFC codec detection and I/O policy.
 
 ## Changes
 
-Latest release, 0.6.4 (2026-11-04):
+Latest release, 0.6.5 (2026-11-09):
 
-### Changed (#627)
+### Fixed (#668)
 
-- Require `openbim-step` 0.11.3. A skipped record's diagnostic names the id
-  the substrate read (`Diagnostic::instance`) instead of reading it from the
-  record's bytes. It now names that id also when a record that was read holds
-  it (a damaged duplicate, or the rest of a record cut at a `;`), where it
-  named none before. A skip that swallowed several records still names only
-  the first (openbimrs/step#20, #668).
-  A diagnostic may therefore name an id a kept record also holds; a
-  consumer must not treat such a diagnostic as harmless.
+- Moved to `openbim-step` 0.11.4. A lenient read's recovery now stops before
+  the next `#id =`, so a record missing its `;` no longer swallows the
+  record after it: that record is kept, and a conflicting duplicate id among
+  them is reported as a `DuplicateId` diagnostic. Unit resolution therefore
+  refuses it as damaged instead of trusting it or calling the model
+  incomplete.
 
-Semver: patch
+### Fixed (#626)
+
+- Two records sharing one instance id are reported on every read, not only
+  under `check_references(true)`. A strict read now refuses the file with
+  `StepError::DuplicateId` (`ModelError::DuplicateId` through the codec),
+  naming the id and, in `StepError`, the later record's offset (public through
+  `Index::scan`; `ModelError` carries the id alone): this is a
+  behaviour change, a strict read of such a file used to succeed silently with
+  the later record. `Index::scan` refuses such a file too. A lenient read keeps the later record, as it does under
+  `check_references(true)`, and reports a `DuplicateId` diagnostic carrying
+  the instance, span, position and excerpt. `StepReader::check` refuses the
+  same files. Detection happens on insert, with no second pass over a
+  duplicate-free file. `SyntaxLocation::of_step_error` locates the error.
+  Semver: patch (behaviour change: a strict read of a file with duplicate ids
+  now fails).
 
 Full history: [`crates/ifc-step/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-step/CHANGELOG.md)

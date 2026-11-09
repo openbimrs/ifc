@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-11-09
+
 ### Added (#690)
 
 - `GeorefError::RecordDamaged`, the refusal for a CRS, coordinate-operation
@@ -282,7 +284,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-georef-v0.8.2...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-georef-v0.8.3...HEAD
+[0.8.3]: https://github.com/openbimrs/ifc/releases/tag/ifc-georef-v0.8.3
 [0.8.2]: https://github.com/openbimrs/ifc/releases/tag/ifc-georef-v0.8.2
 [0.8.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-georef-v0.8.1
 [0.8.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-georef-v0.8.0

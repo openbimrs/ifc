@@ -11,7 +11,7 @@ Property sets, quantities, and unit resolution. No geometry.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.10.6 (2026-11-04) |
+| Latest release | 0.10.7 (2026-11-09) |
 | Registries | [crates.io `ifc-properties`](https://crates.io/crates/ifc-properties) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `properties` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_properties/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-properties) |
@@ -44,17 +44,23 @@ standard Psets are data here rather than hand-written tables.
 
 ## Changes
 
-Latest release, 0.10.6 (2026-11-04):
+Latest release, 0.10.7 (2026-11-09):
 
-### Changed (#684)
+### Fixed (#630)
 
-- Unit resolution takes its reader-diagnostic classification from `ifc_model::RecordDamage`, shared with `ifc-geometry`; refusals are unchanged.
+- The permissive property and quantity views read an IFC4+ `IfcRelDefinesByProperties.RelatingPropertyDefinition` that is an `IfcPropertySetDefinitionSet` member by member, each as if attached individually, instead of skipping the list. A member absent from the model gives `PropertyAnomaly::MissingDefinition`, and an empty list, a member or a value that is no reference gives `PropertyAnomaly::MalformedAttribute`. The exact API already read the list.
 
 Semver: patch.
 
-### Changed (#627)
+### Fixed (#632)
 
-- With ifc-step 0.6.4, which names the id the reader read for a skipped record, unit resolution in a lenient model refuses a skipped record that names a held unit record with `ExactUnitError::DamagedRecord` naming that record, instead of `IncompleteModel` for the whole model. Any other skip naming an id a kept record holds still refuses with `IncompleteModel` when resolution does not read that id, because the skip may have swallowed later records. A skipped record whose id was not read still gives `IncompleteModel`; a skip that swallowed several records names only the first (#668).
+- The permissive property and quantity views report an id in `IfcTypeObject.HasPropertySets` that is absent from the model as the new `PropertyAnomaly::MissingTypeSet { type_object, definition }` instead of skipping it silently. The variant is additive (the enum is `#[non_exhaustive]`). A `HasPropertySets` that is not a list, or whose list is empty or holds a non-reference, gives `PropertyAnomaly::MalformedAttribute`.
+
+Semver: patch.
+
+### Fixed (#631)
+
+- The permissive property and quantity views decide which entities are type objects with the declared release's table instead of IFC4's, so a type object only a later release defines (an IFC4X3 `IfcBearingType`) has its `HasPropertySets` read. A header naming no bundled release still reads through the baseline table.
 
 Semver: patch.
 

@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-09
+
 ### Added (#603)
 
 - `SurfaceColour.source` can be `"materialSet"`: `sourceEntity` is the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)) whose materials all state the colour, and the new `sourceMaterials` lists the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct); empty for other sources.
@@ -662,7 +664,8 @@ Published to npm by hand, before the release workflow existed.
 - `scripts/build-node-pkg.sh` builds a Node package with the pinned
   `wasm-bindgen` CLI and runs the Node smoke and corpus suites.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.15.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-wasm-v0.16.0...HEAD
+[0.16.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.16.0
 [0.15.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.15.0
 [0.14.2]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.14.2
 [0.14.1]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-wasm-v0.14.1

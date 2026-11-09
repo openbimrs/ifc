@@ -11,7 +11,7 @@ Presentation: styles, colours, textures, layers, annotation.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.6.5 (2026-11-03) |
+| Latest release | 0.7.0 (2026-11-09) |
 | Registries | [crates.io `ifc-style`](https://crates.io/crates/ifc-style) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `style` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_style/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-style) |
@@ -34,12 +34,12 @@ IFC4, and IFC4X3 layout drift is explicit rather than guessed.
 
 ## Changes
 
-Latest release, 0.6.5 (2026-11-03):
+Latest release, 0.7.0 (2026-11-09):
 
-### Added (#624)
+### Changed (#603)
 
-- `material_fills_by_context(material, units)`: a `ContextFillResult` per context; a refusal in one context (tiles in `ELEVATION_VIEW`, `AmbiguousFill` between its representations, a unit it needs) stays in that entry; only refusals no context owns fail the call (the definitions and their `Representations`, a refused representation's `ContextOfItems`, a malformed context). `material_fill_for_view(material, target_view, units)`: the agreed fill of the contexts with that `TargetView`, `AmbiguousFill` owned by the material when they differ; `StyleError::UnknownTargetView` for a literal that is not an `IfcGeometricProjectionEnum` member.
+- Breaking: `ColourSource` gains `MaterialSet { definition, materials }` (it is `#[non_exhaustive]`; `definition` is a layer, profile or constituent set, a material list or a usage of one), and a colour the materials of a set agree on is reported with it where the `openbim-ifc` facade used to report `Material` of the first material. `ColourSource` and `SurfaceColour` are no longer `Copy`: `materials` is a list. `StyleIndex` itself still returns `Material` for one material.
 
-Semver: patch (additive; `StyleError` is `#[non_exhaustive]`).
+Semver: minor (pre-1.0 breaking).
 
 Full history: [`crates/ifc-style/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-style/CHANGELOG.md)

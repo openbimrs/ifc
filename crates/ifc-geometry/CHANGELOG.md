@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.34.1] - 2026-11-09
+
 ### Changed (#705)
 
 - `layer_set_reference` accepts a layered Body of several `IfcExtrudedAreaSolid` items (an interrupted wall), each optionally clipped, when they share the `Position` orientation, the profile plane and the extrusion direction (origins may slide within the plane); an item that disagrees is `Unsupported`, naming it. An empty Body is still `Unsupported`, now "at least one item". Splitting by layers already cut every part of the Body.
@@ -2528,7 +2530,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.34.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/ifc-geometry-v0.34.1...HEAD
+[0.34.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.34.1
 [0.34.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.34.0
 [0.33.0]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.33.0
 [0.32.1]: https://github.com/openbimrs/ifc/releases/tag/ifc-geometry-v0.32.1

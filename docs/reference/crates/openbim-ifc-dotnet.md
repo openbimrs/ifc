@@ -11,7 +11,7 @@ The OpenBim.Ifc NuGet package: .NET bindings for openbim-ifc over its versioned 
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.12.0 (2026-10-28) |
+| Latest release | 0.13.0 (2026-11-09) |
 | Registries | [NuGet `OpenBim.Ifc`](https://www.nuget.org/packages/OpenBim.Ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_dotnet/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-dotnet/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-dotnet) |
@@ -44,14 +44,19 @@ The behaviour is tested from C# against the packed `.nupkg` by
 
 ## Changes
 
-Latest release, 0.12.0 (2026-10-28):
+Latest release, 0.13.0 (2026-11-09):
 
-### Changed (#585)
+### Added (#603)
 
-- A model without a declared, readable length unit now refuses each
-  product's placement or geometry with `invalid-model` instead of placing it
-  in metres.
+- `SurfaceColour.Source` can be `materialSet`, `SourceEntity` then the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)), and the new last parameter `SourceMaterials` lists the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct); empty for other sources.
+- Needs the C library of ABI 0.1.24.
 
-Semver: patch (behaviour fix; no signature changes).
+Semver: minor (pre-1.0 breaking: a record parameter is added).
+
+### Changed (#651)
+
+- `representation` accepts `Reference`, the void geometry of an IFC4 Reference View opening.
+
+Semver: patch (additive).
 
 Full history: [`crates/openbim-ifc-dotnet/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-dotnet/CHANGELOG.md)

@@ -12,6 +12,8 @@ everything released before per-crate changelogs began.
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-11-09
+
 ### Changed (#705)
 
 - `material_layer_bounds` and `material_layer_meshes` accept a layered Body of several coaxial extrusions, such as a wall interrupted at a crossing (see `ifc-geometry`).
@@ -1616,7 +1618,8 @@ First release under per-crate versioning. See the
 [repository changelog](../../CHANGELOG.md) for the family-wide history
 that produced this version.
 
-[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.41.0...HEAD
+[Unreleased]: https://github.com/openbimrs/ifc/compare/openbim-ifc-v0.42.0...HEAD
+[0.42.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.42.0
 [0.41.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.41.0
 [0.40.0]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.40.0
 [0.39.7]: https://github.com/openbimrs/ifc/releases/tag/openbim-ifc-v0.39.7

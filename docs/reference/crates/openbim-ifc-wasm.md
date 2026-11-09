@@ -11,7 +11,7 @@ WebAssembly bindings for openbim-ifc: read, edit and write IFC STEP files from J
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.15.0 (2026-10-28) |
+| Latest release | 0.16.0 (2026-11-09) |
 | Registries | [npm `@openbim/ifc`](https://www.npmjs.com/package/@openbim/ifc) |
 | API documentation | [rustdoc](/api/rustdoc/openbim_ifc_wasm/index.html){target="_self"} |
 | Source | [`crates/openbim-ifc-wasm/`](https://github.com/openbimrs/ifc/tree/main/crates/openbim-ifc-wasm) |
@@ -70,14 +70,33 @@ suites here cover only the JS conversion itself.
 
 ## Changes
 
-Latest release, 0.15.0 (2026-10-28):
+Latest release, 0.16.0 (2026-11-09):
 
-### Changed (#585)
+### Added (#603)
 
-- A model without a declared, readable length unit now refuses each
-  product's placement or geometry with `invalid-model` instead of placing it
-  in metres.
+- `SurfaceColour.source` can be `"materialSet"`: `sourceEntity` is the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)) whose materials all state the colour, and the new `sourceMaterials` lists the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct); empty for other sources.
 
-Semver: patch (behaviour fix; no signature changes).
+Semver: minor (pre-1.0 breaking: a record field is added).
+
+### Changed (#651)
+
+- `representation` accepts `"Reference"`, the void geometry of an IFC4 Reference View opening.
+
+Semver: patch (additive).
+
+### Changed (#614)
+
+- A diagnostic string with a position reads "warning at line L, column C
+  (bytes a..b): ...".
+
+Semver: patch (Display text changes)
+
+### Fixed (#617)
+
+- The first id handed out after a read is above every declared and
+  referenced id, so a new entity never takes the id of a dangling reference
+  or a skipped record.
+
+Semver: patch
 
 Full history: [`crates/openbim-ifc-wasm/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/openbim-ifc-wasm/CHANGELOG.md)

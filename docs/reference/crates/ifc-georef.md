@@ -11,7 +11,7 @@ Georeferencing: map conversion, coordinate reference systems, site placement.
 | | |
 | --- | --- |
 | Status | <span class="status-implemented">Implemented</span> |
-| Latest release | 0.8.2 (2026-10-28) |
+| Latest release | 0.8.3 (2026-11-09) |
 | Registries | [crates.io `ifc-georef`](https://crates.io/crates/ifc-georef) |
 | Via the facade | [`openbim-ifc`](./openbim-ifc) feature `georef` |
 | API documentation | [rustdoc](/api/rustdoc/ifc_georef/index.html){target="_self"} · [docs.rs](https://docs.rs/ifc-georef) |
@@ -51,10 +51,50 @@ buildingSMART geo-referencing guide
 
 ## Changes
 
-Latest release, 0.8.2 (2026-10-28):
+Latest release, 0.8.3 (2026-11-09):
 
-### Changed
+### Added (#690)
 
-- Copyright holder in NOTICE and licence texts is rheonda.
+- `GeorefError::RecordDamaged`, the refusal for a CRS, coordinate-operation
+  or IFC2X3 property-set record the reader reported. `UnitRecordDamaged`
+  stays for unit records; `RecordsIncomplete` covers diagnostics that may
+  hide any record georeferencing reads, units included.
+
+### Fixed (#690)
+
+- `resolve_project_to_map`, `resolve_project_to_map_in`,
+  `resolve_geographic_offset_in` and `resolve_property_set_georeferencing`
+  check, against `ifc_model::RecordDamage`, every record they read besides
+  units, and refuse a reported one with `RecordDamaged` naming it. Each
+  record is checked before it is read or filtered on, so a damaged copy
+  cannot steer the choice: the operation (before its type and coordinates),
+  its source, every operation scanned for `HasCoordinateOperation`, the CRS,
+  every `IfcWellKnownText` scanned, and in IFC2X3 every
+  `IfcRelDefinesByProperties` scanned, its property set, each related host
+  and each `IfcPropertySingleValue`. One `Damage` is built per entry point.
+- A skip naming a held id elsewhere is refused as `RecordsIncomplete`, and
+  so is an empty IFC2X3 host list when a record was skipped and an
+  `ePSet_MapConversion` or `ePSet_ProjectedCRS` set is present.
+- The facade's presence gate before the property-set entry point is #695.
+  Semver: patch.
+
+### Added (#686)
+
+- `GeorefError::UnitRecordDamaged` and `GeorefError::RecordsIncomplete`, the
+  refusals for a unit record the reader reported and for diagnostics that
+  may hide a record georeferencing reads.
+
+### Fixed (#686)
+
+- The CRS unit resolver reads `Model::diagnostics()` through
+  `ifc_model::RecordDamage`, so the public entry points that resolve a CRS
+  unit refuse a damaged lenient model instead of using whichever unit record
+  the reader kept: `resolve_project_to_map(_in)`, the projected and
+  geographic CRS readers (including their angle and height units) and
+  `resolve_property_set_georeferencing`. A reported unit record (a duplicate
+  id, or a skip with that id) is refused by name; an unclassified
+  diagnostic, a skip or duplicate without an id, or a skip naming a held id
+  is refused as incomplete. The CRS, operation and property-set records
+  themselves are covered by #690. Semver: patch.
 
 Full history: [`crates/ifc-georef/CHANGELOG.md`](https://github.com/openbimrs/ifc/blob/main/crates/ifc-georef/CHANGELOG.md)

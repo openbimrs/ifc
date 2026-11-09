@@ -8,6 +8,8 @@ a release here does not imply a release of any other crate in the family.
 
 ## [Unreleased]
 
+## [0.1.21] - 2026-11-09
+
 ### Added (#603)
 
 - The `SurfaceColour` record's source can be `materialSet`, its source entity then the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)), and it carries a new last child, `source materials`, a `LIST` of `REF`: the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct), else empty. The record has 8 children; the earlier seven keep their positions.

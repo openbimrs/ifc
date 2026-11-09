@@ -1012,7 +1012,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-geometry"
-version = "0.34.0"
+version = "0.34.1"
 dependencies = [
  "axiolid-construct",
  "axiolid-contracts",
@@ -1043,7 +1043,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-georef"
-version = "0.8.2"
+version = "0.8.3"
 dependencies = [
  "axiolid-core",
  "ifc-model",
@@ -1063,7 +1063,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-model"
-version = "0.4.7"
+version = "0.4.8"
 dependencies = [
  "ahash",
  "cargo_metadata",
@@ -1083,7 +1083,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-properties"
-version = "0.10.6"
+version = "0.10.7"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -1129,7 +1129,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-step"
-version = "0.6.4"
+version = "0.6.5"
 dependencies = [
  "ahash",
  "ifc-model",
@@ -1150,7 +1150,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-style"
-version = "0.6.5"
+version = "0.7.0"
 dependencies = [
  "ifc-model",
  "ifc-schema",
@@ -1179,7 +1179,7 @@ dependencies = [
 
 [[package]]
 name = "ifc-template-catalog"
-version = "0.4.4"
+version = "0.4.5"
 dependencies = [
  "bincode",
  "ifc-schema",
@@ -1333,7 +1333,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "openbim-ifc"
-version = "0.41.0"
+version = "0.42.0"
 dependencies = [
  "calamine",
  "flate2",
@@ -1381,7 +1381,7 @@ dependencies = [
 
 [[package]]
 name = "openbim-ifc-capi"
-version = "0.1.20"
+version = "0.1.21"
 dependencies = [
  "cbindgen",
  "openbim-ifc",
@@ -1403,11 +1403,11 @@ dependencies = [
 
 [[package]]
 name = "openbim-ifc-dotnet"
-version = "0.12.0"
+version = "0.13.0"
 
 [[package]]
 name = "openbim-ifc-py"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "openbim-ifc-binding-core",
  "pyo3",
@@ -1417,7 +1417,7 @@ dependencies = [
 
 [[package]]
 name = "openbim-ifc-wasm"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "js-sys",
  "openbim-ifc-binding-core",
