@@ -26,7 +26,7 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 | Feature | Default | Enables |
 | --- | --- | --- |
 | `compile` |  | `lowering`, `dep:axiolid-contracts`, `dep:axiolid-mesh-compile-contract`, `dep:axiolid-curve-evaluate-contract` |
-| `compile-reference-backend` |  | `compile`, `dep:axiolid-mesh-compile`, `dep:axiolid-mesh-boolean-boolmesh`, `dep:axiolid-construct` |
+| `compile-reference-backend` |  | `compile`, `dep:axiolid-mesh-compile`, `dep:axiolid-mesh-boolean-boolmesh`, `dep:axiolid-construct`, `dep:axiolid-predicates` |
 | `ifc2x3` | yes | `ifc-schema/ifc2x3` |
 | `ifc4` | yes | `ifc-schema/ifc4` |
 | `ifc4x1` | yes | `ifc-schema/ifc4x1` |
@@ -45,9 +45,14 @@ IFC semantic views lowered into the format-neutral geometry DAG.
 
 Latest release, 0.34.1 (2026-11-09):
 
+### Changed (#693)
+
+- `compile_sweep_directrix_with` / `compile_sweep_directrix` no longer refuse a ranged directrix that is itself a curve relation (an `IfcTrimmedCurve`, an `IfcIndexedPolyCurve` with `Segments`, an offset curve): `axiolid-mesh-compile` 0.3.44 compiles a trim of a trim (axiolid/kernel#424), reading the range in the basis's parameter. A range outside the directrix, and point or arc-length selectors on a relation (axiolid/kernel#432), stay refused as `CompilationRefused`. Floor `axiolid-mesh-compile` 0.3.44 and `axiolid-predicates` 0.3.5 (correct orient2d, incircle and insphere signs at extreme scales).
+- Kernel 0.3.42 and later: an edge without a p-curve that leaves its B-spline face is refused by name (`Degenerate` inside `CompilationRefused`) instead of as `BudgetExceeded` (axiolid/kernel#320), and a stationed run whose sections may fold is reported unbounded by the fold check (axiolid/kernel#361). Patch-level.
+
 ### Changed (#705)
 
-- `layer_set_reference` accepts a layered Body of several `IfcExtrudedAreaSolid` items (an interrupted wall), each optionally clipped, when they share the `Position` orientation, the profile plane and the extrusion direction (origins may slide within the plane); an item that disagrees is `Unsupported`, naming it. An empty Body is still `Unsupported`, now "at least one item". Splitting by layers already cut every part of the Body.
+- `layer_set_reference` accepts a layered Body of several `IfcExtrudedAreaSolid` items (an interrupted wall), each optionally clipped, when they share the `Position` orientation, the profile plane and the extrusion direction (origins may slide within the plane; under `AXIS2` only along the wall, not across the layers); an item that disagrees is `Unsupported`, naming it. An empty Body is still `Unsupported`, now "at least one item". Splitting by layers already cut every part of the Body.
 
 ### Added (#661)
 

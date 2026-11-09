@@ -69,6 +69,10 @@ than altering a `v0_1_` one.
 
 Latest release, 0.1.21 (2026-11-09):
 
+### Changed (wire format 1.5)
+
+- The geometry graph payload (#367) may be Axiolid's wire format 1.5, written only when a graph holds a ruled surface (axiolid/kernel#402); every other graph keeps its version. The newest version the build advertises (`GEOMETRY_FORMAT_VERSION`) is `"1.5"`. A reader on `axiolid-model` 0.3.17 or older refuses `1.5`.
+
 ### Added (#603)
 
 - The `SurfaceColour` record's source can be `materialSet`, its source entity then the set (`IfcMaterialLayerSet`, `IfcMaterialProfileSet`, `IfcMaterialConstituentSet` or `IfcMaterialList`, or a usage of one (`IfcMaterialLayerSetUsage`, `IfcMaterialProfileSetUsage` and its `Tapering`)), and it carries a new last child, `source materials`, a `LIST` of `REF`: the materials of the set that colour the item: every one, or the constituents its shape aspects name (ascending id, distinct), else empty. The record has 8 children; the earlier seven keep their positions.

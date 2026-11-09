@@ -284,9 +284,40 @@ fn the_position_of_a_swept_area_sweep_places_its_directrix() {
 }
 
 /// A ranged directrix that is a curve relation is trimmed again, which the
-/// kernel refuses (#693): `CompilationRefused` naming the sweep, no points.
+/// kernel compiles (#693): a quarter-circle `IfcTrimmedCurve` (0 to 90
+/// degrees) ranged from 30 to 60 samples the inner 30 degrees of the arc.
 #[test]
-fn a_ranged_trimmed_curve_directrix_is_refused_by_the_kernel() {
+fn a_ranged_trimmed_curve_directrix_is_sampled_in_its_basis_parameter() {
+    let model = step::degrees(
+        "#101=IFCCARTESIANPOINT((0.,0.,0.));
+         #102=IFCAXIS2PLACEMENT3D(#101,$,$);
+         #103=IFCCIRCLE(#102,1.);
+         #104=IFCTRIMMEDCURVE(#103,(IFCPARAMETERVALUE(0.)),(IFCPARAMETERVALUE(90.)),.T.,.PARAMETER.);
+         #105=IFCSWEPTDISKSOLID(#104,0.05,$,30.,60.);",
+        "#105",
+    );
+    let polyline = compile(&model, 105, Transform::identity());
+    let bound = polyline.deviation.bound;
+    assert!(bound <= TOLERANCE.linear(), "{bound}");
+    let (c, s) = (30f64.to_radians().cos(), 30f64.to_radians().sin());
+    let first = arr(polyline.points.first().expect("points"));
+    let last = arr(polyline.points.last().expect("points"));
+    assert!(
+        (first[0] - c).hypot(first[1] - s).hypot(first[2]) <= bound + 1e-9,
+        "{first:?}"
+    );
+    assert!(
+        (last[0] - s).hypot(last[1] - c).hypot(last[2]) <= bound + 1e-9,
+        "{last:?}"
+    );
+}
+
+/// The duct elbow's sweeps range 0 to 90 over a directrix trimmed from 270
+/// to 360 degrees. A trim of a trim reads its range in the basis's parameter
+/// (ISO 10303-42), so the range lies outside the directrix: the kernel
+/// refuses it as `CompilationRefused` naming the sweep, no points.
+#[test]
+fn a_range_outside_a_trimmed_curve_directrix_is_refused_by_the_kernel() {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../test/fixtures/ifclite-geometry/issue_1485_duct_elbow_surface_curve_swept.ifc"
@@ -294,16 +325,17 @@ fn a_ranged_trimmed_curve_directrix_is_refused_by_the_kernel() {
     let bytes = std::fs::read(path).expect("fixture is readable");
     let model = StepCodec.read_bytes(&bytes).expect("fixture parses");
     for sweep in [55, 71] {
-        assert!(
-            matches!(
-                refusal(&model, sweep),
-                GeometryError::CompilationRefused {
-                    entity: EntityId(id),
-                    ..
-                } if id == sweep
-            ),
-            "#{sweep}"
-        );
+        match refusal(&model, sweep) {
+            GeometryError::CompilationRefused {
+                entity: EntityId(id),
+                reason,
+                ..
+            } => {
+                assert_eq!(id, sweep);
+                assert!(reason.contains("lie outside the trimmed curve"), "{reason}");
+            }
+            other => panic!("#{sweep}: {other:?}"),
+        }
     }
 }
 

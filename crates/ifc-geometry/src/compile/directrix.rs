@@ -24,8 +24,9 @@
 //!
 //! A range on a directrix that is itself a curve relation (an
 //! `IfcTrimmedCurve`, an `IfcIndexedPolyCurve` with `Segments`, an offset
-//! curve) is trimmed again, which the kernel refuses; it surfaces as
-//! `CompilationRefused` naming the sweep. It is not worked around here.
+//! curve) is a trim of a trim, which the kernel compiles. Point and
+//! arc-length selectors on a relation stay refused by the kernel
+//! (axiolid/kernel#432) and surface as `CompilationRefused` naming the sweep.
 //!
 //! # The path is the authored directrix
 //!
@@ -70,8 +71,8 @@ use super::default_backend;
 ///
 /// The directrix of a swept-area sweep is placed by the sweep's `Position`
 /// (identity when absent) and then by `frame`; a swept disk has no `Position`.
-/// A ranged directrix that is a curve relation is refused as
-/// `CompilationRefused` (kernel limit, #693).
+/// A ranged directrix that is a curve relation is trimmed again by the
+/// kernel.
 ///
 /// Refused, each naming the sweep:
 ///
@@ -156,8 +157,6 @@ pub fn compile_sweep_directrix_with<B: PolylineCompiler>(
     // Trim first, then place: a placed curve cannot be trimmed.
     let mut node = curve;
     if let Some((start, end)) = range {
-        // TODO(#693): a directrix that is itself a curve relation is refused
-        // by the kernel here (blocked by axiolid/kernel#424).
         node = session.node_for(
             directrix,
             GeometryNode::CurveRelation(CurveRelation::Trimmed {

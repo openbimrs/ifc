@@ -227,7 +227,7 @@ if (!mesh) {
       // The lowest wire version the content needs: "1.0"; "1.1" when a
       // station carries a seam-snapping window, "1.2" when a run's sections do,
       // "1.3" when an offset run continues to a basis end the kernel measures,
-      // "1.4" when a polygonal bounded half-space clips.
+      // "1.4" when a polygonal bounded half-space clips, "1.5" when a graph holds a ruled surface (axiolid/kernel#402).
       console.log(product.typeName, format, version, Object.keys(graph.nodes.at(-1))[0]);
     }
     // docs:end

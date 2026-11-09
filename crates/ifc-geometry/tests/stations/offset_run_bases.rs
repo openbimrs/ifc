@@ -313,7 +313,11 @@ mod kernel {
     /// (axiolid/kernel#316); what stays unbounded is the cell beside the
     /// mitre the deck's widening law makes at station 2, a 0.8 degree
     /// corner on a curved piece (`MITRED_SECTIONS`, axiolid/kernel#335).
-    /// The mesh and its volume are unchanged.
+    /// Since `axiolid-mesh-compile` 0.3.42 the run is unbounded by the fold
+    /// check instead (axiolid/kernel#361): a frame read by quadrature is
+    /// checked only by a conservative forward rate, so a fold cannot be
+    /// excluded and the report says so by name. The mesh and its volume
+    /// are unchanged.
     #[test]
     fn the_ring_deck_compiles_through_the_kernel() {
         let model = bases();
@@ -347,7 +351,7 @@ mod kernel {
             report.unbounded().any(|c| matches!(
                 c.bound,
                 DeviationBound::Unbounded(reason)
-                    if reason.contains("a cell beside a mitred seam on a curved piece")
+                    if reason.contains("a fold cannot be excluded")
             )),
             "{report:?}"
         );

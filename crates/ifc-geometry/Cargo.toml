@@ -80,6 +80,7 @@ compile-reference-backend = [
     "dep:axiolid-mesh-compile",
     "dep:axiolid-mesh-boolean-boolmesh",
     "dep:axiolid-construct",
+    "dep:axiolid-predicates",
 ]
 
 [dependencies]
@@ -116,6 +117,9 @@ axiolid-mesh-boolean-boolmesh = { workspace = true, optional = true }
 # sharp swept-disk polyline corner is not mitred exactly. Nothing here
 # imports it.
 axiolid-construct = { workspace = true, optional = true }
+# Version floor only (>= 0.3.5, set in the workspace): the reference compiler
+# depends on it. Nothing here imports it.
+axiolid-predicates = { workspace = true, optional = true }
 # The CurveEvaluator capability, not an engine: names evaluation so a caller
 # can inject one. Opt-in with the other providers, never in the default build.
 axiolid-curve-evaluate-contract = { workspace = true, optional = true }
