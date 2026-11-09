@@ -216,8 +216,9 @@ mod graph {
         assert_eq!(record.refusal, None);
         let text = record.json().expect("JSON text");
         let envelope: serde_json::Value = serde_json::from_str(text).unwrap();
-        assert_eq!(envelope["version"], GEOMETRY_FORMAT_VERSION);
-        assert_eq!(GEOMETRY_FORMAT_VERSION, "1.5");
+        // The lowest version that represents the clip; 1.5 adds only ruled
+        // surfaces (axiolid/kernel#402).
+        assert_eq!(envelope["version"], "1.4");
         assert!(text.contains("\"BoundedHalfSpaceAlongZ\""), "{text}");
         GeometryGraph::from_json(text).expect("reads back");
     }
