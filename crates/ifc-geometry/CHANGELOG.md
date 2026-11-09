@@ -17,6 +17,10 @@ everything released before per-crate changelogs began.
 - `compile_sweep_directrix_with` / `compile_sweep_directrix` no longer refuse a ranged directrix that is itself a curve relation (an `IfcTrimmedCurve`, an `IfcIndexedPolyCurve` with `Segments`, an offset curve): `axiolid-mesh-compile` 0.3.44 compiles a trim of a trim (axiolid/kernel#424), reading the range in the basis's parameter. A range outside the directrix, and point or arc-length selectors on a relation (axiolid/kernel#432), stay refused as `CompilationRefused`. Floor `axiolid-mesh-compile` 0.3.44 and `axiolid-predicates` 0.3.5 (correct orient2d, incircle and insphere signs at extreme scales).
 - Kernel 0.3.42 and later: an edge without a p-curve that leaves its B-spline face is refused by name (`Degenerate` inside `CompilationRefused`) instead of as `BudgetExceeded` (axiolid/kernel#320), and a stationed run whose sections may fold is reported unbounded by the fold check (axiolid/kernel#361). Patch-level.
 
+### Changed (#705)
+
+- `layer_set_reference` accepts a layered Body of several `IfcExtrudedAreaSolid` items (an interrupted wall), each optionally clipped, when they share the `Position` orientation, the profile plane and the extrusion direction (origins may slide within the plane; under `AXIS2` only along the wall, not across the layers); an item that disagrees is `Unsupported`, naming it. An empty Body is still `Unsupported`, now "at least one item". Splitting by layers already cut every part of the Body.
+
 ### Added (#661)
 
 - `BodyItem::swept_disk` and `SweptDisk`: radius, inner radius, fillet radius, directrix and authored `StartParam`/`EndParam` of `IfcSweptDiskSolid` and `IfcSweptDiskSolidPolygonal`, in the item frame.

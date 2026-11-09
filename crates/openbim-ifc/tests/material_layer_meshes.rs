@@ -233,3 +233,53 @@ fn a_product_without_a_layer_set_usage_has_no_layer_meshes() {
         assert!(none.is_none(), "{name}");
     }
 }
+
+/// The cavity fixture with its context's `WorldCoordinateSystem` replaced by
+/// `frame`, STEP records for `#4` (its point) and `#5` (the placement).
+fn with_context_frame(frame: &str) -> Model {
+    let text = std::fs::read_to_string(path("material_layers.ifc")).expect("fixture");
+    let plain = "#4=IFCCARTESIANPOINT((0.,0.,0.));\n#5=IFCAXIS2PLACEMENT3D(#4,$,$);";
+    assert!(text.contains(plain));
+    parse(text.replace(plain, frame).as_bytes())
+}
+
+/// Positions are in the frame `bounds` is stated in whatever the context's
+/// frame is, and `world` carries them to world space (#706).
+#[test]
+fn positions_stay_in_the_bounds_frame_under_a_context_frame() {
+    let plain = cavity(&fixture("material_layers.ifc"), LayerBody::Gross);
+    // The wall is placed at (1, 2, 0) m. A context shifted 5 m along y puts
+    // its origin at (1, 7, 0); one turned 180 degrees about z and shifted
+    // 0.1 m along x maps (x, y) to (0.1 - x, -y).
+    let cases = [
+        (
+            "#4=IFCCARTESIANPOINT((0.,5000.,0.));\n#5=IFCAXIS2PLACEMENT3D(#4,$,$);",
+            [1.0, 7.0, 0.0],
+        ),
+        (
+            "#4=IFCCARTESIANPOINT((100.,0.,0.));\n#900=IFCDIRECTION((-1.,0.,0.));\n\
+             #901=IFCDIRECTION((0.,0.,1.));\n#5=IFCAXIS2PLACEMENT3D(#4,#901,#900);",
+            [-0.9, -2.0, 0.0],
+        ),
+    ];
+    for (frame, origin) in cases {
+        let meshes = cavity(&with_context_frame(frame), LayerBody::Gross);
+        // Bounds and positions are both in the object frame, so neither
+        // depends on the context.
+        assert_eq!(meshes.bounds.boundaries, plain.bounds.boundaries);
+        for (layer, base) in meshes.layers.iter().zip(&plain.layers) {
+            assert_eq!(layer.positions.len(), base.positions.len());
+            for (a, b) in layer.positions.iter().zip(&base.positions) {
+                assert!((a - b).abs() < 1e-4, "{a} != {b}");
+            }
+        }
+        // `world` is the context frame above the placement.
+        for (a, e) in meshes.world.origin.iter().zip(origin) {
+            assert!(
+                (a - e).abs() < 1e-9,
+                "{:?} != {origin:?}",
+                meshes.world.origin
+            );
+        }
+    }
+}
