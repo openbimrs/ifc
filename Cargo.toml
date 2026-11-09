@@ -26,7 +26,7 @@ missing_docs = "deny"
 # The crates the bindings reach (validate, spatial, geometry, properties,
 # classification, material, systems, cost, georef) do the same (#306):
 # their release features forward to ifc-schema's, and the facade chooses.
-ifc-schema = { path = "crates/ifc-schema", version = "0.3.6", default-features = false }
+ifc-schema = { path = "crates/ifc-schema", version = "0.3.7", default-features = false }
 openbim-ifc = { path = "crates/openbim-ifc", version = "0.42.0", default-features = false }
 openbim-ifc-binding-core = { path = "crates/openbim-ifc-binding-core", version = "0.1.0", default-features = false }
 ifc-step = { path = "crates/ifc-step", version = "0.6.5" }

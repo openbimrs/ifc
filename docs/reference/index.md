@@ -18,7 +18,7 @@ Every page here is generated from the crate itself: its manifest, its crate docu
 | --- | --- | --- | --- |
 | [`ifc-author`](./crates/ifc-author) | <span class="status-implemented">Implemented</span> | 0.4.2 | Schema-checked IFC authoring: construct entities by attribute name with arity and type validation. |
 | [`ifc-model`](./crates/ifc-model) | <span class="status-implemented">Implemented</span> | 0.4.8 | The IFC entity graph: storage and structural queries, free of domain semantics and serialization. |
-| [`ifc-schema`](./crates/ifc-schema) | <span class="status-implemented">Implemented</span> | 0.3.6 | IFC schema as data: entity table, supertype chain, attribute names. |
+| [`ifc-schema`](./crates/ifc-schema) | <span class="status-implemented">Implemented</span> | 0.3.7 | IFC schema as data: entity table, supertype chain, attribute names. |
 | [`ifc-step`](./crates/ifc-step) | <span class="status-implemented">Implemented</span> | 0.6.5 | STEP physical file (ISO 10303-21) codec for the IFC model. |
 | [`ifc-validate`](./crates/ifc-validate) | <span class="status-implemented">Implemented</span> | 0.8.2 | Schema conformance: WHERE rules, cardinality, GUID and reference integrity. |
 | [`ifc-xml`](./crates/ifc-xml) | <span class="status-implemented">Implemented</span> | 0.5.2 | ifcXML (ISO 10303-28) codec for the IFC model. |
