@@ -171,20 +171,43 @@ impl History {
 
     /// Undo the newest entry.
     pub fn undo(&mut self, model: &mut Model) -> Result<Restored, HistoryError> {
+        let (restored, redo) = self.step_back(model)?;
+        if !redo.is_empty() {
+            self.redo.push(redo);
+        }
+        self.settle(model);
+        Ok(restored)
+    }
+
+    /// Undo the newest entry and forget it: the model changes exactly as
+    /// [`History::undo`] changes it, with the same revision check and the
+    /// same refusals (the history is unchanged on a refusal), but the entry
+    /// is dropped instead of moved to the redo stack.
+    ///
+    /// For a change that is abandoned, not undone by the user. Redo is
+    /// cleared, as [`History::push`] clears it: the model moved to a state
+    /// the redo entries were not recorded against, so redoing them would
+    /// replay onto the wrong base. In the usual case (the newest entry just
+    /// tracked) redo was empty already and stays empty.
+    pub fn rollback(&mut self, model: &mut Model) -> Result<Restored, HistoryError> {
+        let (restored, _redo) = self.step_back(model)?;
+        self.redo.clear();
+        self.settle(model);
+        Ok(restored)
+    }
+
+    /// Pop the newest undo entry and apply it; return what it restored and
+    /// its inverse. Nothing changes when it refuses.
+    fn step_back(&mut self, model: &mut Model) -> Result<(Restored, Inverse), HistoryError> {
         if self.undo.is_empty() {
             return Err(HistoryError::NothingToUndo);
         }
         self.check(model)?;
         let mut entry = self.undo.pop_back().expect("checked non-empty");
         entry.rebase(model.revision());
-        let (restored, redo) = entry
+        Ok(entry
             .apply(model)
-            .expect("the entry was rebased to the current revision");
-        if !redo.is_empty() {
-            self.redo.push(redo);
-        }
-        self.settle(model);
-        Ok(restored)
+            .expect("the entry was rebased to the current revision"))
     }
 
     /// Redo the most recently undone entry.

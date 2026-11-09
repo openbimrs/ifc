@@ -196,3 +196,31 @@ fn leading_zeros_are_dropped() {
 fn a_skip_before_any_id_names_none() {
     assert_eq!(skipped_instances("@;\n#2=IFCSITE($);"), [None]);
 }
+
+#[test]
+fn a_record_after_a_skip_missing_its_semicolon_is_kept_and_a_duplicate_reported() {
+    // #668: the skipped #30 no longer swallows the conflicting #1 after it.
+    let text = exchange(
+        "#1=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);\n\
+         #30=IFCSITE($)\n\
+         #1=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);\n\
+         #90=IFCSITE($)\n\
+         #91=IFCSITE($);",
+    );
+    let model = lenient().read_bytes(text.as_bytes()).expect("reads");
+    let found: Vec<(DiagnosticKind, Option<EntityId>)> = model
+        .diagnostics()
+        .iter()
+        .map(|d| (d.kind(), d.instance()))
+        .collect();
+    assert_eq!(
+        found,
+        [
+            (DiagnosticKind::SkippedRecord, Some(EntityId(30))),
+            (DiagnosticKind::SkippedRecord, Some(EntityId(90))),
+            (DiagnosticKind::DuplicateId, Some(EntityId(1))),
+        ]
+    );
+    assert!(model.contains(EntityId(91)));
+    assert_eq!(model.next_id(), EntityId(92));
+}

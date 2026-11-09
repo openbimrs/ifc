@@ -174,3 +174,59 @@ fn undoing_a_tracked_floor_frees_the_ids_and_redo_reserves_them_again() {
     history.redo(&mut model).unwrap();
     assert_eq!(model.next_id(), EntityId(901));
 }
+
+#[test]
+fn rollback_drops_the_entry_without_a_redo() {
+    let mut model = Model::new();
+    let mut history = History::new(8);
+    let a = history.track(&mut model, |m| m.push(wall(1)));
+    let b = history.track(&mut model, |m| m.push(wall(2)));
+
+    let restored = history.rollback(&mut model).unwrap();
+    assert_eq!(restored.removed, vec![b]);
+    assert_eq!(ids(&model), vec![a]);
+    assert_eq!((history.undo_len(), history.redo_len()), (1, 0));
+    assert_eq!(history.redo(&mut model), Err(HistoryError::NothingToRedo));
+    history.undo(&mut model).unwrap();
+    assert!(ids(&model).is_empty());
+}
+
+#[test]
+fn rollback_clears_an_existing_redo() {
+    let mut model = Model::new();
+    let mut history = History::new(8);
+    history.track(&mut model, |m| m.push(wall(1)));
+    history.track(&mut model, |m| m.push(wall(2)));
+    history.undo(&mut model).unwrap();
+    assert_eq!(history.redo_len(), 1);
+
+    history.rollback(&mut model).unwrap();
+    assert_eq!((history.undo_len(), history.redo_len()), (0, 0));
+    assert!(model.is_empty());
+}
+
+#[test]
+fn rollback_refuses_on_a_stale_revision_and_changes_nothing() {
+    let mut model = Model::new();
+    let mut history = History::new(4);
+    history.track(&mut model, |m| m.push(wall(1)));
+    history.track(&mut model, |m| m.push(wall(2)));
+    history.undo(&mut model).unwrap();
+    model.push(wall(3));
+    let before = ids(&model);
+
+    let err = history.rollback(&mut model).unwrap_err();
+    assert!(matches!(err, HistoryError::StaleRevision { .. }));
+    assert_eq!((history.undo_len(), history.redo_len()), (1, 1));
+    assert_eq!(ids(&model), before);
+}
+
+#[test]
+fn rollback_on_empty_history_is_nothing_to_undo() {
+    let mut model = Model::new();
+    let mut history = History::new(2);
+    assert_eq!(
+        history.rollback(&mut model),
+        Err(HistoryError::NothingToUndo)
+    );
+}
